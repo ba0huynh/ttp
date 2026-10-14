@@ -1,0 +1,266 @@
+import { createServerFn } from '@tanstack/react-start'
+import { desc, eq, sql } from 'drizzle-orm'
+import { z } from 'zod'
+
+import { db } from '#/db/index.ts'
+import {
+  EXPENSE_TYPES,
+  PRICING_BASES,
+  PRICING_METHODS,
+  batchExpenses,
+  colors,
+  importBatches,
+  loanContracts,
+  motorcycleModels,
+  suppliers,
+  vehicles,
+} from '#/db/schema.ts'
+import {
+  addBatchExpense,
+  addVehiclesToBatch,
+  createBatch,
+  removeBatchExpense,
+  removeVehicle,
+  updateBatchPricing,
+} from '#/server/services/batches.ts'
+import { num } from '#/server/services/common.ts'
+import { authMiddleware } from './middleware.ts'
+
+export const listBatchesFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .handler(async () => {
+    const rows = await db
+      .select({
+        id: importBatches.id,
+        batchCode: importBatches.batchCode,
+        importDate: importBatches.importDate,
+        customsDeclarationNo: importBatches.customsDeclarationNo,
+        pricingBase: importBatches.pricingBase,
+        pricingMethod: importBatches.pricingMethod,
+        pricingValue: importBatches.pricingValue,
+        note: importBatches.note,
+        supplierName: suppliers.name,
+        loanContractNumber: loanContracts.contractNumber,
+        vehicleCount: sql<number>`count(distinct ${vehicles.id})`,
+        totalImport: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
+        totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
+      })
+      .from(importBatches)
+      .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+      .leftJoin(
+        loanContracts,
+        eq(loanContracts.id, importBatches.loanContractId),
+      )
+      .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
+      .groupBy(
+        importBatches.id,
+        importBatches.batchCode,
+        importBatches.importDate,
+        importBatches.customsDeclarationNo,
+        importBatches.pricingBase,
+        importBatches.pricingMethod,
+        importBatches.pricingValue,
+        importBatches.note,
+        suppliers.name,
+        loanContracts.contractNumber,
+      )
+      .orderBy(desc(importBatches.importDate), desc(importBatches.id))
+
+    return rows.map((r) => {
+      const imp = num(r.totalImport)
+      const exp = num(r.totalExpense)
+      return {
+        ...r,
+        vehicleCount: num(r.vehicleCount),
+        totalImport: imp,
+        totalExpense: exp,
+        totalCost: imp + exp,
+        pricingValue: num(r.pricingValue),
+      }
+    })
+  })
+
+export const getBatchDetailFn = createServerFn({ method: 'GET' })
+  .middleware([authMiddleware])
+  .validator(z.object({ id: z.number() }))
+  .handler(async ({ data }) => {
+    const [batch] = await db
+      .select({
+        id: importBatches.id,
+        batchCode: importBatches.batchCode,
+        supplierId: importBatches.supplierId,
+        supplierName: suppliers.name,
+        loanContractId: importBatches.loanContractId,
+        loanContractNumber: loanContracts.contractNumber,
+        importDate: importBatches.importDate,
+        customsDeclarationNo: importBatches.customsDeclarationNo,
+        pricingBase: importBatches.pricingBase,
+        pricingMethod: importBatches.pricingMethod,
+        pricingValue: importBatches.pricingValue,
+        note: importBatches.note,
+      })
+      .from(importBatches)
+      .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+      .leftJoin(
+        loanContracts,
+        eq(loanContracts.id, importBatches.loanContractId),
+      )
+      .where(eq(importBatches.id, data.id))
+
+    if (!batch) throw new Error('Không tìm thấy lô nhập')
+
+    const vList = await db
+      .select({
+        id: vehicles.id,
+        chassisNumber: vehicles.chassisNumber,
+        engineNumber: vehicles.engineNumber,
+        importPrice: vehicles.importPrice,
+        allocatedExpense: vehicles.allocatedExpense,
+        costPrice: vehicles.costPrice,
+        sellingPrice: vehicles.sellingPrice,
+        isDelivered: vehicles.isDelivered,
+        isInvoiced: vehicles.isInvoiced,
+        modelId: vehicles.modelId,
+        modelName: motorcycleModels.name,
+        colorId: vehicles.colorId,
+        colorName: colors.name,
+      })
+      .from(vehicles)
+      .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
+      .innerJoin(colors, eq(colors.id, vehicles.colorId))
+      .where(eq(vehicles.batchId, data.id))
+      .orderBy(vehicles.id)
+
+    const expList = await db
+      .select()
+      .from(batchExpenses)
+      .where(eq(batchExpenses.batchId, data.id))
+      .orderBy(batchExpenses.id)
+
+    return {
+      batch: {
+        ...batch,
+        pricingValue: num(batch.pricingValue),
+      },
+      vehicles: vList.map((v) => ({
+        ...v,
+        importPrice: num(v.importPrice),
+        allocatedExpense: num(v.allocatedExpense),
+        costPrice: num(v.costPrice),
+        sellingPrice: num(v.sellingPrice),
+      })),
+      expenses: expList.map((e) => ({
+        ...e,
+        amount: num(e.amount),
+      })),
+    }
+  })
+
+export const createBatchFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      batchCode: z.string().trim().min(1, 'Nhập mã lô'),
+      supplierId: z.number().int(),
+      loanContractId: z.number().int().nullable().optional(),
+      importDate: z.string().min(10),
+      customsDeclarationNo: z.string().trim().nullable().optional(),
+      pricingBase: z.enum(PRICING_BASES),
+      pricingMethod: z.enum(PRICING_METHODS),
+      pricingValue: z.number().min(0),
+      note: z.string().trim().nullable().optional(),
+      vehicles: z.array(
+        z.object({
+          modelId: z.number().int(),
+          colorId: z.number().int(),
+          chassisNumber: z.string().trim().min(1),
+          engineNumber: z.string().trim().min(1),
+          importPrice: z.number().positive('Đơn giá nhập phải > 0'),
+        }),
+      ),
+      expenses: z.array(
+        z.object({
+          expenseType: z.enum(EXPENSE_TYPES),
+          description: z.string().trim().nullable().optional(),
+          amount: z.number().positive('Số tiền chi phí phải > 0'),
+        }),
+      ),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    const id = await createBatch(data, context.user.id)
+    return { id }
+  })
+
+export const addVehiclesToBatchFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      batchId: z.number().int(),
+      vehicles: z.array(
+        z.object({
+          modelId: z.number().int(),
+          colorId: z.number().int(),
+          chassisNumber: z.string().trim().min(1),
+          engineNumber: z.string().trim().min(1),
+          importPrice: z.number().positive(),
+        }),
+      ),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await addVehiclesToBatch(data.batchId, data.vehicles)
+    return { ok: true }
+  })
+
+export const removeVehicleFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(z.object({ vehicleId: z.number().int() }))
+  .handler(async ({ data }) => {
+    await removeVehicle(data.vehicleId)
+    return { ok: true }
+  })
+
+export const addBatchExpenseFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      batchId: z.number().int(),
+      expense: z.object({
+        expenseType: z.enum(EXPENSE_TYPES),
+        description: z.string().trim().nullable().optional(),
+        amount: z.number().positive(),
+      }),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await addBatchExpense(data.batchId, data.expense)
+    return { ok: true }
+  })
+
+export const removeBatchExpenseFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(z.object({ expenseId: z.number().int() }))
+  .handler(async ({ data }) => {
+    await removeBatchExpense(data.expenseId)
+    return { ok: true }
+  })
+
+export const updateBatchPricingFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      batchId: z.number().int(),
+      pricingBase: z.enum(PRICING_BASES),
+      pricingMethod: z.enum(PRICING_METHODS),
+      pricingValue: z.number().min(0),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await updateBatchPricing(data.batchId, {
+      pricingBase: data.pricingBase,
+      pricingMethod: data.pricingMethod,
+      pricingValue: data.pricingValue,
+    })
+    return { ok: true }
+  })

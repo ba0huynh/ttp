@@ -1,0 +1,13 @@
+{
+  "version": "7",
+  "dialect": "mysql",
+  "entries": [
+    {
+      "idx": 0,
+      "version": "5",
+      "when": 1791950345885,
+      "tag": "0000_ambitious_eddie_brock",
+      "breakpoints": true
+    }
+  ]
+}

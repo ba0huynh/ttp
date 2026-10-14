@@ -10,33 +10,204 @@
 
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as BatchesRouteImport } from './routes/batches'
+import { Route as CustomersRouteImport } from './routes/customers'
+import { Route as FinanceRouteImport } from './routes/finance'
+import { Route as InventoryRouteImport } from './routes/inventory'
+import { Route as LoansRouteImport } from './routes/loans'
+import { Route as LoginRouteImport } from './routes/login'
+import { Route as MasterDataRouteImport } from './routes/master-data'
+import { Route as ReconcileRouteImport } from './routes/reconcile'
+import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as SalesRouteImport } from './routes/sales'
+import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as BatchesNewRouteImport } from './routes/batches.new'
+import { Route as SalesNewRouteImport } from './routes/sales.new'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BatchesRoute = BatchesRouteImport.update({
+  id: '/batches',
+  path: '/batches',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CustomersRoute = CustomersRouteImport.update({
+  id: '/customers',
+  path: '/customers',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const FinanceRoute = FinanceRouteImport.update({
+  id: '/finance',
+  path: '/finance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const InventoryRoute = InventoryRouteImport.update({
+  id: '/inventory',
+  path: '/inventory',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoansRoute = LoansRouteImport.update({
+  id: '/loans',
+  path: '/loans',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const LoginRoute = LoginRouteImport.update({
+  id: '/login',
+  path: '/login',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const MasterDataRoute = MasterDataRouteImport.update({
+  id: '/master-data',
+  path: '/master-data',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReconcileRoute = ReconcileRouteImport.update({
+  id: '/reconcile',
+  path: '/reconcile',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ReportsRoute = ReportsRouteImport.update({
+  id: '/reports',
+  path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SalesRoute = SalesRouteImport.update({
+  id: '/sales',
+  path: '/sales',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const SettingsRoute = SettingsRouteImport.update({
+  id: '/settings',
+  path: '/settings',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BatchesNewRoute = BatchesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => BatchesRoute,
+} as any)
+const SalesNewRoute = SalesNewRouteImport.update({
+  id: '/new',
+  path: '/new',
+  getParentRoute: () => SalesRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/batches': typeof BatchesRouteWithChildren
+  '/customers': typeof CustomersRoute
+  '/finance': typeof FinanceRoute
+  '/inventory': typeof InventoryRoute
+  '/loans': typeof LoansRoute
+  '/login': typeof LoginRoute
+  '/master-data': typeof MasterDataRoute
+  '/reconcile': typeof ReconcileRoute
+  '/reports': typeof ReportsRoute
+  '/sales': typeof SalesRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/batches/new': typeof BatchesNewRoute
+  '/sales/new': typeof SalesNewRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/batches': typeof BatchesRouteWithChildren
+  '/customers': typeof CustomersRoute
+  '/finance': typeof FinanceRoute
+  '/inventory': typeof InventoryRoute
+  '/loans': typeof LoansRoute
+  '/login': typeof LoginRoute
+  '/master-data': typeof MasterDataRoute
+  '/reconcile': typeof ReconcileRoute
+  '/reports': typeof ReportsRoute
+  '/sales': typeof SalesRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/batches/new': typeof BatchesNewRoute
+  '/sales/new': typeof SalesNewRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/batches': typeof BatchesRouteWithChildren
+  '/customers': typeof CustomersRoute
+  '/finance': typeof FinanceRoute
+  '/inventory': typeof InventoryRoute
+  '/loans': typeof LoansRoute
+  '/login': typeof LoginRoute
+  '/master-data': typeof MasterDataRoute
+  '/reconcile': typeof ReconcileRoute
+  '/reports': typeof ReportsRoute
+  '/sales': typeof SalesRouteWithChildren
+  '/settings': typeof SettingsRoute
+  '/batches/new': typeof BatchesNewRoute
+  '/sales/new': typeof SalesNewRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths:
+    | '/'
+    | '/batches'
+    | '/customers'
+    | '/finance'
+    | '/inventory'
+    | '/loans'
+    | '/login'
+    | '/master-data'
+    | '/reconcile'
+    | '/reports'
+    | '/sales'
+    | '/settings'
+    | '/batches/new'
+    | '/sales/new'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to:
+    | '/'
+    | '/batches'
+    | '/customers'
+    | '/finance'
+    | '/inventory'
+    | '/loans'
+    | '/login'
+    | '/master-data'
+    | '/reconcile'
+    | '/reports'
+    | '/sales'
+    | '/settings'
+    | '/batches/new'
+    | '/sales/new'
+  id:
+    | '__root__'
+    | '/'
+    | '/batches'
+    | '/customers'
+    | '/finance'
+    | '/inventory'
+    | '/loans'
+    | '/login'
+    | '/master-data'
+    | '/reconcile'
+    | '/reports'
+    | '/sales'
+    | '/settings'
+    | '/batches/new'
+    | '/sales/new'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  BatchesRoute: typeof BatchesRouteWithChildren
+  CustomersRoute: typeof CustomersRoute
+  FinanceRoute: typeof FinanceRoute
+  InventoryRoute: typeof InventoryRoute
+  LoansRoute: typeof LoansRoute
+  LoginRoute: typeof LoginRoute
+  MasterDataRoute: typeof MasterDataRoute
+  ReconcileRoute: typeof ReconcileRoute
+  ReportsRoute: typeof ReportsRoute
+  SalesRoute: typeof SalesRouteWithChildren
+  SettingsRoute: typeof SettingsRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -48,11 +219,134 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/batches': {
+      id: '/batches'
+      path: '/batches'
+      fullPath: '/batches'
+      preLoaderRoute: typeof BatchesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/customers': {
+      id: '/customers'
+      path: '/customers'
+      fullPath: '/customers'
+      preLoaderRoute: typeof CustomersRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/finance': {
+      id: '/finance'
+      path: '/finance'
+      fullPath: '/finance'
+      preLoaderRoute: typeof FinanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/inventory': {
+      id: '/inventory'
+      path: '/inventory'
+      fullPath: '/inventory'
+      preLoaderRoute: typeof InventoryRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/loans': {
+      id: '/loans'
+      path: '/loans'
+      fullPath: '/loans'
+      preLoaderRoute: typeof LoansRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/login': {
+      id: '/login'
+      path: '/login'
+      fullPath: '/login'
+      preLoaderRoute: typeof LoginRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/master-data': {
+      id: '/master-data'
+      path: '/master-data'
+      fullPath: '/master-data'
+      preLoaderRoute: typeof MasterDataRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reconcile': {
+      id: '/reconcile'
+      path: '/reconcile'
+      fullPath: '/reconcile'
+      preLoaderRoute: typeof ReconcileRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reports': {
+      id: '/reports'
+      path: '/reports'
+      fullPath: '/reports'
+      preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/sales': {
+      id: '/sales'
+      path: '/sales'
+      fullPath: '/sales'
+      preLoaderRoute: typeof SalesRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/settings': {
+      id: '/settings'
+      path: '/settings'
+      fullPath: '/settings'
+      preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/batches/new': {
+      id: '/batches/new'
+      path: '/new'
+      fullPath: '/batches/new'
+      preLoaderRoute: typeof BatchesNewRouteImport
+      parentRoute: typeof BatchesRoute
+    }
+    '/sales/new': {
+      id: '/sales/new'
+      path: '/new'
+      fullPath: '/sales/new'
+      preLoaderRoute: typeof SalesNewRouteImport
+      parentRoute: typeof SalesRoute
+    }
   }
 }
 
+interface BatchesRouteChildren {
+  BatchesNewRoute: typeof BatchesNewRoute
+}
+
+const BatchesRouteChildren: BatchesRouteChildren = {
+  BatchesNewRoute: BatchesNewRoute,
+}
+
+const BatchesRouteWithChildren =
+  BatchesRoute._addFileChildren(BatchesRouteChildren)
+
+interface SalesRouteChildren {
+  SalesNewRoute: typeof SalesNewRoute
+}
+
+const SalesRouteChildren: SalesRouteChildren = {
+  SalesNewRoute: SalesNewRoute,
+}
+
+const SalesRouteWithChildren = SalesRoute._addFileChildren(SalesRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  BatchesRoute: BatchesRouteWithChildren,
+  CustomersRoute: CustomersRoute,
+  FinanceRoute: FinanceRoute,
+  InventoryRoute: InventoryRoute,
+  LoansRoute: LoansRoute,
+  LoginRoute: LoginRoute,
+  MasterDataRoute: MasterDataRoute,
+  ReconcileRoute: ReconcileRoute,
+  ReportsRoute: ReportsRoute,
+  SalesRoute: SalesRouteWithChildren,
+  SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

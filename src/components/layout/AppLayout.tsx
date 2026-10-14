@@ -1,0 +1,230 @@
+import { Link, useRouterState } from '@tanstack/react-router'
+import {
+  ArrowRightLeft,
+  Banknote,
+  Boxes,
+  Building2,
+  FileText,
+  Landmark,
+  LayoutDashboard,
+  LogOut,
+  PackagePlus,
+  PieChart,
+  Settings,
+  Warehouse,
+} from 'lucide-react'
+import * as React from 'react'
+
+import { Avatar, AvatarFallback } from '#/components/ui/avatar.tsx'
+import { Badge } from '#/components/ui/badge.tsx'
+import { Button } from '#/components/ui/button.tsx'
+
+import { ROLE_LABELS } from '#/lib/business.ts'
+import { logoutFn } from '#/server/fns/auth.ts'
+
+interface NavItem {
+  title: string
+  href: string
+  icon: React.ComponentType<{ className?: string }>
+  badge?: string
+}
+
+const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
+  {
+    group: 'Điều hành',
+    items: [
+      { title: 'Bàn làm việc', href: '/', icon: LayoutDashboard },
+      { title: 'Báo cáo & Phân tích', href: '/reports', icon: PieChart },
+    ],
+  },
+  {
+    group: 'Kho & Xe máy',
+    items: [
+      { title: 'Nhập lô & Giá vốn', href: '/batches', icon: PackagePlus },
+      { title: 'Kho xe (2 Kho)', href: '/inventory', icon: Warehouse },
+      { title: 'Bán hàng & Xuất xe', href: '/sales', icon: FileText },
+    ],
+  },
+  {
+    group: 'Tài chính & Đối soát',
+    items: [
+      { title: 'Khế ước vay ngân hàng', href: '/loans', icon: Landmark },
+      { title: 'Thu chi & Công nợ', href: '/finance', icon: Banknote },
+      { title: 'Đối chiếu sao kê', href: '/reconcile', icon: ArrowRightLeft },
+    ],
+  },
+  {
+    group: 'Đối tác & Thiết lập',
+    items: [
+      { title: 'Khách hàng & Điểm bán', href: '/customers', icon: Building2 },
+      { title: 'Danh mục hệ thống', href: '/master-data', icon: Boxes },
+      { title: 'Cài đặt công ty & User', href: '/settings', icon: Settings },
+    ],
+  },
+]
+
+interface AppLayoutProps {
+  children: React.ReactNode
+  user?: {
+    id: number
+    username: string
+    fullName: string
+    role: string
+  } | null
+}
+
+export function AppLayout({ children, user }: AppLayoutProps) {
+  const routerState = useRouterState()
+  const pathname = routerState.location.pathname
+
+  const handleLogout = async () => {
+    await logoutFn()
+    window.location.href = '/login'
+  }
+
+  const userInitial = user?.fullName
+    ? (user.fullName.split(' ').slice(-1)[0]?.[0]?.toUpperCase() ?? 'U')
+    : 'U'
+
+  return (
+    <div className="min-h-screen bg-slate-50/50 flex">
+      {/* Sidebar cố định bên trái */}
+      <aside className="w-64 border-r border-slate-200 bg-white flex flex-col fixed inset-y-0 z-30 shadow-xs">
+        {/* Brand header */}
+        <div className="h-16 flex items-center gap-3 px-5 border-b border-slate-100">
+          <div className="size-9 rounded-xl bg-gradient-to-tr from-emerald-600 to-teal-500 flex items-center justify-center text-white shadow-sm font-black text-lg">
+            T
+          </div>
+          <div className="flex flex-col min-w-0">
+            <span className="font-bold text-sm tracking-tight text-slate-900 truncate">
+              TRƯỜNG THỊNH PHÁT
+            </span>
+            <span className="text-[11px] font-medium text-emerald-700 uppercase tracking-wider">
+              Quản lý xe máy sỉ
+            </span>
+          </div>
+        </div>
+
+        {/* Navigation list */}
+        <div className="flex-1 overflow-y-auto px-3 py-4 space-y-6">
+          {NAV_GROUPS.map((grp) => (
+            <div key={grp.group} className="space-y-1">
+              <div className="px-3 text-[11px] font-semibold text-slate-600 uppercase tracking-wider">
+                {grp.group}
+              </div>
+              <div className="space-y-0.5 pt-1">
+                {grp.items.map((item) => {
+                  const Icon = item.icon
+                  const isActive =
+                    item.href === '/'
+                      ? pathname === '/'
+                      : pathname.startsWith(item.href)
+
+                  return (
+                    <Link
+                      key={item.href}
+                      to={item.href}
+                      className={`flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all ${
+                        isActive
+                          ? 'bg-emerald-50 text-emerald-900 font-semibold shadow-xs'
+                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      }`}
+                    >
+                      <Icon
+                        className={`size-4.5 shrink-0 ${
+                          isActive ? 'text-emerald-700' : 'text-slate-400'
+                        }`}
+                      />
+                      <span className="truncate">{item.title}</span>
+                      {item.badge && (
+                        <Badge
+                          variant="secondary"
+                          className="ml-auto text-[10px] py-0 px-1.5 font-semibold bg-emerald-100 text-emerald-800"
+                        >
+                          {item.badge}
+                        </Badge>
+                      )}
+                    </Link>
+                  )
+                })}
+              </div>
+            </div>
+          ))}
+        </div>
+
+        {/* User footer */}
+        <div className="p-3 border-t border-slate-100 bg-slate-50/50">
+          <div className="flex items-center gap-3 px-2 py-1.5">
+            <Avatar className="size-8.5 bg-emerald-600 text-white font-bold text-xs">
+              <AvatarFallback className="bg-emerald-600 text-white font-bold">
+                {userInitial}
+              </AvatarFallback>
+            </Avatar>
+            <div className="flex-1 min-w-0">
+              <div className="text-xs font-semibold text-slate-900 truncate">
+                {user?.fullName ?? 'Người dùng'}
+              </div>
+              <div className="text-[11px] text-slate-500 truncate flex items-center gap-1">
+                <span className="inline-block size-1.5 rounded-full bg-emerald-500" />
+                {ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? 'Sales'}
+              </div>
+            </div>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="size-8 text-slate-400 hover:text-rose-600"
+              onClick={handleLogout}
+              title="Đăng xuất"
+            >
+              <LogOut className="size-4" />
+            </Button>
+          </div>
+        </div>
+      </aside>
+
+      {/* Main content wrapper */}
+      <div className="pl-64 flex-1 flex flex-col min-w-0">
+        {/* Top bar */}
+        <header className="h-16 border-b border-slate-200/80 bg-white/80 backdrop-blur-xs sticky top-0 z-20 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <Badge
+              variant="outline"
+              className="bg-emerald-50 text-emerald-800 border-emerald-200 text-xs py-0.5"
+            >
+              MST: 0316513248
+            </Badge>
+            <span className="text-xs text-slate-600 hidden md:inline">
+              Hệ thống vận hành bán buôn xe máy nhập khẩu
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Link to="/inventory">
+              <Button
+                variant="outline"
+                size="sm"
+                className="text-xs gap-1.5 h-8 border-slate-200"
+              >
+                <Warehouse className="size-3.5 text-emerald-600" />
+                <span>Tra cứu 2 Kho</span>
+              </Button>
+            </Link>
+
+            <Link to="/batches/new">
+              <Button
+                size="sm"
+                className="text-xs gap-1.5 h-8 bg-emerald-700 hover:bg-emerald-800 text-white shadow-xs"
+              >
+                <PackagePlus className="size-3.5" />
+                <span>Nhập Lô Mới</span>
+              </Button>
+            </Link>
+          </div>
+        </header>
+
+        {/* Page body */}
+        <main className="flex-1 p-6 max-w-7xl w-full mx-auto">{children}</main>
+      </div>
+    </div>
+  )
+}
