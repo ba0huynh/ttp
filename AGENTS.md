@@ -309,4 +309,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 16, 17,... above this line upon completing tasks)_
+### Lesson 16: Drizzle Studio "Can't add new command when connection is in closed state"
+
+- **Symptom**: Drizzle Studio (`https://local.drizzle.studio`) shows "Drizzle Kit could not reach your database — Can't add new command when connection is in closed state", and "Try again" never recovers.
+- **Cause**: `drizzle-kit studio` keeps a single long-lived `mysql2` connection. Once the remote MySQL server or a proxy drops it (idle timeout, network change, laptop sleep), the connection stays closed and the running studio process never reconnects. The database itself is healthy (verified with a fresh connection).
+- **Fix**: Stop the running studio process (Ctrl+C in its terminal) and start it again with `npm run studio` (the script is named `studio`, not `db:studio`), then reload the browser tab.
+- **Gotcha**: The fallback defaults in `drizzle.config.ts` use port `10146` while `.env` uses `14106`; if `.env` fails to load, studio silently targets the wrong port.
+
+---
+
+_(Next Agent: Append Lesson 17, 18,... above this line upon completing tasks)_
