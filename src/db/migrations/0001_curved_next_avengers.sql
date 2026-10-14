@@ -1,0 +1,1 @@
+ALTER TABLE `banks` ADD `image` varchar(500);

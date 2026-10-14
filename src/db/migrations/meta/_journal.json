@@ -8,6 +8,13 @@
       "when": 1791979881606,
       "tag": "0000_wet_sentinel",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "5",
+      "when": 1791987250170,
+      "tag": "0001_curved_next_avengers",
+      "breakpoints": true
     }
   ]
 }

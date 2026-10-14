@@ -362,13 +362,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-### Lesson 21: Bank Catalog Seed (VietQR)
+### Lesson 21: Bank Catalog Seed (VietQR, live API)
 
-- **What**: `banks` is seeded with the full VietQR list (75 Vietnamese banks: `code`, `name`, `shortName`). Source: `https://api.vietqr.io/v2/banks`.
-- **Files**: `src/db/seed/fetch-banks.ts` (`npm run seed:fetch-banks`) downloads the list and **generates** `src/db/seed/data/banks.ts` (committed, don't edit by hand). `src/db/seed/bank.seed.ts` exports `seedBanks()`, which `seedMasterData()` calls first. `npm run seed` never calls the API, so it works offline and is deterministic; re-run the fetch script only to refresh the list.
-- **Idempotent and additive**: `seedBanks()` inserts only codes that are missing and never overwrites existing rows, so it tops up databases that already had the original 3 banks (VCB, BIDV, TCB; codes match the VietQR codes).
-- **Behaviour change**: `seedMasterData()` used to skip everything when `banks` had rows. It now skips the rest of the master data (accounts, suppliers, models, colors) only when `company_bank_accounts` has rows, because the bank catalog is topped up on every run.
-- **Not stored**: the API also has `bin`, `logo`, `swift_code`. The schema has no columns for them; adding `bin` would be needed for generating VietQR payment QR codes.
+- **What**: `banks` is seeded with the full VietQR list (75 Vietnamese banks: `code`, `name`, `shortName`), fetched **live** from `https://api.vietqr.io/v2/banks?d=YYYYMMDD` every time `npm run seed` runs. There is no saved copy of the list in the repo.
+- **File**: `src/db/seed/bank.seed.ts` exports `seedBanks()` (called first by `seedMasterData()`) and `fetchVietQrBanks()` (20 s timeout; throws a clear error if the API is unreachable or the response is not `code: "00"`). **Seeding therefore needs internet access.**
+- **Idempotent and additive**: only codes missing from `banks` are inserted; existing rows are never overwritten. This tops up databases that already had the original 3 banks (VCB, BIDV, TCB; their codes match VietQR's).
+- **Behaviour change**: `seedMasterData()` used to skip everything when `banks` had rows. It now calls `seedBanks()` on every run and skips the rest (accounts, suppliers, models, colors) only when `company_bank_accounts` has rows.
+- **Logo**: `banks.image` (varchar 500, nullable) stores the VietQR logo URL (migration `0001_curved_next_avengers.sql`). The seed fills it for new banks and backfills it for existing banks that have none; it never overwrites a non-empty value. **Apply the migration (`npm run migration:run`) before running the seed**, otherwise the insert fails with an unknown column `image`.
+- **Not stored**: the API also returns `bin` and `swift_code`; the schema has no columns for them. `bin` would be needed to generate VietQR payment QR codes.
 
 ---
 

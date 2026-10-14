@@ -101,6 +101,8 @@ export const banks = mysqlTable('banks', {
   code: varchar('code', { length: 20 }).notNull().unique(),
   name: varchar('name', { length: 255 }).notNull(),
   shortName: varchar('short_name', { length: 50 }).notNull(),
+  /** Bank logo URL (e.g. VietQR CDN) */
+  image: varchar('image', { length: 500 }),
   ...timestamps,
 })
 
