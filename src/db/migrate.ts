@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
 
@@ -8,25 +7,20 @@ import { db } from './index.ts'
 
 /**
  * Runs migrations and prints per-statement progress (replaces
- * `drizzle-kit migrate`, which hides progress and swallows errors). The
- * tracking table format matches drizzle's (hash = sha256 of the .sql file,
- * created_at = `when` from _journal.json), so it stays compatible with
- * drizzle-kit / the drizzle-orm migrator.
- * Settings must match drizzle.config.ts.
+ * `drizzle-kit migrate`, which hides progress and swallows errors).
+ *
+ * Applied migrations are tracked by file name in the `migrations` table, so it
+ * is NOT compatible with drizzle-kit's / drizzle-orm's own migrator (they expect
+ * hash + created_at columns). Keep using `npm run migration:run`.
+ * Migration files and the journal come from drizzle.config.ts (`out`).
  */
 const MIGRATIONS_FOLDER = './src/db/migrations'
 const MIGRATIONS_TABLE = 'migrations'
 const STATEMENT_BREAKPOINT = '--> statement-breakpoint'
 
-interface JournalEntry {
-  tag: string
-  when: number
-}
-
 interface Migration {
-  tag: string
-  when: number
-  hash: string
+  /** File name without extension, e.g. 0000_wet_sentinel */
+  name: string
   statements: string[]
 }
 
@@ -36,20 +30,48 @@ const run = (query: string) => db.execute(sql.raw(query))
 function loadMigrations(): Migration[] {
   const journal = JSON.parse(
     readFileSync(join(MIGRATIONS_FOLDER, 'meta/_journal.json'), 'utf-8'),
-  ) as { entries: JournalEntry[] }
+  ) as { entries: { tag: string }[] }
 
-  return journal.entries.map(({ tag, when }) => {
+  return journal.entries.map(({ tag }) => {
     const script = readFileSync(join(MIGRATIONS_FOLDER, `${tag}.sql`), 'utf-8')
     return {
-      tag,
-      when,
-      hash: createHash('sha256').update(script).digest('hex'),
+      name: tag,
       statements: script
         .split(STATEMENT_BREAKPOINT)
         .map((s) => s.trim())
         .filter(Boolean),
     }
   })
+}
+
+/**
+ * Creates the tracking table. A table left over from the old hash/created_at
+ * format is replaced if empty; if it already holds rows we stop, so history is
+ * never dropped silently.
+ */
+async function ensureTrackingTable() {
+  const [tableRows] = await run(
+    `SELECT COUNT(*) AS n FROM information_schema.tables WHERE table_schema = DATABASE() AND table_name = '${MIGRATIONS_TABLE}'`,
+  )
+  const [nameColRows] = await run(
+    `SELECT COUNT(*) AS n FROM information_schema.columns WHERE table_schema = DATABASE() AND table_name = '${MIGRATIONS_TABLE}' AND column_name = 'name'`,
+  )
+
+  if (count(tableRows) > 0 && count(nameColRows) === 0) {
+    const [rows] = await run(
+      `SELECT COUNT(*) AS n FROM \`${MIGRATIONS_TABLE}\``,
+    )
+    if (count(rows) > 0) {
+      throw new Error(
+        `Table ${MIGRATIONS_TABLE} uses the old hash/created_at format and has rows. Convert it manually or drop it, then run again.`,
+      )
+    }
+    await run(`DROP TABLE \`${MIGRATIONS_TABLE}\``)
+  }
+
+  await run(
+    `CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (id SERIAL PRIMARY KEY, name VARCHAR(255) NOT NULL UNIQUE, applied_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP)`,
+  )
 }
 
 /** First line of a statement: enough to tell which table/constraint it touches */
@@ -87,10 +109,10 @@ async function baselineIfNeeded(first: Migration) {
   }
 
   await run(
-    `INSERT INTO \`${MIGRATIONS_TABLE}\` (hash, created_at) VALUES ('${first.hash}', ${first.when})`,
+    `INSERT INTO \`${MIGRATIONS_TABLE}\` (name) VALUES ('${first.name}')`,
   )
   console.log(
-    `↺ Database already has all tables: recording ${first.tag} as applied (baseline).`,
+    `↺ Database already has all tables: recording ${first.name} as applied (baseline).`,
   )
 }
 
@@ -98,9 +120,7 @@ async function migrate() {
   const migrations = loadMigrations()
   console.log(`Found ${migrations.length} migration(s) in ${MIGRATIONS_FOLDER}`)
 
-  await run(
-    `CREATE TABLE IF NOT EXISTS \`${MIGRATIONS_TABLE}\` (id SERIAL PRIMARY KEY, hash text NOT NULL, created_at bigint)`,
-  )
+  await ensureTrackingTable()
 
   const [appliedRows] = await run(
     `SELECT COUNT(*) AS n FROM \`${MIGRATIONS_TABLE}\``,
@@ -109,11 +129,11 @@ async function migrate() {
     await baselineIfNeeded(migrations[0])
   }
 
-  const [lastRows] = await run(
-    `SELECT COALESCE(MAX(created_at), 0) AS n FROM \`${MIGRATIONS_TABLE}\``,
+  const [nameRows] = await run(`SELECT name FROM \`${MIGRATIONS_TABLE}\``)
+  const applied = new Set(
+    (nameRows as unknown as { name: string }[]).map((r) => r.name),
   )
-  const lastApplied = count(lastRows)
-  const pending = migrations.filter((m) => m.when > lastApplied)
+  const pending = migrations.filter((m) => !applied.has(m.name))
 
   if (pending.length === 0) {
     console.log('✓ Database is up to date, nothing to apply.')
@@ -122,7 +142,7 @@ async function migrate() {
 
   for (const migration of pending) {
     const total = migration.statements.length
-    console.log(`\n▶ ${migration.tag} (${total} statements)`)
+    console.log(`\n▶ ${migration.name} (${total} statements)`)
     const startedAt = performance.now()
 
     for (const [i, statement] of migration.statements.entries()) {
@@ -137,10 +157,10 @@ async function migrate() {
     }
 
     await run(
-      `INSERT INTO \`${MIGRATIONS_TABLE}\` (hash, created_at) VALUES ('${migration.hash}', ${migration.when})`,
+      `INSERT INTO \`${MIGRATIONS_TABLE}\` (name) VALUES ('${migration.name}')`,
     )
     const seconds = ((performance.now() - startedAt) / 1000).toFixed(1)
-    console.log(`✔ ${migration.tag} done in ${seconds}s`)
+    console.log(`✔ ${migration.name} done in ${seconds}s`)
   }
 
   console.log(`\nMigration complete (${pending.length} applied).`)
