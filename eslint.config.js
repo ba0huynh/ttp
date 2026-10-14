@@ -20,7 +20,7 @@ export default [
       'eslint.config.js',
       'prettier.config.js',
       'src/paraglide/**',
-      'drizzle/**',
+      'src/db/migrations/**',
     ],
   },
 ]

@@ -180,7 +180,7 @@ The system comprises **11 Core Business Modules**:
 | **MANDATORY: TypeScript Check** | `npx tsc --noEmit`                                            | **Must pass with 0 errors before finishing any turn!**               |
 | **Linter / Formatter**          | `npm run format` & `npm run lint`                             | Runs Prettier write and ESLint fixes                                 |
 | **Check Code Formatting**       | `npm run check`                                               | Prettier dry-run format check                                        |
-| **Generate Drizzle Migration**  | `npm run db:generate`                                         | Generates SQL migration file in `./drizzle`                          |
+| **Generate Drizzle Migration**  | `npm run db:generate`                                         | Generates SQL migration file in `./src/db/migrations`                          |
 | **Push Schema to Database**     | `npm run db:push`                                             | Pushes schema directly from `src/db/schema.ts`                       |
 | **Run Migrations via Script**   | `npx tsx src/db/migrate.ts`                                   | Executes migration SQL statements safely via direct MySQL connection |
 | **Seed Mock Data**              | `npm run seed` (or `npm run db:seed`)                         | Populates database with full realistic sample dataset                |
@@ -244,7 +244,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ### Lesson 8: Realistic Seed Data (`npm run seed`)
 
-- **Feature**: `src/db/seed.ts` covers all 4 dual-inventory edge cases, multiple loan contracts, batch allocations, customer branches, and bank statement reconciliations.
+- **Feature**: `src/db/seed/` covers all 4 dual-inventory edge cases, multiple loan contracts, batch allocations, customer branches, and bank statement reconciliations.
 - **Reset Pattern**: Always execute `SET FOREIGN_KEY_CHECKS = 0;` before truncating/deleting tables, and re-enable with `SET FOREIGN_KEY_CHECKS = 1;` to avoid FK constraint order errors (MySQL Error 1451).
 
 ### Lesson 9: Discrete Database Connection Parameters
@@ -273,7 +273,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ### Lesson 13: Modular Seed Architecture (`src/db/seed/`)
 
-- **Structure**: The monolithic seed file (`src/db/seed.ts`, ~1000 lines) was broken down into specialized, single-responsibility modules inside `src/db/seed/`:
+- **Structure**: The monolithic seed file (formerly `src/db/seed.ts`, ~1000 lines) was broken down into specialized, single-responsibility modules inside `src/db/seed/`:
   - `reset.ts`: Resets all database tables cleanly in foreign-key safe order (`SET FOREIGN_KEY_CHECKS = 0/1`).
   - `company.ts`: Seeds corporate identity (`company_info`) for Truong Thinh Phat.
   - `users.ts`: Seeds system user accounts (`admin`, `accountant`, `sales`, `warehouse`) with bcrypt passwords.
@@ -284,7 +284,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - `sales.ts`: Seeds wholesale sales orders, delivery notes, and commercial invoices demonstrating all 3 dual inventory permutations.
   - `finance.ts`: Seeds cash receipt/disbursement vouchers and bank statements for transaction reconciliation.
   - `index.ts`: Orchestrates the sequential execution pipeline, closes MySQL connection pool gracefully (`db.$client.end()`), and outputs formatted login credentials.
-- **Backwards Compatibility**: `src/db/seed.ts` simply delegates to `src/db/seed/index.ts`, ensuring `npm run seed` (`tsx src/db/seed.ts`) continues to work without requiring script configuration changes.
+- **Entry point**: `src/db/seed.ts` was removed; `src/db/seed/index.ts` exports `seed()` and runs it when invoked directly, so `npm run seed` runs `tsx src/db/seed/index.ts`.
 
 ### Lesson 14: Reads/Writes via TanStack Query (`src/lib/queries.ts`)
 
