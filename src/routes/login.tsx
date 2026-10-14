@@ -1,4 +1,4 @@
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Lock, LogIn, User } from 'lucide-react'
 import * as React from 'react'
 
@@ -109,9 +109,17 @@ function LoginPage() {
               </div>
 
               <div className="space-y-1.5">
-                <Label htmlFor="password" className="text-xs font-semibold">
-                  Mật khẩu
-                </Label>
+                <div className="flex items-center justify-between">
+                  <Label htmlFor="password" className="text-xs font-semibold">
+                    Mật khẩu
+                  </Label>
+                  <Link
+                    to="/forgot-password"
+                    className="text-[11px] text-emerald-700 hover:underline"
+                  >
+                    Quên mật khẩu?
+                  </Link>
+                </div>
                 <div className="relative">
                   <Lock className="absolute left-3 top-2.5 size-4 text-slate-400" />
                   <Input
@@ -142,6 +150,16 @@ function LoginPage() {
                   </>
                 )}
               </Button>
+
+              <p className="text-xs text-slate-500">
+                Chưa có tài khoản?{' '}
+                <Link
+                  to="/register"
+                  className="font-semibold text-emerald-700 hover:underline"
+                >
+                  Đăng ký
+                </Link>
+              </p>
 
               {/* Demo accounts picker */}
               <div className="w-full pt-3 border-t border-slate-100 space-y-2">

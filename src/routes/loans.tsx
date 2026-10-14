@@ -514,6 +514,30 @@ function LoansPage() {
               </div>
             ) : loanDetail ? (
               <div className="space-y-5 pt-2">
+                {/* 0. Import batches financed by this loan contract */}
+                <div className="text-xs">
+                  <span className="font-bold text-slate-800">
+                    Lô xe được tài trợ:{' '}
+                  </span>
+                  {loanDetail.batches.length === 0 ? (
+                    <span className="text-slate-400">
+                      Chưa gắn lô nào (gắn tại trang Lô Xe → Xem chi tiết)
+                    </span>
+                  ) : (
+                    <span className="inline-flex flex-wrap gap-1.5 align-middle">
+                      {loanDetail.batches.map((b) => (
+                        <Badge
+                          key={b.id}
+                          variant="outline"
+                          className="font-mono text-[11px] bg-purple-50 text-purple-700 border-purple-200"
+                        >
+                          {b.batchCode} ({formatDate(b.importDate)})
+                        </Badge>
+                      ))}
+                    </span>
+                  )}
+                </div>
+
                 {/* 1. 365-day declining balance interest schedule */}
                 <div>
                   <div className="text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">

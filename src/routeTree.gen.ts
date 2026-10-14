@@ -13,12 +13,15 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as BatchesRouteImport } from './routes/batches'
 import { Route as CustomersRouteImport } from './routes/customers'
 import { Route as FinanceRouteImport } from './routes/finance'
+import { Route as ForgotPasswordRouteImport } from './routes/forgot-password'
 import { Route as InventoryRouteImport } from './routes/inventory'
 import { Route as LoansRouteImport } from './routes/loans'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MasterDataRouteImport } from './routes/master-data'
 import { Route as ReconcileRouteImport } from './routes/reconcile'
+import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReportsRouteImport } from './routes/reports'
+import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as BatchesNewRouteImport } from './routes/batches.new'
@@ -42,6 +45,11 @@ const CustomersRoute = CustomersRouteImport.update({
 const FinanceRoute = FinanceRouteImport.update({
   id: '/finance',
   path: '/finance',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ForgotPasswordRoute = ForgotPasswordRouteImport.update({
+  id: '/forgot-password',
+  path: '/forgot-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const InventoryRoute = InventoryRouteImport.update({
@@ -69,9 +77,19 @@ const ReconcileRoute = ReconcileRouteImport.update({
   path: '/reconcile',
   getParentRoute: () => rootRouteImport,
 } as any)
+const RegisterRoute = RegisterRouteImport.update({
+  id: '/register',
+  path: '/register',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ReportsRoute = ReportsRouteImport.update({
   id: '/reports',
   path: '/reports',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const ResetPasswordRoute = ResetPasswordRouteImport.update({
+  id: '/reset-password',
+  path: '/reset-password',
   getParentRoute: () => rootRouteImport,
 } as any)
 const SalesRoute = SalesRouteImport.update({
@@ -100,12 +118,15 @@ export interface FileRoutesByFullPath {
   '/batches': typeof BatchesRouteWithChildren
   '/customers': typeof CustomersRoute
   '/finance': typeof FinanceRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inventory': typeof InventoryRoute
   '/loans': typeof LoansRoute
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
+  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/batches/new': typeof BatchesNewRoute
@@ -116,12 +137,15 @@ export interface FileRoutesByTo {
   '/batches': typeof BatchesRouteWithChildren
   '/customers': typeof CustomersRoute
   '/finance': typeof FinanceRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inventory': typeof InventoryRoute
   '/loans': typeof LoansRoute
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
+  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/batches/new': typeof BatchesNewRoute
@@ -133,12 +157,15 @@ export interface FileRoutesById {
   '/batches': typeof BatchesRouteWithChildren
   '/customers': typeof CustomersRoute
   '/finance': typeof FinanceRoute
+  '/forgot-password': typeof ForgotPasswordRoute
   '/inventory': typeof InventoryRoute
   '/loans': typeof LoansRoute
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
+  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
+  '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
   '/batches/new': typeof BatchesNewRoute
@@ -151,12 +178,15 @@ export interface FileRouteTypes {
     | '/batches'
     | '/customers'
     | '/finance'
+    | '/forgot-password'
     | '/inventory'
     | '/loans'
     | '/login'
     | '/master-data'
     | '/reconcile'
+    | '/register'
     | '/reports'
+    | '/reset-password'
     | '/sales'
     | '/settings'
     | '/batches/new'
@@ -167,12 +197,15 @@ export interface FileRouteTypes {
     | '/batches'
     | '/customers'
     | '/finance'
+    | '/forgot-password'
     | '/inventory'
     | '/loans'
     | '/login'
     | '/master-data'
     | '/reconcile'
+    | '/register'
     | '/reports'
+    | '/reset-password'
     | '/sales'
     | '/settings'
     | '/batches/new'
@@ -183,12 +216,15 @@ export interface FileRouteTypes {
     | '/batches'
     | '/customers'
     | '/finance'
+    | '/forgot-password'
     | '/inventory'
     | '/loans'
     | '/login'
     | '/master-data'
     | '/reconcile'
+    | '/register'
     | '/reports'
+    | '/reset-password'
     | '/sales'
     | '/settings'
     | '/batches/new'
@@ -200,12 +236,15 @@ export interface RootRouteChildren {
   BatchesRoute: typeof BatchesRouteWithChildren
   CustomersRoute: typeof CustomersRoute
   FinanceRoute: typeof FinanceRoute
+  ForgotPasswordRoute: typeof ForgotPasswordRoute
   InventoryRoute: typeof InventoryRoute
   LoansRoute: typeof LoansRoute
   LoginRoute: typeof LoginRoute
   MasterDataRoute: typeof MasterDataRoute
   ReconcileRoute: typeof ReconcileRoute
+  RegisterRoute: typeof RegisterRoute
   ReportsRoute: typeof ReportsRoute
+  ResetPasswordRoute: typeof ResetPasswordRoute
   SalesRoute: typeof SalesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
 }
@@ -238,6 +277,13 @@ declare module '@tanstack/react-router' {
       path: '/finance'
       fullPath: '/finance'
       preLoaderRoute: typeof FinanceRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/forgot-password': {
+      id: '/forgot-password'
+      path: '/forgot-password'
+      fullPath: '/forgot-password'
+      preLoaderRoute: typeof ForgotPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/inventory': {
@@ -275,11 +321,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ReconcileRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/register': {
+      id: '/register'
+      path: '/register'
+      fullPath: '/register'
+      preLoaderRoute: typeof RegisterRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/reports': {
       id: '/reports'
       path: '/reports'
       fullPath: '/reports'
       preLoaderRoute: typeof ReportsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/reset-password': {
+      id: '/reset-password'
+      path: '/reset-password'
+      fullPath: '/reset-password'
+      preLoaderRoute: typeof ResetPasswordRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/sales': {
@@ -339,24 +399,18 @@ const rootRouteChildren: RootRouteChildren = {
   BatchesRoute: BatchesRouteWithChildren,
   CustomersRoute: CustomersRoute,
   FinanceRoute: FinanceRoute,
+  ForgotPasswordRoute: ForgotPasswordRoute,
   InventoryRoute: InventoryRoute,
   LoansRoute: LoansRoute,
   LoginRoute: LoginRoute,
   MasterDataRoute: MasterDataRoute,
   ReconcileRoute: ReconcileRoute,
+  RegisterRoute: RegisterRoute,
   ReportsRoute: ReportsRoute,
+  ResetPasswordRoute: ResetPasswordRoute,
   SalesRoute: SalesRouteWithChildren,
   SettingsRoute: SettingsRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
-
-import type { getRouter } from './router.tsx'
-import type { createStart } from '@tanstack/react-start'
-declare module '@tanstack/react-start' {
-  interface Register {
-    ssr: true
-    router: Awaited<ReturnType<typeof getRouter>>
-  }
-}

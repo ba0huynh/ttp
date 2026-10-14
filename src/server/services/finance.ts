@@ -4,6 +4,7 @@ import { db } from '../../db/index.ts'
 import {
   bankStatementLines,
   bankStatements,
+  importBatches,
   loanContracts,
   loanRepayments,
   paymentVouchers,
@@ -29,6 +30,15 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
     .from(loanRepayments)
     .where(eq(loanRepayments.loanContractId, loanId))
     .orderBy(loanRepayments.paymentDate, loanRepayments.id)
+  const batches = await db
+    .select({
+      id: importBatches.id,
+      batchCode: importBatches.batchCode,
+      importDate: importBatches.importDate,
+    })
+    .from(importBatches)
+    .where(eq(importBatches.loanContractId, loanId))
+    .orderBy(importBatches.importDate)
 
   const interest = calculateLoanInterest({
     principal: num(loan.principalAmount),
@@ -48,6 +58,7 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
   return {
     loan,
     repayments,
+    batches,
     asOf,
     principalPaid,
     interestPaid,

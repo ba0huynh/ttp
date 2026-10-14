@@ -11,9 +11,11 @@ import {
   CheckCircle2,
   FileSpreadsheet,
   Sparkles,
+  Upload,
 } from 'lucide-react'
 import * as React from 'react'
 
+import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -73,6 +75,7 @@ function ReconcilePage() {
   const [selectedStatementId, setSelectedStatementId] = React.useState<
     number | null
   >(statements[0]?.id ?? null)
+  const [importOpen, setImportOpen] = React.useState(false)
   const { data: statementDetail, isLoading: loadingLines } = useQuery({
     ...bankStatementDetailQuery(selectedStatementId ?? 0),
     enabled: selectedStatementId !== null,
@@ -155,16 +158,40 @@ function ReconcilePage() {
             </p>
           </div>
 
-          <Button
-            size="sm"
-            disabled={autoMatching || !selectedStatementId}
-            onClick={handleAutoMatch}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs font-semibold"
-          >
-            <Sparkles className="size-4" />
-            {autoMatching ? 'Đang khớp...' : 'Tự Động Đối Chiếu Nhanh'}
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setImportOpen(true)}
+              className="gap-1.5 font-semibold"
+            >
+              <Upload className="size-4" />
+              Nhập Sao Kê
+            </Button>
+            <Button
+              size="sm"
+              disabled={autoMatching || !selectedStatementId}
+              onClick={handleAutoMatch}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs font-semibold"
+            >
+              <Sparkles className="size-4" />
+              {autoMatching ? 'Đang khớp...' : 'Tự Động Đối Chiếu Nhanh'}
+            </Button>
+          </div>
         </div>
+
+        <ImportStatementDialog
+          open={importOpen}
+          onOpenChange={setImportOpen}
+          onImported={setSelectedStatementId}
+        />
+
+        {statements.length === 0 && (
+          <div className="py-10 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-dashed">
+            Chưa có sao kê nào. Bấm <strong>Nhập Sao Kê</strong> để bắt đầu
+            đối chiếu.
+          </div>
+        )}
 
         {/* Statements list bar */}
         <div className="flex items-center gap-2 overflow-x-auto pb-1">

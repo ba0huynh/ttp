@@ -1,8 +1,9 @@
-import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Eye, PackagePlus } from 'lucide-react'
 import * as React from 'react'
 
+import { BatchDetailDialog } from '#/components/batches/BatchDetailDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -13,13 +14,6 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '#/components/ui/dialog.tsx'
-import {
   Table,
   TableBody,
   TableCell,
@@ -28,11 +22,7 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
-import {
-  batchDetailQuery,
-  batchesQuery,
-  currentUserQuery,
-} from '#/lib/queries.ts'
+import { batchesQuery, currentUserQuery } from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/batches')({
   beforeLoad: async ({ context: { queryClient } }) => {
@@ -53,10 +43,6 @@ function BatchesPage() {
   const [selectedBatchId, setSelectedBatchId] = React.useState<number | null>(
     null,
   )
-  const { data: detailData, isLoading: loadingDetail } = useQuery({
-    ...batchDetailQuery(selectedBatchId ?? 0),
-    enabled: selectedBatchId !== null,
-  })
 
   const viewDetail = (id: number) => setSelectedBatchId(id)
 
@@ -189,124 +175,10 @@ function BatchesPage() {
           </CardContent>
         </Card>
 
-        {/* Batch detail modal */}
-        <Dialog
-          open={selectedBatchId !== null}
-          onOpenChange={(open) => !open && setSelectedBatchId(null)}
-        >
-          <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-                <span>Chi Tiết Lô Xe:</span>
-                <span className="font-mono text-emerald-700">
-                  {detailData?.batch?.batchCode}
-                </span>
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Nhà cung cấp: <strong>{detailData?.batch?.supplierName}</strong>{' '}
-                &bull; Ngày nhập: {formatDate(detailData?.batch?.importDate)}
-              </DialogDescription>
-            </DialogHeader>
-
-            {loadingDetail ? (
-              <div className="py-12 text-center text-xs text-slate-400">
-                Đang tải dữ liệu lô...
-              </div>
-            ) : detailData ? (
-              <div className="space-y-4 pt-2">
-                {/* Batch expenses */}
-                <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
-                  <div className="text-xs font-bold text-slate-800">
-                    Khoản Chi Phí Lô ({detailData.expenses.length} khoản chi):
-                  </div>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-                    {detailData.expenses.map((e: any) => (
-                      <div
-                        key={e.id}
-                        className="p-2 bg-white rounded border border-slate-200"
-                      >
-                        <div className="text-[11px] text-slate-500 capitalize">
-                          {e.expenseType.replace('_', ' ')}
-                        </div>
-                        <div className="font-bold text-slate-900">
-                          {formatVnd(e.amount)}
-                        </div>
-                        {e.description && (
-                          <div className="text-[10px] text-slate-400 truncate">
-                            {e.description}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Batch vehicles list */}
-                <div>
-                  <div className="text-xs font-bold text-slate-800 mb-2">
-                    Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (
-                    {detailData.vehicles.length} chiếc):
-                  </div>
-                  <div className="border border-slate-200 rounded-lg overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow className="text-xs bg-slate-50">
-                          <TableHead>Số Khung (VIN)</TableHead>
-                          <TableHead>Số Máy</TableHead>
-                          <TableHead>Dòng xe / Màu</TableHead>
-                          <TableHead className="text-right">
-                            Đơn Giá Nhập
-                          </TableHead>
-                          <TableHead className="text-right">
-                            CP Phân Bổ
-                          </TableHead>
-                          <TableHead className="text-right">
-                            Giá Vốn Xe
-                          </TableHead>
-                          <TableHead className="text-right">
-                            Giá Bán Áp Dụng
-                          </TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody className="text-xs">
-                        {detailData.vehicles.map((v: any) => (
-                          <TableRow key={v.id}>
-                            <TableCell className="font-mono font-bold">
-                              {v.chassisNumber}
-                            </TableCell>
-                            <TableCell className="font-mono text-slate-500">
-                              {v.engineNumber}
-                            </TableCell>
-                            <TableCell>
-                              <div className="font-medium text-slate-900">
-                                {v.modelName}
-                              </div>
-                              <div className="text-[11px] text-slate-500">
-                                {v.colorName}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {formatVnd(v.importPrice)}
-                            </TableCell>
-                            <TableCell className="text-right text-slate-500">
-                              +{formatVnd(v.allocatedExpense)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-slate-900">
-                              {formatVnd(v.costPrice)}
-                            </TableCell>
-                            <TableCell className="text-right font-bold text-emerald-800">
-                              {formatVnd(v.sellingPrice)}
-                            </TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </div>
-              </div>
-            ) : null}
-          </DialogContent>
-        </Dialog>
+        <BatchDetailDialog
+          batchId={selectedBatchId}
+          onClose={() => setSelectedBatchId(null)}
+        />
       </div>
     </AppLayout>
   )

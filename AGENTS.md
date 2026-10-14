@@ -137,16 +137,16 @@ The system comprises **11 Core Business Modules**:
 
 | #      | Module                       | Database Entity (`src/db/schema.ts`)                               | Server Functions (`src/server/fns/`)                                    | UI Route (`src/routes/`)   | Key Components (`src/components/`)               |
 | ------ | ---------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------- | -------------------------- | ------------------------------------------------ |
-| **01** | **System & Auth**            | `users`, `sessions`, `company_info`                                | `auth.ts`, `system.ts`                                                  | `/login`, `/settings`      | `AppLayout.tsx`, `useAuth.ts`, `avatar.tsx`      |
+| **01** | **System & Auth**            | `users`, `sessions`, `company_info`                                | `auth.ts`, `system.ts`                                                  | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/settings` | `AppLayout.tsx`, `AuthShell.tsx`, `avatar.tsx`   |
 | **02** | **Master Data**              | `banks`, `company_bank_accounts`, `suppliers`, `motorcycle_models` | `master-data.ts`                                                        | `/master-data`             | `Tabs`, `Table`, `Dialog`                        |
 | **03** | **Customers & Branches**     | `customers`, `pos_branches`                                        | `customers.ts`                                                          | `/customers`               | `Card`, `Badge`, `Dialog`                        |
 | **04** | **Bank Loans**               | `loan_contracts`, `loan_repayments`                                | `finance.ts` (`listLoansFn`, `createLoanContractFn`)                    | `/loans`                   | `InterestTable`, `RepaymentModal`                |
-| **05** | **Batch Imports & Costing**  | `import_batches`, `batch_expenses`, `vehicles`                     | `batches.ts` (`createBatchFn`, `listBatchesFn`)                         | `/batches`, `/batches/new` | `CostWarningAlert.tsx`, `Table`, `Select`        |
+| **05** | **Batch Imports & Costing**  | `import_batches`, `batch_expenses`, `vehicles`                     | `batches.ts` (`createBatchFn`, `updateBatchPricingFn`, `updateBatchInfoFn`, add/remove vehicle & expense) | `/batches`, `/batches/new` | `CostWarningAlert.tsx`, `batches/BatchDetailDialog.tsx` |
 | **06** | **Dual Inventory**           | `vehicles`                                                         | `inventory.ts` (`getInventorySummaryFn`, `listVehiclesFn`)              | `/inventory`               | `DualInventoryBadge.tsx`, stock filter buttons   |
 | **07** | **Sales & Dispatches**       | `sales_orders`, `sales_order_items`, `delivery_notes`, `invoices`  | `sales.ts` (`createSalesOrderFn`, `recordDeliveryFn`, `issueInvoiceFn`) | `/sales`, `/sales/new`     | `VehiclePicker`, `DeliveryModal`, `InvoiceModal` |
 | **08** | **Accounts Receivable (AR)** | `accounts_receivable`, `receipt_vouchers`                          | `finance.ts` (`listReceivablesFn`, `createReceiptVoucherFn`)            | `/finance` (Tab 1 & 3)     | `ReceivableTable`, `ReceiptVoucherModal`         |
 | **09** | **Accounts Payable (AP)**    | `accounts_payable`, `payment_vouchers`                             | `finance.ts` (`listPayablesFn`, `createPaymentVoucherFn`)               | `/finance` (Tab 2 & 4)     | `PayableTable`, `PaymentVoucherModal`            |
-| **10** | **Bank Reconciliation**      | `bank_statements`, `bank_statement_lines`, `reconciliations`       | `finance.ts` (`reconcileLineFn`)                                        | `/reconcile`               | `StatementLinesTable`, auto-match suggestions    |
+| **10** | **Bank Reconciliation**      | `bank_statements`, `bank_statement_lines`, `reconciliations`       | `finance.ts` (`importBankStatementFn`, `matchStatementLineFn`, `autoMatchStatementFn`) | `/reconcile`               | `finance/ImportStatementDialog.tsx`, `lib/statement-import.ts` |
 | **11** | **Reports & Analytics**      | Aggregated queries across transactions                             | `reports.ts` (`getReportsFn`)                                           | `/reports`                 | Profit margin by batch, parent revenue breakdown |
 
 ---
@@ -185,7 +185,7 @@ The system comprises **11 Core Business Modules**:
 | **Push Schema to Database**     | `npm run db:push`                                             | Pushes schema directly from `src/db/schema.ts`                       |
 | **Run Migrations via Script**   | `npx tsx src/db/migrate.ts`                                   | Executes migration SQL statements safely via direct MySQL connection |
 | **Seed Mock Data**              | `npm run seed` (or `npm run db:seed`)                         | Idempotent per table: inserts only what's missing; `-- --reset` wipes first |
-| **Open Drizzle Studio**         | `npm run db:studio`                                           | Launches web GUI for database tables inspection                      |
+| **Open Drizzle Studio**         | `npm run studio`                                              | Launches web GUI for database tables inspection                      |
 | **Build Production**            | `npm run build`                                               | Builds Nitro server bundle into `dist/`                              |
 | **Start Production Server**     | `npm run start`                                               | Runs `dist/server/index.mjs` with Node.js                         |
 | **Build & Start Production**    | `npm run build:start`                                         | Runs `npm run build && npm run start` sequentially                   |
@@ -318,4 +318,17 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 17, 18,... above this line upon completing tasks)_
+### Lesson 17: Spec Gap Audit — Features That Had Server Functions but No UI
+
+- **Audit**: Compared `Tom tắt yêu cầu hệ thống trường thịnh phát.pdf` (11 modules / 44 functions) with the code. Most gaps were server functions that no route called; grep each `export const xFn` in `src/server/fns/` against `src/routes`, `src/components` and `src/lib` to find more.
+- **Added**:
+  - **Module 01**: public routes `/register`, `/forgot-password`, `/reset-password?token=` (shared frame `src/components/layout/AuthShell.tsx`), linked from `/login`. Registration: first user becomes an active admin; later users are inactive until an admin enables them in `/settings`. Email is not integrated: the reset link is written to the server log, and dev builds also show it on the page (`devLink`).
+  - **Module 05**: `src/components/batches/BatchDetailDialog.tsx` (opened from `/batches` → Xem chi tiết) edits batch selling price setup (live preview + below-cost count + `CostWarningAlert`), adds/removes batch expenses, adds/removes vehicles (sold/delivered/invoiced vehicles are locked), and edits batch info including the financing loan. Every write runs `recalculateBatch` server-side. New `updateBatchInfoFn`; `getBatchDetailFn` now returns `isSold` per vehicle.
+  - **Module 04**: `getLoanStatus` returns `batches` (linked via `import_batches.loan_contract_id`), shown in the `/loans` detail dialog.
+  - **Module 10**: `/reconcile` → "Nhập Sao Kê" opens `src/components/finance/ImportStatementDialog.tsx`; paste rows from Excel (tab-separated) or load a CSV (comma/semicolon, quoted cells). Columns: Date | Reference | Description | Debit | Credit | Balance. Parsing is pure in `src/lib/statement-import.ts`: dates dd/mm/yyyy or yyyy-mm-dd; every amount separator is dropped because VND has no decimals; header rows are skipped silently; bad rows are reported by row number.
+- **Gotcha**: Editing expenses or pricing after a sale changes `vehicles.cost_price` / `selling_price` but **not** the `sales_order_items.cost_price` / `unit_price` snapshots used by reports. This is intended: a sale keeps the price it was sold at.
+- **Open question from the spec (section 5)**: the client crossed out "record sales, revenue and invoices", but module 07 is kept because invoiced stock, AR, revenue and profit depend on it. Confirm with the client whether only e-invoice integration is out of scope.
+
+---
+
+_(Next Agent: Append Lesson 18, 19,... above this line upon completing tasks)_

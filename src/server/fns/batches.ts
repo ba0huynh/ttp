@@ -12,6 +12,7 @@ import {
   importBatches,
   loanContracts,
   motorcycleModels,
+  salesOrderItems,
   suppliers,
   vehicles,
 } from '#/db/schema.ts'
@@ -21,6 +22,7 @@ import {
   createBatch,
   removeBatchExpense,
   removeVehicle,
+  updateBatchInfo,
   updateBatchPricing,
 } from '#/server/services/batches.ts'
 import { num } from '#/server/services/common.ts'
@@ -120,6 +122,7 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
         sellingPrice: vehicles.sellingPrice,
         isDelivered: vehicles.isDelivered,
         isInvoiced: vehicles.isInvoiced,
+        isSold: sql<number>`exists (select 1 from ${salesOrderItems} i where i.vehicle_id = ${vehicles.id})`,
         modelId: vehicles.modelId,
         modelName: motorcycleModels.name,
         colorId: vehicles.colorId,
@@ -144,6 +147,7 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
       },
       vehicles: vList.map((v) => ({
         ...v,
+        isSold: Boolean(num(v.isSold)),
         importPrice: num(v.importPrice),
         allocatedExpense: num(v.allocatedExpense),
         costPrice: num(v.costPrice),
@@ -262,5 +266,23 @@ export const updateBatchPricingFn = createServerFn({ method: 'POST' })
       pricingMethod: data.pricingMethod,
       pricingValue: data.pricingValue,
     })
+    return { ok: true }
+  })
+
+/** Module 04: link / re-link a batch to the loan contract that financed it */
+export const updateBatchInfoFn = createServerFn({ method: 'POST' })
+  .middleware([authMiddleware])
+  .validator(
+    z.object({
+      batchId: z.number().int(),
+      loanContractId: z.number().int().nullable(),
+      importDate: z.string().min(10),
+      customsDeclarationNo: z.string().trim().nullable(),
+      note: z.string().trim().nullable(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const { batchId, ...info } = data
+    await updateBatchInfo(batchId, info)
     return { ok: true }
   })
