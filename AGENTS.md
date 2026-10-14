@@ -139,7 +139,7 @@ The system comprises **11 Core Business Modules**:
 | ------ | ---------------------------- | ------------------------------------------------------------------ | ----------------------------------------------------------------------- | -------------------------- | ------------------------------------------------ |
 | **01** | **System & Auth**            | `users`, `sessions`, `company_info`                                | `auth.ts`, `system.ts`                                                  | `/login`, `/register`, `/forgot-password`, `/reset-password`, `/settings` | `AppLayout.tsx`, `AuthShell.tsx`, `avatar.tsx`   |
 | **02** | **Master Data**              | `banks`, `company_bank_accounts`, `suppliers`, `motorcycle_models` | `master-data.ts`                                                        | `/master-data`             | `Tabs`, `Table`, `Dialog`                        |
-| **03** | **Customers & Branches**     | `customers`, `pos_branches`                                        | `customers.ts`                                                          | `/customers`               | `Card`, `Badge`, `Dialog`                        |
+| **03** | **Customers & Branches**     | `customers`, `pos_branches`                                        | `customers.ts`                                                          | `/customers`, `/customers/$customerId` | `Card`, `Badge`, `Dialog`                        |
 | **04** | **Bank Loans**               | `loan_contracts`, `loan_repayments`                                | `finance.ts` (`listLoansFn`, `createLoanContractFn`)                    | `/loans`                   | `InterestTable`, `RepaymentModal`                |
 | **05** | **Batch Imports & Costing**  | `import_batches`, `batch_expenses`, `vehicles`                     | `batches.ts` (`createBatchFn`, `updateBatchPricingFn`, `updateBatchInfoFn`, add/remove vehicle & expense) | `/batches`, `/batches/new`, `/batches/$batchId` | `CostWarningAlert.tsx`, `batches/BatchEditor.tsx` |
 | **06** | **Dual Inventory**           | `vehicles`                                                         | `inventory.ts` (`getInventorySummaryFn`, `listVehiclesFn`)              | `/inventory`               | `DualInventoryBadge.tsx`, stock filter buttons   |
@@ -344,11 +344,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-### Lesson 19: Nested Routes Need a Layout With an `<Outlet />` (`/batches`, `/sales`)
+### Lesson 19: Nested Routes Need a Layout With an `<Outlet />` (`/batches`, `/sales`, `/customers`)
 
 - **Symptom**: `/batches/new` and `/sales/new` showed the *list* page instead of the create page.
 - **Cause**: `batches.tsx` held the list component, so `batches.new.tsx` became its child, but the list never rendered an `<Outlet />`.
 - **Fix**: `batches.tsx` / `sales.tsx` are now thin layouts (`component: Outlet`); the lists moved to `batches.index.tsx` / `sales.index.tsx` (`createFileRoute('/batches/')`). Links to `/batches` still work. Without the layout file, `tsr generate` emitted a `getParentRoute` pointing at a route that did not exist.
+- **Customers**: same split (`customers.tsx` layout, `customers.index.tsx` list, `customers.$customerId.tsx` detail with branches, inline add-branch form and per-branch receivables). Detail pages should use `loader` + `useSuspenseQuery` with a numeric-id guard and an `errorComponent` for unknown ids.
+- **Dev server gotcha**: never delete `src/routeTree.gen.ts` while `npm run dev` is running; the router plugin loses the file (ENOENT) and serves stale routes until the dev server is restarted. Run `npm run generate-routes` without deleting it first (it overwrites the file).
 - **Detail page**: the batch detail is now the page `/batches/$batchId` (`batches.$batchId.tsx`, editors in `src/components/batches/BatchEditor.tsx`), replacing the dialog. Do the same pattern for any new list → create → detail module.
 
 ---
@@ -369,8 +371,15 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Idempotent and additive**: only codes missing from `banks` are inserted; existing rows are never overwritten. This tops up databases that already had the original 3 banks (VCB, BIDV, TCB; their codes match VietQR's).
 - **Behaviour change**: `seedMasterData()` used to skip everything when `banks` had rows. It now calls `seedBanks()` on every run and skips the rest (accounts, suppliers, models, colors) only when `company_bank_accounts` has rows.
 - **Logo**: `banks.image` (varchar 500, nullable) stores the VietQR logo URL (migration `0001_curved_next_avengers.sql`). The seed fills it for new banks and backfills it for existing banks that have none; it never overwrites a non-empty value. **Apply the migration (`npm run migration:run`) before running the seed**, otherwise the insert fails with an unknown column `image`.
+- **Showing logos**: use `BankLabel` / `BankLogo` from `src/components/finance/BankLabel.tsx` wherever a bank is picked or listed (loan form, bank-account selects in `/loans` and `/finance`, statement import, `/reconcile` chips, `/master-data` bank tab). Server queries expose `bankImage` next to `bankShortName`. Logos are wide (not square), so the box is `h-6 w-11` with `object-contain`; a neutral icon is shown when `image` is empty or fails to load.
 - **Not stored**: the API also returns `bin` and `swift_code`; the schema has no columns for them. `bin` would be needed to generate VietQR payment QR codes.
 
 ---
 
-_(Next Agent: Append Lesson 22, 23,... above this line upon completing tasks)_
+### Lesson 22: Loan Detail Is a Page, Not a Dialog (`/loans/$loanId`)
+
+- **Change**: the "Tính lãi & Trả nợ" dialog on `/loans` is now the page `/loans/$loanId` (`loans.$loanId.tsx`), following the pattern from Lesson 19: `loans.tsx` is a layout (`Outlet`), `loans.index.tsx` is the list (and still holds the "Tạo Khế Ước Mới" dialog), `loans.$loanId.tsx` is the detail with the interest schedule, repayment history and repayment form.
+- **Behaviour**: the contract number and the action button in the list are links, so a loan has a shareable URL and the browser Back button works. The repayment form pre-fills the interest still due and re-fills it after each repayment. An unknown or non-numeric id redirects to `/loans` or shows the not-found state; batch badges on the detail link to `/batches/$batchId`.
+- **Gotcha**: the sidebar highlights `/loans` for the detail page because `AppLayout` matches nav items with `startsWith`.
+
+_(Next Agent: Append Lesson 23, 24,... above this line upon completing tasks)_

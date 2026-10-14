@@ -9,13 +9,13 @@ import {
   ArrowRightLeft,
   Check,
   CheckCircle2,
-  FileSpreadsheet,
   Sparkles,
   Upload,
 } from 'lucide-react'
 import * as React from 'react'
 
 import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
+import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -188,8 +188,8 @@ function ReconcilePage() {
 
         {statements.length === 0 && (
           <div className="py-10 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-dashed">
-            Chưa có sao kê nào. Bấm <strong>Nhập Sao Kê</strong> để bắt đầu
-            đối chiếu.
+            Chưa có sao kê nào. Bấm <strong>Nhập Sao Kê</strong> để bắt đầu đối
+            chiếu.
           </div>
         )}
 
@@ -205,11 +205,10 @@ function ReconcilePage() {
                 selectedStatementId === s.id ? 'bg-slate-900 text-white' : ''
               }`}
             >
-              <FileSpreadsheet className="size-3.5" />
-              <span>
+              <BankLabel image={s.bankImage} name={s.bankShortName}>
                 {s.bankShortName} ({formatDate(s.periodFrom)} -{' '}
                 {formatDate(s.periodTo)})
-              </span>
+              </BankLabel>
               <Badge
                 variant="secondary"
                 className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"

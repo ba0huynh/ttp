@@ -53,6 +53,7 @@ export const listLoansFn = createServerFn({ method: 'GET' })
         bankId: loanContracts.bankId,
         bankName: banks.name,
         bankShortName: banks.shortName,
+        bankImage: banks.image,
         principalAmount: loanContracts.principalAmount,
         interestRate: loanContracts.interestRate,
         disbursementDate: loanContracts.disbursementDate,
@@ -161,6 +162,7 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
         branchName: posBranches.name,
         accountNumber: companyBankAccounts.accountNumber,
         bankShortName: banks.shortName,
+        bankImage: banks.image,
       })
       .from(receiptVouchers)
       .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
@@ -225,6 +227,7 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
         batchCode: importBatches.batchCode,
         accountNumber: companyBankAccounts.accountNumber,
         bankShortName: banks.shortName,
+        bankImage: banks.image,
       })
       .from(paymentVouchers)
       .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
@@ -278,6 +281,7 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
         note: bankStatements.note,
         accountNumber: companyBankAccounts.accountNumber,
         bankShortName: banks.shortName,
+        bankImage: banks.image,
         lineCount: sql<number>`count(${bankStatementLines.id})`,
         matchedCount: sql<number>`sum(case when ${bankStatementLines.status} = 'matched' then 1 else 0 end)`,
       })
@@ -322,6 +326,7 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
         note: bankStatements.note,
         accountNumber: companyBankAccounts.accountNumber,
         bankShortName: banks.shortName,
+        bankImage: banks.image,
       })
       .from(bankStatements)
       .innerJoin(

@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { FileUp, Upload } from 'lucide-react'
 import * as React from 'react'
 
+import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -153,43 +154,45 @@ export function ImportStatementDialog({
             </Alert>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div className="space-y-1.5 sm:col-span-1">
-              <Label className="text-xs font-semibold">
-                Tài khoản ngân hàng
-              </Label>
-              <Select
-                value={effectiveAccountId ? String(effectiveAccountId) : ''}
-                onValueChange={(val) => setAccountId(Number(val))}
-              >
-                <SelectTrigger className="h-8 text-xs">
-                  <SelectValue placeholder="Chọn tài khoản" />
-                </SelectTrigger>
-                <SelectContent>
-                  {accounts.map((a) => (
-                    <SelectItem key={a.id} value={String(a.id)}>
+          <div className="space-y-1.5">
+            <Label className="text-xs font-semibold">Tài khoản ngân hàng</Label>
+            <Select
+              value={effectiveAccountId ? String(effectiveAccountId) : ''}
+              onValueChange={(val) => setAccountId(Number(val))}
+            >
+              <SelectTrigger className="h-8 w-full text-xs">
+                <SelectValue placeholder="Chọn tài khoản" />
+              </SelectTrigger>
+              <SelectContent>
+                {accounts.map((a) => (
+                  <SelectItem key={a.id} value={String(a.id)}>
+                    <BankLabel image={a.bankImage} name={a.bankShortName}>
                       {a.bankShortName} — {a.accountNumber}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
+                    </BankLabel>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          {/* From / to date: two equal halves of the row */}
+          <div className="grid grid-cols-2 gap-3">
+            <div className="min-w-0 space-y-1.5">
               <Label className="text-xs font-semibold">Từ ngày</Label>
               <Input
                 type="date"
                 value={from}
                 onChange={(e) => setPeriodFrom(e.target.value)}
-                className="h-8 text-xs"
+                className="h-8 w-full text-xs"
               />
             </div>
-            <div className="space-y-1.5">
+            <div className="min-w-0 space-y-1.5">
               <Label className="text-xs font-semibold">Đến ngày</Label>
               <Input
                 type="date"
                 value={to}
                 onChange={(e) => setPeriodTo(e.target.value)}
-                className="h-8 text-xs"
+                className="h-8 w-full text-xs"
               />
             </div>
           </div>

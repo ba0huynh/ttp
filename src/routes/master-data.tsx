@@ -7,6 +7,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Boxes, Landmark, Palette, Plus, Trash2, Truck } from 'lucide-react'
 import * as React from 'react'
 
+import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -374,7 +375,9 @@ function MasterDataPage() {
                           {b.code}
                         </TableCell>
                         <TableCell className="font-semibold text-slate-900">
-                          {b.name}
+                          <BankLabel image={b.image} name={b.shortName}>
+                            {b.name}
+                          </BankLabel>
                         </TableCell>
                         <TableCell className="font-bold text-emerald-800">
                           {b.shortName}

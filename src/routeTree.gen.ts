@@ -27,7 +27,12 @@ import { Route as SettingsRouteImport } from './routes/settings'
 import { Route as BatchesIndexRouteImport } from './routes/batches.index'
 import { Route as BatchesBatchIdRouteImport } from './routes/batches.$batchId'
 import { Route as BatchesNewRouteImport } from './routes/batches.new'
+import { Route as CustomersIndexRouteImport } from './routes/customers.index'
+import { Route as CustomersCustomerIdRouteImport } from './routes/customers.$customerId'
+import { Route as LoansIndexRouteImport } from './routes/loans.index'
+import { Route as LoansLoanIdRouteImport } from './routes/loans.$loanId'
 import { Route as SalesIndexRouteImport } from './routes/sales.index'
+import { Route as SalesOrderIdRouteImport } from './routes/sales.$orderId'
 import { Route as SalesNewRouteImport } from './routes/sales.new'
 
 const IndexRoute = IndexRouteImport.update({
@@ -120,9 +125,34 @@ const BatchesNewRoute = BatchesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => BatchesRoute,
 } as any)
+const CustomersIndexRoute = CustomersIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => CustomersRoute,
+} as any)
+const CustomersCustomerIdRoute = CustomersCustomerIdRouteImport.update({
+  id: '/$customerId',
+  path: '/$customerId',
+  getParentRoute: () => CustomersRoute,
+} as any)
+const LoansIndexRoute = LoansIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => LoansRoute,
+} as any)
+const LoansLoanIdRoute = LoansLoanIdRouteImport.update({
+  id: '/$loanId',
+  path: '/$loanId',
+  getParentRoute: () => LoansRoute,
+} as any)
 const SalesIndexRoute = SalesIndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => SalesRoute,
+} as any)
+const SalesOrderIdRoute = SalesOrderIdRouteImport.update({
+  id: '/$orderId',
+  path: '/$orderId',
   getParentRoute: () => SalesRoute,
 } as any)
 const SalesNewRoute = SalesNewRouteImport.update({
@@ -134,11 +164,11 @@ const SalesNewRoute = SalesNewRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/batches': typeof BatchesRouteWithChildren
-  '/customers': typeof CustomersRoute
+  '/customers': typeof CustomersRouteWithChildren
   '/finance': typeof FinanceRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/inventory': typeof InventoryRoute
-  '/loans': typeof LoansRoute
+  '/loans': typeof LoansRouteWithChildren
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
@@ -149,17 +179,20 @@ export interface FileRoutesByFullPath {
   '/settings': typeof SettingsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
+  '/customers/$customerId': typeof CustomersCustomerIdRoute
+  '/loans/$loanId': typeof LoansLoanIdRoute
+  '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
   '/batches/': typeof BatchesIndexRoute
+  '/customers/': typeof CustomersIndexRoute
+  '/loans/': typeof LoansIndexRoute
   '/sales/': typeof SalesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/customers': typeof CustomersRoute
   '/finance': typeof FinanceRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/inventory': typeof InventoryRoute
-  '/loans': typeof LoansRoute
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
@@ -169,19 +202,24 @@ export interface FileRoutesByTo {
   '/settings': typeof SettingsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
+  '/customers/$customerId': typeof CustomersCustomerIdRoute
+  '/loans/$loanId': typeof LoansLoanIdRoute
+  '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
   '/batches': typeof BatchesIndexRoute
+  '/customers': typeof CustomersIndexRoute
+  '/loans': typeof LoansIndexRoute
   '/sales': typeof SalesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/batches': typeof BatchesRouteWithChildren
-  '/customers': typeof CustomersRoute
+  '/customers': typeof CustomersRouteWithChildren
   '/finance': typeof FinanceRoute
   '/forgot-password': typeof ForgotPasswordRoute
   '/inventory': typeof InventoryRoute
-  '/loans': typeof LoansRoute
+  '/loans': typeof LoansRouteWithChildren
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
@@ -192,8 +230,13 @@ export interface FileRoutesById {
   '/settings': typeof SettingsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
+  '/customers/$customerId': typeof CustomersCustomerIdRoute
+  '/loans/$loanId': typeof LoansLoanIdRoute
+  '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
   '/batches/': typeof BatchesIndexRoute
+  '/customers/': typeof CustomersIndexRoute
+  '/loans/': typeof LoansIndexRoute
   '/sales/': typeof SalesIndexRoute
 }
 export interface FileRouteTypes {
@@ -216,17 +259,20 @@ export interface FileRouteTypes {
     | '/settings'
     | '/batches/$batchId'
     | '/batches/new'
+    | '/customers/$customerId'
+    | '/loans/$loanId'
+    | '/sales/$orderId'
     | '/sales/new'
     | '/batches/'
+    | '/customers/'
+    | '/loans/'
     | '/sales/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/customers'
     | '/finance'
     | '/forgot-password'
     | '/inventory'
-    | '/loans'
     | '/login'
     | '/master-data'
     | '/reconcile'
@@ -236,8 +282,13 @@ export interface FileRouteTypes {
     | '/settings'
     | '/batches/$batchId'
     | '/batches/new'
+    | '/customers/$customerId'
+    | '/loans/$loanId'
+    | '/sales/$orderId'
     | '/sales/new'
     | '/batches'
+    | '/customers'
+    | '/loans'
     | '/sales'
   id:
     | '__root__'
@@ -258,19 +309,24 @@ export interface FileRouteTypes {
     | '/settings'
     | '/batches/$batchId'
     | '/batches/new'
+    | '/customers/$customerId'
+    | '/loans/$loanId'
+    | '/sales/$orderId'
     | '/sales/new'
     | '/batches/'
+    | '/customers/'
+    | '/loans/'
     | '/sales/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   BatchesRoute: typeof BatchesRouteWithChildren
-  CustomersRoute: typeof CustomersRoute
+  CustomersRoute: typeof CustomersRouteWithChildren
   FinanceRoute: typeof FinanceRoute
   ForgotPasswordRoute: typeof ForgotPasswordRoute
   InventoryRoute: typeof InventoryRoute
-  LoansRoute: typeof LoansRoute
+  LoansRoute: typeof LoansRouteWithChildren
   LoginRoute: typeof LoginRoute
   MasterDataRoute: typeof MasterDataRoute
   ReconcileRoute: typeof ReconcileRoute
@@ -409,11 +465,46 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof BatchesNewRouteImport
       parentRoute: typeof BatchesRoute
     }
+    '/customers/': {
+      id: '/customers/'
+      path: '/'
+      fullPath: '/customers/'
+      preLoaderRoute: typeof CustomersIndexRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/customers/$customerId': {
+      id: '/customers/$customerId'
+      path: '/$customerId'
+      fullPath: '/customers/$customerId'
+      preLoaderRoute: typeof CustomersCustomerIdRouteImport
+      parentRoute: typeof CustomersRoute
+    }
+    '/loans/': {
+      id: '/loans/'
+      path: '/'
+      fullPath: '/loans/'
+      preLoaderRoute: typeof LoansIndexRouteImport
+      parentRoute: typeof LoansRoute
+    }
+    '/loans/$loanId': {
+      id: '/loans/$loanId'
+      path: '/$loanId'
+      fullPath: '/loans/$loanId'
+      preLoaderRoute: typeof LoansLoanIdRouteImport
+      parentRoute: typeof LoansRoute
+    }
     '/sales/': {
       id: '/sales/'
       path: '/'
       fullPath: '/sales/'
       preLoaderRoute: typeof SalesIndexRouteImport
+      parentRoute: typeof SalesRoute
+    }
+    '/sales/$orderId': {
+      id: '/sales/$orderId'
+      path: '/$orderId'
+      fullPath: '/sales/$orderId'
+      preLoaderRoute: typeof SalesOrderIdRouteImport
       parentRoute: typeof SalesRoute
     }
     '/sales/new': {
@@ -441,12 +532,40 @@ const BatchesRouteChildren: BatchesRouteChildren = {
 const BatchesRouteWithChildren =
   BatchesRoute._addFileChildren(BatchesRouteChildren)
 
+interface CustomersRouteChildren {
+  CustomersCustomerIdRoute: typeof CustomersCustomerIdRoute
+  CustomersIndexRoute: typeof CustomersIndexRoute
+}
+
+const CustomersRouteChildren: CustomersRouteChildren = {
+  CustomersCustomerIdRoute: CustomersCustomerIdRoute,
+  CustomersIndexRoute: CustomersIndexRoute,
+}
+
+const CustomersRouteWithChildren = CustomersRoute._addFileChildren(
+  CustomersRouteChildren,
+)
+
+interface LoansRouteChildren {
+  LoansLoanIdRoute: typeof LoansLoanIdRoute
+  LoansIndexRoute: typeof LoansIndexRoute
+}
+
+const LoansRouteChildren: LoansRouteChildren = {
+  LoansLoanIdRoute: LoansLoanIdRoute,
+  LoansIndexRoute: LoansIndexRoute,
+}
+
+const LoansRouteWithChildren = LoansRoute._addFileChildren(LoansRouteChildren)
+
 interface SalesRouteChildren {
+  SalesOrderIdRoute: typeof SalesOrderIdRoute
   SalesNewRoute: typeof SalesNewRoute
   SalesIndexRoute: typeof SalesIndexRoute
 }
 
 const SalesRouteChildren: SalesRouteChildren = {
+  SalesOrderIdRoute: SalesOrderIdRoute,
   SalesNewRoute: SalesNewRoute,
   SalesIndexRoute: SalesIndexRoute,
 }
@@ -456,11 +575,11 @@ const SalesRouteWithChildren = SalesRoute._addFileChildren(SalesRouteChildren)
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   BatchesRoute: BatchesRouteWithChildren,
-  CustomersRoute: CustomersRoute,
+  CustomersRoute: CustomersRouteWithChildren,
   FinanceRoute: FinanceRoute,
   ForgotPasswordRoute: ForgotPasswordRoute,
   InventoryRoute: InventoryRoute,
-  LoansRoute: LoansRoute,
+  LoansRoute: LoansRouteWithChildren,
   LoginRoute: LoginRoute,
   MasterDataRoute: MasterDataRoute,
   ReconcileRoute: ReconcileRoute,

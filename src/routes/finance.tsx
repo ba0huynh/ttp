@@ -7,6 +7,7 @@ import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react'
 import * as React from 'react'
 
+import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -441,9 +442,16 @@ function FinancePage() {
                           </Badge>
                         </TableCell>
                         <TableCell className="text-slate-500 font-mono text-[11px]">
-                          {r.accountNumber
-                            ? `${r.bankShortName} (${r.accountNumber})`
-                            : '—'}
+                          {r.accountNumber ? (
+                            <BankLabel
+                              image={r.bankImage}
+                              name={r.bankShortName}
+                            >
+                              {r.bankShortName} ({r.accountNumber})
+                            </BankLabel>
+                          ) : (
+                            '—'
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}
@@ -650,7 +658,9 @@ function FinancePage() {
                           value={String(a.id)}
                           className="text-xs"
                         >
-                          {a.bankShortName} ({a.accountNumber})
+                          <BankLabel image={a.bankImage} name={a.bankShortName}>
+                            {a.bankShortName} ({a.accountNumber})
+                          </BankLabel>
                         </SelectItem>
                       ))}
                     </SelectContent>
@@ -832,7 +842,12 @@ function FinancePage() {
                             value={String(b.id)}
                             className="text-xs"
                           >
-                            {b.bankShortName} &bull; {b.accountNumber}
+                            <BankLabel
+                              image={b.bankImage}
+                              name={b.bankShortName}
+                            >
+                              {b.bankShortName} &bull; {b.accountNumber}
+                            </BankLabel>
                           </SelectItem>
                         ))}
                       </SelectContent>
