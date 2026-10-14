@@ -181,6 +181,7 @@ The system comprises **11 Core Business Modules**:
 | **Linter / Formatter**          | `npm run format` & `npm run lint`                             | Runs Prettier write and ESLint fixes                                 |
 | **Check Code Formatting**       | `npm run check`                                               | Prettier dry-run format check                                        |
 | **Generate Drizzle Migration**  | `npm run db:generate`                                         | Generates SQL migration file in `./src/db/migrations`                          |
+| **Apply Migrations**            | `npm run migration:run`                                       | Runs `src/db/migrate.ts` (drizzle-orm migrator, table `migrations`); prints errors and auto-baselines a DB whose tables already exist |
 | **Push Schema to Database**     | `npm run db:push`                                             | Pushes schema directly from `src/db/schema.ts`                       |
 | **Run Migrations via Script**   | `npx tsx src/db/migrate.ts`                                   | Executes migration SQL statements safely via direct MySQL connection |
 | **Seed Mock Data**              | `npm run seed` (or `npm run db:seed`)                         | Populates database with full realistic sample dataset                |

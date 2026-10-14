@@ -13,6 +13,7 @@ import {
   boolean,
   date,
   decimal,
+  foreignKey,
   index,
   int,
   mysqlEnum,
@@ -221,13 +222,18 @@ export const loanRepayments = mysqlTable(
     paymentDate: date('payment_date', { mode: 'string' }).notNull(),
     principalAmount: money('principal_amount').default(0).notNull(),
     interestAmount: money('interest_amount').default(0).notNull(),
-    companyBankAccountId: int('company_bank_account_id').references(
-      () => companyBankAccounts.id,
-    ),
+    companyBankAccountId: int('company_bank_account_id'),
     note: text('note'),
     ...timestamps,
   },
-  (t) => [index('loan_repayments_loan_idx').on(t.loanContractId)],
+  (t) => [
+    index('loan_repayments_loan_idx').on(t.loanContractId),
+    foreignKey({
+      name: 'loan_repayments_bank_account_fk',
+      columns: [t.companyBankAccountId],
+      foreignColumns: [companyBankAccounts.id],
+    }),
+  ],
 )
 
 /* ========================================================================== */
@@ -469,9 +475,7 @@ export const receiptVouchers = mysqlTable(
     method: mysqlEnum('method', PAYMENT_METHODS)
       .default('bank_transfer')
       .notNull(),
-    companyBankAccountId: int('company_bank_account_id').references(
-      () => companyBankAccounts.id,
-    ),
+    companyBankAccountId: int('company_bank_account_id'),
     note: text('note'),
     createdBy: int('created_by').references(() => users.id),
     ...timestamps,
@@ -479,6 +483,11 @@ export const receiptVouchers = mysqlTable(
   (t) => [
     index('receipt_vouchers_customer_idx').on(t.customerId),
     index('receipt_vouchers_branch_idx').on(t.branchId),
+    foreignKey({
+      name: 'receipt_vouchers_bank_account_fk',
+      columns: [t.companyBankAccountId],
+      foreignColumns: [companyBankAccounts.id],
+    }),
   ],
 )
 
@@ -502,14 +511,19 @@ export const paymentVouchers = mysqlTable(
     method: mysqlEnum('method', PAYMENT_METHODS)
       .default('bank_transfer')
       .notNull(),
-    companyBankAccountId: int('company_bank_account_id').references(
-      () => companyBankAccounts.id,
-    ),
+    companyBankAccountId: int('company_bank_account_id'),
     description: varchar('description', { length: 255 }),
     createdBy: int('created_by').references(() => users.id),
     ...timestamps,
   },
-  (t) => [index('payment_vouchers_supplier_idx').on(t.supplierId)],
+  (t) => [
+    index('payment_vouchers_supplier_idx').on(t.supplierId),
+    foreignKey({
+      name: 'payment_vouchers_bank_account_fk',
+      columns: [t.companyBankAccountId],
+      foreignColumns: [companyBankAccounts.id],
+    }),
+  ],
 )
 
 /* ========================================================================== */
@@ -524,18 +538,26 @@ export const STATEMENT_LINE_STATUSES = [
 export const MATCH_TYPES = ['receipt', 'payment', 'loan_repayment'] as const
 export type MatchType = (typeof MATCH_TYPES)[number]
 
-export const bankStatements = mysqlTable('bank_statements', {
-  id: int('id').primaryKey().autoincrement(),
-  companyBankAccountId: int('company_bank_account_id')
-    .notNull()
-    .references(() => companyBankAccounts.id),
-  periodFrom: date('period_from', { mode: 'string' }).notNull(),
-  periodTo: date('period_to', { mode: 'string' }).notNull(),
-  fileName: varchar('file_name', { length: 255 }),
-  note: text('note'),
-  createdBy: int('created_by').references(() => users.id),
-  ...timestamps,
-})
+export const bankStatements = mysqlTable(
+  'bank_statements',
+  {
+    id: int('id').primaryKey().autoincrement(),
+    companyBankAccountId: int('company_bank_account_id').notNull(),
+    periodFrom: date('period_from', { mode: 'string' }).notNull(),
+    periodTo: date('period_to', { mode: 'string' }).notNull(),
+    fileName: varchar('file_name', { length: 255 }),
+    note: text('note'),
+    createdBy: int('created_by').references(() => users.id),
+    ...timestamps,
+  },
+  (t) => [
+    foreignKey({
+      name: 'bank_statements_bank_account_fk',
+      columns: [t.companyBankAccountId],
+      foreignColumns: [companyBankAccounts.id],
+    }),
+  ],
+)
 
 export const bankStatementLines = mysqlTable(
   'bank_statement_lines',
