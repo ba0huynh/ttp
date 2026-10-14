@@ -157,7 +157,6 @@ export const colors = mysqlTable('colors', {
 /** Parent customer — sales revenue is attributed here */
 export const customers = mysqlTable('customers', {
   id: int('id').primaryKey().autoincrement(),
-  code: varchar('code', { length: 30 }).notNull().unique(),
   name: varchar('name', { length: 255 }).notNull(),
   taxCode: varchar('tax_code', { length: 20 }),
   address: varchar('address', { length: 255 }),

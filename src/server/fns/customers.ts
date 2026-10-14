@@ -19,7 +19,6 @@ export const listCustomersFn = createServerFn({ method: 'GET' })
     const list = await db
       .select({
         id: customers.id,
-        code: customers.code,
         name: customers.name,
         taxCode: customers.taxCode,
         phone: customers.phone,
@@ -46,7 +45,7 @@ export const listCustomerOptionsFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
     const cs = await db
-      .select({ id: customers.id, code: customers.code, name: customers.name })
+      .select({ id: customers.id, name: customers.name })
       .from(customers)
       .orderBy(asc(customers.name))
     const bs = await db
@@ -91,7 +90,6 @@ export const saveCustomerFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      code: z.string().trim().min(1, 'Nhập mã KH'),
       name: z.string().trim().min(1, 'Nhập tên KH'),
       taxCode: opt,
       address: opt,
@@ -102,17 +100,12 @@ export const saveCustomerFn = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data: { id, ...v } }) => {
-    try {
-      if (id) {
-        await db.update(customers).set(v).where(eq(customers.id, id))
-        return { id }
-      }
-      const [r] = await db.insert(customers).values(v).$returningId()
-      return { id: r.id }
-    } catch (e) {
-      if (isDuplicateError(e)) throw new Error('Mã khách hàng đã tồn tại')
-      throw e
+    if (id) {
+      await db.update(customers).set(v).where(eq(customers.id, id))
+      return { id }
     }
+    const [r] = await db.insert(customers).values(v).$returningId()
+    return { id: r.id }
   })
 
 export const saveBranchFn = createServerFn({ method: 'POST' })

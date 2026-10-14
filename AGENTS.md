@@ -143,7 +143,7 @@ The system comprises **11 Core Business Modules**:
 | **04** | **Bank Loans**               | `loan_contracts`, `loan_repayments`                                | `finance.ts` (`listLoansFn`, `createLoanContractFn`)                    | `/loans`                   | `InterestTable`, `RepaymentModal`                |
 | **05** | **Batch Imports & Costing**  | `import_batches`, `batch_expenses`, `vehicles`                     | `batches.ts` (`createBatchFn`, `updateBatchPricingFn`, `updateBatchInfoFn`, add/remove vehicle & expense) | `/batches`, `/batches/new`, `/batches/$batchId` | `CostWarningAlert.tsx`, `batches/BatchEditor.tsx` |
 | **06** | **Dual Inventory**           | `vehicles`                                                         | `inventory.ts` (`getInventorySummaryFn`, `listVehiclesFn`)              | `/inventory`               | `DualInventoryBadge.tsx`, stock filter buttons   |
-| **07** | **Sales & Dispatches**       | `sales_orders`, `sales_order_items`, `delivery_notes`, `invoices`  | `sales.ts` (`createSalesOrderFn`, `recordDeliveryFn`, `issueInvoiceFn`) | `/sales`, `/sales/new`     | `VehiclePicker`, `DeliveryModal`, `InvoiceModal` |
+| **07** | **Sales & Dispatches**       | `sales_orders`, `sales_order_items`, `delivery_notes`, `invoices`  | `sales.ts` (`createSalesOrderFn`, `recordDeliveryFn`, `issueInvoiceFn`) | `/sales`, `/sales/new`, `/sales/$orderId` | `VehiclePicker`, `DeliveryModal`, `InvoiceModal` |
 | **08** | **Accounts Receivable (AR)** | `accounts_receivable`, `receipt_vouchers`                          | `finance.ts` (`listReceivablesFn`, `createReceiptVoucherFn`)            | `/finance` (Tab 1 & 3)     | `ReceivableTable`, `ReceiptVoucherModal`         |
 | **09** | **Accounts Payable (AP)**    | `accounts_payable`, `payment_vouchers`                             | `finance.ts` (`listPayablesFn`, `createPaymentVoucherFn`)               | `/finance` (Tab 2 & 4)     | `PayableTable`, `PaymentVoucherModal`            |
 | **10** | **Bank Reconciliation**      | `bank_statements`, `bank_statement_lines`, `reconciliations`       | `finance.ts` (`importBankStatementFn`, `matchStatementLineFn`, `autoMatchStatementFn`) | `/reconcile`               | `finance/ImportStatementDialog.tsx`, `lib/statement-import.ts` |
@@ -349,6 +349,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Symptom**: `/batches/new` and `/sales/new` showed the *list* page instead of the create page.
 - **Cause**: `batches.tsx` held the list component, so `batches.new.tsx` became its child, but the list never rendered an `<Outlet />`.
 - **Fix**: `batches.tsx` / `sales.tsx` are now thin layouts (`component: Outlet`); the lists moved to `batches.index.tsx` / `sales.index.tsx` (`createFileRoute('/batches/')`). Links to `/batches` still work. Without the layout file, `tsr generate` emitted a `getParentRoute` pointing at a route that did not exist.
+- **Sales**: `sales.index.tsx` list → `sales.$orderId.tsx` detail page (summary tiles for the two independent stocks, vehicle table, header actions "Giao xe thực tế" / "Xuất hóa đơn nội bộ" / "Hủy phiếu bán"). The delivery and invoice forms stay as small dialogs on that page; cancelling navigates back to `/sales`.
 - **Customers**: same split (`customers.tsx` layout, `customers.index.tsx` list, `customers.$customerId.tsx` detail with branches, inline add-branch form and per-branch receivables). Detail pages should use `loader` + `useSuspenseQuery` with a numeric-id guard and an `errorComponent` for unknown ids.
 - **Dev server gotcha**: never delete `src/routeTree.gen.ts` while `npm run dev` is running; the router plugin loses the file (ENOENT) and serves stale routes until the dev server is restarted. Run `npm run generate-routes` without deleting it first (it overwrites the file).
 - **Detail page**: the batch detail is now the page `/batches/$batchId` (`batches.$batchId.tsx`, editors in `src/components/batches/BatchEditor.tsx`), replacing the dialog. Do the same pattern for any new list → create → detail module.
@@ -382,4 +383,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Behaviour**: the contract number and the action button in the list are links, so a loan has a shareable URL and the browser Back button works. The repayment form pre-fills the interest still due and re-fills it after each repayment. An unknown or non-numeric id redirects to `/loans` or shows the not-found state; batch badges on the detail link to `/batches/$batchId`.
 - **Gotcha**: the sidebar highlights `/loans` for the detail page because `AppLayout` matches nav items with `startsWith`.
 
-_(Next Agent: Append Lesson 23, 24,... above this line upon completing tasks)_
+### Lesson 23: Customers Have No Business Code
+
+- **Change**: `customers.code` (the "KH-xxxx" code) was removed from the schema, server functions, seed and UI (list table, create form, detail header). Customers are identified by `id` and `name`; `pos_branches.code` is unchanged.
+- **Migration**: `0002_clumsy_gwen_stacy.sql` drops the `customers_code_unique` index, then the `code` column. **It permanently deletes the existing customer codes**; apply with `npm run migration:run`. Order matters: the app code no longer reads or writes `code`, but the old column is `NOT NULL` with no default, so creating a customer fails until the migration has been applied.
+- **Seed**: `customer.seed.ts` finds already-seeded customers by tax code (`0315891234`, `0314789654`) instead of by code.
+- **Branch codes**: the default code suggested for a new branch is now `DB-<customerId>-<n>` (it used to embed the customer code); it is still editable.
+
+---
+
+_(Next Agent: Append Lesson 24, 25,... above this line upon completing tasks)_

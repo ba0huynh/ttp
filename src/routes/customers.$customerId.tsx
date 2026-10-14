@@ -86,7 +86,7 @@ function CustomerDetailPage() {
   const totalPaid = receivables.reduce((s, r) => s + r.paid, 0)
 
   const openNewBranch = () => {
-    setBranchCode(`DB-${customer.code}-${branches.length + 1}`)
+    setBranchCode(`DB-${customer.id}-${branches.length + 1}`)
     setBranchName('')
     setBranchTaxCode(
       customer.taxCode ? `${customer.taxCode}-00${branches.length + 1}` : '',
@@ -132,8 +132,8 @@ function CustomerDetailPage() {
           title={customer.name}
           description={
             <>
-              <span className="font-mono">{customer.code}</span> · MST:{' '}
-              {customer.taxCode ?? '—'} · Địa chỉ: {customer.address ?? '—'}
+              MST: {customer.taxCode ?? '—'} · Địa chỉ:{' '}
+              {customer.address ?? '—'}
               {customer.phone && <> · ĐT: {customer.phone}</>}
               {customer.contactPerson && <> ({customer.contactPerson})</>}
             </>

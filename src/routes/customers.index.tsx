@@ -57,7 +57,6 @@ function CustomersPage() {
 
   // Create Parent Customer Modal
   const [newCustOpen, setNewCustOpen] = React.useState(false)
-  const [code, setCode] = React.useState('')
   const [name, setName] = React.useState('')
   const [taxCode, setTaxCode] = React.useState('')
   const [phone, setPhone] = React.useState('')
@@ -74,7 +73,6 @@ function CustomersPage() {
     try {
       await saveCustomer.mutateAsync({
         data: {
-          code,
           name,
           taxCode,
           phone,
@@ -106,7 +104,6 @@ function CustomersPage() {
           <Button
             size="sm"
             onClick={() => {
-              setCode(`KH-${Math.floor(Math.random() * 9000 + 1000)}`)
               setName('')
               setTaxCode('')
               setPhone('')
@@ -133,7 +130,6 @@ function CustomersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead>Mã KH</TableHead>
                     <TableHead>Tên Doanh Nghiệp (Khách Mẹ)</TableHead>
                     <TableHead>MST</TableHead>
                     <TableHead className="text-center">
@@ -148,9 +144,6 @@ function CustomersPage() {
                 <TableBody className="text-xs">
                   {customers.map((c) => (
                     <TableRow key={c.id} className="hover:bg-slate-50/80">
-                      <TableCell className="font-mono font-bold text-slate-900">
-                        {c.code}
-                      </TableCell>
                       <TableCell>
                         <div className="font-bold text-slate-900">{c.name}</div>
                         {c.address && (
@@ -224,16 +217,6 @@ function CustomersPage() {
             </DialogHeader>
 
             <form onSubmit={handleCreateCustomer} className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Mã Khách Hàng *</Label>
-                <Input
-                  required
-                  value={code}
-                  onChange={(e) => setCode(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                />
-              </div>
-
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
                   Tên Doanh Nghiệp (Khách Mẹ) *

@@ -15,6 +15,13 @@
       "when": 1791987250170,
       "tag": "0001_curved_next_avengers",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "5",
+      "when": 1792021053420,
+      "tag": "0002_clumsy_gwen_stacy",
+      "breakpoints": true
     }
   ]
 }
