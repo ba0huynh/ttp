@@ -5,7 +5,7 @@ services:
     image: moto-ttp:latest
     container_name: moto-ttp
     restart: unless-stopped
-    # Database settings (DB_* / DATABASE_URL, see .env.example); read at runtime,
+    # Database settings (DB_HOST, DB_PORT, DB_USER, DB_PASSWORD, DB_NAME; see .env.example); read at runtime,
     # never baked into the image.
     env_file: .env
     ports:
