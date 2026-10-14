@@ -11,6 +11,17 @@ import { nitro } from 'nitro/vite'
 
 const config = defineConfig({
   resolve: { tsconfigPaths: true },
+  build: {
+    rolldownOptions: {
+      // Các thư viện React (Radix, TanStack Query...) có dòng "use client" ở đầu
+      // file; khi bundle chúng bị bỏ đi và đây chỉ là cảnh báo vô hại (app dùng
+      // TanStack Start, không phải RSC), nên ẩn đi cho log build gọn.
+      onLog(level, log, defaultHandler) {
+        if (log.code === 'MODULE_LEVEL_DIRECTIVE') return
+        defaultHandler(level, log)
+      },
+    },
+  },
   plugins: [
     devtools(),
     paraglideVitePlugin({
