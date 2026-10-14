@@ -51,13 +51,17 @@ import {
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
 import { ROLE_LABELS } from '#/lib/business.ts'
-import { changePasswordFn, getCurrentUserFn } from '#/server/fns/auth.ts'
-import { companyProfileQuery, usersQuery } from '#/lib/queries.ts'
+import { changePasswordFn } from '#/server/fns/auth.ts'
+import {
+  companyProfileQuery,
+  usersQuery,
+  currentUserQuery,
+} from '#/lib/queries.ts'
 import { saveUserFn, updateCompanyProfileFn } from '#/server/fns/system.ts'
 
 export const Route = createFileRoute('/settings')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

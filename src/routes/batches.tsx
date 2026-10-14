@@ -28,12 +28,15 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { batchDetailQuery, batchesQuery } from '#/lib/queries.ts'
+import {
+  batchDetailQuery,
+  batchesQuery,
+  currentUserQuery,
+} from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/batches')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

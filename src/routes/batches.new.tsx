@@ -47,13 +47,12 @@ import {
   formatVnd,
   todayIso,
 } from '#/lib/business.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
 import { createBatchFn } from '#/server/fns/batches.ts'
-import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
+import { loansQuery, masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/batches/new')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

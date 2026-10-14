@@ -1,4 +1,4 @@
-import { createFileRoute } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Lock, LogIn, User } from 'lucide-react'
 import * as React from 'react'
 
@@ -14,17 +14,14 @@ import {
 } from '#/components/ui/card.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
-import { getCurrentUserFn, loginFn } from '#/server/fns/auth.ts'
+import { currentUserQuery } from '#/lib/queries.ts'
+import { loginFn } from '#/server/fns/auth.ts'
 
 export const Route = createFileRoute('/login')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
-    if (user) {
-      throw new Response(null, {
-        status: 302,
-        headers: { Location: '/' },
-      })
-    }
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
+    // redirect() của router (không phải Response thô, vốn không serialize được khi SSR)
+    if (user) throw redirect({ to: '/' })
   },
   component: LoginPage,
 })

@@ -41,8 +41,11 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { bankStatementDetailQuery, bankStatementsQuery } from '#/lib/queries.ts'
+import {
+  bankStatementDetailQuery,
+  bankStatementsQuery,
+  currentUserQuery,
+} from '#/lib/queries.ts'
 import {
   autoMatchStatementFn,
   matchStatementLineFn,
@@ -51,8 +54,8 @@ import {
 } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/reconcile')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

@@ -21,12 +21,15 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { EXPENSE_TYPE_LABELS, formatVnd } from '#/lib/business.ts'
-import { defaultReportRange, reportsQuery } from '#/lib/queries.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
+import {
+  defaultReportRange,
+  reportsQuery,
+  currentUserQuery,
+} from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/reports')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

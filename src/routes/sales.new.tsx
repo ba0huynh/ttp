@@ -50,13 +50,16 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { formatVnd, todayIso } from '#/lib/business.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { availableVehiclesQuery, customerOptionsQuery } from '#/lib/queries.ts'
+import {
+  availableVehiclesQuery,
+  customerOptionsQuery,
+  currentUserQuery,
+} from '#/lib/queries.ts'
 import { createSalesOrderFn } from '#/server/fns/sales.ts'
 
 export const Route = createFileRoute('/sales/new')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

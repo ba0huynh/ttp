@@ -49,16 +49,20 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { loanDetailQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
+import {
+  loanDetailQuery,
+  loansQuery,
+  masterDataQuery,
+  currentUserQuery,
+} from '#/lib/queries.ts'
 import {
   recordLoanPaymentFn,
   saveLoanContractFn,
 } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/loans')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

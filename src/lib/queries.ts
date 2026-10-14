@@ -1,6 +1,7 @@
 import { queryOptions } from '@tanstack/react-query'
 
 import { todayIso } from '#/lib/business.ts'
+import { getCurrentUserFn } from '#/server/fns/auth.ts'
 import { getBatchDetailFn, listBatchesFn } from '#/server/fns/batches.ts'
 import {
   getCustomerDetailFn,
@@ -163,4 +164,16 @@ export const usersQuery = () =>
     queryKey: ['settings', 'users'],
     // Chỉ admin được xem; vai trò khác nhận danh sách rỗng như trước đây
     queryFn: () => listUsersFn().catch(() => []),
+  })
+
+/**
+ * Người dùng hiện tại, dùng trong `beforeLoad` của mọi route. Cache 5 phút để
+ * chuyển trang không phải gọi server mỗi lần. Đăng nhập/đăng xuất dùng full
+ * reload nên cache được làm mới; phiên hết hạn vẫn bị chặn ở middleware server.
+ */
+export const currentUserQuery = () =>
+  queryOptions({
+    queryKey: ['auth', 'user'],
+    queryFn: () => getCurrentUserFn(),
+    staleTime: 5 * 60_000,
   })

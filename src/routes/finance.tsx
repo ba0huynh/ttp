@@ -49,7 +49,6 @@ import {
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
 import {
   batchesQuery,
   customerOptionsQuery,
@@ -58,6 +57,7 @@ import {
   paymentsQuery,
   receiptsQuery,
   receivablesQuery,
+  currentUserQuery,
 } from '#/lib/queries.ts'
 import {
   createPaymentVoucherFn,
@@ -65,8 +65,8 @@ import {
 } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/finance')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },

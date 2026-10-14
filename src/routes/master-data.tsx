@@ -38,8 +38,7 @@ import {
   TabsList,
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
-import { masterDataQuery } from '#/lib/queries.ts'
-import { getCurrentUserFn } from '#/server/fns/auth.ts'
+import { masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
 import {
   deleteMasterDataFn,
   saveBankFn,
@@ -49,8 +48,8 @@ import {
 } from '#/server/fns/master-data.ts'
 
 export const Route = createFileRoute('/master-data')({
-  beforeLoad: async () => {
-    const user = await getCurrentUserFn()
+  beforeLoad: async ({ context: { queryClient } }) => {
+    const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
