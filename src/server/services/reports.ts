@@ -25,27 +25,28 @@ import { num } from './common.ts'
 /* -------------------------------------------------------------------------- */
 
 export async function getReceivablesSummary() {
-  const sold = await db
-    .select({
-      customerId: salesOrders.customerId,
-      branchId: salesOrders.branchId,
-      total: sql<string>`sum(${salesOrders.totalAmount})`,
-    })
-    .from(salesOrders)
-    .where(eq(salesOrders.status, 'confirmed'))
-    .groupBy(salesOrders.customerId, salesOrders.branchId)
-
-  const paid = await db
-    .select({
-      customerId: receiptVouchers.customerId,
-      branchId: receiptVouchers.branchId,
-      total: sql<string>`sum(${receiptVouchers.amount})`,
-    })
-    .from(receiptVouchers)
-    .groupBy(receiptVouchers.customerId, receiptVouchers.branchId)
-
-  const custs = await db.select().from(customers)
-  const branches = await db.select().from(posBranches)
+  // Independent queries run concurrently: each one costs a network round trip
+  const [sold, paid, custs, branches] = await Promise.all([
+    db
+      .select({
+        customerId: salesOrders.customerId,
+        branchId: salesOrders.branchId,
+        total: sql<string>`sum(${salesOrders.totalAmount})`,
+      })
+      .from(salesOrders)
+      .where(eq(salesOrders.status, 'confirmed'))
+      .groupBy(salesOrders.customerId, salesOrders.branchId),
+    db
+      .select({
+        customerId: receiptVouchers.customerId,
+        branchId: receiptVouchers.branchId,
+        total: sql<string>`sum(${receiptVouchers.amount})`,
+      })
+      .from(receiptVouchers)
+      .groupBy(receiptVouchers.customerId, receiptVouchers.branchId),
+    db.select().from(customers),
+    db.select().from(posBranches),
+  ])
   const cMap = new Map(custs.map((c) => [c.id, c]))
   const bMap = new Map(branches.map((b) => [b.id, b]))
 
@@ -114,24 +115,26 @@ export async function getCustomerStatement(customerId: number) {
 /* -------------------------------------------------------------------------- */
 
 export async function getPayablesSummary() {
-  const purchased = await db
-    .select({
-      supplierId: importBatches.supplierId,
-      total: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
-      batches: sql<number>`count(distinct ${importBatches.id})`,
-    })
-    .from(importBatches)
-    .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
-    .groupBy(importBatches.supplierId)
-  const paid = await db
-    .select({
-      supplierId: paymentVouchers.supplierId,
-      total: sql<string>`sum(${paymentVouchers.amount})`,
-    })
-    .from(paymentVouchers)
-    .where(eq(paymentVouchers.payeeType, 'supplier'))
-    .groupBy(paymentVouchers.supplierId)
-  const sups = await db.select().from(suppliers).orderBy(asc(suppliers.name))
+  const [purchased, paid, sups] = await Promise.all([
+    db
+      .select({
+        supplierId: importBatches.supplierId,
+        total: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
+        batches: sql<number>`count(distinct ${importBatches.id})`,
+      })
+      .from(importBatches)
+      .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
+      .groupBy(importBatches.supplierId),
+    db
+      .select({
+        supplierId: paymentVouchers.supplierId,
+        total: sql<string>`sum(${paymentVouchers.amount})`,
+      })
+      .from(paymentVouchers)
+      .where(eq(paymentVouchers.payeeType, 'supplier'))
+      .groupBy(paymentVouchers.supplierId),
+    db.select().from(suppliers).orderBy(asc(suppliers.name)),
+  ])
   const pMap = new Map(purchased.map((p) => [p.supplierId, p]))
   const paidMap = new Map(paid.map((p) => [p.supplierId, num(p.total)]))
   return sups
@@ -156,7 +159,15 @@ export async function getPayablesSummary() {
 /* -------------------------------------------------------------------------- */
 
 export async function getInventorySummary() {
-  const [totals] = await db
+  const [[totals], byModel] = await Promise.all([
+    getInventoryTotals(),
+    getInventoryByModel(),
+  ])
+  return summarizeInventory(totals, byModel)
+}
+
+function getInventoryTotals() {
+  return db
     .select({
       total: sql<number>`count(*)`,
       physical: sql<number>`sum(case when ${vehicles.isDelivered} = 0 then 1 else 0 end)`,
@@ -168,8 +179,10 @@ export async function getInventorySummary() {
       unsold: sql<number>`sum(case when not exists (select 1 from ${salesOrderItems} i where i.vehicle_id = ${vehicles.id}) then 1 else 0 end)`,
     })
     .from(vehicles)
+}
 
-  const byModel = await db
+function getInventoryByModel() {
+  return db
     .select({
       modelId: motorcycleModels.id,
       modelName: motorcycleModels.name,
@@ -181,7 +194,12 @@ export async function getInventorySummary() {
     .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
     .groupBy(motorcycleModels.id, motorcycleModels.name, motorcycleModels.brand)
     .orderBy(asc(motorcycleModels.name))
+}
 
+function summarizeInventory(
+  totals: Awaited<ReturnType<typeof getInventoryTotals>>[number] | undefined,
+  byModel: Awaited<ReturnType<typeof getInventoryByModel>>,
+) {
   return {
     total: num(totals?.total),
     physical: num(totals?.physical),
@@ -268,49 +286,26 @@ export async function getReports(from: string, to: string) {
     lte(salesOrders.orderDate, to),
   )
 
-  /** Sales revenue attributed to the PARENT CUSTOMER */
-  const revenueByCustomer = await db
+  // One round trip serves all three revenue breakdowns (customer / month /
+  // model); rows are aggregated in memory. Revenue is attributed to the
+  // PARENT CUSTOMER.
+  const soldRows = db
     .select({
       customerId: customers.id,
       customerName: customers.name,
-      vehicles: sql<number>`count(${salesOrderItems.id})`,
-      revenue: sql<string>`coalesce(sum(${salesOrderItems.unitPrice}),0)`,
-      cost: sql<string>`coalesce(sum(${salesOrderItems.costPrice}),0)`,
+      month: sql<string>`date_format(${salesOrders.orderDate}, '%Y-%m')`,
+      modelName: motorcycleModels.name,
+      revenue: salesOrderItems.unitPrice,
+      cost: salesOrderItems.costPrice,
     })
     .from(salesOrderItems)
     .innerJoin(salesOrders, eq(salesOrders.id, salesOrderItems.salesOrderId))
     .innerJoin(customers, eq(customers.id, salesOrders.customerId))
-    .where(inRange)
-    .groupBy(customers.id, customers.name)
-
-  const revenueByMonth = await db
-    .select({
-      month: sql<string>`date_format(${salesOrders.orderDate}, '%Y-%m')`,
-      vehicles: sql<number>`count(${salesOrderItems.id})`,
-      revenue: sql<string>`coalesce(sum(${salesOrderItems.unitPrice}),0)`,
-      cost: sql<string>`coalesce(sum(${salesOrderItems.costPrice}),0)`,
-    })
-    .from(salesOrderItems)
-    .innerJoin(salesOrders, eq(salesOrders.id, salesOrderItems.salesOrderId))
-    .where(inRange)
-    .groupBy(sql`date_format(${salesOrders.orderDate}, '%Y-%m')`)
-    .orderBy(sql`date_format(${salesOrders.orderDate}, '%Y-%m')`)
-
-  const revenueByModel = await db
-    .select({
-      modelName: motorcycleModels.name,
-      vehicles: sql<number>`count(${salesOrderItems.id})`,
-      revenue: sql<string>`coalesce(sum(${salesOrderItems.unitPrice}),0)`,
-      cost: sql<string>`coalesce(sum(${salesOrderItems.costPrice}),0)`,
-    })
-    .from(salesOrderItems)
-    .innerJoin(salesOrders, eq(salesOrders.id, salesOrderItems.salesOrderId))
     .innerJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
     .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
     .where(inRange)
-    .groupBy(motorcycleModels.name)
 
-  const expensesByType = await db
+  const expensesByType = db
     .select({
       expenseType: batchExpenses.expenseType,
       total: sql<string>`sum(${batchExpenses.amount})`,
@@ -325,7 +320,7 @@ export async function getReports(from: string, to: string) {
     )
     .groupBy(batchExpenses.expenseType)
 
-  const [interestPaid] = await db
+  const interestPaid = db
     .select({
       total: sql<string>`coalesce(sum(${loanRepayments.interestAmount}),0)`,
     })
@@ -337,7 +332,7 @@ export async function getReports(from: string, to: string) {
       ),
     )
 
-  const loans = await db
+  const loans = db
     .select({
       id: loanContracts.id,
       contractNumber: loanContracts.contractNumber,
@@ -352,35 +347,70 @@ export async function getReports(from: string, to: string) {
     .innerJoin(banks, eq(banks.id, loanContracts.bankId))
     .orderBy(asc(loanContracts.maturityDate))
 
-  const mapRev = <
-    T extends { revenue: string; cost: string; vehicles: number },
-  >(
-    r: T,
-  ) => ({
-    ...r,
-    vehicles: num(r.vehicles),
-    revenue: num(r.revenue),
-    cost: num(r.cost),
-    profit: num(r.revenue) - num(r.cost),
-  })
+  // All independent: run them concurrently (each is a network round trip)
+  const [
+    sold,
+    expenses,
+    [interest],
+    loanRows,
+    receivables,
+    payables,
+    inventory,
+  ] = await Promise.all([
+    soldRows,
+    expensesByType,
+    interestPaid,
+    loans,
+    getReceivablesSummary(),
+    getPayablesSummary(),
+    getInventorySummary(),
+  ])
 
-  const receivables = await getReceivablesSummary()
-  const payables = await getPayablesSummary()
-  const inventory = await getInventorySummary()
+  interface Bucket {
+    vehicles: number
+    revenue: number
+    cost: number
+  }
+  const group = <TKey extends string | number>(
+    key: (r: (typeof sold)[number]) => TKey,
+  ) => {
+    const map = new Map<TKey, Bucket>()
+    for (const r of sold) {
+      const k = key(r)
+      const b = map.get(k) ?? { vehicles: 0, revenue: 0, cost: 0 }
+      b.vehicles += 1
+      b.revenue += num(r.revenue)
+      b.cost += num(r.cost)
+      map.set(k, b)
+    }
+    return map
+  }
+  const withProfit = (b: Bucket) => ({ ...b, profit: b.revenue - b.cost })
+
+  const customerNames = new Map(sold.map((r) => [r.customerId, r.customerName]))
+  const revenueByCustomer = [...group((r) => r.customerId)]
+    .map(([customerId, b]) => ({
+      customerId,
+      customerName: customerNames.get(customerId) ?? '?',
+      ...withProfit(b),
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+  const revenueByMonth = [...group((r) => r.month)]
+    .map(([month, b]) => ({ month, ...withProfit(b) }))
+    .sort((a, b) => a.month.localeCompare(b.month))
+  const revenueByModel = [...group((r) => r.modelName)]
+    .map(([modelName, b]) => ({ modelName, ...withProfit(b) }))
+    .sort((a, b) => b.revenue - a.revenue)
 
   return {
     from,
     to,
-    revenueByCustomer: revenueByCustomer
-      .map(mapRev)
-      .sort((a, b) => b.revenue - a.revenue),
-    revenueByMonth: revenueByMonth.map(mapRev),
-    revenueByModel: revenueByModel
-      .map(mapRev)
-      .sort((a, b) => b.revenue - a.revenue),
-    expensesByType: expensesByType.map((e) => ({ ...e, total: num(e.total) })),
-    interestPaid: num(interestPaid?.total),
-    loans: loans.map((l) => ({
+    revenueByCustomer,
+    revenueByMonth,
+    revenueByModel,
+    expensesByType: expenses.map((e) => ({ ...e, total: num(e.total) })),
+    interestPaid: num(interest?.total),
+    loans: loanRows.map((l) => ({
       ...l,
       principal: num(l.principal),
       rate: num(l.rate),

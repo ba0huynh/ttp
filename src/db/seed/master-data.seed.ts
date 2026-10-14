@@ -1,6 +1,6 @@
 import { db } from '../index.ts'
+import { seedBanks } from './bank.seed.ts'
 import {
-  banks,
   companyBankAccounts,
   suppliers,
   motorcycleModels,
@@ -20,27 +20,28 @@ function byCode<T extends { code: string }>(rows: T[], code: string): T {
 
 /**
  * Seeds master catalog data:
- * - Commercial banks and company bank accounts
+ * - Commercial bank catalog (all VietQR banks, see `banks.ts`) and company bank accounts
  * - Overseas motorcycle manufacturers / suppliers
  * - Vehicle models and color variations
  *
- * Idempotent: skips the whole step (banks, accounts, suppliers, models,
- * colors are always seeded together as one batch) if `banks` already has rows.
+ * Idempotent: the bank catalog is topped up with any missing banks every run;
+ * the rest (accounts, suppliers, models, colors are seeded together as one
+ * batch) is skipped if `company_bank_accounts` already has rows.
  */
 export async function seedMasterData() {
-  const existingBanks = await db.select().from(banks)
-  if (existingBanks.length > 0) {
+  const allBanks = await seedBanks()
+  const existingAccounts = await db.select().from(companyBankAccounts)
+  if (existingAccounts.length > 0) {
     console.log(' -> Master data already seeded, skipping...')
-    const existingAccounts = await db.select().from(companyBankAccounts)
     const existingSuppliers = await db.select().from(suppliers)
     const existingModels = await db.select().from(motorcycleModels)
     const existingColors = await db.select().from(colors)
 
     return {
       banks: {
-        vcb: byCode(existingBanks, 'VCB'),
-        bidv: byCode(existingBanks, 'BIDV'),
-        tcb: byCode(existingBanks, 'TCB'),
+        vcb: byCode(allBanks, 'VCB'),
+        bidv: byCode(allBanks, 'BIDV'),
+        tcb: byCode(allBanks, 'TCB'),
       },
       companyBankAccounts: {
         vcbAccount: existingAccounts.find(
@@ -69,29 +70,10 @@ export async function seedMasterData() {
     }
   }
 
-  console.log(' -> Seeding banks and company bank accounts...')
-  const insertedBanks = await db
-    .insert(banks)
-    .values([
-      {
-        code: 'VCB',
-        name: 'Ngân hàng TMCP Ngoại thương Việt Nam',
-        shortName: 'Vietcombank',
-      },
-      {
-        code: 'BIDV',
-        name: 'Ngân hàng TMCP Đầu tư và Phát triển Việt Nam',
-        shortName: 'BIDV',
-      },
-      {
-        code: 'TCB',
-        name: 'Ngân hàng TMCP Kỹ thương Việt Nam',
-        shortName: 'Techcombank',
-      },
-    ])
-    .$returningId()
-
-  const [vcb, bidv, tcb] = insertedBanks
+  console.log(' -> Seeding company bank accounts...')
+  const vcb = byCode(allBanks, 'VCB')
+  const bidv = byCode(allBanks, 'BIDV')
+  const tcb = byCode(allBanks, 'TCB')
 
   const insertedAccounts = await db
     .insert(companyBankAccounts)

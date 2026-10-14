@@ -1,13 +1,13 @@
 import { db } from '../index.ts'
-import { resetDatabase } from './reset.ts'
-import { seedCompany } from './company.ts'
-import { seedUsers } from './users.ts'
-import { seedMasterData } from './master-data.ts'
-import { seedCustomers } from './customers.ts'
-import { seedLoans } from './loans.ts'
-import { seedBatches } from './batches.ts'
-import { seedSales } from './sales.ts'
-import { seedFinance } from './finance.ts'
+import { resetDatabase } from './reset.seed.ts'
+import { seedCompany } from './company.seed.ts'
+import { seedUsers } from './user.seed.ts'
+import { seedMasterData } from './master-data.seed.ts'
+import { seedCustomers } from './customer.seed.ts'
+import { seedLoans } from './loan.seed.ts'
+import { seedBatches } from './batch.seed.ts'
+import { seedSales } from './sale.seed.ts'
+import { seedFinance } from './finance.seed.ts'
 
 /**
  * Orchestrates database seeding in sequential order, maintaining foreign key integrity

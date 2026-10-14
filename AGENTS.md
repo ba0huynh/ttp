@@ -275,16 +275,17 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 ### Lesson 13: Modular Seed Architecture (`src/db/seed/`)
 
 - **Structure**: The monolithic seed file (formerly `src/db/seed.ts`, ~1000 lines) was broken down into specialized, single-responsibility modules inside `src/db/seed/`:
-  - `reset.ts`: Resets all database tables cleanly in foreign-key safe order (`SET FOREIGN_KEY_CHECKS = 0/1`).
-  - `company.ts`: Seeds corporate identity (`company_info`) for Truong Thinh Phat.
-  - `users.ts`: Seeds system user accounts (`admin`, `accountant`, `sales`, `warehouse`) with bcrypt passwords.
-  - `master-data.ts`: Seeds bank catalogs, company bank accounts, suppliers, motorcycle models, and colors.
-  - `customers.ts`: Seeds B2B wholesale corporate customers and affiliated showroom POS branches.
-  - `loans.ts`: Seeds bank credit contracts and principal/interest repayments.
-  - `batches.ts`: Seeds import shipments, customs/freight expenses, and vehicles with automated cost allocation.
-  - `sales.ts`: Seeds wholesale sales orders, delivery notes, and commercial invoices demonstrating all 3 dual inventory permutations.
-  - `finance.ts`: Seeds cash receipt/disbursement vouchers and bank statements for transaction reconciliation.
+  - `reset.seed.ts`: Resets all database tables cleanly in foreign-key safe order (`SET FOREIGN_KEY_CHECKS = 0/1`).
+  - `company.seed.ts`: Seeds corporate identity (`company_info`) for Truong Thinh Phat.
+  - `user.seed.ts`: Seeds system user accounts (`admin`, `accountant`, `sales`, `warehouse`) with bcrypt passwords.
+  - `master-data.seed.ts`: Seeds bank catalogs, company bank accounts, suppliers, motorcycle models, and colors.
+  - `customer.seed.ts`: Seeds B2B wholesale corporate customers and affiliated showroom POS branches.
+  - `loan.seed.ts`: Seeds bank credit contracts and principal/interest repayments.
+  - `batch.seed.ts`: Seeds import shipments, customs/freight expenses, and vehicles with automated cost allocation.
+  - `sale.seed.ts`: Seeds wholesale sales orders, delivery notes, and commercial invoices demonstrating all 3 dual inventory permutations.
+  - `finance.seed.ts`: Seeds cash receipt/disbursement vouchers and bank statements for transaction reconciliation.
   - `index.ts`: Orchestrates the sequential execution pipeline, closes MySQL connection pool gracefully (`db.$client.end()`), and outputs formatted login credentials.
+- **Naming**: every seed module is named `<entity>.seed.ts` (singular, e.g. `loan.seed.ts`); `index.ts` is the orchestrator and `fetch-banks.ts` is a generator script, not a seed.
 - **Entry point**: `src/db/seed.ts` was removed; `src/db/seed/index.ts` exports `seed()` and runs it when invoked directly, so `npm run seed` runs `tsx src/db/seed/index.ts`.
 
 ### Lesson 14: Reads/Writes via TanStack Query (`src/lib/queries.ts`)
@@ -352,4 +353,23 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 20, 21,... above this line upon completing tasks)_
+### Lesson 20: Query Latency — Round Trips Are the Bottleneck (`/reports`)
+
+- **Symptom**: `/reports` took ~5.5 s to load.
+- **Cause**: the database is remote (~340 ms per round trip) and `getReports` plus its helpers (`getReceivablesSummary`, `getPayablesSummary`, `getInventorySummary`) awaited ~16 independent queries **one after another**. Query execution itself was trivial; 16 × 340 ms was the whole cost.
+- **Fix** (`src/server/services/reports.ts`): independent queries now run with `Promise.all` (Drizzle query builders are lazy thenables, so build them first, then await them together), and the three revenue breakdowns (by customer / month / model) share **one** query over `sales_order_items` that is aggregated in memory. Result: ~5.3 s → ~0.6–1.5 s, and the output was verified identical to the old implementation for several date ranges. Full page load measured ~1.5 s.
+- **Rule**: when adding a report or loader, count round trips, not query complexity. Don't `await` queries sequentially unless one depends on another's result. The pool holds up to 10 connections (mysql2 default), so batches of ~7–10 concurrent queries are fine; a brand-new connection costs ~1.3 s once, then stays warm.
+
+---
+
+### Lesson 21: Bank Catalog Seed (VietQR)
+
+- **What**: `banks` is seeded with the full VietQR list (75 Vietnamese banks: `code`, `name`, `shortName`). Source: `https://api.vietqr.io/v2/banks`.
+- **Files**: `src/db/seed/fetch-banks.ts` (`npm run seed:fetch-banks`) downloads the list and **generates** `src/db/seed/data/banks.ts` (committed, don't edit by hand). `src/db/seed/bank.seed.ts` exports `seedBanks()`, which `seedMasterData()` calls first. `npm run seed` never calls the API, so it works offline and is deterministic; re-run the fetch script only to refresh the list.
+- **Idempotent and additive**: `seedBanks()` inserts only codes that are missing and never overwrites existing rows, so it tops up databases that already had the original 3 banks (VCB, BIDV, TCB; codes match the VietQR codes).
+- **Behaviour change**: `seedMasterData()` used to skip everything when `banks` had rows. It now skips the rest of the master data (accounts, suppliers, models, colors) only when `company_bank_accounts` has rows, because the bank catalog is topped up on every run.
+- **Not stored**: the API also has `bin`, `logo`, `swift_code`. The schema has no columns for them; adding `bin` would be needed for generating VietQR payment QR codes.
+
+---
+
+_(Next Agent: Append Lesson 22, 23,... above this line upon completing tasks)_
