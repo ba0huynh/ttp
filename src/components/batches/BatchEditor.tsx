@@ -5,13 +5,6 @@ import * as React from 'react'
 import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
@@ -32,12 +25,12 @@ import {
 import {
   EXPENSE_TYPE_LABELS,
   computeSellingPrice,
-  formatDate,
   formatVnd,
   isBelowCost,
 } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
-import { batchDetailQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
+import type { batchDetailQuery} from '#/lib/queries.ts';
+import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import {
   addBatchExpenseFn,
   addVehiclesToBatchFn,
@@ -55,56 +48,22 @@ type ExpenseType = BatchDetail['expenses'][number]['expenseType']
 const EXPENSE_TYPES = Object.keys(EXPENSE_TYPE_LABELS) as ExpenseType[]
 
 /**
- * Module 05: batch detail with in-place editing — selling price setup, batch
- * expenses, vehicles and the financing loan contract. Every change is
- * recalculated server-side (allocation + cost + selling price for the whole batch).
+ * Module 05: editors for one batch — financing loan, selling price setup, batch
+ * expenses and vehicles. Every change is recalculated server-side (allocation +
+ * cost + selling price for the whole batch).
  */
-export function BatchDetailDialog({
-  batchId,
-  onClose,
-}: {
-  batchId: number | null
-  onClose: () => void
-}) {
-  const open = batchId !== null
-  const { data, isLoading } = useQuery({
-    ...batchDetailQuery(batchId ?? 0),
-    enabled: open,
-  })
-
+export function BatchEditor({ detail }: { detail: BatchDetail }) {
   return (
-    <Dialog open={open} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
-        <DialogHeader>
-          <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
-            <span>Chi Tiết Lô Xe:</span>
-            <span className="font-mono text-emerald-700">
-              {data?.batch.batchCode}
-            </span>
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            Nhà cung cấp: <strong>{data?.batch.supplierName}</strong> &bull;
-            Ngày nhập: {formatDate(data?.batch.importDate)}
-          </DialogDescription>
-        </DialogHeader>
-
-        {isLoading || !data ? (
-          <div className="py-12 text-center text-xs text-slate-400">
-            Đang tải dữ liệu lô...
-          </div>
-        ) : (
-          // Re-mount editors when switching batch so local form state resets
-          <div key={data.batch.id} className="space-y-4 pt-2">
-            <BatchInfoEditor detail={data} />
-            <PricingEditor detail={data} />
-            <ExpensesEditor detail={data} />
-            <VehiclesEditor detail={data} />
-          </div>
-        )}
-      </DialogContent>
-    </Dialog>
+    <div className="space-y-4">
+      <BatchInfoEditor detail={detail} />
+      <PricingEditor detail={detail} />
+      <ExpensesEditor detail={detail} />
+      <VehiclesEditor detail={detail} />
+    </div>
   )
 }
+
+export type { BatchDetail }
 
 function useBatchMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   const queryClient = useQueryClient()

@@ -24,7 +24,10 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as BatchesIndexRouteImport } from './routes/batches.index'
+import { Route as BatchesBatchIdRouteImport } from './routes/batches.$batchId'
 import { Route as BatchesNewRouteImport } from './routes/batches.new'
+import { Route as SalesIndexRouteImport } from './routes/sales.index'
 import { Route as SalesNewRouteImport } from './routes/sales.new'
 
 const IndexRoute = IndexRouteImport.update({
@@ -102,10 +105,25 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const BatchesIndexRoute = BatchesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => BatchesRoute,
+} as any)
+const BatchesBatchIdRoute = BatchesBatchIdRouteImport.update({
+  id: '/$batchId',
+  path: '/$batchId',
+  getParentRoute: () => BatchesRoute,
+} as any)
 const BatchesNewRoute = BatchesNewRouteImport.update({
   id: '/new',
   path: '/new',
   getParentRoute: () => BatchesRoute,
+} as any)
+const SalesIndexRoute = SalesIndexRouteImport.update({
+  id: '/',
+  path: '/',
+  getParentRoute: () => SalesRoute,
 } as any)
 const SalesNewRoute = SalesNewRouteImport.update({
   id: '/new',
@@ -129,12 +147,14 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
   '/sales/new': typeof SalesNewRoute
+  '/batches/': typeof BatchesIndexRoute
+  '/sales/': typeof SalesIndexRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
-  '/batches': typeof BatchesRouteWithChildren
   '/customers': typeof CustomersRoute
   '/finance': typeof FinanceRoute
   '/forgot-password': typeof ForgotPasswordRoute
@@ -146,10 +166,12 @@ export interface FileRoutesByTo {
   '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
-  '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
   '/sales/new': typeof SalesNewRoute
+  '/batches': typeof BatchesIndexRoute
+  '/sales': typeof SalesIndexRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -168,8 +190,11 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
   '/sales/new': typeof SalesNewRoute
+  '/batches/': typeof BatchesIndexRoute
+  '/sales/': typeof SalesIndexRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
@@ -189,12 +214,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sales'
     | '/settings'
+    | '/batches/$batchId'
     | '/batches/new'
     | '/sales/new'
+    | '/batches/'
+    | '/sales/'
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
-    | '/batches'
     | '/customers'
     | '/finance'
     | '/forgot-password'
@@ -206,10 +233,12 @@ export interface FileRouteTypes {
     | '/register'
     | '/reports'
     | '/reset-password'
-    | '/sales'
     | '/settings'
+    | '/batches/$batchId'
     | '/batches/new'
     | '/sales/new'
+    | '/batches'
+    | '/sales'
   id:
     | '__root__'
     | '/'
@@ -227,8 +256,11 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sales'
     | '/settings'
+    | '/batches/$batchId'
     | '/batches/new'
     | '/sales/new'
+    | '/batches/'
+    | '/sales/'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -356,12 +388,33 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/batches/': {
+      id: '/batches/'
+      path: '/'
+      fullPath: '/batches/'
+      preLoaderRoute: typeof BatchesIndexRouteImport
+      parentRoute: typeof BatchesRoute
+    }
+    '/batches/$batchId': {
+      id: '/batches/$batchId'
+      path: '/$batchId'
+      fullPath: '/batches/$batchId'
+      preLoaderRoute: typeof BatchesBatchIdRouteImport
+      parentRoute: typeof BatchesRoute
+    }
     '/batches/new': {
       id: '/batches/new'
       path: '/new'
       fullPath: '/batches/new'
       preLoaderRoute: typeof BatchesNewRouteImport
       parentRoute: typeof BatchesRoute
+    }
+    '/sales/': {
+      id: '/sales/'
+      path: '/'
+      fullPath: '/sales/'
+      preLoaderRoute: typeof SalesIndexRouteImport
+      parentRoute: typeof SalesRoute
     }
     '/sales/new': {
       id: '/sales/new'
@@ -374,11 +427,15 @@ declare module '@tanstack/react-router' {
 }
 
 interface BatchesRouteChildren {
+  BatchesBatchIdRoute: typeof BatchesBatchIdRoute
   BatchesNewRoute: typeof BatchesNewRoute
+  BatchesIndexRoute: typeof BatchesIndexRoute
 }
 
 const BatchesRouteChildren: BatchesRouteChildren = {
+  BatchesBatchIdRoute: BatchesBatchIdRoute,
   BatchesNewRoute: BatchesNewRoute,
+  BatchesIndexRoute: BatchesIndexRoute,
 }
 
 const BatchesRouteWithChildren =
@@ -386,10 +443,12 @@ const BatchesRouteWithChildren =
 
 interface SalesRouteChildren {
   SalesNewRoute: typeof SalesNewRoute
+  SalesIndexRoute: typeof SalesIndexRoute
 }
 
 const SalesRouteChildren: SalesRouteChildren = {
   SalesNewRoute: SalesNewRoute,
+  SalesIndexRoute: SalesIndexRoute,
 }
 
 const SalesRouteWithChildren = SalesRoute._addFileChildren(SalesRouteChildren)
