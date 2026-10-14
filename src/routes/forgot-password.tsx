@@ -53,9 +53,10 @@ function ForgotPasswordPage() {
                     to="/reset-password"
                     search={{
                       token:
-                        new URL(forgot.data.devLink, 'http://x').searchParams.get(
-                          'token',
-                        ) ?? '',
+                        new URL(
+                          forgot.data.devLink,
+                          'http://x',
+                        ).searchParams.get('token') ?? '',
                     }}
                     className="font-semibold underline"
                   >

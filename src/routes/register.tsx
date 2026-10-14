@@ -65,7 +65,10 @@ function RegisterPage() {
               ? 'Tài khoản đang chờ quản trị viên kích hoạt. Bạn có thể đăng nhập sau khi được duyệt.'
               : 'Bạn là người dùng đầu tiên nên đã được cấp quyền Quản trị. Hãy đăng nhập để bắt đầu.'}
           </AuthAlert>
-          <Button asChild className="w-full bg-emerald-700 hover:bg-emerald-800">
+          <Button
+            asChild
+            className="w-full bg-emerald-700 hover:bg-emerald-800"
+          >
             <Link to="/login">Đến trang đăng nhập</Link>
           </Button>
         </CardContent>

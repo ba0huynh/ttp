@@ -37,11 +37,7 @@ import {
   isBelowCost,
 } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
-import {
-  batchDetailQuery,
-  loansQuery,
-  masterDataQuery,
-} from '#/lib/queries.ts'
+import { batchDetailQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import {
   addBatchExpenseFn,
   addVehiclesToBatchFn,
@@ -270,10 +266,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
         <div className="space-y-1">
           <Label className="text-[11px]">Gốc tính giá</Label>
-          <Select
-            value={base}
-            onValueChange={(v) => setBase(v as PricingBase)}
-          >
+          <Select value={base} onValueChange={(v) => setBase(v as PricingBase)}>
             <SelectTrigger className="h-8 text-xs bg-white">
               <SelectValue />
             </SelectTrigger>
@@ -402,7 +395,9 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
               className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
               disabled={remove.isPending}
               onClick={() => {
-                if (confirm('Xóa khoản chi phí này? Giá vốn cả lô sẽ tính lại.'))
+                if (
+                  confirm('Xóa khoản chi phí này? Giá vốn cả lô sẽ tính lại.')
+                )
                   remove.mutate({ data: { expenseId: e.id } })
               }}
             >

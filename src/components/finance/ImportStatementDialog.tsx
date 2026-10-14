@@ -155,7 +155,9 @@ export function ImportStatementDialog({
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1.5 sm:col-span-1">
-              <Label className="text-xs font-semibold">Tài khoản ngân hàng</Label>
+              <Label className="text-xs font-semibold">
+                Tài khoản ngân hàng
+              </Label>
               <Select
                 value={effectiveAccountId ? String(effectiveAccountId) : ''}
                 onValueChange={(val) => setAccountId(Number(val))}

@@ -60,7 +60,10 @@ function ResetPasswordPage() {
         description="Bạn có thể đăng nhập bằng mật khẩu mới"
       >
         <CardContent>
-          <Button asChild className="w-full bg-emerald-700 hover:bg-emerald-800">
+          <Button
+            asChild
+            className="w-full bg-emerald-700 hover:bg-emerald-800"
+          >
             <Link to="/login">Đến trang đăng nhập</Link>
           </Button>
         </CardContent>

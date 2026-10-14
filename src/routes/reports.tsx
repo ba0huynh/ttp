@@ -176,7 +176,7 @@ function ReportsPage() {
         </div>
 
         {/* 2 Tables: Revenue by Parent Customer & By Motorcycle Model */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-6">
           {/* Table 1: Revenue aggregated to Parent Customer */}
           <Card className="border-slate-200 shadow-xs">
             <CardHeader className="py-3 px-4 border-b border-slate-100">

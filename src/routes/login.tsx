@@ -1,17 +1,19 @@
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Lock, LogIn, User } from 'lucide-react'
+import {
+  BadgeDollarSign,
+  Calculator,
+  Loader2,
+  Lock,
+  LogIn,
+  ShieldCheck,
+  User,
+  Warehouse,
+} from 'lucide-react'
 import * as React from 'react'
 
-import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
+import { AuthAlert, AuthShell } from '#/components/layout/AuthShell.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '#/components/ui/card.tsx'
+import { CardContent, CardFooter } from '#/components/ui/card.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { currentUserQuery } from '#/lib/queries.ts'
@@ -20,7 +22,7 @@ import { loginFn } from '#/server/fns/auth.ts'
 export const Route = createFileRoute('/login')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
-    // redirect() của router (không phải Response thô, vốn không serialize được khi SSR)
+    // Use the router's redirect() (a raw Response cannot be serialized during SSR)
     if (user) throw redirect({ to: '/' })
   },
   component: LoginPage,
@@ -53,168 +55,131 @@ function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-800 to-emerald-950 flex flex-col justify-center items-center p-4">
-      <div className="w-full max-w-md space-y-6">
-        {/* Brand header */}
-        <div className="text-center space-y-2">
-          <div className="inline-flex size-14 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 items-center justify-center text-white shadow-lg shadow-emerald-900/40 font-black text-2xl">
-            T
+    <AuthShell
+      title="Đăng nhập"
+      description="Dùng tài khoản nội bộ được cấp để tiếp tục"
+      showBackLink={false}
+    >
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          {error && <AuthAlert tone="error">{error}</AuthAlert>}
+
+          <div className="space-y-1.5">
+            <Label htmlFor="login" className="text-xs font-semibold">
+              Tên đăng nhập hoặc email
+            </Label>
+            <div className="relative">
+              <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <Input
+                id="login"
+                type="text"
+                required
+                autoComplete="username"
+                value={login}
+                onChange={(e) => setLogin(e.target.value)}
+                placeholder="admin hoặc email..."
+                className="pl-9 h-10"
+              />
+            </div>
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-white">
-            TRƯỜNG THỊNH PHÁT
-          </h1>
-          <p className="text-xs text-emerald-300 font-medium tracking-wide uppercase">
-            Hệ thống Quản lý Bán sỉ Xe máy Nhập khẩu
-          </p>
-        </div>
 
-        {/* Card form */}
-        <Card className="border-slate-800 bg-white/95 backdrop-blur-sm shadow-2xl">
-          <CardHeader className="space-y-1 pb-4">
-            <CardTitle className="text-xl font-bold text-slate-900">
-              Đăng nhập hệ thống
-            </CardTitle>
-            <CardDescription className="text-xs text-slate-500">
-              Nhập thông tin tài khoản nội bộ để tiếp tục
-            </CardDescription>
-          </CardHeader>
-
-          <form onSubmit={handleSubmit}>
-            <CardContent className="space-y-4">
-              {error && (
-                <Alert
-                  variant="destructive"
-                  className="bg-rose-50 text-rose-900 border-rose-200 text-xs py-2"
-                >
-                  <AlertDescription>{error}</AlertDescription>
-                </Alert>
-              )}
-
-              <div className="space-y-1.5">
-                <Label htmlFor="login" className="text-xs font-semibold">
-                  Tên đăng nhập / Email
-                </Label>
-                <div className="relative">
-                  <User className="absolute left-3 top-2.5 size-4 text-slate-400" />
-                  <Input
-                    id="login"
-                    type="text"
-                    required
-                    value={login}
-                    onChange={(e) => setLogin(e.target.value)}
-                    placeholder="admin hoặc email..."
-                    className="pl-9 text-sm h-9"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <Label htmlFor="password" className="text-xs font-semibold">
-                    Mật khẩu
-                  </Label>
-                  <Link
-                    to="/forgot-password"
-                    className="text-[11px] text-emerald-700 hover:underline"
-                  >
-                    Quên mật khẩu?
-                  </Link>
-                </div>
-                <div className="relative">
-                  <Lock className="absolute left-3 top-2.5 size-4 text-slate-400" />
-                  <Input
-                    id="password"
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="pl-9 text-sm h-9"
-                  />
-                </div>
-              </div>
-            </CardContent>
-
-            <CardFooter className="flex flex-col gap-3 pt-2">
-              <Button
-                type="submit"
-                disabled={loading}
-                className="w-full bg-emerald-700 hover:bg-emerald-800 text-white font-semibold h-10 shadow-sm"
+          <div className="space-y-1.5">
+            <div className="flex items-center justify-between">
+              <Label htmlFor="password" className="text-xs font-semibold">
+                Mật khẩu
+              </Label>
+              <Link
+                to="/forgot-password"
+                className="text-xs font-medium text-emerald-700 hover:underline"
               >
-                {loading ? (
-                  'Đang xử lý...'
-                ) : (
-                  <>
-                    <LogIn className="size-4 mr-2" />
-                    Đăng nhập
-                  </>
-                )}
-              </Button>
+                Quên mật khẩu?
+              </Link>
+            </div>
+            <div className="relative">
+              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <Input
+                id="password"
+                type="password"
+                required
+                autoComplete="current-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="••••••••"
+                className="pl-9 h-10"
+              />
+            </div>
+          </div>
 
-              <p className="text-xs text-slate-500">
-                Chưa có tài khoản?{' '}
-                <Link
-                  to="/register"
-                  className="font-semibold text-emerald-700 hover:underline"
-                >
-                  Đăng ký
-                </Link>
-              </p>
+          <Button
+            type="submit"
+            disabled={loading}
+            className="w-full h-10 font-semibold"
+          >
+            {loading ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <LogIn className="size-4" />
+            )}
+            {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
+          </Button>
 
-              {/* Demo accounts picker */}
-              <div className="w-full pt-3 border-t border-slate-100 space-y-2">
-                <div className="text-[11px] font-semibold text-slate-400 text-center uppercase tracking-wider">
-                  Tài khoản dùng thử (Click chọn nhanh):
-                </div>
-                <div className="grid grid-cols-2 gap-1.5 text-xs">
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-[11px] justify-start px-2 font-medium"
-                    onClick={() => fillQuick('admin', 'Admin@123')}
-                  >
-                    👑 Admin (Quản trị)
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-[11px] justify-start px-2 font-medium"
-                    onClick={() => fillQuick('ketoan', 'Ktp@12345')}
-                  >
-                    💼 Kế toán
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-[11px] justify-start px-2 font-medium"
-                    onClick={() => fillQuick('kinhdoanh', 'Sale@12345')}
-                  >
-                    🏷️ Kinh doanh
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="outline"
-                    size="sm"
-                    className="h-7 text-[11px] justify-start px-2 font-medium"
-                    onClick={() => fillQuick('kho', 'Kho@12345')}
-                  >
-                    📦 Thủ kho
-                  </Button>
-                </div>
-              </div>
-            </CardFooter>
-          </form>
-        </Card>
+          <p className="text-center text-sm text-slate-500">
+            Chưa có tài khoản?{' '}
+            <Link
+              to="/register"
+              className="font-semibold text-emerald-700 hover:underline"
+            >
+              Đăng ký
+            </Link>
+          </p>
+        </CardContent>
 
-        {/* Footer info */}
-        <p className="text-center text-xs text-slate-400">
-          Công ty TNHH Kinh doanh Dịch vụ Trường Thịnh Phát &bull; MST
-          0316513248
-        </p>
-      </div>
-    </div>
+        {/* Demo accounts picker */}
+        <CardFooter className="flex-col items-stretch gap-2 border-t bg-slate-50/70">
+          <div className="text-[11px] font-semibold text-slate-500 uppercase tracking-wide">
+            Tài khoản dùng thử
+          </div>
+          <div className="grid grid-cols-2 gap-1.5">
+            {DEMO_ACCOUNTS.map((a) => (
+              <button
+                key={a.login}
+                type="button"
+                onClick={() => fillQuick(a.login, a.password)}
+                className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors ${
+                  login === a.login
+                    ? 'border-emerald-300 bg-emerald-50 text-emerald-900'
+                    : 'border-border bg-card text-slate-700 hover:bg-slate-50'
+                }`}
+              >
+                <a.icon className="size-3.5 shrink-0 text-emerald-700" />
+                <span className="font-medium truncate">{a.label}</span>
+              </button>
+            ))}
+          </div>
+        </CardFooter>
+      </form>
+    </AuthShell>
   )
 }
+
+const DEMO_ACCOUNTS = [
+  {
+    login: 'admin',
+    password: 'Admin@123',
+    label: 'Quản trị',
+    icon: ShieldCheck,
+  },
+  {
+    login: 'ketoan',
+    password: 'Ktp@12345',
+    label: 'Kế toán',
+    icon: Calculator,
+  },
+  {
+    login: 'kinhdoanh',
+    password: 'Sale@12345',
+    label: 'Kinh doanh',
+    icon: BadgeDollarSign,
+  },
+  { login: 'kho', password: 'Kho@12345', label: 'Thủ kho', icon: Warehouse },
+]
