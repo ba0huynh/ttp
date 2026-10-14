@@ -74,9 +74,9 @@ async function ensureTrackingTable() {
   )
 }
 
-/** First line of a statement: enough to tell which table/constraint it touches */
+/** Full statement collapsed to one line, so nothing is truncated in the log */
 function describe(statement: string) {
-  return (statement.split('\n')[0] ?? '').slice(0, 90)
+  return statement.replace(/\s+/g, ' ').trim()
 }
 
 /**
