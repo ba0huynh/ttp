@@ -175,7 +175,9 @@ Hệ thống được thiết kế gồm **11 Modules nghiệp vụ cốt lõi**
 | **Tạo Drizzle Migration**           | `npm run db:generate`                                         | Sinh file SQL migration trong thư mục `./drizzle`                               |
 | **Đẩy trực tiếp Schema lên DB**     | `npm run db:push`                                             | Áp dụng thay đổi từ `src/db/schema.ts` vào DB nhanh (Dev mode)                  |
 | **Chạy Drizzle Studio (Web UI DB)** | `npm run db:studio`                                           | Mở giao diện xem trực quan bảng biểu dữ liệu Drizzle                            |
-| **Build Production**                | `npm run build`                                               | Kiểm tra khả năng build trơn tru cho deploy Nitro                               |
+| **Build Production**                | `npm run build`                                               | Build bundle Nitro server & client assets                                       |
+| **Khởi chạy Production Server**     | `npm run start`                                               | Chạy file `.output/server/index.mjs` trên Node.js                               |
+| **Build & Khởi chạy Production**    | `npm run build:start`                                         | Chạy tuần tự `npm run build && npm run start`                                   |
 
 ---
 
@@ -228,6 +230,12 @@ _Khu vực này ghi lại các bài học kiến trúc, lỗi thường gặp (g
 - **Đặc thù**: Dữ liệu seed phải phản ánh chân thực đầy đủ 4 trường hợp của kho kép (Xe còn tồn cả 2 kho; Xe đã giao nhưng chưa xuất HĐ; Xe đã xuất HĐ nhưng chưa giao; Xe đã hoàn tất cả 2 kho) cùng khế ước vay ngân hàng phân kỳ trả nợ.
 - **Cách thực thi**: Lệnh `npm run db:seed` được cấu hình qua `tsx src/db/seed.ts`, sẵn sàng bơm dữ liệu kiểm thử hoàn chỉnh ngay khi database MySQL được kết nối.
 
+### Bài học 9: Cấu Hình Kết Nối Tách Bạch (Host, Port, User, Password, Database)
+
+- **Bối cảnh**: Thay vì chỉ phụ thuộc vào một chuỗi `DATABASE_URL` duy nhất, hệ thống hỗ trợ cấu hình tách bạch các trường `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` trong `.env`.
+- **Áp dụng**: Cả `drizzle.config.ts` và `src/db/index.ts` đều trỏ vào cấu hình này, tránh xung đột encoding ký tự đặc biệt trong password và tương thích tối đa với MySQL cloud/VPS.
+- **Lưu ý Seed & Foreign Keys**: Khi chạy reset dữ liệu seed, luôn sử dụng `SET FOREIGN_KEY_CHECKS = 0;` trước khi xóa bảng và bật lại `SET FOREIGN_KEY_CHECKS = 1;` ngay sau đó để tránh lỗi ràng buộc khóa ngoại (Error 1451).
+
 ---
 
-_(Agent tiếp theo khi hoàn thành tính năng hãy thêm Bài học 9, 10,... vào phía trên dòng này)_
+_(Agent tiếp theo khi hoàn thành tính năng hãy thêm Bài học 10, 11,... vào phía trên dòng này)_

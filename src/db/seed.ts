@@ -1,5 +1,5 @@
 import { config } from 'dotenv'
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import { allocateBatchExpenses, computeSellingPrice } from '../lib/business.ts'
 import { hashPassword } from '../server/services/auth.ts'
@@ -36,9 +36,36 @@ config({ path: ['.env.local', '.env'] })
 export async function seed() {
   console.log('🌱 Bắt đầu khởi tạo dữ liệu mẫu cho Trường Thịnh Phát...')
 
+  // Reset toàn bộ bảng trước khi seed (tắt FK check tạm thời để tránh xung đột thứ tự)
+  await db.execute(sql`SET FOREIGN_KEY_CHECKS = 0;`)
+  await db.delete(deliveryNoteItems)
+  await db.delete(deliveryNotes)
+  await db.delete(invoiceItems)
+  await db.delete(invoices)
+  await db.delete(salesOrderItems)
+  await db.delete(salesOrders)
+  await db.delete(bankStatementLines)
+  await db.delete(bankStatements)
+  await db.delete(receiptVouchers)
+  await db.delete(paymentVouchers)
+  await db.delete(vehicles)
+  await db.delete(batchExpenses)
+  await db.delete(importBatches)
+  await db.delete(loanRepayments)
+  await db.delete(loanContracts)
+  await db.delete(posBranches)
+  await db.delete(customers)
+  await db.delete(colors)
+  await db.delete(motorcycleModels)
+  await db.delete(suppliers)
+  await db.delete(companyBankAccounts)
+  await db.delete(banks)
+  await db.delete(users)
+  await db.delete(companyInfo)
+  await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1;`)
+
   // 1. Thông tin công ty
   console.log(' -> Tạo thông tin công ty...')
-  await db.delete(companyInfo)
   await db.insert(companyInfo).values({
     name: 'CÔNG TY TNHH KINH DOANH DỊCH VỤ TRƯỜNG THỊNH PHÁT',
     taxCode: '0316513248',
@@ -638,14 +665,12 @@ export async function seed() {
       createdBy: adminId,
     })
     .$returningId()
-  await db
-    .insert(deliveryNoteItems)
-    .values(
-      order1Vehicles.map((vId) => ({
-        deliveryNoteId: dn1.id,
-        vehicleId: vId,
-      })),
-    )
+  await db.insert(deliveryNoteItems).values(
+    order1Vehicles.map((vId) => ({
+      deliveryNoteId: dn1.id,
+      vehicleId: vId,
+    })),
+  )
 
   // Hóa đơn cho Order 1
   const [inv1] = await db
@@ -790,14 +815,12 @@ export async function seed() {
       createdBy: adminId,
     })
     .$returningId()
-  await db
-    .insert(deliveryNoteItems)
-    .values(
-      order3Vehicles.map((vId) => ({
-        deliveryNoteId: dn3.id,
-        vehicleId: vId,
-      })),
-    )
+  await db.insert(deliveryNoteItems).values(
+    order3Vehicles.map((vId) => ({
+      deliveryNoteId: dn3.id,
+      vehicleId: vId,
+    })),
+  )
 
   // Cập nhật xe Order 3: isDelivered = true, isInvoiced = false!
   for (const vId of order3Vehicles) {

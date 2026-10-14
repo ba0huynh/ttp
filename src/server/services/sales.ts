@@ -181,14 +181,12 @@ export async function recordDelivery(
           createdBy: userId ?? null,
         })
         .$returningId()
-      await tx
-        .insert(deliveryNoteItems)
-        .values(
-          input.vehicleIds.map((vehicleId) => ({
-            deliveryNoteId: created.id,
-            vehicleId,
-          })),
-        )
+      await tx.insert(deliveryNoteItems).values(
+        input.vehicleIds.map((vehicleId) => ({
+          deliveryNoteId: created.id,
+          vehicleId,
+        })),
+      )
       await tx
         .update(vehicles)
         .set({ isDelivered: true, deliveredAt: input.deliveryDate })

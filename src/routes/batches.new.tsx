@@ -220,8 +220,8 @@ function NewBatchPage() {
     setExpenses(expenses.filter((e) => e.id !== id))
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async (evt: React.FormEvent) => {
+    evt.preventDefault()
     setError(null)
     setSubmitting(true)
 
@@ -523,8 +523,7 @@ function NewBatchPage() {
                             value={e.amount}
                             onChange={(ev) => {
                               const updated = [...expenses]
-                              updated[idx].amount =
-                                Number(ev.target.value) || 0
+                              updated[idx].amount = Number(ev.target.value) || 0
                               setExpenses(updated)
                             }}
                             className="h-7 text-xs text-right font-medium"
