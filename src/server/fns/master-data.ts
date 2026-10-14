@@ -60,7 +60,6 @@ export const saveBankFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      code: z.string().trim().min(1),
       name: z.string().trim().min(1),
       shortName: z.string().trim().min(1),
     }),
@@ -104,7 +103,6 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      code: z.string().trim().min(1),
       name: z.string().trim().min(1),
       country: opt,
       taxCode: opt,
@@ -129,7 +127,6 @@ export const saveModelFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      code: z.string().trim().min(1),
       name: z.string().trim().min(1),
       brand: z.string().trim().min(1),
       engineCapacity: z.number().int().nullable().optional(),
@@ -154,7 +151,6 @@ export const saveColorFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      code: z.string().trim().min(1),
       name: z.string().trim().min(1),
       hex: opt,
     }),

@@ -98,7 +98,6 @@ export const companyInfo = mysqlTable('company_info', {
 
 export const banks = mysqlTable('banks', {
   id: int('id').primaryKey().autoincrement(),
-  code: varchar('code', { length: 20 }).notNull().unique(),
   name: varchar('name', { length: 255 }).notNull(),
   shortName: varchar('short_name', { length: 50 }).notNull(),
   /** Bank logo URL (e.g. VietQR CDN) */
@@ -120,7 +119,6 @@ export const companyBankAccounts = mysqlTable('company_bank_accounts', {
 
 export const suppliers = mysqlTable('suppliers', {
   id: int('id').primaryKey().autoincrement(),
-  code: varchar('code', { length: 30 }).notNull().unique(),
   name: varchar('name', { length: 255 }).notNull(),
   country: varchar('country', { length: 80 }),
   taxCode: varchar('tax_code', { length: 30 }),
@@ -134,7 +132,6 @@ export const suppliers = mysqlTable('suppliers', {
 
 export const motorcycleModels = mysqlTable('motorcycle_models', {
   id: int('id').primaryKey().autoincrement(),
-  code: varchar('code', { length: 30 }).notNull().unique(),
   name: varchar('name', { length: 150 }).notNull(),
   brand: varchar('brand', { length: 80 }).notNull(),
   engineCapacity: int('engine_capacity'),
@@ -144,7 +141,6 @@ export const motorcycleModels = mysqlTable('motorcycle_models', {
 
 export const colors = mysqlTable('colors', {
   id: int('id').primaryKey().autoincrement(),
-  code: varchar('code', { length: 30 }).notNull().unique(),
   name: varchar('name', { length: 80 }).notNull(),
   hex: varchar('hex', { length: 7 }),
   ...timestamps,

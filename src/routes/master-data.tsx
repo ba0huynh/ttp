@@ -80,26 +80,22 @@ function MasterDataPage() {
 
   // Modal Model
   const [modelOpen, setModelOpen] = React.useState(false)
-  const [mCode, setMCode] = React.useState('')
   const [mName, setMName] = React.useState('')
   const [mBrand, setMBrand] = React.useState('Honda')
   const [mCc, setMCc] = React.useState(150)
 
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
-  const [sCode, setSCode] = React.useState('')
   const [sName, setSName] = React.useState('')
   const [sCountry, setSCountry] = React.useState('Thái Lan')
 
   // Modal Bank
   const [bankOpen, setBankOpen] = React.useState(false)
-  const [bCode, setBCode] = React.useState('')
   const [bName, setBName] = React.useState('')
   const [bShort, setBShort] = React.useState('')
 
   // Modal Color
   const [colorOpen, setColorOpen] = React.useState(false)
-  const [cCode, setCCode] = React.useState('')
   const [cName, setCName] = React.useState('')
   const [cHex, setCHex] = React.useState('#18181b')
 
@@ -107,7 +103,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveModel.mutateAsync({
-        data: { code: mCode, name: mName, brand: mBrand, engineCapacity: mCc },
+        data: { name: mName, brand: mBrand, engineCapacity: mCc },
       })
       setModelOpen(false)
     } catch (err: unknown) {
@@ -119,7 +115,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveSupplier.mutateAsync({
-        data: { code: sCode, name: sName, country: sCountry },
+        data: { name: sName, country: sCountry },
       })
       setSupplierOpen(false)
     } catch (err: unknown) {
@@ -131,7 +127,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveBank.mutateAsync({
-        data: { code: bCode, name: bName, shortName: bShort },
+        data: { name: bName, shortName: bShort },
       })
       setBankOpen(false)
     } catch (err: unknown) {
@@ -143,7 +139,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveColor.mutateAsync({
-        data: { code: cCode, name: cName, hex: cHex },
+        data: { name: cName, hex: cHex },
       })
       setColorOpen(false)
     } catch (err: unknown) {
@@ -215,7 +211,6 @@ function MasterDataPage() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    setMCode('')
                     setMName('')
                     setModelOpen(true)
                   }}
@@ -229,7 +224,6 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Mã Dòng Xe</TableHead>
                       <TableHead>Tên Thương Mại</TableHead>
                       <TableHead>Hãng Xe</TableHead>
                       <TableHead className="text-center">
@@ -241,9 +235,6 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {master.models.map((m) => (
                       <TableRow key={m.id}>
-                        <TableCell className="font-mono font-bold text-slate-900">
-                          {m.code}
-                        </TableCell>
                         <TableCell className="font-semibold text-slate-800">
                           {m.name}
                         </TableCell>
@@ -283,7 +274,6 @@ function MasterDataPage() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    setSCode('')
                     setSName('')
                     setSupplierOpen(true)
                   }}
@@ -297,7 +287,6 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Mã NCC</TableHead>
                       <TableHead>Tên Công Ty Cung Cấp</TableHead>
                       <TableHead>Quốc Gia</TableHead>
                       <TableHead>Liên Hệ / Điện Thoại</TableHead>
@@ -307,9 +296,6 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {master.suppliers.map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell className="font-mono font-bold text-slate-900">
-                          {s.code}
-                        </TableCell>
                         <TableCell className="font-bold text-slate-900">
                           {s.name}
                         </TableCell>
@@ -347,7 +333,6 @@ function MasterDataPage() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    setBCode('')
                     setBName('')
                     setBShort('')
                     setBankOpen(true)
@@ -362,7 +347,6 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Mã</TableHead>
                       <TableHead>Tên Ngân Hàng</TableHead>
                       <TableHead>Tên Viết Tắt</TableHead>
                       <TableHead className="w-10"></TableHead>
@@ -371,9 +355,6 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {master.banks.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-mono font-bold text-slate-900">
-                          {b.code}
-                        </TableCell>
                         <TableCell className="font-semibold text-slate-900">
                           <BankLabel image={b.image} name={b.shortName}>
                             {b.name}
@@ -410,7 +391,6 @@ function MasterDataPage() {
                 <Button
                   size="sm"
                   onClick={() => {
-                    setCCode('')
                     setCName('')
                     setColorOpen(true)
                   }}
@@ -424,7 +404,6 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Mã Màu</TableHead>
                       <TableHead>Tên Màu Sắc</TableHead>
                       <TableHead>Mã Hex</TableHead>
                       <TableHead className="w-10"></TableHead>
@@ -433,9 +412,6 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {master.colors.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell className="font-mono font-bold text-slate-900">
-                          {c.code}
-                        </TableCell>
                         <TableCell>
                           <div className="flex items-center gap-2 font-semibold text-slate-800">
                             {c.hex && (
@@ -478,16 +454,6 @@ function MasterDataPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveModel} className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Mã Dòng Xe *</Label>
-                <Input
-                  required
-                  value={mCode}
-                  onChange={(e) => setMCode(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                  placeholder="SH150-ABS"
-                />
-              </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
                   Tên Thương Mại *
@@ -555,18 +521,6 @@ function MasterDataPage() {
             <form onSubmit={handleSaveSupplier} className="space-y-3 pt-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
-                  Mã Nhà Cung Cấp *
-                </Label>
-                <Input
-                  required
-                  value={sCode}
-                  onChange={(e) => setSCode(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                  placeholder="THAI-HONDA"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">
                   Tên Doanh Nghiệp Cung Cấp *
                 </Label>
                 <Input
@@ -617,16 +571,6 @@ function MasterDataPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveBank} className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Mã Ngân Hàng *</Label>
-                <Input
-                  required
-                  value={bCode}
-                  onChange={(e) => setBCode(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                  placeholder="VCB"
-                />
-              </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tên Đầy Đủ *</Label>
                 <Input
@@ -679,16 +623,6 @@ function MasterDataPage() {
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveColor} className="space-y-3 pt-2">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Mã Màu *</Label>
-                <Input
-                  required
-                  value={cCode}
-                  onChange={(e) => setCCode(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                  placeholder="RED"
-                />
-              </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tên Màu *</Label>
                 <Input

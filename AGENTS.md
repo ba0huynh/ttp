@@ -367,9 +367,9 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ### Lesson 21: Bank Catalog Seed (VietQR, live API)
 
-- **What**: `banks` is seeded with the full VietQR list (75 Vietnamese banks: `code`, `name`, `shortName`), fetched **live** from `https://api.vietqr.io/v2/banks?d=YYYYMMDD` every time `npm run seed` runs. There is no saved copy of the list in the repo.
+- **What**: `banks` is seeded with the full VietQR list (Vietnamese banks: `name`, `shortName`, `image`), fetched **live** from `https://api.vietqr.io/v2/banks?d=YYYYMMDD` every time `npm run seed` runs. There is no saved copy of the list in the repo.
 - **File**: `src/db/seed/bank.seed.ts` exports `seedBanks()` (called first by `seedMasterData()`) and `fetchVietQrBanks()` (20 s timeout; throws a clear error if the API is unreachable or the response is not `code: "00"`). **Seeding therefore needs internet access.**
-- **Idempotent and additive**: only codes missing from `banks` are inserted; existing rows are never overwritten. This tops up databases that already had the original 3 banks (VCB, BIDV, TCB; their codes match VietQR's).
+- **Idempotent and additive**: only banks missing from `banks` (matched by `shortName`, unique in the VietQR list) are inserted; existing rows are never overwritten. This tops up databases that already had the original 3 banks (Vietcombank, BIDV, Techcombank).
 - **Behaviour change**: `seedMasterData()` used to skip everything when `banks` had rows. It now calls `seedBanks()` on every run and skips the rest (accounts, suppliers, models, colors) only when `company_bank_accounts` has rows.
 - **Logo**: `banks.image` (varchar 500, nullable) stores the VietQR logo URL (migration `0001_curved_next_avengers.sql`). The seed fills it for new banks and backfills it for existing banks that have none; it never overwrites a non-empty value. **Apply the migration (`npm run migration:run`) before running the seed**, otherwise the insert fails with an unknown column `image`.
 - **Showing logos**: use `BankLabel` / `BankLogo` from `src/components/finance/BankLabel.tsx` wherever a bank is picked or listed (loan form, bank-account selects in `/loans` and `/finance`, statement import, `/reconcile` chips, `/master-data` bank tab). Server queries expose `bankImage` next to `bankShortName`. Logos are wide (not square), so the box is `h-6 w-11` with `object-contain`; a neutral icon is shown when `image` is empty or fails to load.
@@ -392,4 +392,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 24, 25,... above this line upon completing tasks)_
+### Lesson 24: No Business Codes on Master Data (banks, suppliers, models, colors)
+
+- **Change**: the `code` column was removed from `banks`, `suppliers`, `motorcycle_models` and `colors` (schema, server functions, `/master-data` tables and forms, seeds). Rows are identified by `id` and `name` (banks: `shortName`). Still kept: `pos_branches.code`, `batch_code`, loan `contract_number`, document numbers.
+- **Migration**: `0003_outgoing_bruce_banner.sql` drops the four `*_code_unique` indexes, then the four columns. **It permanently deletes the existing codes**; apply it with `npm run migration:run` before using the app again (the old columns are `NOT NULL` with no default, so inserts fail until then).
+- **Seeds**: `master-data.seed.ts` finds existing rows by name (`byName`) and banks by short name (`byShortName`: Vietcombank, BIDV, Techcombank); `bank.seed.ts` dedupes the VietQR list by `shortName`.
+- **Caveat**: dropping the unique codes removes the only uniqueness guard on these tables, so duplicate names are now possible. Add a unique index on `name` if that becomes a problem.
+
+---
+
+_(Next Agent: Append Lesson 25, 26,... above this line upon completing tasks)_

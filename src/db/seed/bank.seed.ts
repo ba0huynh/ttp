@@ -7,14 +7,12 @@ import { banks } from '../schema.ts'
 const VIETQR_BANKS_URL = 'https://api.vietqr.io/v2/banks'
 
 interface VietQrBank {
-  code: string
   name: string
   shortName: string
   logo?: string
 }
 
 interface BankRow {
-  code: string
   name: string
   shortName: string
   image: string | null
@@ -41,25 +39,24 @@ export async function fetchVietQrBanks() {
       `Unexpected VietQR response: ${JSON.stringify(json).slice(0, 200)}`,
     )
 
-  // Keep only what the `banks` table stores; de-duplicate by code
-  const byCode = new Map<string, BankRow>()
+  // Keep only what the `banks` table stores; de-duplicate by short name
+  const byShortName = new Map<string, BankRow>()
   for (const b of json.data) {
-    const code = b.code?.trim()
-    if (code && !byCode.has(code))
-      byCode.set(code, {
-        code,
+    const shortName = b.shortName?.trim()
+    if (shortName && !byShortName.has(shortName))
+      byShortName.set(shortName, {
         name: b.name.trim(),
-        shortName: b.shortName.trim(),
+        shortName,
         image: b.logo?.trim() || null,
       })
   }
-  return [...byCode.values()]
+  return [...byShortName.values()]
 }
 
 /**
  * Seeds the Vietnamese bank catalog straight from the VietQR API.
  *
- * Idempotent and additive: inserts only the codes that are missing, so it also
+ * Idempotent and additive: inserts only the banks (matched by short name) that are missing, so it also
  * tops up a database that already has a few banks. For banks that already exist
  * it only fills in a missing logo (`image`); every other field is left as is. The API is called on every run, so seeding needs
  * internet access (a clear error is thrown when it is unreachable).
@@ -70,12 +67,12 @@ export async function seedBanks() {
   console.log(' -> Fetching bank list from VietQR API...')
   const [catalog, existing] = await Promise.all([
     fetchVietQrBanks(),
-    db.select({ code: banks.code, image: banks.image }).from(banks),
+    db.select({ shortName: banks.shortName, image: banks.image }).from(banks),
   ])
-  const have = new Map(existing.map((b) => [b.code, b]))
-  const missing = catalog.filter((b) => !have.has(b.code))
+  const have = new Map(existing.map((b) => [b.shortName, b]))
+  const missing = catalog.filter((b) => !have.has(b.shortName))
   const needsLogo = catalog.filter(
-    (b) => b.image && have.has(b.code) && !have.get(b.code)!.image,
+    (b) => b.image && have.has(b.shortName) && !have.get(b.shortName)!.image,
   )
 
   if (missing.length > 0) {
@@ -86,7 +83,10 @@ export async function seedBanks() {
   }
 
   for (const b of needsLogo)
-    await db.update(banks).set({ image: b.image }).where(eq(banks.code, b.code))
+    await db
+      .update(banks)
+      .set({ image: b.image })
+      .where(eq(banks.shortName, b.shortName))
   if (needsLogo.length > 0)
     console.log(` -> Filled in logos for ${needsLogo.length} existing banks`)
 

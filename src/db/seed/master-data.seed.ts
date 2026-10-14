@@ -7,14 +7,20 @@ import {
   colors,
 } from '../schema.ts'
 
-/** Looks up a row by its business `code`, throwing if a previous seed run is missing one */
-function byCode<T extends { code: string }>(rows: T[], code: string): T {
-  const row = rows.find((r) => r.code === code)
+/** Looks up an existing row by its `name`/`shortName`, throwing if a previous seed run is missing one */
+function byName<T extends { name: string }>(rows: T[], name: string): T {
+  const row = rows.find((r) => r.name === name)
   if (!row) {
     throw new Error(
-      `Expected existing master data row with code "${code}" but found none. The table has partial data from a previous run — drop it and reseed.`,
+      `Expected existing master data row "${name}" but found none. The table has partial data from a previous run — drop it and reseed.`,
     )
   }
+  return row
+}
+
+const byShortName = (rows: { shortName: string; id: number }[], n: string) => {
+  const row = rows.find((r) => r.shortName === n)
+  if (!row) throw new Error(`Expected bank "${n}" but found none`)
   return row
 }
 
@@ -39,9 +45,9 @@ export async function seedMasterData() {
 
     return {
       banks: {
-        vcb: byCode(allBanks, 'VCB'),
-        bidv: byCode(allBanks, 'BIDV'),
-        tcb: byCode(allBanks, 'TCB'),
+        vcb: byShortName(allBanks, 'Vietcombank'),
+        bidv: byShortName(allBanks, 'BIDV'),
+        tcb: byShortName(allBanks, 'Techcombank'),
       },
       companyBankAccounts: {
         vcbAccount: existingAccounts.find(
@@ -52,28 +58,31 @@ export async function seedMasterData() {
         )!,
       },
       suppliers: {
-        supplierThai: byCode(existingSuppliers, 'THAI-HONDA'),
-        supplierIndo: byCode(existingSuppliers, 'ASTRA-HONDA'),
+        supplierThai: byName(
+          existingSuppliers,
+          'Thai Honda Manufacturing Co., Ltd',
+        ),
+        supplierIndo: byName(existingSuppliers, 'PT Astra Honda Motor'),
       },
       models: {
-        modelSh: byCode(existingModels, 'SH150-ABS'),
-        modelWave: byCode(existingModels, 'WAVE-125I'),
-        modelVario: byCode(existingModels, 'VARIO-160'),
-        modelScoopy: byCode(existingModels, 'SCOOPY-110'),
+        modelSh: byName(existingModels, 'Honda SH 150i ABS'),
+        modelWave: byName(existingModels, 'Honda Wave 125i Thái'),
+        modelVario: byName(existingModels, 'Honda Vario 160 CBS'),
+        modelScoopy: byName(existingModels, 'Honda Scoopy Club12'),
       },
       colors: {
-        cRed: byCode(existingColors, 'RED'),
-        cWhite: byCode(existingColors, 'WHT'),
-        cBlack: byCode(existingColors, 'BLK'),
-        cGrey: byCode(existingColors, 'GRY'),
+        cRed: byName(existingColors, 'Đỏ Đô'),
+        cWhite: byName(existingColors, 'Trắng Ngọc Trai'),
+        cBlack: byName(existingColors, 'Đen Mờ (Matte Black)'),
+        cGrey: byName(existingColors, 'Xám Xi Măng'),
       },
     }
   }
 
   console.log(' -> Seeding company bank accounts...')
-  const vcb = byCode(allBanks, 'VCB')
-  const bidv = byCode(allBanks, 'BIDV')
-  const tcb = byCode(allBanks, 'TCB')
+  const vcb = byShortName(allBanks, 'Vietcombank')
+  const bidv = byShortName(allBanks, 'BIDV')
+  const tcb = byShortName(allBanks, 'Techcombank')
 
   const insertedAccounts = await db
     .insert(companyBankAccounts)
@@ -102,7 +111,6 @@ export async function seedMasterData() {
     .insert(suppliers)
     .values([
       {
-        code: 'THAI-HONDA',
         name: 'Thai Honda Manufacturing Co., Ltd',
         country: 'Thái Lan',
         taxCode: 'TH0105508001234',
@@ -111,7 +119,6 @@ export async function seedMasterData() {
         phone: '+66 2 326 0641',
       },
       {
-        code: 'ASTRA-HONDA',
         name: 'PT Astra Honda Motor',
         country: 'Indonesia',
         taxCode: 'ID010002345678000',
@@ -129,28 +136,24 @@ export async function seedMasterData() {
     .insert(motorcycleModels)
     .values([
       {
-        code: 'SH150-ABS',
         name: 'Honda SH 150i ABS',
         brand: 'Honda',
         engineCapacity: 150,
         description: 'Dòng xe tay ga cao cấp nhập khẩu nguyên chiếc',
       },
       {
-        code: 'WAVE-125I',
         name: 'Honda Wave 125i Thái',
         brand: 'Honda',
         engineCapacity: 125,
         description: 'Dòng xe số bền bỉ, tiết kiệm xăng nhập khẩu Thái Lan',
       },
       {
-        code: 'VARIO-160',
         name: 'Honda Vario 160 CBS',
         brand: 'Honda',
         engineCapacity: 160,
         description: 'Dòng xe tay ga thể thao nhập khẩu Indonesia',
       },
       {
-        code: 'SCOOPY-110',
         name: 'Honda Scoopy Club12',
         brand: 'Honda',
         engineCapacity: 110,
@@ -164,10 +167,10 @@ export async function seedMasterData() {
   const insertedColors = await db
     .insert(colors)
     .values([
-      { code: 'RED', name: 'Đỏ Đô', hex: '#990000' },
-      { code: 'WHT', name: 'Trắng Ngọc Trai', hex: '#f8fafc' },
-      { code: 'BLK', name: 'Đen Mờ (Matte Black)', hex: '#18181b' },
-      { code: 'GRY', name: 'Xám Xi Măng', hex: '#64748b' },
+      { name: 'Đỏ Đô', hex: '#990000' },
+      { name: 'Trắng Ngọc Trai', hex: '#f8fafc' },
+      { name: 'Đen Mờ (Matte Black)', hex: '#18181b' },
+      { name: 'Xám Xi Măng', hex: '#64748b' },
     ])
     .$returningId()
 
