@@ -72,7 +72,7 @@ function LoansPage() {
   const { user } = Route.useRouteContext()
   const { loans, master } = Route.useLoaderData()
 
-  // Modal Khế ước mới
+  // New loan contract modal
   const [newLoanOpen, setNewLoanOpen] = React.useState(false)
   const [contractNumber, setContractNumber] = React.useState(
     `KU-${todayIso().slice(0, 4)}-VCB-01`,
@@ -85,14 +85,14 @@ function LoansPage() {
   const [note, setNote] = React.useState('')
   const [savingLoan, setSavingLoan] = React.useState(false)
 
-  // Modal Chi tiết & Trả nợ
+  // Loan details & Repayment modal
   const [selectedLoanId, setSelectedLoanId] = React.useState<number | null>(
     null,
   )
   const [loanDetail, setLoanDetail] = React.useState<any>(null)
   const [loadingDetail, setLoadingDetail] = React.useState(false)
 
-  // Form trả nợ
+  // Repayment form
   const [repayDate, setRepayDate] = React.useState(todayIso())
   const [repayPrincipal, setRepayPrincipal] = React.useState(0)
   const [repayInterest, setRepayInterest] = React.useState(0)
@@ -330,7 +330,7 @@ function LoansPage() {
           </CardContent>
         </Card>
 
-        {/* Modal Tạo Khế Ước Mới */}
+        {/* Create New Loan Contract Modal */}
         <Dialog open={newLoanOpen} onOpenChange={setNewLoanOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -477,7 +477,7 @@ function LoansPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Chi tiết & Trả nợ & Bảng tính lãi chia đoạn 365 ngày */}
+        {/* Loan Details & Repayment Modal & 365-day segment interest schedule */}
         <Dialog
           open={selectedLoanId !== null}
           onOpenChange={(open) => !open && setSelectedLoanId(null)}
@@ -508,7 +508,7 @@ function LoansPage() {
               </div>
             ) : loanDetail ? (
               <div className="space-y-5 pt-2">
-                {/* 1. Bảng chia đoạn tính lãi 365 ngày */}
+                {/* 1. 365-day declining balance interest schedule */}
                 <div>
                   <div className="text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
                     <span>
@@ -556,7 +556,7 @@ function LoansPage() {
                   </div>
                 </div>
 
-                {/* 2. Lịch sử đã trả nợ */}
+                {/* 2. Repayment history */}
                 <div>
                   <div className="text-xs font-bold text-slate-800 mb-2">
                     Lịch Sử Các Đợt Đã Trả Nợ (Gốc:{' '}
@@ -614,7 +614,7 @@ function LoansPage() {
                   )}
                 </div>
 
-                {/* 3. Form Ghi Nhận Thanh Toán Trả Gốc / Lãi Mới */}
+                {/* 3. Record New Principal / Interest Repayment Form */}
                 {loanDetail.outstanding > 0 && (
                   <form
                     onSubmit={handleRepaySubmit}

@@ -55,7 +55,7 @@ function CustomersPage() {
   const { user } = Route.useRouteContext()
   const { customers } = Route.useLoaderData()
 
-  // Modal Tạo Khách hàng mẹ
+  // Create Parent Customer Modal
   const [newCustOpen, setNewCustOpen] = React.useState(false)
   const [code, setCode] = React.useState('')
   const [name, setName] = React.useState('')
@@ -65,14 +65,14 @@ function CustomersPage() {
   const [contactPerson, setContactPerson] = React.useState('')
   const [savingCust, setSavingCust] = React.useState(false)
 
-  // Modal Chi tiết & Thêm điểm bán
+  // Customer Details & Add Branch Modal
   const [selectedCustId, setSelectedCustId] = React.useState<number | null>(
     null,
   )
   const [custDetail, setCustDetail] = React.useState<any>(null)
   const [loadingDetail, setLoadingDetail] = React.useState(false)
 
-  // Form Thêm Điểm bán
+  // Add Branch Form
   const [newBranchOpen, setNewBranchOpen] = React.useState(false)
   const [branchCode, setBranchCode] = React.useState('')
   const [branchName, setBranchName] = React.useState('')
@@ -257,7 +257,7 @@ function CustomersPage() {
           </CardContent>
         </Card>
 
-        {/* Modal Thêm Khách Hàng Mẹ */}
+        {/* Add Parent Customer Modal */}
         <Dialog open={newCustOpen} onOpenChange={setNewCustOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -360,7 +360,7 @@ function CustomersPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Quản lý Điểm bán & Công nợ của Khách mẹ */}
+        {/* Parent Customer Branches & Debt Management Modal */}
         <Dialog
           open={selectedCustId !== null}
           onOpenChange={(open) => !open && setSelectedCustId(null)}
@@ -385,7 +385,7 @@ function CustomersPage() {
               </div>
             ) : custDetail ? (
               <div className="space-y-5 pt-2">
-                {/* 1. Danh sách điểm bán trực thuộc */}
+                {/* 1. Affiliated branches list */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <div className="text-xs font-bold text-slate-800 flex items-center gap-1.5">
@@ -464,7 +464,7 @@ function CustomersPage() {
                   </div>
                 </div>
 
-                {/* 2. Form Thêm điểm bán mới (inline toggle) */}
+                {/* 2. Add new branch form (inline toggle) */}
                 {newBranchOpen && (
                   <form
                     onSubmit={handleCreateBranch}
@@ -542,7 +542,7 @@ function CustomersPage() {
                   </form>
                 )}
 
-                {/* 3. Tình hình công nợ theo từng điểm bán */}
+                {/* 3. Debt status by branch */}
                 <div>
                   <div className="text-xs font-bold text-slate-800 mb-2">
                     Công Nợ Ghi Nhận Theo Từng Pháp Nhân Điểm Bán:

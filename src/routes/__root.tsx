@@ -2,6 +2,7 @@ import {
   HeadContent,
   Scripts,
   createRootRouteWithContext,
+  useRouterState,
 } from '@tanstack/react-router'
 import { TanStackRouterDevtoolsPanel } from '@tanstack/react-router-devtools'
 import { TanStackDevtools } from '@tanstack/react-devtools'
@@ -54,12 +55,20 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
 })
 
 function RootDocument({ children }: { children: React.ReactNode }) {
+  const routerState = useRouterState()
+  const isLoading = routerState.isLoading
+
   return (
-    <html lang={getLocale()}>
+    <html lang={getLocale()} suppressHydrationWarning>
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body suppressHydrationWarning>
+        {isLoading && (
+          <div className="fixed top-0 left-0 right-0 h-1 z-50 bg-emerald-100/80 overflow-hidden pointer-events-none">
+            <div className="h-full bg-gradient-to-r from-emerald-500 via-teal-400 to-emerald-600 animate-top-loading-bar" />
+          </div>
+        )}
         <TooltipProvider>
           {children}
           <Toaster richColors position="top-right" />

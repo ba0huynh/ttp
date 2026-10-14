@@ -75,7 +75,7 @@ function InventoryPage() {
       return !v.salesOrderId
     }
     if (filterStock === 'mismatch') {
-      // Có lệch giữa 2 kho
+      // Mismatch between the two inventories
       return v.isDelivered !== v.isInvoiced
     }
     return true

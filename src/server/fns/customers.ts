@@ -41,7 +41,7 @@ export const listCustomersFn = createServerFn({ method: 'GET' })
     }))
   })
 
-/** KH + điểm bán — dùng cho dropdown phiếu bán / phiếu thu */
+/** Customers + branches — used for sales order / receipt dropdowns */
 export const listCustomerOptionsFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {

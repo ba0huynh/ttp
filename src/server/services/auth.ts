@@ -14,7 +14,7 @@ const scryptAsync = promisify(scrypt) as (
 export const SESSION_COOKIE = 'ttp_session'
 export const SESSION_TTL_DAYS = 7
 
-/** Định dạng: scrypt$<salt>$<hash hex> */
+/** Format: scrypt$<salt>$<hash hex> */
 export async function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex')
   const hash = await scryptAsync(password, salt, 64)
@@ -88,7 +88,7 @@ export async function authenticate(login: string, password: string) {
   return user
 }
 
-/** Tạo token đặt lại mật khẩu (hết hạn sau 30 phút). Trả về token gốc. */
+/** Creates a password reset token (expires in 30 minutes). Returns raw token. */
 export async function createPasswordResetToken(email: string) {
   const [user] = await db
     .select({ id: users.id })

@@ -1,0 +1,75 @@
+import { db } from '../index.ts'
+import { customers, posBranches } from '../schema.ts'
+
+/**
+ * Seeds B2B motorcycle wholesale customers and their affiliated showroom branches (POS).
+ */
+export async function seedCustomers() {
+  console.log(' -> Seeding B2B corporate customers and POS branches...')
+  const insertedCustomers = await db
+    .insert(customers)
+    .values([
+      {
+        code: 'KH-NAMANH',
+        name: 'CÔNG TY TNHH THƯƠNG MẠI XE MÁY NAM ANH',
+        taxCode: '0315891234',
+        address: '568 Cách Mạng Tháng 8, Phường 11, Quận 3, TP.HCM',
+        phone: '0908 111 222',
+        contactPerson: 'Ông Nam (Giám đốc)',
+      },
+      {
+        code: 'KH-THANHDAT',
+        name: 'DOANH NGHIỆP TƯ NHÂN XE MÁY THÀNH ĐẠT',
+        taxCode: '0314789654',
+        address: '102 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
+        phone: '0903 333 444',
+        contactPerson: 'Bà Đạt',
+      },
+    ])
+    .$returningId()
+
+  const [custNamAnh, custThanhDat] = insertedCustomers
+
+  const insertedBranches = await db
+    .insert(posBranches)
+    .values([
+      {
+        customerId: custNamAnh.id,
+        code: 'DB-NAMANH-Q10',
+        name: 'Showroom Nam Anh Quận 10',
+        taxCode: '0315891234-001',
+        address: '280 Ba Tháng Hai, Phường 12, Quận 10, TP.HCM',
+        phone: '0908 111 223',
+        contactPerson: 'Nguyễn Văn Tuấn',
+        isActive: true,
+      },
+      {
+        customerId: custNamAnh.id,
+        code: 'DB-NAMANH-BD',
+        name: 'Showroom Nam Anh Bình Dương',
+        taxCode: '0315891234-002',
+        address: '45 Đại Lộ Bình Dương, TP. Thủ Dầu Một, Bình Dương',
+        phone: '0908 111 224',
+        contactPerson: 'Phạm Thị Lan',
+        isActive: true,
+      },
+      {
+        customerId: custThanhDat.id,
+        code: 'DB-THANHDAT-TD',
+        name: 'Cửa hàng Thành Đạt Thủ Đức',
+        taxCode: '0314789654-001',
+        address: '102 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
+        phone: '0903 333 445',
+        contactPerson: 'Trần Văn Đạt',
+        isActive: true,
+      },
+    ])
+    .$returningId()
+
+  const [branchNamAnhQ10, branchNamAnhBD, branchThanhDatTD] = insertedBranches
+
+  return {
+    customers: { custNamAnh, custThanhDat },
+    branches: { branchNamAnhQ10, branchNamAnhBD, branchThanhDatTD },
+  }
+}

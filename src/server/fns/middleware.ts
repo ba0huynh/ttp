@@ -7,7 +7,7 @@ import {
   getUserBySessionToken,
 } from '#/server/services/auth.ts'
 
-/** Yêu cầu đăng nhập — inject `context.user` vào server fn */
+/** Authentication required — injects `context.user` into server fn */
 export const authMiddleware = createMiddleware({ type: 'function' }).server(
   async ({ next }) => {
     const token = getCookie(SESSION_COOKIE)

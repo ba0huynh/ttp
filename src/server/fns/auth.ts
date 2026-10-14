@@ -30,7 +30,7 @@ const cookieOpts = (expires: Date) => ({
   expires,
 })
 
-/** Trả về user hiện tại hoặc null (dùng trong beforeLoad để guard route) */
+/** Returns current user or null (used in beforeLoad to guard routes) */
 export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
   async () => {
     const token = getCookie(SESSION_COOKIE)

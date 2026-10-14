@@ -1,13 +1,13 @@
 /**
- * Logic nghiệp vụ THUẦN (không đụng DB) — dùng chung cho server, seed và UI.
- * Mọi công thức tài chính cốt lõi nằm ở đây. Xem AGENTS.md mục 2.2.
+ * PURE business logic (no DB access) — shared across server, seed, and UI.
+ * All core financial formulas live here. See AGENTS.md section 2.2.
  */
 
-/** Làm tròn VNĐ về số nguyên đồng */
+/** Round VND to nearest integer */
 export const roundVnd = (n: number) => Math.round(n)
 
 /* -------------------------------------------------------------------------- */
-/* Phân bổ chi phí lô & giá vốn                                               */
+/* Batch expense allocation & cost price                                      */
 /* -------------------------------------------------------------------------- */
 
 export interface AllocationInput {
@@ -23,8 +23,8 @@ export interface AllocationResult {
 }
 
 /**
- * Chi phí phân bổ xe i = Tổng chi phí lô × (Đơn giá nhập xe i / Σ đơn giá nhập).
- * Phần chênh do làm tròn được dồn vào xe cuối để tổng phân bổ == tổng chi phí.
+ * Allocated expense for vehicle i = Total batch expenses × (Import price of vehicle i / Σ import prices).
+ * Rounding differences are apportioned to the last vehicle so total allocated == total batch expense.
  */
 export function allocateBatchExpenses(
   items: AllocationInput[],
@@ -33,7 +33,7 @@ export function allocateBatchExpenses(
   const totalImport = items.reduce((s, v) => s + v.importPrice, 0)
   if (items.length === 0) return []
   if (totalImport <= 0) {
-    // Không có tiền hàng → chia đều để không mất chi phí
+    // Zero goods value -> divide equally to preserve total expense
     const each = roundVnd(totalExpense / items.length)
     return items.map((v, i) => {
       const allocated =
@@ -61,7 +61,7 @@ export function allocateBatchExpenses(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Giá bán theo lô                                                            */
+/* Batch selling price                                                         */
 /* -------------------------------------------------------------------------- */
 
 export type PricingBase = 'import_price' | 'cost_price'
@@ -73,7 +73,7 @@ export interface BatchPricing {
   pricingValue: number
 }
 
-/** Giá bán = Gốc tính (đơn giá nhập | giá vốn) + % hoặc + số tiền */
+/** Selling price = Base (import price | cost price) + % or + fixed amount */
 export function computeSellingPrice(
   v: { importPrice: number; costPrice: number },
   p: BatchPricing,
@@ -86,12 +86,12 @@ export function computeSellingPrice(
   return roundVnd(price)
 }
 
-/** BẮT BUỘC cảnh báo đỏ khi giá bán < giá vốn */
+/** MANDATORY red warning when selling price < cost price */
 export const isBelowCost = (sellingPrice: number, costPrice: number) =>
   sellingPrice < costPrice
 
 /* -------------------------------------------------------------------------- */
-/* Lãi vay: dư nợ giảm dần, 365 ngày, chia đoạn theo từng lần trả gốc         */
+/* Bank loan interest: declining balance, 365 days, segmented per principal payment */
 /* -------------------------------------------------------------------------- */
 
 export interface InterestSegment {
@@ -114,8 +114,8 @@ export const daysBetween = (from: string, to: string) =>
   Math.max(0, Math.round((toUtc(to) - toUtc(from)) / DAY_MS))
 
 /**
- * Tính lãi từ ngày giải ngân đến `asOf`.
- * Mỗi lần trả gốc cắt một đoạn; lãi đoạn = dư nợ × lãi suất/năm × số ngày / 365.
+ * Calculate interest from disbursement date to `asOf`.
+ * Each principal repayment cuts a segment; segment interest = balance × annual rate × days / 365.
  */
 export function calculateLoanInterest(params: {
   principal: number
@@ -163,7 +163,7 @@ export function calculateLoanInterest(params: {
 }
 
 /* -------------------------------------------------------------------------- */
-/* Định dạng                                                                  */
+/* Formatting utilities                                                        */
 /* -------------------------------------------------------------------------- */
 
 const vnd = new Intl.NumberFormat('vi-VN')

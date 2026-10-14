@@ -89,7 +89,7 @@ function SalesPage() {
   }
 
   const openDeliveryModal = (vList: any[]) => {
-    // Chỉ chọn những xe CHƯA giao
+    // Only select vehicles that have NOT been delivered yet
     const undelivered = vList
       .filter((v) => !v.isDelivered)
       .map((v) => v.vehicleId)
@@ -102,7 +102,7 @@ function SalesPage() {
   }
 
   const openInvoiceModal = (vList: any[]) => {
-    // Chỉ chọn những xe CHƯA xuất hóa đơn
+    // Only select vehicles that have NOT been invoiced yet
     const uninvoiced = vList
       .filter((v) => !v.isInvoiced)
       .map((v) => v.vehicleId)
@@ -304,7 +304,7 @@ function SalesPage() {
           </CardContent>
         </Card>
 
-        {/* Modal chi tiết đơn & Thực hiện Giao xe / Xuất HĐ */}
+        {/* Order detail modal & Delivery / Invoice execution */}
         <Dialog
           open={selectedOrderId !== null}
           onOpenChange={(open) => !open && setSelectedOrderId(null)}
@@ -337,7 +337,7 @@ function SalesPage() {
               </div>
             ) : orderDetail ? (
               <div className="space-y-4 pt-2">
-                {/* Hành động nhanh */}
+                {/* Quick actions */}
                 <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-lg">
                   <div className="text-xs font-semibold text-slate-700 mr-auto">
                     Thao tác độc lập:
@@ -381,7 +381,7 @@ function SalesPage() {
                   )}
                 </div>
 
-                {/* Danh sách xe trong đơn */}
+                {/* Vehicles list in order */}
                 <div className="border border-slate-200 rounded-lg overflow-x-auto">
                   <Table>
                     <TableHeader>
@@ -460,7 +460,7 @@ function SalesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Giao Xe Thực Tế */}
+        {/* Physical Vehicle Delivery Modal */}
         <Dialog open={deliveryDialogOpen} onOpenChange={setDeliveryDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -545,7 +545,7 @@ function SalesPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Xuất Hóa Đơn Nội Bộ */}
+        {/* Internal Commercial Invoice Modal */}
         <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>

@@ -27,7 +27,7 @@ const wrapDup = async <T>(fn: () => Promise<T>) => {
   }
 }
 
-/** Toàn bộ danh mục — dùng cho dropdown ở mọi màn hình */
+/** All master catalog data — used for UI dropdowns */
 export const getMasterDataFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
@@ -53,7 +53,7 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
     return { banks: b, bankAccounts: a, suppliers: s, models: m, colors: c }
   })
 
-/* --------------------------------- Ngân hàng --------------------------------- */
+/* ----------------------------------- Banks ---------------------------------- */
 export const saveBankFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .validator(
@@ -72,7 +72,7 @@ export const saveBankFn = createServerFn({ method: 'POST' })
     }),
   )
 
-/* ------------------------- Tài khoản ngân hàng công ty ------------------------- */
+/* --------------------------- Company Bank Accounts --------------------------- */
 export const saveBankAccountFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .validator(
@@ -97,7 +97,7 @@ export const saveBankAccountFn = createServerFn({ method: 'POST' })
     }),
   )
 
-/* -------------------------------- Nhà cung cấp -------------------------------- */
+/* --------------------------------- Suppliers --------------------------------- */
 export const saveSupplierFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .validator(
@@ -122,7 +122,7 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
     }),
   )
 
-/* ---------------------------------- Loại xe ---------------------------------- */
+/* ----------------------------- Motorcycle Models ----------------------------- */
 export const saveModelFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .validator(
@@ -147,7 +147,7 @@ export const saveModelFn = createServerFn({ method: 'POST' })
     }),
   )
 
-/* ----------------------------------- Màu xe ----------------------------------- */
+/* ----------------------------------- Colors ---------------------------------- */
 export const saveColorFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .validator(
@@ -166,7 +166,7 @@ export const saveColorFn = createServerFn({ method: 'POST' })
     }),
   )
 
-/* ------------------------------------ Xóa ------------------------------------ */
+/* ----------------------------------- Delete ---------------------------------- */
 const deletable = {
   banks,
   companyBankAccounts,

@@ -86,7 +86,7 @@ function ReportsPage() {
             </p>
           </div>
 
-          {/* Form lọc thời gian */}
+          {/* Date range filter form */}
           <form onSubmit={handleFilter} className="flex items-center gap-2">
             <Input
               type="date"
@@ -179,9 +179,9 @@ function ReportsPage() {
           </Card>
         </div>
 
-        {/* 2 Tables: Doanh thu theo Khách hàng mẹ & Theo Dòng xe */}
+        {/* 2 Tables: Revenue by Parent Customer & By Motorcycle Model */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Bảng 1: Doanh thu quy về Khách hàng Mẹ */}
+          {/* Table 1: Revenue aggregated to Parent Customer */}
           <Card className="border-slate-200 shadow-xs">
             <CardHeader className="py-3 px-4 border-b border-slate-100">
               <CardTitle className="text-sm font-bold text-slate-800">
@@ -227,7 +227,7 @@ function ReportsPage() {
             </CardContent>
           </Card>
 
-          {/* Bảng 2: Doanh thu & Lợi nhuận theo Dòng xe */}
+          {/* Table 2: Revenue & Gross Profit by Model */}
           <Card className="border-slate-200 shadow-xs">
             <CardHeader className="py-3 px-4 border-b border-slate-100">
               <CardTitle className="text-sm font-bold text-slate-800">
@@ -270,7 +270,7 @@ function ReportsPage() {
           </Card>
         </div>
 
-        {/* Bảng 3: Chi phí nhập khẩu theo Loại */}
+        {/* Table 3: Import expenses breakdown by type */}
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="py-3 px-4 border-b border-slate-100">
             <CardTitle className="text-sm font-bold text-slate-800">

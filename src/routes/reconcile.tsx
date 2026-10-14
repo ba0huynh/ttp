@@ -68,7 +68,7 @@ function ReconcilePage() {
   const [statementDetail, setStatementDetail] = React.useState<any>(null)
   const [loadingLines, setLoadingLines] = React.useState(false)
 
-  // Gợi ý khớp
+  // Matching suggestions
   const [matchingLineId, setMatchingLineId] = React.useState<number | null>(
     null,
   )
@@ -313,7 +313,7 @@ function ReconcilePage() {
           </CardContent>
         </Card>
 
-        {/* Modal Gợi Ý Khớp Giao Dịch */}
+        {/* Transaction Matching Suggestions Modal */}
         <Dialog
           open={matchingLineId !== null}
           onOpenChange={(open) => !open && setMatchingLineId(null)}

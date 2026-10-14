@@ -7,7 +7,7 @@ export type Db = typeof db
 export type Tx = Parameters<Parameters<Db['transaction']>[0]>[0]
 export type Exec = Db | Tx
 
-/** Lỗi nghiệp vụ — message hiển thị thẳng cho người dùng (tiếng Việt) */
+/** Domain/business error — message displayed directly to user */
 export class BusinessError extends Error {
   constructor(message: string) {
     super(message)
@@ -16,8 +16,8 @@ export class BusinessError extends Error {
 }
 
 /**
- * Sinh số chứng từ tuần tự theo ngày: PREFIX-YYMMDD-001
- * (đủ dùng cho hệ thống nội bộ; UNIQUE ở DB chặn trùng nếu có race)
+ * Generates sequential document numbers by date: PREFIX-YYMMDD-001
+ * (sufficient for internal systems; UNIQUE constraint prevents race conditions)
  */
 export async function nextDocNumber(
   exec: Exec,
@@ -35,7 +35,7 @@ export async function nextDocNumber(
   return `${head}${String(Number(row?.n ?? 0) + 1).padStart(3, '0')}`
 }
 
-/** mysql2 ném ER_DUP_ENTRY khi vi phạm UNIQUE */
+/** mysql2 throws ER_DUP_ENTRY upon UNIQUE constraint violation */
 export function isDuplicateError(e: unknown) {
   const err = e as { code?: string; cause?: { code?: string } }
   return err.code === 'ER_DUP_ENTRY' || err.cause?.code === 'ER_DUP_ENTRY'

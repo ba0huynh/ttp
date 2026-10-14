@@ -68,7 +68,7 @@ function NewBatchPage() {
   const { master, loans } = Route.useLoaderData()
   const navigate = useNavigate()
 
-  // Thông tin chung
+  // General batch information
   const [batchCode, setBatchCode] = React.useState(
     `LO-${todayIso().replace(/-/g, '')}`,
   )
@@ -82,7 +82,7 @@ function NewBatchPage() {
   const [customsDeclarationNo, setCustomsDeclarationNo] = React.useState('')
   const [note, setNote] = React.useState('')
 
-  // Cấu hình giá bán
+  // Selling price configuration
   const [pricingBase, setPricingBase] = React.useState<
     'cost_price' | 'import_price'
   >('cost_price')
@@ -91,7 +91,7 @@ function NewBatchPage() {
   >('percent')
   const [pricingValue, setPricingValue] = React.useState<number>(8)
 
-  // Danh sách xe nhập
+  // Imported vehicles list
   const [vehicles, setVehicles] = React.useState<
     {
       id: number
@@ -120,7 +120,7 @@ function NewBatchPage() {
     },
   ])
 
-  // Chi phí của lô
+  // Batch expenses
   const [expenses, setExpenses] = React.useState<
     {
       id: number
@@ -146,7 +146,7 @@ function NewBatchPage() {
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  // TÍNH TOÁN PHÂN BỔ GIÁ VỐN & GIÁ BÁN THỜI GIAN THỰC (LIVE PREVIEW)
+  // REAL-TIME COST & SELLING PRICE ALLOCATION (LIVE PREVIEW)
   const totalExpense = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
   const totalImport = vehicles.reduce(
     (s, v) => s + (Number(v.importPrice) || 0),
@@ -178,7 +178,7 @@ function NewBatchPage() {
     }
   })
 
-  // Kiểm tra cảnh báo bán lỗ
+  // Below-cost loss warning check
   const hasLossWarning = previewVehicles.some(
     (v) => v.sellingPrice < v.costPrice,
   )
@@ -306,7 +306,7 @@ function NewBatchPage() {
           </Alert>
         )}
 
-        {/* CẢNH BÁO BÁN LỖ TỔNG THỂ */}
+        {/* GLOBAL BELOW-COST WARNING ALERT */}
         {hasLossWarning && (
           <Alert
             variant="destructive"
@@ -322,9 +322,9 @@ function NewBatchPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Cột 1 & 2: Thông tin lô, Danh sách xe, Chi phí lô */}
+          {/* Columns 1 & 2: Batch Info, Vehicles List, Batch Expenses */}
           <div className="lg:col-span-2 space-y-6">
-            {/* 1. Thông tin chung */}
+            {/* 1. General batch information */}
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
@@ -437,7 +437,7 @@ function NewBatchPage() {
               </CardContent>
             </Card>
 
-            {/* 2. Chi phí của lô */}
+            {/* 2. Batch expenses */}
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
                 <div>
@@ -547,7 +547,7 @@ function NewBatchPage() {
               </CardContent>
             </Card>
 
-            {/* 3. Danh sách xe trong lô */}
+            {/* 3. Batch vehicles list */}
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
                 <div>
@@ -699,9 +699,9 @@ function NewBatchPage() {
             </Card>
           </div>
 
-          {/* Cột 3: Cài đặt giá bán theo lô & Live Preview giá vốn */}
+          {/* Column 3: Batch pricing configuration & Cost Price Live Preview */}
           <div className="space-y-6">
-            {/* Cài đặt giá bán lô */}
+            {/* Batch pricing configuration */}
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
@@ -775,7 +775,7 @@ function NewBatchPage() {
               </CardContent>
             </Card>
 
-            {/* Bảng xem trước Giá vốn & Cảnh báo bán lỗ */}
+            {/* Cost price & Below-cost warning live preview table */}
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">

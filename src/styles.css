@@ -369,3 +369,19 @@ a {
     color: var(--foreground);
   }
 }
+
+@keyframes top-loading-bar {
+  0% {
+    transform: translateX(-100%);
+  }
+  50% {
+    transform: translateX(10%);
+  }
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+.animate-top-loading-bar {
+  animation: top-loading-bar 1.2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+}

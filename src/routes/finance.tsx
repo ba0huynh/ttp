@@ -106,7 +106,7 @@ function FinancePage() {
     batches,
   } = Route.useLoaderData()
 
-  // Modal Phiếu thu
+  // Receipt Voucher modal
   const [receiptOpen, setReceiptOpen] = React.useState(false)
   const [receiptDate, setReceiptDate] = React.useState(todayIso())
   const [receiptCustomerId, setReceiptCustomerId] = React.useState<number>(
@@ -125,7 +125,7 @@ function FinancePage() {
   const [receiptNote, setReceiptNote] = React.useState('')
   const [savingReceipt, setSavingReceipt] = React.useState(false)
 
-  // Modal Phiếu chi
+  // Payment Voucher modal
   const [paymentOpen, setPaymentOpen] = React.useState(false)
   const [paymentDate, setPaymentDate] = React.useState(todayIso())
   const [paymentSupplierId, setPaymentSupplierId] = React.useState<number>(
@@ -294,7 +294,7 @@ function FinancePage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab 1: Công nợ phải thu */}
+          {/* Tab 1: Accounts Receivable */}
           <TabsContent value="receivables">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
@@ -350,7 +350,7 @@ function FinancePage() {
             </Card>
           </TabsContent>
 
-          {/* Tab 2: Công nợ phải trả */}
+          {/* Tab 2: Accounts Payable */}
           <TabsContent value="payables">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
@@ -406,7 +406,7 @@ function FinancePage() {
             </Card>
           </TabsContent>
 
-          {/* Tab 3: Phiếu thu */}
+          {/* Tab 3: Receipt Vouchers */}
           <TabsContent value="receipts">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
@@ -465,7 +465,7 @@ function FinancePage() {
             </Card>
           </TabsContent>
 
-          {/* Tab 4: Phiếu chi */}
+          {/* Tab 4: Payment Vouchers */}
           <TabsContent value="payments">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
@@ -524,7 +524,7 @@ function FinancePage() {
           </TabsContent>
         </Tabs>
 
-        {/* Modal Lập Phiếu Thu */}
+        {/* Create Receipt Voucher Modal */}
         <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -703,7 +703,7 @@ function FinancePage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Lập Phiếu Chi */}
+        {/* Create Payment Voucher Modal */}
         <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>

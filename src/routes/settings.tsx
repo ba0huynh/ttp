@@ -74,7 +74,7 @@ function SettingsPage() {
   const { user } = Route.useRouteContext()
   const { company, usersList } = Route.useLoaderData()
 
-  // Form Thông tin công ty
+  // Company information form
   const [cName, setCName] = React.useState(
     company?.name ?? 'CÔNG TY TNHH KINH DOANH DỊCH VỤ TRƯỜNG THỊNH PHÁT',
   )
@@ -92,14 +92,14 @@ function SettingsPage() {
   const [savingCompany, setSavingCompany] = React.useState(false)
   const [companySuccess, setCompanySuccess] = React.useState(false)
 
-  // Form Đổi mật khẩu
+  // Change password form
   const [currPass, setCurrPass] = React.useState('')
   const [newPass, setNewPass] = React.useState('')
   const [passError, setPassError] = React.useState<string | null>(null)
   const [passSuccess, setPassSuccess] = React.useState(false)
   const [savingPass, setSavingPass] = React.useState(false)
 
-  // Modal Tạo/Sửa User
+  // Create/Edit User modal
   const [userModalOpen, setUserModalOpen] = React.useState(false)
   const [editId, setEditId] = React.useState<number | undefined>(undefined)
   const [uUsername, setUUsername] = React.useState('')
@@ -222,7 +222,7 @@ function SettingsPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Tab 1: Công ty */}
+          {/* Tab 1: Company Profile */}
           <TabsContent value="company">
             <Card className="border-slate-200 shadow-xs max-w-2xl">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
@@ -333,7 +333,7 @@ function SettingsPage() {
             </Card>
           </TabsContent>
 
-          {/* Tab 2: Quản lý người dùng */}
+          {/* Tab 2: User Management */}
           {user.role === 'admin' && (
             <TabsContent value="users">
               <Card className="border-slate-200 shadow-xs">
@@ -435,7 +435,7 @@ function SettingsPage() {
             </TabsContent>
           )}
 
-          {/* Tab 3: Đổi mật khẩu */}
+          {/* Tab 3: Change Password */}
           <TabsContent value="password">
             <Card className="border-slate-200 shadow-xs max-w-md">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
@@ -499,7 +499,7 @@ function SettingsPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Modal Thêm/Sửa User */}
+        {/* Create/Edit User modal */}
         <Dialog open={userModalOpen} onOpenChange={setUserModalOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>

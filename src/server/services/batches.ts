@@ -129,7 +129,7 @@ const normalizeVehicle = (batchId: number, v: VehicleInput) => ({
   importPrice: v.importPrice,
 })
 
-/** Nhập lô = xe vào kho ngay (không có bước nhập kho riêng) */
+/** Batch import = vehicles immediately in inventory (no detached intake step) */
 export async function createBatch(input: CreateBatchInput, userId?: number) {
   if (input.vehicles.length === 0)
     throw new BusinessError('Lô nhập phải có ít nhất 1 xe')

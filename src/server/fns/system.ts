@@ -7,7 +7,7 @@ import { USER_ROLES, companyInfo, users } from '#/db/schema.ts'
 import { hashPassword } from '#/server/services/auth.ts'
 import { adminMiddleware, authMiddleware } from './middleware.ts'
 
-/* ------------------------------ Thông tin công ty ------------------------------ */
+/* ------------------------------ Company Profile ------------------------------ */
 
 export const getCompanyProfileFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
@@ -40,7 +40,7 @@ export const updateCompanyProfileFn = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
-/* ---------------------------------- Người dùng --------------------------------- */
+/* ----------------------------------- Users ---------------------------------- */
 
 export const listUsersFn = createServerFn({ method: 'GET' })
   .middleware([adminMiddleware])

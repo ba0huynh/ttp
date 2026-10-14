@@ -112,7 +112,7 @@ function DashboardPage() {
           </div>
         </div>
 
-        {/* CẢNH BÁO KHO KÉP ĐẶC THÙ (Nghiệp vụ cốt lõi) */}
+        {/* DUAL INDEPENDENT INVENTORY ALERTS (Core Business Rule) */}
         {(inv.invoicedNotDelivered > 0 || inv.deliveredNotInvoiced > 0) && (
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             {inv.invoicedNotDelivered > 0 && (
@@ -170,9 +170,9 @@ function DashboardPage() {
           </div>
         )}
 
-        {/* KPI Cards: Kho kép & Tài chính */}
+        {/* KPI Cards: Dual Inventory & Finance */}
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          {/* 1. Tồn thực tế */}
+          {/* 1. Physical Stock */}
           <Card className="border-slate-200 shadow-xs hover:border-slate-300 transition-all">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold text-slate-500 uppercase">
@@ -195,7 +195,7 @@ function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* 2. Tồn theo hóa đơn */}
+          {/* 2. Invoiced Stock */}
           <Card className="border-slate-200 shadow-xs hover:border-slate-300 transition-all">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold text-slate-500 uppercase">
@@ -218,7 +218,7 @@ function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* 3. Dư nợ vay ngân hàng */}
+          {/* 3. Bank Loan Debt */}
           <Card className="border-slate-200 shadow-xs hover:border-slate-300 transition-all">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold text-slate-500 uppercase">
@@ -242,7 +242,7 @@ function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* 4. Tổng doanh thu bán */}
+          {/* 4. Total Wholesale Revenue */}
           <Card className="border-slate-200 shadow-xs hover:border-slate-300 transition-all">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-xs font-semibold text-slate-500 uppercase">
@@ -263,9 +263,9 @@ function DashboardPage() {
           </Card>
         </div>
 
-        {/* Phân hệ 2 cột: Danh sách xe mới nhập & Phiếu bán sỉ gần nhất */}
+        {/* 2-Column Section: Newly Imported Vehicles & Recent Wholesale Orders */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {/* Cột trái: Xe trong kho và trạng thái 2 kho */}
+          {/* Left Column: Vehicles in warehouse & Dual Inventory status */}
           <Card className="border-slate-200 shadow-xs">
             <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
               <div>
@@ -330,7 +330,7 @@ function DashboardPage() {
             </CardContent>
           </Card>
 
-          {/* Cột phải: Phiếu bán xe gần đây */}
+          {/* Right Column: Recent Wholesale Orders */}
           <Card className="border-slate-200 shadow-xs">
             <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
               <div>

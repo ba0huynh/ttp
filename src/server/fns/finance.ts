@@ -40,7 +40,7 @@ import {
 import { authMiddleware } from './middleware.ts'
 
 /* -------------------------------------------------------------------------- */
-/* 04. Khế ước vay ngân hàng                                                  */
+/* 04. Bank Loans                                                             */
 /* -------------------------------------------------------------------------- */
 
 export const listLoansFn = createServerFn({ method: 'GET' })
@@ -135,7 +135,7 @@ export const recordLoanPaymentFn = createServerFn({ method: 'POST' })
   })
 
 /* -------------------------------------------------------------------------- */
-/* 08. Công nợ phải thu (AR) & Phiếu thu                                      */
+/* 08. Accounts Receivable (AR) & Receipts                                    */
 /* -------------------------------------------------------------------------- */
 
 export const getReceivablesFn = createServerFn({ method: 'GET' })
@@ -198,7 +198,7 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
   })
 
 /* -------------------------------------------------------------------------- */
-/* 09. Công nợ phải trả (AP) & Phiếu chi                                      */
+/* 09. Accounts Payable (AP) & Payments                                       */
 /* -------------------------------------------------------------------------- */
 
 export const getPayablesFn = createServerFn({ method: 'GET' })
@@ -263,7 +263,7 @@ export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
   })
 
 /* -------------------------------------------------------------------------- */
-/* 10. Sao kê ngân hàng & Đối chiếu                                          */
+/* 10. Bank Statements & Reconciliation                                       */
 /* -------------------------------------------------------------------------- */
 
 export const listBankStatementsFn = createServerFn({ method: 'GET' })

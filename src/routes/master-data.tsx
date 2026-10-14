@@ -208,7 +208,7 @@ function MasterDataPage() {
             </TabsTrigger>
           </TabsList>
 
-          {/* Dòng xe */}
+          {/* Motorcycle models */}
           <TabsContent value="models">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -276,7 +276,7 @@ function MasterDataPage() {
             </Card>
           </TabsContent>
 
-          {/* Nhà cung cấp */}
+          {/* Suppliers */}
           <TabsContent value="suppliers">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -340,7 +340,7 @@ function MasterDataPage() {
             </Card>
           </TabsContent>
 
-          {/* Ngân hàng */}
+          {/* Banks */}
           <TabsContent value="banks">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -401,7 +401,7 @@ function MasterDataPage() {
             </Card>
           </TabsContent>
 
-          {/* Màu xe */}
+          {/* Colors */}
           <TabsContent value="colors">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -470,7 +470,7 @@ function MasterDataPage() {
           </TabsContent>
         </Tabs>
 
-        {/* Modal Thêm Dòng xe */}
+        {/* Add Motorcycle Model Modal */}
         <Dialog open={modelOpen} onOpenChange={setModelOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -545,7 +545,7 @@ function MasterDataPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Thêm Nhà cung cấp */}
+        {/* Add Supplier Modal */}
         <Dialog open={supplierOpen} onOpenChange={setSupplierOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -609,7 +609,7 @@ function MasterDataPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Thêm Ngân Hàng */}
+        {/* Add Bank Modal */}
         <Dialog open={bankOpen} onOpenChange={setBankOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -671,7 +671,7 @@ function MasterDataPage() {
           </DialogContent>
         </Dialog>
 
-        {/* Modal Thêm Màu Sắc */}
+        {/* Add Color Modal */}
         <Dialog open={colorOpen} onOpenChange={setColorOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>

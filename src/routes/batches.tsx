@@ -193,7 +193,7 @@ function BatchesPage() {
           </CardContent>
         </Card>
 
-        {/* Modal xem chi tiết lô */}
+        {/* Batch detail modal */}
         <Dialog
           open={selectedBatchId !== null}
           onOpenChange={(open) => !open && setSelectedBatchId(null)}
@@ -218,7 +218,7 @@ function BatchesPage() {
               </div>
             ) : detailData ? (
               <div className="space-y-4 pt-2">
-                {/* Chi phí lô */}
+                {/* Batch expenses */}
                 <div className="bg-slate-50 p-3 rounded-lg border border-slate-200 space-y-2">
                   <div className="text-xs font-bold text-slate-800">
                     Khoản Chi Phí Lô ({detailData.expenses.length} khoản chi):
@@ -245,7 +245,7 @@ function BatchesPage() {
                   </div>
                 </div>
 
-                {/* Danh sách xe trong lô */}
+                {/* Batch vehicles list */}
                 <div>
                   <div className="text-xs font-bold text-slate-800 mb-2">
                     Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (

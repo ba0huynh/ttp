@@ -78,7 +78,7 @@ function NewSalesOrderPage() {
   const [branchId, setBranchId] = React.useState<number | null>(null)
   const [note, setNote] = React.useState('')
 
-  // Danh sách xe đã chọn để bán: vehicleId -> custom unitPrice
+  // Selected vehicles to sell: vehicleId -> custom unitPrice
   const [selectedItems, setSelectedItems] = React.useState<
     {
       vehicleId: number
@@ -90,14 +90,14 @@ function NewSalesOrderPage() {
     }[]
   >([])
 
-  // Modal chọn xe từ kho
+  // Modal to select vehicles from inventory
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [tempChecked, setTempChecked] = React.useState<Set<number>>(new Set())
 
   const [submitting, setSubmitting] = React.useState(false)
   const [error, setError] = React.useState<string | null>(null)
 
-  // Danh sách chi nhánh của khách hàng đang chọn
+  // Branches list of currently selected customer
   const currentCustomer = customers.find((c) => c.id === customerId)
   const branches = currentCustomer?.branches ?? []
 
@@ -217,7 +217,7 @@ function NewSalesOrderPage() {
         )}
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Cột 1 & 2: Danh sách xe chọn bán */}
+          {/* Columns 1 & 2: Selected vehicles list */}
           <div className="lg:col-span-2 space-y-4">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -325,7 +325,7 @@ function NewSalesOrderPage() {
             </Card>
           </div>
 
-          {/* Cột 3: Khách hàng & Điểm bán nhận xe */}
+          {/* Column 3: Customer & Receiving Branch */}
           <div className="space-y-4">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
@@ -424,7 +424,7 @@ function NewSalesOrderPage() {
           </div>
         </div>
 
-        {/* Modal Chọn Xe từ Kho */}
+        {/* Modal: Select vehicles from inventory */}
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
           <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
             <DialogHeader>

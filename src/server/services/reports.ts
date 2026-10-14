@@ -21,7 +21,7 @@ import {
 import { num } from './common.ts'
 
 /* -------------------------------------------------------------------------- */
-/* 08. Công nợ phải thu — ghi theo PHÁP NHÂN điểm bán nhận xe                 */
+/* 08. Accounts Receivable (AR) — billed to the legal entity of branch        */
 /* -------------------------------------------------------------------------- */
 
 export async function getReceivablesSummary() {
@@ -110,7 +110,7 @@ export async function getCustomerStatement(customerId: number) {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 09. Công nợ phải trả                                                       */
+/* 09. Accounts Payable (AP)                                                  */
 /* -------------------------------------------------------------------------- */
 
 export async function getPayablesSummary() {
@@ -152,7 +152,7 @@ export async function getPayablesSummary() {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 06. Kho (2 kho độc lập)                                                    */
+/* 06. Inventory (Dual Independent Inventories)                               */
 /* -------------------------------------------------------------------------- */
 
 export async function getInventorySummary() {
@@ -258,7 +258,7 @@ export async function listVehicles(filter: {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 11. Báo cáo                                                                */
+/* 11. Reports & Analytics                                                    */
 /* -------------------------------------------------------------------------- */
 
 export async function getReports(from: string, to: string) {
@@ -268,7 +268,7 @@ export async function getReports(from: string, to: string) {
     lte(salesOrders.orderDate, to),
   )
 
-  /** Doanh thu quy về KHÁCH HÀNG MẸ */
+  /** Sales revenue attributed to the PARENT CUSTOMER */
   const revenueByCustomer = await db
     .select({
       customerId: customers.id,

@@ -15,7 +15,7 @@ import { calculateLoanInterest, todayIso } from '../../lib/business.ts'
 import { BusinessError, nextDocNumber, num } from './common.ts'
 
 /* -------------------------------------------------------------------------- */
-/* 04. Khoản vay                                                              */
+/* 04. Bank Loans                                                             */
 /* -------------------------------------------------------------------------- */
 
 export async function getLoanStatus(loanId: number, asOf = todayIso()) {
@@ -89,7 +89,7 @@ export async function recordLoanRepayment(input: {
 }
 
 /* -------------------------------------------------------------------------- */
-/* 08. Phiếu thu                                                              */
+/* 08. Receipt Vouchers                                                       */
 /* -------------------------------------------------------------------------- */
 
 export async function createReceiptVoucher(
@@ -140,7 +140,7 @@ export async function createReceiptVoucher(
 }
 
 /* -------------------------------------------------------------------------- */
-/* 09. Phiếu chi                                                              */
+/* 09. Payment Vouchers                                                       */
 /* -------------------------------------------------------------------------- */
 
 export async function createPaymentVoucher(
@@ -188,7 +188,7 @@ export async function createPaymentVoucher(
 }
 
 /* -------------------------------------------------------------------------- */
-/* 10. Sao kê ngân hàng                                                       */
+/* 10. Bank Statements                                                        */
 /* -------------------------------------------------------------------------- */
 
 export interface StatementLineInput {
@@ -240,7 +240,7 @@ export async function importBankStatement(
   })
 }
 
-/** Gợi ý chứng từ khớp: cùng số tiền, lệch ≤ 5 ngày, chưa được khớp */
+/** Candidate suggestions: matching amount, date diff <= 5 days, currently unmatched */
 export async function suggestMatches(lineId: number) {
   const [line] = await db
     .select()
@@ -349,7 +349,7 @@ export async function setStatementLineStatus(
     .where(eq(bankStatementLines.id, lineId))
 }
 
-/** Tự động khớp các dòng có đúng 1 gợi ý duy nhất */
+/** Auto-match statement lines that have exactly 1 unambiguous candidate */
 export async function autoMatchStatement(statementId: number) {
   const lines = await db
     .select({ id: bankStatementLines.id })

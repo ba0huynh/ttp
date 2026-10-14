@@ -127,7 +127,7 @@ async function loadOrderVehicleIds(orderId: number) {
   return { order, items }
 }
 
-/** GIAO XE THỰC TẾ — chỉ đổi cờ is_delivered (KHÔNG đụng is_invoiced) */
+/** PHYSICAL DELIVERY — only modifies is_delivered flag (DOES NOT touch is_invoiced) */
 export async function recordDelivery(
   input: {
     salesOrderId: number
@@ -200,7 +200,7 @@ export async function recordDelivery(
   }
 }
 
-/** XUẤT HÓA ĐƠN NỘI BỘ — chỉ đổi cờ is_invoiced (KHÔNG đụng is_delivered) */
+/** INTERNAL INVOICING — only modifies is_invoiced flag (DOES NOT touch is_delivered) */
 export async function recordInvoice(
   input: {
     salesOrderId: number
@@ -280,7 +280,7 @@ export async function recordInvoice(
   }
 }
 
-/** Hủy phiếu: chỉ khi chưa giao & chưa xuất hóa đơn xe nào. Giải phóng xe về kho. */
+/** Cancels order: only permitted when no vehicles have been delivered or invoiced. Releases vehicles back to inventory. */
 export async function cancelSalesOrder(orderId: number) {
   await db.transaction(async (tx) => {
     const [d] = await tx

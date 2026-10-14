@@ -35,7 +35,7 @@ const timestamps = {
 }
 
 /* ========================================================================== */
-/* 01. TÀI KHOẢN & HỆ THỐNG                                                   */
+/* 01. USERS & SYSTEM AUTH                                                    */
 /* ========================================================================== */
 
 export const USER_ROLES = ['admin', 'accountant', 'sales', 'warehouse'] as const
@@ -57,7 +57,7 @@ export const users = mysqlTable('users', {
 export const sessions = mysqlTable(
   'sessions',
   {
-    /** sha256(token) — token gốc chỉ nằm trong cookie */
+    /** sha256(token) — raw token stored in HTTP-only cookie */
     id: varchar('id', { length: 64 }).primaryKey(),
     userId: int('user_id')
       .notNull()
@@ -92,7 +92,7 @@ export const companyInfo = mysqlTable('company_info', {
 })
 
 /* ========================================================================== */
-/* 02. DANH MỤC                                                               */
+/* 02. MASTER DATA                                                            */
 /* ========================================================================== */
 
 export const banks = mysqlTable('banks', {
@@ -148,10 +148,10 @@ export const colors = mysqlTable('colors', {
 })
 
 /* ========================================================================== */
-/* 03. KHÁCH HÀNG & ĐIỂM BÁN                                                  */
+/* 03. CUSTOMERS & POS BRANCHES                                               */
 /* ========================================================================== */
 
-/** Khách hàng mẹ — doanh thu quy về đây */
+/** Parent customer — sales revenue is attributed here */
 export const customers = mysqlTable('customers', {
   id: int('id').primaryKey().autoincrement(),
   code: varchar('code', { length: 30 }).notNull().unique(),
@@ -165,7 +165,7 @@ export const customers = mysqlTable('customers', {
   ...timestamps,
 })
 
-/** Điểm bán trực thuộc — pháp nhân nhận xe, chịu công nợ & hóa đơn */
+/** POS Branch — receiving entity, carries Accounts Receivable & commercial invoice */
 export const posBranches = mysqlTable(
   'pos_branches',
   {
@@ -186,7 +186,7 @@ export const posBranches = mysqlTable(
 )
 
 /* ========================================================================== */
-/* 04. KHOẢN VAY NGÂN HÀNG                                                    */
+/* 04. BANK LOANS & CREDIT CONTRACTS                                         */
 /* ========================================================================== */
 
 export const LOAN_STATUSES = ['active', 'settled'] as const
@@ -198,7 +198,7 @@ export const loanContracts = mysqlTable('loan_contracts', {
     .notNull()
     .references(() => banks.id),
   principalAmount: money('principal_amount').notNull(),
-  /** Lãi suất %/năm, tính dư nợ giảm dần, 365 ngày */
+  /** Annual interest rate %, declining balance basis, 365 days */
   interestRate: decimal('interest_rate', {
     precision: 6,
     scale: 3,
@@ -231,7 +231,7 @@ export const loanRepayments = mysqlTable(
 )
 
 /* ========================================================================== */
-/* 05. NHẬP KHO & LÔ HÀNG                                                     */
+/* 05. INVENTORY & IMPORT BATCHES                                             */
 /* ========================================================================== */
 
 export const PRICING_BASES = ['import_price', 'cost_price'] as const
@@ -247,13 +247,13 @@ export const importBatches = mysqlTable(
     supplierId: int('supplier_id')
       .notNull()
       .references(() => suppliers.id),
-    /** Gắn khế ước vay tài trợ cho lô (có thể null nếu mua bằng vốn tự có) */
+    /** Linked loan credit contract financing batch (null if self-funded) */
     loanContractId: int('loan_contract_id').references(() => loanContracts.id, {
       onDelete: 'set null',
     }),
     importDate: date('import_date', { mode: 'string' }).notNull(),
     customsDeclarationNo: varchar('customs_declaration_no', { length: 50 }),
-    /** Cài giá bán theo LÔ */
+    /** Batch-wide wholesale pricing configuration */
     pricingBase: mysqlEnum('pricing_base', PRICING_BASES)
       .default('cost_price')
       .notNull(),
@@ -309,18 +309,18 @@ export const vehicles = mysqlTable(
     colorId: int('color_id')
       .notNull()
       .references(() => colors.id),
-    /** Số khung — duy nhất toàn hệ thống */
+    /** Chassis number (VIN) — unique across the system */
     chassisNumber: varchar('chassis_number', { length: 50 }).notNull().unique(),
     engineNumber: varchar('engine_number', { length: 50 }).notNull().unique(),
     importPrice: money('import_price').notNull(),
-    /** Cached — tính lại bởi recalculateBatch() */
+    /** Cached — recalculated by recalculateBatch() */
     allocatedExpense: money('allocated_expense').default(0).notNull(),
     costPrice: money('cost_price').default(0).notNull(),
     sellingPrice: money('selling_price').default(0).notNull(),
-    /** KHO THỰC TẾ: true khi đã giao xe vật lý */
+    /** PHYSICAL INVENTORY: true when physical vehicle has been handed over */
     isDelivered: boolean('is_delivered').default(false).notNull(),
     deliveredAt: date('delivered_at', { mode: 'string' }),
-    /** KHO HÓA ĐƠN: true khi đã xuất hóa đơn nội bộ */
+    /** INVOICED INVENTORY: true when commercial invoice has been issued */
     isInvoiced: boolean('is_invoiced').default(false).notNull(),
     invoicedAt: date('invoiced_at', { mode: 'string' }),
     ...timestamps,
@@ -334,7 +334,7 @@ export const vehicles = mysqlTable(
 )
 
 /* ========================================================================== */
-/* 07. BÁN HÀNG & XUẤT XE                                                     */
+/* 07. SALES & DISPATCHES                                                    */
 /* ========================================================================== */
 
 export const SALES_ORDER_STATUSES = ['confirmed', 'cancelled'] as const
@@ -345,11 +345,11 @@ export const salesOrders = mysqlTable(
     id: int('id').primaryKey().autoincrement(),
     orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
     orderDate: date('order_date', { mode: 'string' }).notNull(),
-    /** Khách hàng mẹ — doanh thu quy về đây */
+    /** Parent customer — sales revenue is attributed here */
     customerId: int('customer_id')
       .notNull()
       .references(() => customers.id),
-    /** Điểm bán nhận xe — công nợ & hóa đơn ghi theo pháp nhân này (null = chính KH mẹ) */
+    /** Receiving branch — AR & invoice billed to this entity (null = parent customer) */
     branchId: int('branch_id').references(() => posBranches.id),
     status: mysqlEnum('status', SALES_ORDER_STATUSES)
       .default('confirmed')
@@ -376,12 +376,12 @@ export const salesOrderItems = mysqlTable(
       .notNull()
       .references(() => vehicles.id),
     unitPrice: money('unit_price').notNull(),
-    /** Snapshot giá vốn lúc bán để báo cáo lợi nhuận ổn định */
+    /** Cost price snapshot at sale time for consistent profit reporting */
     costPrice: money('cost_price').notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),
   },
   (t) => [
-    /** CHẶN BÁN TRÙNG ở tầng DB: 1 xe chỉ nằm trong 1 phiếu bán */
+    /** BLOCK DUPLICATE SALES at DB level: 1 vehicle can only belong to 1 sales order */
     uniqueIndex('sales_order_items_vehicle_uq').on(t.vehicleId),
     index('sales_order_items_order_idx').on(t.salesOrderId),
   ],
@@ -422,7 +422,7 @@ export const invoices = mysqlTable('invoices', {
     .notNull()
     .references(() => salesOrders.id, { onDelete: 'cascade' }),
   invoiceDate: date('invoice_date', { mode: 'string' }).notNull(),
-  /** Pháp nhân trên hóa đơn: điểm bán (hoặc KH mẹ nếu null) */
+  /** Legal entity on invoice: branch (or parent customer if null) */
   branchId: int('branch_id').references(() => posBranches.id),
   totalAmount: money('total_amount').notNull(),
   note: text('note'),
@@ -446,7 +446,7 @@ export const invoiceItems = mysqlTable(
 )
 
 /* ========================================================================== */
-/* 08–09. CÔNG NỢ: PHIẾU THU / PHIẾU CHI                                      */
+/* 08–09. DEBT & CASHFLOW: RECEIPT / PAYMENT VOUCHERS                         */
 /* ========================================================================== */
 
 export const PAYMENT_METHODS = ['cash', 'bank_transfer'] as const
@@ -460,7 +460,7 @@ export const receiptVouchers = mysqlTable(
     customerId: int('customer_id')
       .notNull()
       .references(() => customers.id),
-    /** Pháp nhân trả tiền (công nợ ghi theo điểm bán) */
+    /** Paying entity (debt tracked per branch) */
     branchId: int('branch_id').references(() => posBranches.id),
     salesOrderId: int('sales_order_id').references(() => salesOrders.id, {
       onDelete: 'set null',
@@ -513,7 +513,7 @@ export const paymentVouchers = mysqlTable(
 )
 
 /* ========================================================================== */
-/* 10. SAO KÊ NGÂN HÀNG                                                       */
+/* 10. BANK STATEMENTS & RECONCILIATION                                       */
 /* ========================================================================== */
 
 export const STATEMENT_LINE_STATUSES = [
@@ -547,9 +547,9 @@ export const bankStatementLines = mysqlTable(
     transactionDate: date('transaction_date', { mode: 'string' }).notNull(),
     reference: varchar('reference', { length: 100 }),
     description: varchar('description', { length: 500 }),
-    /** Tiền ra (ghi nợ) */
+    /** Outgoing money (debit) */
     debit: money('debit').default(0).notNull(),
-    /** Tiền vào (ghi có) */
+    /** Incoming money (credit) */
     credit: money('credit').default(0).notNull(),
     balance: money('balance'),
     status: mysqlEnum('status', STATEMENT_LINE_STATUSES)
