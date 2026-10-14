@@ -20,7 +20,7 @@ import {
   resetPasswordWithToken,
   verifyPassword,
 } from '#/server/services/auth.ts'
-import { authMiddleware } from './middleware.ts'
+import { authMiddleware, loggingMiddleware } from './middleware.ts'
 
 const cookieOpts = (expires: Date) => ({
   httpOnly: true,
@@ -31,15 +31,16 @@ const cookieOpts = (expires: Date) => ({
 })
 
 /** Returns current user or null (used in beforeLoad to guard routes) */
-export const getCurrentUserFn = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const getCurrentUserFn = createServerFn({ method: 'GET' })
+  .middleware([loggingMiddleware])
+  .handler(async () => {
     const token = getCookie(SESSION_COOKIE)
     if (!token) return null
     return getUserBySessionToken(token)
-  },
-)
+  })
 
 export const loginFn = createServerFn({ method: 'POST' })
+  .middleware([loggingMiddleware])
   .validator(
     z.object({
       login: z.string().trim().min(1, 'Nhập tên đăng nhập hoặc email'),
@@ -57,18 +58,21 @@ export const loginFn = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
-export const logoutFn = createServerFn({ method: 'POST' }).handler(async () => {
-  const token = getCookie(SESSION_COOKIE)
-  if (token) await deleteSession(token)
-  deleteCookie(SESSION_COOKIE, { path: '/' })
-  return { ok: true }
-})
+export const logoutFn = createServerFn({ method: 'POST' })
+  .middleware([loggingMiddleware])
+  .handler(async () => {
+    const token = getCookie(SESSION_COOKIE)
+    if (token) await deleteSession(token)
+    deleteCookie(SESSION_COOKIE, { path: '/' })
+    return { ok: true }
+  })
 
 /**
  * Đăng ký: người đầu tiên trở thành admin & được kích hoạt ngay.
  * Các tài khoản sau ở trạng thái CHỜ DUYỆT (is_active = false) cho tới khi admin kích hoạt.
  */
 export const registerFn = createServerFn({ method: 'POST' })
+  .middleware([loggingMiddleware])
   .validator(
     z.object({
       username: z
@@ -108,6 +112,7 @@ export const registerFn = createServerFn({ method: 'POST' })
  *  - Ở môi trường dev, link được trả về để hiển thị trực tiếp.
  */
 export const forgotPasswordFn = createServerFn({ method: 'POST' })
+  .middleware([loggingMiddleware])
   .validator(z.object({ email: z.email('Email không hợp lệ') }))
   .handler(async ({ data }) => {
     const token = await createPasswordResetToken(data.email)
@@ -120,6 +125,7 @@ export const forgotPasswordFn = createServerFn({ method: 'POST' })
   })
 
 export const resetPasswordFn = createServerFn({ method: 'POST' })
+  .middleware([loggingMiddleware])
   .validator(
     z.object({
       token: z.string().min(10),

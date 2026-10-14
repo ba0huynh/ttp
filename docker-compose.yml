@@ -1,0 +1,13 @@
+# Production run of the Trường Thịnh Phát motorcycle manager: `npm run docker:prod`.
+services:
+  web:
+    build: .
+    image: moto-ttp:latest
+    container_name: moto-ttp
+    restart: unless-stopped
+    # Database settings (DB_* / DATABASE_URL, see .env.example); read at runtime,
+    # never baked into the image.
+    env_file: .env
+    ports:
+      # Host port (WEB_PORT, 8347 by default) -> the server's port in the container.
+      - '${WEB_PORT:-8347}:3000'

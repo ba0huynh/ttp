@@ -1,0 +1,14 @@
+node_modules
+.output
+.nitro
+.tanstack
+.vinxi
+dist
+dist-ssr
+src/paraglide
+.git
+.vscode
+.env
+*.local
+Dockerfile
+.dockerignore

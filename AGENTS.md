@@ -185,8 +185,8 @@ The system comprises **11 Core Business Modules**:
 | **Run Migrations via Script**   | `npx tsx src/db/migrate.ts`                                   | Executes migration SQL statements safely via direct MySQL connection |
 | **Seed Mock Data**              | `npm run seed` (or `npm run db:seed`)                         | Populates database with full realistic sample dataset                |
 | **Open Drizzle Studio**         | `npm run db:studio`                                           | Launches web GUI for database tables inspection                      |
-| **Build Production**            | `npm run build`                                               | Builds Nitro server bundle into `.output/`                           |
-| **Start Production Server**     | `npm run start`                                               | Runs `.output/server/index.mjs` with Node.js                         |
+| **Build Production**            | `npm run build`                                               | Builds Nitro server bundle into `dist/`                              |
+| **Start Production Server**     | `npm run start`                                               | Runs `dist/server/index.mjs` with Node.js                         |
 | **Build & Start Production**    | `npm run build:start`                                         | Runs `npm run build && npm run start` sequentially                   |
 
 ---
