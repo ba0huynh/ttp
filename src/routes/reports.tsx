@@ -1,3 +1,4 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import * as React from 'react'
 
@@ -19,9 +20,9 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { EXPENSE_TYPE_LABELS, formatVnd, todayIso } from '#/lib/business.ts'
+import { EXPENSE_TYPE_LABELS, formatVnd } from '#/lib/business.ts'
+import { defaultReportRange, reportsQuery } from '#/lib/queries.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { getReportsFn } from '#/server/fns/reports.ts'
 
 export const Route = createFileRoute('/reports')({
   beforeLoad: async () => {
@@ -29,37 +30,29 @@ export const Route = createFileRoute('/reports')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const from = '2026-01-01'
-    const to = todayIso()
-    const report = await getReportsFn({ data: { from, to } })
-    return { report, from, to }
+  loader: async ({ context: { queryClient } }) => {
+    const { from, to } = defaultReportRange()
+    await queryClient.query(reportsQuery(from, to))
   },
   component: ReportsPage,
 })
 
 function ReportsPage() {
   const { user } = Route.useRouteContext()
-  const {
-    report: initialReport,
-    from: initFrom,
-    to: initTo,
-  } = Route.useLoaderData()
+  const [range] = React.useState(defaultReportRange)
+  const [from, setFrom] = React.useState(range.from)
+  const [to, setTo] = React.useState(range.to)
+  // Khoảng ngày đã áp dụng; đổi trong transition để giữ nguyên báo cáo cũ
+  // trên màn hình trong lúc tải báo cáo mới.
+  const [applied, setApplied] = React.useState(range)
+  const [loading, startTransition] = React.useTransition()
+  const { data: report } = useSuspenseQuery(
+    reportsQuery(applied.from, applied.to),
+  )
 
-  const [from, setFrom] = React.useState(initFrom)
-  const [to, setTo] = React.useState(initTo)
-  const [report, setReport] = React.useState(initialReport)
-  const [loading, setLoading] = React.useState(false)
-
-  const handleFilter = async (e: React.FormEvent) => {
+  const handleFilter = (e: React.FormEvent) => {
     e.preventDefault()
-    setLoading(true)
-    try {
-      const res = await getReportsFn({ data: { from, to } })
-      setReport(res)
-    } finally {
-      setLoading(false)
-    }
+    startTransition(() => setApplied({ from, to }))
   }
 
   const totalRevenue = report.revenueByCustomer.reduce(

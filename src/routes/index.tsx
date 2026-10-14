@@ -1,3 +1,4 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import {
   AlertCircle,
@@ -33,12 +34,12 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { listLoansFn } from '#/server/fns/finance.ts'
 import {
-  getInventorySummaryFn,
-  listVehiclesFn,
-} from '#/server/fns/inventory.ts'
-import { listSalesOrdersFn } from '#/server/fns/sales.ts'
+  inventorySummaryQuery,
+  loansQuery,
+  salesOrdersQuery,
+  vehiclesQuery,
+} from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async () => {
@@ -48,21 +49,23 @@ export const Route = createFileRoute('/')({
     }
     return { user }
   },
-  loader: async () => {
-    const [inv, orders, loans, recentVehicles] = await Promise.all([
-      getInventorySummaryFn(),
-      listSalesOrdersFn(),
-      listLoansFn(),
-      listVehiclesFn({ data: { stock: 'all' } }),
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.query(inventorySummaryQuery()),
+      queryClient.query(salesOrdersQuery()),
+      queryClient.query(loansQuery()),
+      queryClient.query(vehiclesQuery()),
     ])
-    return { inv, orders, loans, recentVehicles }
   },
   component: DashboardPage,
 })
 
 function DashboardPage() {
   const { user } = Route.useRouteContext()
-  const { inv, orders, loans, recentVehicles } = Route.useLoaderData()
+  const { data: inv } = useSuspenseQuery(inventorySummaryQuery())
+  const { data: orders } = useSuspenseQuery(salesOrdersQuery())
+  const { data: loans } = useSuspenseQuery(loansQuery())
+  const { data: recentVehicles } = useSuspenseQuery(vehiclesQuery())
 
   const totalLoanBalance = loans.reduce((s, l) => s + l.outstanding, 0)
   const totalSalesRevenue = orders.reduce((s, o) => s + o.totalAmount, 0)

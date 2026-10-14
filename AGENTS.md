@@ -286,6 +286,16 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - `index.ts`: Orchestrates the sequential execution pipeline, closes MySQL connection pool gracefully (`db.$client.end()`), and outputs formatted login credentials.
 - **Backwards Compatibility**: `src/db/seed.ts` simply delegates to `src/db/seed/index.ts`, ensuring `npm run seed` (`tsx src/db/seed.ts`) continues to work without requiring script configuration changes.
 
+### Lesson 14: Reads/Writes via TanStack Query (`src/lib/queries.ts`)
+
+- **Before**: routes used `loader` + `Route.useLoaderData()`, and mutations ended with `window.location.reload()` (lost UI state, full page reload).
+- **Convention now**:
+  - Every read is declared once as `queryOptions` in `src/lib/queries.ts` (keys per entity: `['sales']`, `['sales', id]`, `['inventory', ...]`).
+  - Route: `loader: ({ context: { queryClient } }) => queryClient.query(xQuery())`; component: `useSuspenseQuery(xQuery())`. Per-row detail uses `useQuery({ ...xDetailQuery(id), enabled: id !== null })`.
+  - Writes: `useMutation({ mutationFn: xFn, onSuccess: () => queryClient.invalidateQueries() })`; use `mutation.isPending` instead of `saving` state. **Never** use `window.location.reload()`.
+- **Why invalidate everything**: one business action (delivery, invoice, receipt/payment voucher, statement match) changes physical stock, invoiced stock, AR/AP and the dashboard at once. Use narrow invalidation only for independent data (company profile, users in `/settings`).
+- **Gotchas**: `queryClient.query` returns cached data while it is fresher than `staleTime`, so create pages (`sales.new`, `batches.new`) must `await queryClient.invalidateQueries()` before `navigate`. `QueryClient` uses `staleTime: 30_000` (master data 5 min). `/reports` changes date range inside `useTransition` so the old report stays visible while loading.
+
 ---
 
-_(Next Agent: Append Lesson 14, 15,... above this line upon completing tasks)_
+_(Next Agent: Append Lesson 15, 16,... above this line upon completing tasks)_

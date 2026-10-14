@@ -1,3 +1,9 @@
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   Calculator,
@@ -44,13 +50,11 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
+import { loanDetailQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import {
-  getLoanDetailFn,
-  listLoansFn,
   recordLoanPaymentFn,
   saveLoanContractFn,
 } from '#/server/fns/finance.ts'
-import { getMasterDataFn } from '#/server/fns/master-data.ts'
 
 export const Route = createFileRoute('/loans')({
   beforeLoad: async () => {
@@ -58,19 +62,28 @@ export const Route = createFileRoute('/loans')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const [loans, master] = await Promise.all([
-      listLoansFn(),
-      getMasterDataFn(),
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.query(loansQuery()),
+      queryClient.query(masterDataQuery()),
     ])
-    return { loans, master }
   },
   component: LoansPage,
 })
 
 function LoansPage() {
   const { user } = Route.useRouteContext()
-  const { loans, master } = Route.useLoaderData()
+  const { data: loans } = useSuspenseQuery(loansQuery())
+  const { data: master } = useSuspenseQuery(masterDataQuery())
+  const queryClient = useQueryClient()
+  const saveLoan = useMutation({
+    mutationFn: saveLoanContractFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const repayLoan = useMutation({
+    mutationFn: recordLoanPaymentFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
 
   // New loan contract modal
   const [newLoanOpen, setNewLoanOpen] = React.useState(false)
@@ -83,14 +96,16 @@ function LoansPage() {
   const [disbursementDate, setDisbursementDate] = React.useState(todayIso())
   const [maturityDate, setMaturityDate] = React.useState('2026-12-31')
   const [note, setNote] = React.useState('')
-  const [savingLoan, setSavingLoan] = React.useState(false)
+  const savingLoan = saveLoan.isPending
 
   // Loan details & Repayment modal
   const [selectedLoanId, setSelectedLoanId] = React.useState<number | null>(
     null,
   )
-  const [loanDetail, setLoanDetail] = React.useState<any>(null)
-  const [loadingDetail, setLoadingDetail] = React.useState(false)
+  const { data: loanDetail, isLoading: loadingDetail } = useQuery({
+    ...loanDetailQuery(selectedLoanId ?? 0),
+    enabled: selectedLoanId !== null,
+  })
 
   // Repayment form
   const [repayDate, setRepayDate] = React.useState(todayIso())
@@ -100,25 +115,19 @@ function LoansPage() {
     number | null
   >(master.bankAccounts[0]?.id ?? null)
   const [repayNote, setRepayNote] = React.useState('')
-  const [repaying, setRepaying] = React.useState(false)
+  const repaying = repayLoan.isPending
 
   const viewDetail = async (id: number) => {
     setSelectedLoanId(id)
-    setLoadingDetail(true)
-    try {
-      const res = await getLoanDetailFn({ data: { id } })
-      setLoanDetail(res)
-      setRepayInterest(res.interestDue > 0 ? res.interestDue : 0)
-    } finally {
-      setLoadingDetail(false)
-    }
+    // Dùng chung cache với useQuery ở trên; chỉ để điền sẵn tiền lãi phải trả
+    const res = await queryClient.query(loanDetailQuery(id))
+    setRepayInterest(res.interestDue > 0 ? res.interestDue : 0)
   }
 
   const handleCreateLoan = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingLoan(true)
     try {
-      await saveLoanContractFn({
+      await saveLoan.mutateAsync({
         data: {
           contractNumber,
           bankId,
@@ -130,20 +139,16 @@ function LoansPage() {
         },
       })
       setNewLoanOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi tạo khế ước vay')
-    } finally {
-      setSavingLoan(false)
     }
   }
 
   const handleRepaySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedLoanId) return
-    setRepaying(true)
     try {
-      await recordLoanPaymentFn({
+      await repayLoan.mutateAsync({
         data: {
           loanContractId: selectedLoanId,
           paymentDate: repayDate,
@@ -154,11 +159,8 @@ function LoansPage() {
         },
       })
       await viewDetail(selectedLoanId)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi ghi nhận trả nợ')
-    } finally {
-      setRepaying(false)
     }
   }
 

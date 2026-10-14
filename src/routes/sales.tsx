@@ -1,3 +1,9 @@
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Eye, FileCheck, Plus, Truck, XCircle } from 'lucide-react'
 import * as React from 'react'
@@ -32,10 +38,9 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
+import { salesOrderDetailQuery, salesOrdersQuery } from '#/lib/queries.ts'
 import {
   cancelSalesOrderFn,
-  getSalesOrderDetailFn,
-  listSalesOrdersFn,
   recordDeliveryFn,
   recordInvoiceFn,
 } from '#/server/fns/sales.ts'
@@ -46,22 +51,40 @@ export const Route = createFileRoute('/sales')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const orders = await listSalesOrdersFn()
-    return { orders }
+  loader: async ({ context: { queryClient } }) => {
+    await queryClient.query(salesOrdersQuery())
   },
   component: SalesPage,
 })
 
 function SalesPage() {
   const { user } = Route.useRouteContext()
-  const { orders } = Route.useLoaderData()
+  const { data: orders } = useSuspenseQuery(salesOrdersQuery())
+  const queryClient = useQueryClient()
 
   const [selectedOrderId, setSelectedOrderId] = React.useState<number | null>(
     null,
   )
-  const [orderDetail, setOrderDetail] = React.useState<any>(null)
-  const [loadingDetail, setLoadingDetail] = React.useState(false)
+  const { data: orderDetail, isLoading: loadingDetail } = useQuery({
+    ...salesOrderDetailQuery(selectedOrderId ?? 0),
+    enabled: selectedOrderId !== null,
+  })
+
+  // Giao xe / xuất hóa đơn / hủy phiếu đổi cả kho thực tế, kho hóa đơn,
+  // công nợ và dashboard nên làm mới toàn bộ cache.
+  const onSettled = () => queryClient.invalidateQueries()
+  const deliveryMutation = useMutation({
+    mutationFn: recordDeliveryFn,
+    onSuccess: onSettled,
+  })
+  const invoiceMutation = useMutation({
+    mutationFn: recordInvoiceFn,
+    onSuccess: onSettled,
+  })
+  const cancelMutation = useMutation({
+    mutationFn: cancelSalesOrderFn,
+    onSuccess: onSettled,
+  })
 
   // Dialog action state
   const [deliveryDialogOpen, setDeliveryDialogOpen] = React.useState(false)
@@ -75,18 +98,9 @@ function SalesPage() {
   const [invoiceDate, setInvoiceDate] = React.useState(todayIso())
   const [invoiceNumber, setInvoiceNumber] = React.useState('')
   const [actionError, setActionError] = React.useState<string | null>(null)
-  const [actionLoading, setActionLoading] = React.useState(false)
+  const actionLoading = deliveryMutation.isPending || invoiceMutation.isPending
 
-  const viewDetail = async (id: number) => {
-    setSelectedOrderId(id)
-    setLoadingDetail(true)
-    try {
-      const res = await getSalesOrderDetailFn({ data: { id } })
-      setOrderDetail(res)
-    } finally {
-      setLoadingDetail(false)
-    }
-  }
+  const viewDetail = (id: number) => setSelectedOrderId(id)
 
   const openDeliveryModal = (vList: any[]) => {
     // Only select vehicles that have NOT been delivered yet
@@ -116,10 +130,9 @@ function SalesPage() {
   const handleDeliverySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedOrderId || selectedVehicles.length === 0) return
-    setActionLoading(true)
     setActionError(null)
     try {
-      await recordDeliveryFn({
+      await deliveryMutation.mutateAsync({
         data: {
           salesOrderId: selectedOrderId,
           vehicleIds: selectedVehicles,
@@ -129,22 +142,17 @@ function SalesPage() {
         },
       })
       setDeliveryDialogOpen(false)
-      await viewDetail(selectedOrderId)
-      window.location.reload()
     } catch (err: unknown) {
       setActionError((err as Error).message || 'Lỗi khi ghi nhận giao xe')
-    } finally {
-      setActionLoading(false)
     }
   }
 
   const handleInvoiceSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedOrderId || selectedVehicles.length === 0) return
-    setActionLoading(true)
     setActionError(null)
     try {
-      await recordInvoiceFn({
+      await invoiceMutation.mutateAsync({
         data: {
           salesOrderId: selectedOrderId,
           vehicleIds: selectedVehicles,
@@ -153,12 +161,8 @@ function SalesPage() {
         },
       })
       setInvoiceDialogOpen(false)
-      await viewDetail(selectedOrderId)
-      window.location.reload()
     } catch (err: unknown) {
       setActionError((err as Error).message || 'Lỗi khi lập hóa đơn')
-    } finally {
-      setActionLoading(false)
     }
   }
 
@@ -170,8 +174,8 @@ function SalesPage() {
     )
       return
     try {
-      await cancelSalesOrderFn({ data: { orderId } })
-      window.location.reload()
+      await cancelMutation.mutateAsync({ data: { orderId } })
+      setSelectedOrderId(null)
     } catch (err: unknown) {
       alert((err as Error).message || 'Không thể hủy phiếu bán')
     }

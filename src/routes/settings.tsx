@@ -1,3 +1,8 @@
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Building2, Lock, Plus, Users } from 'lucide-react'
 import * as React from 'react'
@@ -47,12 +52,8 @@ import {
 } from '#/components/ui/tabs.tsx'
 import { ROLE_LABELS } from '#/lib/business.ts'
 import { changePasswordFn, getCurrentUserFn } from '#/server/fns/auth.ts'
-import {
-  getCompanyProfileFn,
-  listUsersFn,
-  saveUserFn,
-  updateCompanyProfileFn,
-} from '#/server/fns/system.ts'
+import { companyProfileQuery, usersQuery } from '#/lib/queries.ts'
+import { saveUserFn, updateCompanyProfileFn } from '#/server/fns/system.ts'
 
 export const Route = createFileRoute('/settings')({
   beforeLoad: async () => {
@@ -60,19 +61,33 @@ export const Route = createFileRoute('/settings')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const [company, usersList] = await Promise.all([
-      getCompanyProfileFn(),
-      listUsersFn().catch(() => []),
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.query(companyProfileQuery()),
+      queryClient.query(usersQuery()),
     ])
-    return { company, usersList }
   },
   component: SettingsPage,
 })
 
 function SettingsPage() {
   const { user } = Route.useRouteContext()
-  const { company, usersList } = Route.useLoaderData()
+  const { data: company } = useSuspenseQuery(companyProfileQuery())
+  const { data: usersList } = useSuspenseQuery(usersQuery())
+  const queryClient = useQueryClient()
+  const updateCompany = useMutation({
+    mutationFn: updateCompanyProfileFn,
+    onSuccess: () =>
+      queryClient.invalidateQueries({
+        queryKey: companyProfileQuery().queryKey,
+      }),
+  })
+  const changePassword = useMutation({ mutationFn: changePasswordFn })
+  const saveUser = useMutation({
+    mutationFn: saveUserFn,
+    onSuccess: () =>
+      queryClient.invalidateQueries({ queryKey: usersQuery().queryKey }),
+  })
 
   // Company information form
   const [cName, setCName] = React.useState(
@@ -89,7 +104,6 @@ function SettingsPage() {
   const [cRep, setCRep] = React.useState(
     company?.representative ?? 'Huỳnh Văn Thịnh',
   )
-  const [savingCompany, setSavingCompany] = React.useState(false)
   const [companySuccess, setCompanySuccess] = React.useState(false)
 
   // Change password form
@@ -97,7 +111,6 @@ function SettingsPage() {
   const [newPass, setNewPass] = React.useState('')
   const [passError, setPassError] = React.useState<string | null>(null)
   const [passSuccess, setPassSuccess] = React.useState(false)
-  const [savingPass, setSavingPass] = React.useState(false)
 
   // Create/Edit User modal
   const [userModalOpen, setUserModalOpen] = React.useState(false)
@@ -109,14 +122,12 @@ function SettingsPage() {
   const [uRole, setURole] = React.useState<any>('sales')
   const [uActive, setUActive] = React.useState(true)
   const [uPassword, setUPassword] = React.useState('')
-  const [savingUser, setSavingUser] = React.useState(false)
 
   const handleUpdateCompany = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingCompany(true)
     setCompanySuccess(false)
     try {
-      await updateCompanyProfileFn({
+      await updateCompany.mutateAsync({
         data: {
           name: cName,
           taxCode: cTax,
@@ -130,18 +141,15 @@ function SettingsPage() {
       setCompanySuccess(true)
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi cập nhật công ty')
-    } finally {
-      setSavingCompany(false)
     }
   }
 
   const handleChangePassword = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingPass(true)
     setPassError(null)
     setPassSuccess(false)
     try {
-      await changePasswordFn({
+      await changePassword.mutateAsync({
         data: {
           currentPassword: currPass,
           newPassword: newPass,
@@ -152,16 +160,13 @@ function SettingsPage() {
       setNewPass('')
     } catch (err: unknown) {
       setPassError((err as Error).message || 'Lỗi khi đổi mật khẩu')
-    } finally {
-      setSavingPass(false)
     }
   }
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingUser(true)
     try {
-      await saveUserFn({
+      await saveUser.mutateAsync({
         data: {
           id: editId,
           username: uUsername,
@@ -174,11 +179,8 @@ function SettingsPage() {
         },
       })
       setUserModalOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi lưu người dùng')
-    } finally {
-      setSavingUser(false)
     }
   }
 
@@ -321,11 +323,11 @@ function SettingsPage() {
                   <CardFooter className="py-3 px-4 border-t border-slate-100 flex justify-end">
                     <Button
                       type="submit"
-                      disabled={savingCompany}
+                      disabled={updateCompany.isPending}
                       size="sm"
                       className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                     >
-                      {savingCompany ? 'Đang lưu...' : 'Lưu Thay Đổi'}
+                      {updateCompany.isPending ? 'Đang lưu...' : 'Lưu Thay Đổi'}
                     </Button>
                   </CardFooter>
                 )}
@@ -487,11 +489,13 @@ function SettingsPage() {
                 <CardFooter className="py-3 px-4 border-t border-slate-100 flex justify-end">
                   <Button
                     type="submit"
-                    disabled={savingPass}
+                    disabled={changePassword.isPending}
                     size="sm"
                     className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                   >
-                    {savingPass ? 'Đang lưu...' : 'Cập Nhật Mật Khẩu'}
+                    {changePassword.isPending
+                      ? 'Đang lưu...'
+                      : 'Cập Nhật Mật Khẩu'}
                   </Button>
                 </CardFooter>
               </form>
@@ -604,11 +608,11 @@ function SettingsPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingUser}
+                  disabled={saveUser.isPending}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {savingUser ? 'Đang lưu...' : 'Lưu Tài Khoản'}
+                  {saveUser.isPending ? 'Đang lưu...' : 'Lưu Tài Khoản'}
                 </Button>
               </DialogFooter>
             </form>

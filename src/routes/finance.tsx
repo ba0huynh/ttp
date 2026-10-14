@@ -1,3 +1,8 @@
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react'
 import * as React from 'react'
@@ -45,17 +50,19 @@ import {
 } from '#/components/ui/tabs.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { listBatchesFn } from '#/server/fns/batches.ts'
-import { listCustomerOptionsFn } from '#/server/fns/customers.ts'
+import {
+  batchesQuery,
+  customerOptionsQuery,
+  masterDataQuery,
+  payablesQuery,
+  paymentsQuery,
+  receiptsQuery,
+  receivablesQuery,
+} from '#/lib/queries.ts'
 import {
   createPaymentVoucherFn,
   createReceiptVoucherFn,
-  getPayablesFn,
-  getReceivablesFn,
-  listPaymentVouchersFn,
-  listReceiptVouchersFn,
 } from '#/server/fns/finance.ts'
-import { getMasterDataFn } from '#/server/fns/master-data.ts'
 
 export const Route = createFileRoute('/finance')({
   beforeLoad: async () => {
@@ -63,48 +70,39 @@ export const Route = createFileRoute('/finance')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const [
-      receivables,
-      payables,
-      receipts,
-      payments,
-      customers,
-      master,
-      batches,
-    ] = await Promise.all([
-      getReceivablesFn(),
-      getPayablesFn(),
-      listReceiptVouchersFn(),
-      listPaymentVouchersFn(),
-      listCustomerOptionsFn(),
-      getMasterDataFn(),
-      listBatchesFn(),
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.query(receivablesQuery()),
+      queryClient.query(payablesQuery()),
+      queryClient.query(receiptsQuery()),
+      queryClient.query(paymentsQuery()),
+      queryClient.query(customerOptionsQuery()),
+      queryClient.query(masterDataQuery()),
+      queryClient.query(batchesQuery()),
     ])
-    return {
-      receivables,
-      payables,
-      receipts,
-      payments,
-      customers,
-      master,
-      batches,
-    }
   },
   component: FinancePage,
 })
 
 function FinancePage() {
   const { user } = Route.useRouteContext()
-  const {
-    receivables,
-    payables,
-    receipts,
-    payments,
-    customers,
-    master,
-    batches,
-  } = Route.useLoaderData()
+  const { data: receivables } = useSuspenseQuery(receivablesQuery())
+  const { data: payables } = useSuspenseQuery(payablesQuery())
+  const { data: receipts } = useSuspenseQuery(receiptsQuery())
+  const { data: payments } = useSuspenseQuery(paymentsQuery())
+  const { data: customers } = useSuspenseQuery(customerOptionsQuery())
+  const { data: master } = useSuspenseQuery(masterDataQuery())
+  const { data: batches } = useSuspenseQuery(batchesQuery())
+  const queryClient = useQueryClient()
+  // Phiếu thu/chi đổi công nợ, sao kê và dashboard nên làm mới toàn bộ cache
+  const createReceipt = useMutation({
+    mutationFn: createReceiptVoucherFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const createPayment = useMutation({
+    mutationFn: createPaymentVoucherFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
 
   // Receipt Voucher modal
   const [receiptOpen, setReceiptOpen] = React.useState(false)
@@ -123,7 +121,6 @@ function FinancePage() {
     master.bankAccounts[0]?.id ?? null,
   )
   const [receiptNote, setReceiptNote] = React.useState('')
-  const [savingReceipt, setSavingReceipt] = React.useState(false)
 
   // Payment Voucher modal
   const [paymentOpen, setPaymentOpen] = React.useState(false)
@@ -142,16 +139,14 @@ function FinancePage() {
     master.bankAccounts[0]?.id ?? null,
   )
   const [paymentDesc, setPaymentDesc] = React.useState('')
-  const [savingPayment, setSavingPayment] = React.useState(false)
 
   const selectedCustomer = customers.find((c) => c.id === receiptCustomerId)
   const branchOptions = selectedCustomer?.branches ?? []
 
   const handleCreateReceipt = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingReceipt(true)
     try {
-      await createReceiptVoucherFn({
+      await createReceipt.mutateAsync({
         data: {
           receiptDate,
           customerId: receiptCustomerId,
@@ -163,19 +158,15 @@ function FinancePage() {
         },
       })
       setReceiptOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi tạo phiếu thu')
-    } finally {
-      setSavingReceipt(false)
     }
   }
 
   const handleCreatePayment = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingPayment(true)
     try {
-      await createPaymentVoucherFn({
+      await createPayment.mutateAsync({
         data: {
           paymentDate,
           payeeType: 'supplier',
@@ -188,11 +179,8 @@ function FinancePage() {
         },
       })
       setPaymentOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi tạo phiếu chi')
-    } finally {
-      setSavingPayment(false)
     }
   }
 
@@ -692,11 +680,11 @@ function FinancePage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingReceipt}
+                  disabled={createReceipt.isPending}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {savingReceipt ? 'Đang lưu...' : 'Lưu Phiếu Thu'}
+                  {createReceipt.isPending ? 'Đang lưu...' : 'Lưu Phiếu Thu'}
                 </Button>
               </DialogFooter>
             </form>
@@ -875,11 +863,11 @@ function FinancePage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingPayment}
+                  disabled={createPayment.isPending}
                   size="sm"
                   className="h-8 text-xs bg-rose-700 hover:bg-rose-800 text-white font-semibold"
                 >
-                  {savingPayment ? 'Đang lưu...' : 'Lưu Phiếu Chi'}
+                  {createPayment.isPending ? 'Đang lưu...' : 'Lưu Phiếu Chi'}
                 </Button>
               </DialogFooter>
             </form>

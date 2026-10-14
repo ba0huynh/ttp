@@ -1,3 +1,9 @@
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import {
   ArrowRightLeft,
@@ -36,10 +42,9 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
+import { bankStatementDetailQuery, bankStatementsQuery } from '#/lib/queries.ts'
 import {
   autoMatchStatementFn,
-  getBankStatementDetailFn,
-  listBankStatementsFn,
   matchStatementLineFn,
   setStatementLineStatusFn,
   suggestMatchesFn,
@@ -51,64 +56,59 @@ export const Route = createFileRoute('/reconcile')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const statements = await listBankStatementsFn()
-    return { statements }
+  loader: async ({ context: { queryClient } }) => {
+    await queryClient.query(bankStatementsQuery())
   },
   component: ReconcilePage,
 })
 
 function ReconcilePage() {
   const { user } = Route.useRouteContext()
-  const { statements } = Route.useLoaderData()
+  const { data: statements } = useSuspenseQuery(bankStatementsQuery())
+  const queryClient = useQueryClient()
 
   const [selectedStatementId, setSelectedStatementId] = React.useState<
     number | null
   >(statements[0]?.id ?? null)
-  const [statementDetail, setStatementDetail] = React.useState<any>(null)
-  const [loadingLines, setLoadingLines] = React.useState(false)
+  const { data: statementDetail, isLoading: loadingLines } = useQuery({
+    ...bankStatementDetailQuery(selectedStatementId ?? 0),
+    enabled: selectedStatementId !== null,
+  })
 
   // Matching suggestions
   const [matchingLineId, setMatchingLineId] = React.useState<number | null>(
     null,
   )
-  const [suggestions, setSuggestions] = React.useState<any[]>([])
-  const [loadingSuggestions, setLoadingSuggestions] = React.useState(false)
+  // Gợi ý luôn lấy mới: phụ thuộc vào phiếu thu/chi vừa phát sinh
+  const { data: suggestions = [], isLoading: loadingSuggestions } = useQuery({
+    queryKey: ['bank-statements', 'suggest', matchingLineId],
+    queryFn: () => suggestMatchesFn({ data: { lineId: matchingLineId ?? 0 } }),
+    enabled: matchingLineId !== null,
+    staleTime: 0,
+  })
 
-  const [autoMatching, setAutoMatching] = React.useState(false)
+  // Khớp giao dịch ảnh hưởng sao kê, phiếu thu/chi, công nợ và khế ước vay
+  const refresh = () => queryClient.invalidateQueries()
+  const matchLine = useMutation({
+    mutationFn: matchStatementLineFn,
+    onSuccess: refresh,
+  })
+  const setLineStatus = useMutation({
+    mutationFn: setStatementLineStatusFn,
+    onSuccess: refresh,
+  })
+  const autoMatch = useMutation({
+    mutationFn: autoMatchStatementFn,
+    onSuccess: refresh,
+  })
+  const autoMatching = autoMatch.isPending
 
-  const loadStatement = async (id: number) => {
-    setSelectedStatementId(id)
-    setLoadingLines(true)
-    try {
-      const res = await getBankStatementDetailFn({ data: { id } })
-      setStatementDetail(res)
-    } finally {
-      setLoadingLines(false)
-    }
-  }
-
-  React.useEffect(() => {
-    if (selectedStatementId) {
-      loadStatement(selectedStatementId)
-    }
-  }, [selectedStatementId])
-
-  const openSuggestModal = async (lineId: number) => {
-    setMatchingLineId(lineId)
-    setLoadingSuggestions(true)
-    try {
-      const res = await suggestMatchesFn({ data: { lineId } })
-      setSuggestions(res)
-    } finally {
-      setLoadingSuggestions(false)
-    }
-  }
+  const openSuggestModal = (lineId: number) => setMatchingLineId(lineId)
 
   const handleMatch = async (matchedType: any, matchedId: number) => {
     if (!matchingLineId) return
     try {
-      await matchStatementLineFn({
+      await matchLine.mutateAsync({
         data: {
           lineId: matchingLineId,
           matchedType,
@@ -116,7 +116,6 @@ function ReconcilePage() {
         },
       })
       setMatchingLineId(null)
-      if (selectedStatementId) await loadStatement(selectedStatementId)
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi khớp giao dịch')
     }
@@ -124,19 +123,15 @@ function ReconcilePage() {
 
   const handleAutoMatch = async () => {
     if (!selectedStatementId) return
-    setAutoMatching(true)
     try {
-      const res = await autoMatchStatementFn({
+      const res = await autoMatch.mutateAsync({
         data: { statementId: selectedStatementId },
       })
       alert(
         `Đã tự động đối chiếu khớp ${res.matched}/${res.total} dòng giao dịch phù hợp!`,
       )
-      await loadStatement(selectedStatementId)
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi tự động đối chiếu')
-    } finally {
-      setAutoMatching(false)
     }
   }
 
@@ -292,11 +287,9 @@ function ReconcilePage() {
                                 size="sm"
                                 className="h-7 text-xs text-slate-400 hover:text-rose-600"
                                 onClick={async () => {
-                                  await setStatementLineStatusFn({
+                                  await setLineStatus.mutateAsync({
                                     data: { lineId: l.id, status: 'unmatched' },
                                   })
-                                  if (selectedStatementId)
-                                    loadStatement(selectedStatementId)
                                 }}
                               >
                                 Hủy khớp

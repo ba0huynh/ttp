@@ -1,3 +1,9 @@
+import {
+  useMutation,
+  useQuery,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Eye, Plus, Store } from 'lucide-react'
 import * as React from 'react'
@@ -31,12 +37,8 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatVnd } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import {
-  getCustomerDetailFn,
-  listCustomersFn,
-  saveBranchFn,
-  saveCustomerFn,
-} from '#/server/fns/customers.ts'
+import { customerDetailQuery, customersQuery } from '#/lib/queries.ts'
+import { saveBranchFn, saveCustomerFn } from '#/server/fns/customers.ts'
 
 export const Route = createFileRoute('/customers')({
   beforeLoad: async () => {
@@ -44,16 +46,16 @@ export const Route = createFileRoute('/customers')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const customers = await listCustomersFn()
-    return { customers }
+  loader: async ({ context: { queryClient } }) => {
+    await queryClient.query(customersQuery())
   },
   component: CustomersPage,
 })
 
 function CustomersPage() {
   const { user } = Route.useRouteContext()
-  const { customers } = Route.useLoaderData()
+  const { data: customers } = useSuspenseQuery(customersQuery())
+  const queryClient = useQueryClient()
 
   // Create Parent Customer Modal
   const [newCustOpen, setNewCustOpen] = React.useState(false)
@@ -63,14 +65,25 @@ function CustomersPage() {
   const [phone, setPhone] = React.useState('')
   const [address, setAddress] = React.useState('')
   const [contactPerson, setContactPerson] = React.useState('')
-  const [savingCust, setSavingCust] = React.useState(false)
 
   // Customer Details & Add Branch Modal
   const [selectedCustId, setSelectedCustId] = React.useState<number | null>(
     null,
   )
-  const [custDetail, setCustDetail] = React.useState<any>(null)
-  const [loadingDetail, setLoadingDetail] = React.useState(false)
+  const { data: custDetail, isLoading: loadingDetail } = useQuery({
+    ...customerDetailQuery(selectedCustId ?? 0),
+    enabled: selectedCustId !== null,
+  })
+
+  // Mọi thay đổi khách hàng/điểm bán ảnh hưởng danh sách, chi tiết và công nợ
+  const saveCustomer = useMutation({
+    mutationFn: saveCustomerFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const saveBranch = useMutation({
+    mutationFn: saveBranchFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
 
   // Add Branch Form
   const [newBranchOpen, setNewBranchOpen] = React.useState(false)
@@ -79,24 +92,13 @@ function CustomersPage() {
   const [branchTaxCode, setBranchTaxCode] = React.useState('')
   const [branchAddress, setBranchAddress] = React.useState('')
   const [branchPhone, setBranchPhone] = React.useState('')
-  const [savingBranch, setSavingBranch] = React.useState(false)
 
-  const viewDetail = async (id: number) => {
-    setSelectedCustId(id)
-    setLoadingDetail(true)
-    try {
-      const res = await getCustomerDetailFn({ data: { id } })
-      setCustDetail(res)
-    } finally {
-      setLoadingDetail(false)
-    }
-  }
+  const viewDetail = (id: number) => setSelectedCustId(id)
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingCust(true)
     try {
-      await saveCustomerFn({
+      await saveCustomer.mutateAsync({
         data: {
           code,
           name,
@@ -107,20 +109,16 @@ function CustomersPage() {
         },
       })
       setNewCustOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi tạo khách hàng')
-    } finally {
-      setSavingCust(false)
     }
   }
 
   const handleCreateBranch = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!selectedCustId) return
-    setSavingBranch(true)
     try {
-      await saveBranchFn({
+      await saveBranch.mutateAsync({
         data: {
           customerId: selectedCustId,
           code: branchCode,
@@ -132,11 +130,8 @@ function CustomersPage() {
         },
       })
       setNewBranchOpen(false)
-      await viewDetail(selectedCustId)
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi tạo điểm bán')
-    } finally {
-      setSavingBranch(false)
     }
   }
 
@@ -349,11 +344,11 @@ function CustomersPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingCust}
+                  disabled={saveCustomer.isPending}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {savingCust ? 'Đang lưu...' : 'Lưu Khách Hàng'}
+                  {saveCustomer.isPending ? 'Đang lưu...' : 'Lưu Khách Hàng'}
                 </Button>
               </DialogFooter>
             </form>
@@ -532,11 +527,11 @@ function CustomersPage() {
                       </Button>
                       <Button
                         type="submit"
-                        disabled={savingBranch}
+                        disabled={saveBranch.isPending}
                         size="sm"
                         className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                       >
-                        {savingBranch ? 'Đang lưu...' : 'Lưu Điểm Bán'}
+                        {saveBranch.isPending ? 'Đang lưu...' : 'Lưu Điểm Bán'}
                       </Button>
                     </div>
                   </form>

@@ -1,4 +1,9 @@
 import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import {
   createFileRoute,
   Link,
   redirect,
@@ -46,8 +51,7 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatVnd, todayIso } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { listCustomerOptionsFn } from '#/server/fns/customers.ts'
-import { getAvailableVehiclesFn } from '#/server/fns/inventory.ts'
+import { availableVehiclesQuery, customerOptionsQuery } from '#/lib/queries.ts'
 import { createSalesOrderFn } from '#/server/fns/sales.ts'
 
 export const Route = createFileRoute('/sales/new')({
@@ -56,19 +60,21 @@ export const Route = createFileRoute('/sales/new')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const [customers, availableVehicles] = await Promise.all([
-      listCustomerOptionsFn(),
-      getAvailableVehiclesFn(),
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.query(customerOptionsQuery()),
+      queryClient.query(availableVehiclesQuery()),
     ])
-    return { customers, availableVehicles }
   },
   component: NewSalesOrderPage,
 })
 
 function NewSalesOrderPage() {
   const { user } = Route.useRouteContext()
-  const { customers, availableVehicles } = Route.useLoaderData()
+  const { data: customers } = useSuspenseQuery(customerOptionsQuery())
+  const { data: availableVehicles } = useSuspenseQuery(availableVehiclesQuery())
+  const queryClient = useQueryClient()
+  const createOrder = useMutation({ mutationFn: createSalesOrderFn })
   const navigate = useNavigate()
 
   const [orderDate, setOrderDate] = React.useState(todayIso())
@@ -94,7 +100,7 @@ function NewSalesOrderPage() {
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [tempChecked, setTempChecked] = React.useState<Set<number>>(new Set())
 
-  const [submitting, setSubmitting] = React.useState(false)
+  const submitting = createOrder.isPending
   const [error, setError] = React.useState<string | null>(null)
 
   // Branches list of currently selected customer
@@ -147,9 +153,8 @@ function NewSalesOrderPage() {
       return
     }
     setError(null)
-    setSubmitting(true)
     try {
-      await createSalesOrderFn({
+      await createOrder.mutateAsync({
         data: {
           orderDate,
           customerId,
@@ -161,11 +166,10 @@ function NewSalesOrderPage() {
           note,
         },
       })
+      await queryClient.invalidateQueries()
       navigate({ to: '/sales' })
     } catch (err: unknown) {
       setError((err as Error).message || 'Lỗi khi tạo phiếu bán xe')
-    } finally {
-      setSubmitting(false)
     }
   }
 

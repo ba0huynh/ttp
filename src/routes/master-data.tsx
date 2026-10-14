@@ -1,3 +1,8 @@
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Boxes, Landmark, Palette, Plus, Trash2, Truck } from 'lucide-react'
 import * as React from 'react'
@@ -33,10 +38,10 @@ import {
   TabsList,
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
+import { masterDataQuery } from '#/lib/queries.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
 import {
   deleteMasterDataFn,
-  getMasterDataFn,
   saveBankFn,
   saveColorFn,
   saveModelFn,
@@ -49,16 +54,29 @@ export const Route = createFileRoute('/master-data')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const master = await getMasterDataFn()
-    return { master }
+  loader: async ({ context: { queryClient } }) => {
+    await queryClient.query(masterDataQuery())
   },
   component: MasterDataPage,
 })
 
 function MasterDataPage() {
   const { user } = Route.useRouteContext()
-  const { master } = Route.useLoaderData()
+  const { data: master } = useSuspenseQuery(masterDataQuery())
+  const queryClient = useQueryClient()
+  // Danh mục được dùng ở lô nhập, vay, thu chi... nên làm mới toàn bộ cache
+  const refresh = () => queryClient.invalidateQueries()
+  const saveModel = useMutation({ mutationFn: saveModelFn, onSuccess: refresh })
+  const saveSupplier = useMutation({
+    mutationFn: saveSupplierFn,
+    onSuccess: refresh,
+  })
+  const saveBank = useMutation({ mutationFn: saveBankFn, onSuccess: refresh })
+  const saveColor = useMutation({ mutationFn: saveColorFn, onSuccess: refresh })
+  const deleteItem = useMutation({
+    mutationFn: deleteMasterDataFn,
+    onSuccess: refresh,
+  })
 
   // Modal Model
   const [modelOpen, setModelOpen] = React.useState(false)
@@ -66,98 +84,77 @@ function MasterDataPage() {
   const [mName, setMName] = React.useState('')
   const [mBrand, setMBrand] = React.useState('Honda')
   const [mCc, setMCc] = React.useState(150)
-  const [savingModel, setSavingModel] = React.useState(false)
 
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
   const [sCode, setSCode] = React.useState('')
   const [sName, setSName] = React.useState('')
   const [sCountry, setSCountry] = React.useState('Thái Lan')
-  const [savingSupplier, setSavingSupplier] = React.useState(false)
 
   // Modal Bank
   const [bankOpen, setBankOpen] = React.useState(false)
   const [bCode, setBCode] = React.useState('')
   const [bName, setBName] = React.useState('')
   const [bShort, setBShort] = React.useState('')
-  const [savingBank, setSavingBank] = React.useState(false)
 
   // Modal Color
   const [colorOpen, setColorOpen] = React.useState(false)
   const [cCode, setCCode] = React.useState('')
   const [cName, setCName] = React.useState('')
   const [cHex, setCHex] = React.useState('#18181b')
-  const [savingColor, setSavingColor] = React.useState(false)
 
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingModel(true)
     try {
-      await saveModelFn({
+      await saveModel.mutateAsync({
         data: { code: mCode, name: mName, brand: mBrand, engineCapacity: mCc },
       })
       setModelOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi lưu loại xe')
-    } finally {
-      setSavingModel(false)
     }
   }
 
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingSupplier(true)
     try {
-      await saveSupplierFn({
+      await saveSupplier.mutateAsync({
         data: { code: sCode, name: sName, country: sCountry },
       })
       setSupplierOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi lưu nhà cung cấp')
-    } finally {
-      setSavingSupplier(false)
     }
   }
 
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingBank(true)
     try {
-      await saveBankFn({
+      await saveBank.mutateAsync({
         data: { code: bCode, name: bName, shortName: bShort },
       })
       setBankOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi lưu ngân hàng')
-    } finally {
-      setSavingBank(false)
     }
   }
 
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
-    setSavingColor(true)
     try {
-      await saveColorFn({
+      await saveColor.mutateAsync({
         data: { code: cCode, name: cName, hex: cHex },
       })
       setColorOpen(false)
-      window.location.reload()
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi lưu màu sắc')
-    } finally {
-      setSavingColor(false)
     }
   }
 
   const handleDelete = async (entity: any, id: number) => {
     if (!confirm('Bạn có chắc chắn muốn xóa mục danh mục này?')) return
     try {
-      await deleteMasterDataFn({ data: { entity, id } })
-      window.location.reload()
+      await deleteItem.mutateAsync({ data: { entity, id } })
     } catch (err: unknown) {
       alert((err as Error).message || 'Không thể xóa mục đang được sử dụng')
     }
@@ -534,11 +531,11 @@ function MasterDataPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingModel}
+                  disabled={saveModel.isPending}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {savingModel ? 'Đang lưu...' : 'Lưu Dòng Xe'}
+                  {saveModel.isPending ? 'Đang lưu...' : 'Lưu Dòng Xe'}
                 </Button>
               </DialogFooter>
             </form>
@@ -598,11 +595,11 @@ function MasterDataPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingSupplier}
+                  disabled={saveSupplier.isPending}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {savingSupplier ? 'Đang lưu...' : 'Lưu Nhà Cung Cấp'}
+                  {saveSupplier.isPending ? 'Đang lưu...' : 'Lưu Nhà Cung Cấp'}
                 </Button>
               </DialogFooter>
             </form>
@@ -660,11 +657,11 @@ function MasterDataPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingBank}
+                  disabled={saveBank.isPending}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {savingBank ? 'Đang lưu...' : 'Lưu Ngân Hàng'}
+                  {saveBank.isPending ? 'Đang lưu...' : 'Lưu Ngân Hàng'}
                 </Button>
               </DialogFooter>
             </form>
@@ -721,11 +718,11 @@ function MasterDataPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={savingColor}
+                  disabled={saveColor.isPending}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {savingColor ? 'Đang lưu...' : 'Lưu Màu Sắc'}
+                  {saveColor.isPending ? 'Đang lưu...' : 'Lưu Màu Sắc'}
                 </Button>
               </DialogFooter>
             </form>

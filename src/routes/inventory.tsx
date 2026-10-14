@@ -1,3 +1,4 @@
+import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { AlertCircle, Package, Search, Warehouse } from 'lucide-react'
 import * as React from 'react'
@@ -23,10 +24,7 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatVnd } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import {
-  getInventorySummaryFn,
-  listVehiclesFn,
-} from '#/server/fns/inventory.ts'
+import { inventorySummaryQuery, vehiclesQuery } from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/inventory')({
   beforeLoad: async () => {
@@ -34,19 +32,19 @@ export const Route = createFileRoute('/inventory')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const [summary, vehicles] = await Promise.all([
-      getInventorySummaryFn(),
-      listVehiclesFn({ data: { stock: 'all' } }),
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.query(inventorySummaryQuery()),
+      queryClient.query(vehiclesQuery()),
     ])
-    return { summary, vehicles }
   },
   component: InventoryPage,
 })
 
 function InventoryPage() {
   const { user } = Route.useRouteContext()
-  const { summary, vehicles } = Route.useLoaderData()
+  const { data: summary } = useSuspenseQuery(inventorySummaryQuery())
+  const { data: vehicles } = useSuspenseQuery(vehiclesQuery())
 
   const [search, setSearch] = React.useState('')
   const [filterStock, setFilterStock] = React.useState<

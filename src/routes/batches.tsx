@@ -1,3 +1,4 @@
+import { useQuery, useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Eye, PackagePlus } from 'lucide-react'
 import * as React from 'react'
@@ -28,7 +29,7 @@ import {
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
-import { getBatchDetailFn, listBatchesFn } from '#/server/fns/batches.ts'
+import { batchDetailQuery, batchesQuery } from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/batches')({
   beforeLoad: async () => {
@@ -36,33 +37,25 @@ export const Route = createFileRoute('/batches')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const batches = await listBatchesFn()
-    return { batches }
+  loader: async ({ context: { queryClient } }) => {
+    await queryClient.query(batchesQuery())
   },
   component: BatchesPage,
 })
 
 function BatchesPage() {
   const { user } = Route.useRouteContext()
-  const { batches } = Route.useLoaderData()
+  const { data: batches } = useSuspenseQuery(batchesQuery())
 
   const [selectedBatchId, setSelectedBatchId] = React.useState<number | null>(
     null,
   )
-  const [detailData, setDetailData] = React.useState<any>(null)
-  const [loadingDetail, setLoadingDetail] = React.useState(false)
+  const { data: detailData, isLoading: loadingDetail } = useQuery({
+    ...batchDetailQuery(selectedBatchId ?? 0),
+    enabled: selectedBatchId !== null,
+  })
 
-  const viewDetail = async (id: number) => {
-    setSelectedBatchId(id)
-    setLoadingDetail(true)
-    try {
-      const res = await getBatchDetailFn({ data: { id } })
-      setDetailData(res)
-    } finally {
-      setLoadingDetail(false)
-    }
-  }
+  const viewDetail = (id: number) => setSelectedBatchId(id)
 
   return (
     <AppLayout user={user}>

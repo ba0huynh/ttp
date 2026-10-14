@@ -1,4 +1,9 @@
 import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import {
   createFileRoute,
   Link,
   redirect,
@@ -44,8 +49,7 @@ import {
 } from '#/lib/business.ts'
 import { getCurrentUserFn } from '#/server/fns/auth.ts'
 import { createBatchFn } from '#/server/fns/batches.ts'
-import { listLoansFn } from '#/server/fns/finance.ts'
-import { getMasterDataFn } from '#/server/fns/master-data.ts'
+import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/batches/new')({
   beforeLoad: async () => {
@@ -53,19 +57,21 @@ export const Route = createFileRoute('/batches/new')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async () => {
-    const [master, loans] = await Promise.all([
-      getMasterDataFn(),
-      listLoansFn(),
+  loader: async ({ context: { queryClient } }) => {
+    await Promise.all([
+      queryClient.query(masterDataQuery()),
+      queryClient.query(loansQuery()),
     ])
-    return { master, loans }
   },
   component: NewBatchPage,
 })
 
 function NewBatchPage() {
   const { user } = Route.useRouteContext()
-  const { master, loans } = Route.useLoaderData()
+  const { data: master } = useSuspenseQuery(masterDataQuery())
+  const { data: loans } = useSuspenseQuery(loansQuery())
+  const queryClient = useQueryClient()
+  const createBatch = useMutation({ mutationFn: createBatchFn })
   const navigate = useNavigate()
 
   // General batch information
@@ -143,7 +149,7 @@ function NewBatchPage() {
     },
   ])
 
-  const [submitting, setSubmitting] = React.useState(false)
+  const submitting = createBatch.isPending
   const [error, setError] = React.useState<string | null>(null)
 
   // REAL-TIME COST & SELLING PRICE ALLOCATION (LIVE PREVIEW)
@@ -223,10 +229,9 @@ function NewBatchPage() {
   const handleSubmit = async (evt: React.FormEvent) => {
     evt.preventDefault()
     setError(null)
-    setSubmitting(true)
 
     try {
-      await createBatchFn({
+      await createBatch.mutateAsync({
         data: {
           batchCode,
           supplierId,
@@ -251,11 +256,10 @@ function NewBatchPage() {
           })),
         },
       })
+      await queryClient.invalidateQueries()
       navigate({ to: '/batches' })
     } catch (err: unknown) {
       setError((err as Error).message || 'Có lỗi xảy ra khi tạo lô xe')
-    } finally {
-      setSubmitting(false)
     }
   }
 
