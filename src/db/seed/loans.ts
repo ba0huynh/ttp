@@ -13,11 +13,28 @@ interface SeedLoansParams {
 
 /**
  * Seeds commercial bank loan contracts and initial repayments.
+ * Idempotent: skips the insert (contracts + repayments, seeded together) if
+ * `loan_contracts` already has rows.
  */
 export async function seedLoans({
   banks,
   companyBankAccounts,
 }: SeedLoansParams) {
+  const existingContracts = await db.select().from(loanContracts)
+  if (existingContracts.length > 0) {
+    console.log(' -> Loan contracts already seeded, skipping...')
+    return {
+      loans: {
+        loanVcb: existingContracts.find(
+          (c) => c.contractNumber === 'KU-2026-VCB-01',
+        )!,
+        loanBidv: existingContracts.find(
+          (c) => c.contractNumber === 'KU-2026-BIDV-02',
+        )!,
+      },
+    }
+  }
+
   console.log(' -> Seeding bank credit loan contracts...')
   const insertedContracts = await db
     .insert(loanContracts)

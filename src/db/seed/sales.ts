@@ -30,6 +30,9 @@ interface SeedSalesParams {
  * 1. Both Physically Delivered AND Financially Invoiced (Order 1)
  * 2. Invoiced but NOT YET Physically Delivered (Order 2 - financed bikes awaiting transport pickup)
  * 3. Physically Delivered but NOT YET Financially Invoiced (Order 3 - urgent display units billed monthly)
+ *
+ * Idempotent: skips the insert (orders, delivery notes, invoices, vehicle
+ * flags, all seeded together) if `sales_orders` already has rows.
  */
 export async function seedSales({
   adminId,
@@ -37,6 +40,18 @@ export async function seedSales({
   branches,
   vIds,
 }: SeedSalesParams) {
+  const existingOrders = await db.select().from(salesOrders)
+  if (existingOrders.length > 0) {
+    console.log(' -> Sales orders already seeded, skipping...')
+    return {
+      orders: {
+        order1: existingOrders.find((o) => o.orderNumber === 'PBX-260120-001')!,
+        order2: existingOrders.find((o) => o.orderNumber === 'PBX-260125-002')!,
+        order3: existingOrders.find((o) => o.orderNumber === 'PBX-260205-003')!,
+      },
+    }
+  }
+
   console.log(
     ' -> Seeding sales orders and Dual Independent Inventory demonstration...',
   )

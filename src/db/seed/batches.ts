@@ -1,3 +1,5 @@
+import { asc, eq } from 'drizzle-orm'
+
 import { db } from '../index.ts'
 import { importBatches, batchExpenses, vehicles } from '../schema.ts'
 import {
@@ -31,6 +33,8 @@ interface SeedBatchesParams {
 
 /**
  * Seeds import batches, batch expenses, and motorcycle units with automated cost price allocation.
+ * Idempotent: skips the insert (both batches + all vehicles, seeded together)
+ * if `import_batches` already has rows.
  */
 export async function seedBatches({
   adminId,
@@ -39,6 +43,37 @@ export async function seedBatches({
   models,
   colors,
 }: SeedBatchesParams) {
+  const existingBatches = await db.select().from(importBatches)
+  if (existingBatches.length > 0) {
+    console.log(' -> Import batches already seeded, skipping...')
+    const batch1 = existingBatches.find(
+      (b) => b.batchCode === 'LO-2026-01-THAI',
+    )!
+    const batch2 = existingBatches.find(
+      (b) => b.batchCode === 'LO-2026-02-INDO',
+    )!
+
+    // Preserve the original insertion order (batch1's 10 vehicles, then
+    // batch2's 4 vehicles): sales.ts indexes vIds by fixed position.
+    const batch1Vehicles = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.batchId, batch1.id))
+      .orderBy(asc(vehicles.id))
+    const batch2Vehicles = await db
+      .select()
+      .from(vehicles)
+      .where(eq(vehicles.batchId, batch2.id))
+      .orderBy(asc(vehicles.id))
+    const allVehicles = [...batch1Vehicles, ...batch2Vehicles]
+
+    return {
+      batches: { batch1, batch2 },
+      vehicles: allVehicles,
+      vIds: allVehicles.map((v) => v.id),
+    }
+  }
+
   console.log(' -> Seeding Batch 1 (Thailand) and expense allocation...')
   const [batch1] = await db
     .insert(importBatches)

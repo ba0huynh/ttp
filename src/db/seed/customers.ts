@@ -3,8 +3,35 @@ import { customers, posBranches } from '../schema.ts'
 
 /**
  * Seeds B2B motorcycle wholesale customers and their affiliated showroom branches (POS).
+ * Idempotent: skips the insert (customers + their branches, seeded together)
+ * if `customers` already has rows.
  */
 export async function seedCustomers() {
+  const existingCustomers = await db.select().from(customers)
+  if (existingCustomers.length > 0) {
+    console.log(' -> Customers already seeded, skipping...')
+    const existingBranches = await db.select().from(posBranches)
+    const custNamAnh = existingCustomers.find((c) => c.code === 'KH-NAMANH')!
+    const custThanhDat = existingCustomers.find(
+      (c) => c.code === 'KH-THANHDAT',
+    )!
+
+    return {
+      customers: { custNamAnh, custThanhDat },
+      branches: {
+        branchNamAnhQ10: existingBranches.find(
+          (b) => b.code === 'DB-NAMANH-Q10',
+        )!,
+        branchNamAnhBD: existingBranches.find(
+          (b) => b.code === 'DB-NAMANH-BD',
+        )!,
+        branchThanhDatTD: existingBranches.find(
+          (b) => b.code === 'DB-THANHDAT-TD',
+        )!,
+      },
+    }
+  }
+
   console.log(' -> Seeding B2B corporate customers and POS branches...')
   const insertedCustomers = await db
     .insert(customers)

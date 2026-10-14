@@ -9,8 +9,18 @@ import { users } from '../schema.ts'
  * - Accountant: ketoan     / Ktp@12345
  * - Sales:      kinhdoanh  / Sale@12345
  * - Warehouse:  kho        / Kho@12345
+ *
+ * Idempotent: skips the insert if `users` already has rows.
  */
 export async function seedUsers() {
+  const existingUsers = await db.select().from(users)
+  if (existingUsers.length > 0) {
+    console.log(' -> Users already seeded, skipping...')
+    const admin =
+      existingUsers.find((u) => u.username === 'admin') ?? existingUsers[0]
+    return { adminId: admin.id }
+  }
+
   console.log(' -> Seeding internal user accounts...')
   const insertedUsers = await db
     .insert(users)
@@ -55,5 +65,5 @@ export async function seedUsers() {
     .$returningId()
 
   const adminId = insertedUsers[0].id
-  return { adminId, users: insertedUsers }
+  return { adminId }
 }

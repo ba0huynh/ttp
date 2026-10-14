@@ -3,8 +3,15 @@ import { companyInfo } from '../schema.ts'
 
 /**
  * Seeds company corporate profile.
+ * Idempotent: skips the insert if `company_info` already has a row.
  */
 export async function seedCompany() {
+  const [existing] = await db.select().from(companyInfo).limit(1)
+  if (existing) {
+    console.log(' -> Company profile already seeded, skipping...')
+    return existing
+  }
+
   console.log(' -> Seeding company profile...')
   const [created] = await db
     .insert(companyInfo)

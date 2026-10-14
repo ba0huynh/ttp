@@ -36,6 +36,8 @@ interface SeedFinanceParams {
 
 /**
  * Seeds cash receipts, vendor payments, and bank statements for transaction reconciliation.
+ * Idempotent: skips the insert (receipts, payments, statement + lines, all
+ * seeded together) if `bank_statements` already has rows.
  */
 export async function seedFinance({
   adminId,
@@ -46,6 +48,12 @@ export async function seedFinance({
   batches,
   companyBankAccounts,
 }: SeedFinanceParams) {
+  const [existingStatement] = await db.select().from(bankStatements).limit(1)
+  if (existingStatement) {
+    console.log(' -> Finance vouchers already seeded, skipping...')
+    return { statement: existingStatement }
+  }
+
   console.log(' -> Seeding receipt and payment vouchers...')
   await db.insert(receiptVouchers).values([
     {

@@ -184,7 +184,7 @@ The system comprises **11 Core Business Modules**:
 | **Apply Migrations**            | `npm run migration:run`                                       | Runs `src/db/migrate.ts` (custom runner, table `migrations` keyed by file name; NOT drizzle-compatible); prints progress and errors, auto-baselines a DB whose tables already exist |
 | **Push Schema to Database**     | `npm run db:push`                                             | Pushes schema directly from `src/db/schema.ts`                       |
 | **Run Migrations via Script**   | `npx tsx src/db/migrate.ts`                                   | Executes migration SQL statements safely via direct MySQL connection |
-| **Seed Mock Data**              | `npm run seed` (or `npm run db:seed`)                         | Populates database with full realistic sample dataset                |
+| **Seed Mock Data**              | `npm run seed` (or `npm run db:seed`)                         | Idempotent per table: inserts only what's missing; `-- --reset` wipes first |
 | **Open Drizzle Studio**         | `npm run db:studio`                                           | Launches web GUI for database tables inspection                      |
 | **Build Production**            | `npm run build`                                               | Builds Nitro server bundle into `dist/`                              |
 | **Start Production Server**     | `npm run start`                                               | Runs `dist/server/index.mjs` with Node.js                         |
@@ -299,4 +299,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 15, 16,... above this line upon completing tasks)_
+### Lesson 15: Per-Table Idempotent Seeding (`src/db/seed/*.ts`)
+
+- **Before**: `seed()` always called `resetDatabase()` first, then every `seed*.ts` function inserted unconditionally — running `npm run seed` twice wiped and duplicated all data every time.
+- **Convention now**: each `seed*.ts` function checks its own table(s) first (e.g. `seedCompany` checks `company_info`, `seedBatches` checks `import_batches`) and returns the **existing** rows (looked up by business code/number, not by position) instead of inserting when the table already has data. `seed()` in `src/db/seed/index.ts` no longer wipes anything by default — it just runs every step in order, and each step either inserts or returns what's already there.
+- **Force a full reset**: `resetDatabase()` is now opt-in — pass `seed({ reset: true })` or run `npm run seed -- --reset` to wipe every table before reseeding.
+- **Gotcha**: downstream steps depend on the exact shape (`{ vcb: { id }, bidv: { id }, ... }`) returned by earlier steps, so the "already seeded" branch of each function must reconstruct that same shape from existing rows (matched by `code`/`contractNumber`/`orderNumber`, not by array index) — a plain `select().from(table).limit(1) ? skip : insert` is not enough once other steps consume the return value.
+- **Gotcha**: `seedBatches` must preserve vehicle insertion order (10 Batch-1 vehicles then 4 Batch-2 vehicles) when reading existing rows back, because `seedSales` indexes into `vIds` by fixed position (`vIds[0]`, `vIds[5]`, ...). Re-querying with `ORDER BY id ASC` per batch keeps that order stable.
+
+---
+
+_(Next Agent: Append Lesson 16, 17,... above this line upon completing tasks)_
