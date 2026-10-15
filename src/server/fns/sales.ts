@@ -31,7 +31,6 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
     const list = await db
       .select({
         id: salesOrders.id,
-        orderNumber: salesOrders.orderNumber,
         orderDate: salesOrders.orderDate,
         status: salesOrders.status,
         totalAmount: salesOrders.totalAmount,
@@ -54,7 +53,6 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
       .leftJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
       .groupBy(
         salesOrders.id,
-        salesOrders.orderNumber,
         salesOrders.orderDate,
         salesOrders.status,
         salesOrders.totalAmount,
@@ -82,7 +80,6 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
     const [order] = await db
       .select({
         id: salesOrders.id,
-        orderNumber: salesOrders.orderNumber,
         orderDate: salesOrders.orderDate,
         status: salesOrders.status,
         totalAmount: salesOrders.totalAmount,

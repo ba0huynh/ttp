@@ -92,7 +92,6 @@ export async function getCustomerStatement(customerId: number) {
     .select({
       id: salesOrders.id,
       date: salesOrders.orderDate,
-      number: salesOrders.orderNumber,
       branchId: salesOrders.branchId,
       amount: salesOrders.totalAmount,
       status: salesOrders.status,
@@ -251,7 +250,6 @@ export async function listVehicles(filter: {
       colorName: colors.name,
       colorHex: colors.hex,
       salesOrderId: salesOrderItems.salesOrderId,
-      orderNumber: salesOrders.orderNumber,
     })
     .from(vehicles)
     .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))

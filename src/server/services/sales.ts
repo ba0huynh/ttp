@@ -78,17 +78,9 @@ export async function createSalesOrder(
       }))
       const total = rows.reduce((s, r) => s + r.unitPrice, 0)
 
-      const orderNumber = await nextDocNumber(
-        tx,
-        salesOrders,
-        salesOrders.orderNumber,
-        'PBX',
-        input.orderDate,
-      )
       const [created] = await tx
         .insert(salesOrders)
         .values({
-          orderNumber,
           orderDate: input.orderDate,
           customerId: input.customerId,
           branchId: input.branchId ?? null,

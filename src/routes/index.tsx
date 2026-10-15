@@ -303,11 +303,8 @@ function DashboardPage() {
                             to="/sales"
                             className="font-mono font-bold text-emerald-700 hover:underline"
                           >
-                            {o.orderNumber}
-                          </Link>
-                          <div className="text-[11px] text-slate-500">
                             {formatDate(o.orderDate)}
-                          </div>
+                          </Link>
                         </TableCell>
                         <TableCell>
                           <div className="font-semibold text-slate-900 truncate max-w-[180px]">

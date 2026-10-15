@@ -333,12 +333,13 @@ function InventoryPage() {
                           />
                         </TableCell>
                         <TableCell>
-                          {v.orderNumber ? (
+                          {v.salesOrderId ? (
                             <Link
-                              to="/sales"
-                              className="font-mono font-bold text-emerald-700 hover:underline"
+                              to="/sales/$orderId"
+                              params={{ orderId: String(v.salesOrderId) }}
+                              className="font-bold text-emerald-700 hover:underline"
                             >
-                              {v.orderNumber}
+                              Xem phiếu bán
                             </Link>
                           ) : (
                             <span className="text-slate-400">—</span>

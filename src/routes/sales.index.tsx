@@ -49,7 +49,7 @@ function SalesPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Bán Hàng & Xuất Xe Sỉ
+              Bán Hàng
             </h1>
             <p className="text-xs text-slate-500 mt-1">
               Giao xe thực tế (giảm tồn kho vật lý) và Xuất hóa đơn nội bộ (giảm
@@ -82,7 +82,6 @@ function SalesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead>Mã Phiếu</TableHead>
                     <TableHead>Ngày Bán</TableHead>
                     <TableHead>Khách Hàng Mẹ</TableHead>
                     <TableHead>Điểm Bán Nhận Xe</TableHead>
@@ -96,9 +95,6 @@ function SalesPage() {
                 <TableBody className="text-xs">
                   {ordersPg.pageItems.map((o) => (
                     <TableRow key={o.id} className="hover:bg-slate-50/80">
-                      <TableCell className="font-mono font-bold text-emerald-800">
-                        {o.orderNumber}
-                      </TableCell>
                       <TableCell className="text-slate-600">
                         {formatDate(o.orderDate)}
                       </TableCell>

@@ -45,9 +45,9 @@ export async function seedSales({
     console.log(' -> Sales orders already seeded, skipping...')
     return {
       orders: {
-        order1: existingOrders.find((o) => o.orderNumber === 'PBX-260120-001')!,
-        order2: existingOrders.find((o) => o.orderNumber === 'PBX-260125-002')!,
-        order3: existingOrders.find((o) => o.orderNumber === 'PBX-260205-003')!,
+        order1: existingOrders.find((o) => o.orderDate === '2026-01-20')!,
+        order2: existingOrders.find((o) => o.orderDate === '2026-01-25')!,
+        order3: existingOrders.find((o) => o.orderDate === '2026-02-05')!,
       },
     }
   }
@@ -61,7 +61,6 @@ export async function seedSales({
   const [order1] = await db
     .insert(salesOrders)
     .values({
-      orderNumber: 'PBX-260120-001',
       orderDate: '2026-01-20',
       customerId: customers.custNamAnh.id,
       branchId: branches.branchNamAnhQ10.id,
@@ -156,7 +155,6 @@ export async function seedSales({
   const [order2] = await db
     .insert(salesOrders)
     .values({
-      orderNumber: 'PBX-260125-002',
       orderDate: '2026-01-25',
       customerId: customers.custNamAnh.id,
       branchId: branches.branchNamAnhBD.id,
@@ -220,7 +218,6 @@ export async function seedSales({
   const [order3] = await db
     .insert(salesOrders)
     .values({
-      orderNumber: 'PBX-260205-003',
       orderDate: '2026-02-05',
       customerId: customers.custThanhDat.id,
       branchId: branches.branchThanhDatTD.id,

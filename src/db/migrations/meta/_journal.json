@@ -127,6 +127,13 @@
       "when": 1792050568035,
       "tag": "0017_uneven_red_skull",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "5",
+      "when": 1792053285344,
+      "tag": "0018_small_legion",
+      "breakpoints": true
     }
   ]
 }

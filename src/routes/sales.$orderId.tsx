@@ -223,7 +223,7 @@ function SalesOrderPage() {
               Danh sách phiếu bán
             </Link>
           }
-          title={`Phiếu bán ${order.orderNumber}`}
+          title={`Phiếu bán #${order.id}`}
           description={
             <>
               Khách hàng: <strong>{order.customerName}</strong> · Điểm bán:{' '}

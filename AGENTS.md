@@ -549,4 +549,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 42, 43,... above this line upon completing tasks)_
+### Lesson 42: Sales Orders Without an Order Number
+
+- **Change**: `sales_orders.order_number` ("Mã Phiếu", `PBX-yymmdd-nnn`) was removed (schema, creation service, server fns, seed, reports, UI). The `/sales` list has no number column (the page title is now "Bán Hàng"); the detail page title is `Phiếu bán #<id>`; the dashboard recent-orders list shows the order date; the inventory "Đơn Bán" column shows a "Xem phiếu bán" link to `/sales/$orderId`. Migration `0018_small_legion.sql` drops the unique index and the column. **Creating a sales order fails until it is applied** (`order_number` is `NOT NULL` with no default). Delivery notes and invoices keep their own numbers.
+- **Seed**: `sale.seed.ts` finds the three already-seeded orders by `order_date` (2026-01-20 / 01-25 / 02-05) instead of by number.
+
+---
+
+_(Next Agent: Append Lesson 43, 44,... above this line upon completing tasks)_

@@ -327,7 +327,6 @@ export const salesOrders = mysqlTable(
   'sales_orders',
   {
     id: int('id').primaryKey().autoincrement(),
-    orderNumber: varchar('order_number', { length: 50 }).notNull().unique(),
     orderDate: date('order_date', { mode: 'string' }).notNull(),
     /** Parent customer — sales revenue is attributed here */
     customerId: int('customer_id')
