@@ -9,6 +9,9 @@ import {
   PopoverTrigger,
 } from '#/components/ui/popover.tsx'
 
+/** Options shown first, and added each time the list is scrolled to its end */
+const PAGE_SIZE = 10
+
 interface SearchSelectItemProps {
   value: string
   className?: string
@@ -74,6 +77,8 @@ export function SearchSelect({
   const [open, setOpen] = React.useState(false)
   const [query, setQuery] = React.useState('')
   const [active, setActive] = React.useState(0)
+  // How many of the matching options are rendered (load more on scroll)
+  const [visible, setVisible] = React.useState(PAGE_SIZE)
 
   const options: Option[] = []
   for (const child of React.Children.toArray(children)) {
@@ -91,7 +96,10 @@ export function SearchSelect({
   const q = fold(query.trim())
   const filtered = q ? options.filter((o) => o.haystack.includes(q)) : options
   const selected = options.find((o) => o.value === value)
-  const current = Math.min(active, Math.max(filtered.length - 1, 0))
+  const shown = filtered.slice(0, visible)
+  const hasMore = filtered.length > shown.length
+  const current = Math.min(active, Math.max(shown.length - 1, 0))
+  const loadMore = () => setVisible((v) => v + PAGE_SIZE)
 
   const choose = (v: string) => {
     onValueChange(v)
@@ -106,6 +114,7 @@ export function SearchSelect({
         if (o) {
           setQuery('')
           setActive(0)
+          setVisible(PAGE_SIZE)
         }
       }}
     >
@@ -137,17 +146,20 @@ export function SearchSelect({
             onChange={(e) => {
               setQuery(e.target.value)
               setActive(0)
+              setVisible(PAGE_SIZE)
             }}
             onKeyDown={(e) => {
               if (e.key === 'ArrowDown') {
                 e.preventDefault()
+                // Keyboard past the last rendered option loads the next batch
+                if (current + 1 >= shown.length && hasMore) loadMore()
                 setActive(Math.min(current + 1, filtered.length - 1))
               } else if (e.key === 'ArrowUp') {
                 e.preventDefault()
                 setActive(Math.max(current - 1, 0))
               } else if (e.key === 'Enter') {
                 e.preventDefault()
-                const o = filtered[current]
+                const o = shown[current]
                 if (o) choose(o.value)
               }
             }}
@@ -159,13 +171,21 @@ export function SearchSelect({
         <div
           className="max-h-64 overflow-y-auto p-1"
           onWheel={(e) => e.stopPropagation()}
+          onScroll={(e) => {
+            const el = e.currentTarget
+            if (
+              hasMore &&
+              el.scrollTop + el.clientHeight >= el.scrollHeight - 24
+            )
+              loadMore()
+          }}
         >
           {filtered.length === 0 ? (
             <div className="px-2 py-4 text-center text-xs text-slate-400">
               Không tìm thấy kết quả
             </div>
           ) : (
-            filtered.map((o, i) => (
+            shown.map((o, i) => (
               <button
                 key={o.value}
                 type="button"
@@ -187,6 +207,15 @@ export function SearchSelect({
                 )}
               </button>
             ))
+          )}
+          {hasMore && (
+            <button
+              type="button"
+              onClick={loadMore}
+              className="w-full py-2 text-center text-[11px] text-slate-500 hover:text-slate-800"
+            >
+              Cuộn xuống hoặc bấm để tải thêm ({shown.length}/{filtered.length})
+            </button>
           )}
         </div>
       </PopoverContent>
