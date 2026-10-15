@@ -412,4 +412,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 26, 27,... above this line upon completing tasks)_
+### Lesson 26: App Port Comes From `.env` (`PORT`)
+
+- **Change**: the port is no longer hardcoded in `package.json`. `PORT` in `.env` (default `3000`) drives `npm run dev` and `vite preview` through `loadEnv` in `vite.config.ts` (`strictPort: true`, so a busy port fails loudly instead of silently moving). `npm run start` runs `node --env-file-if-exists=.env dist/server/index.mjs`, so Nitro reads the same `PORT`.
+- **Gotcha**: `vite.config.ts` now uses the `defineConfig(({ mode }) => ...)` function form. Restart the dev server after editing `PORT`. Docker is unaffected: the image sets `PORT=3000` itself and `.env` is not copied into it. `docker:prod` maps host `3001` to container `3000`.
+- **Not verified**: `node_modules` was missing when this was made, so `npx tsc --noEmit` and a dev-server run were not executed.
+
+---
+
+_(Next Agent: Append Lesson 27, 28,... above this line upon completing tasks)_
