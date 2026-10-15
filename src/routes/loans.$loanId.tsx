@@ -398,7 +398,7 @@ function LoanDetailPage() {
                       setRepayBankAccountId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs bg-white">
+                    <SelectTrigger className="w-full h-8 text-xs bg-white">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>

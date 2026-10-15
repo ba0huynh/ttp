@@ -120,7 +120,6 @@ export async function getPayablesSummary() {
       .select({
         supplierId: importBatches.supplierId,
         total: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
-        batches: sql<number>`count(distinct ${importBatches.id})`,
       })
       .from(importBatches)
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
@@ -144,7 +143,6 @@ export async function getPayablesSummary() {
       return {
         supplierId: s.id,
         supplierName: s.name,
-        batches: num(pMap.get(s.id)?.batches),
         purchased: purchasedTotal,
         paid: paidTotal,
         balance: purchasedTotal - paidTotal,

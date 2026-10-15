@@ -444,7 +444,6 @@ export const receiptVouchers = mysqlTable(
   'receipt_vouchers',
   {
     id: int('id').primaryKey().autoincrement(),
-    voucherNumber: varchar('voucher_number', { length: 50 }).notNull().unique(),
     receiptDate: date('receipt_date', { mode: 'string' }).notNull(),
     customerId: int('customer_id')
       .notNull()
@@ -455,9 +454,6 @@ export const receiptVouchers = mysqlTable(
       onDelete: 'set null',
     }),
     amount: money('amount').notNull(),
-    method: mysqlEnum('method', PAYMENT_METHODS)
-      .default('bank_transfer')
-      .notNull(),
     companyBankAccountId: int('company_bank_account_id'),
     note: text('note'),
     createdBy: int('created_by').references(() => users.id),

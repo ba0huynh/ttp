@@ -57,25 +57,21 @@ export async function seedFinance({
   console.log(' -> Seeding receipt and payment vouchers...')
   await db.insert(receiptVouchers).values([
     {
-      voucherNumber: 'PT-260122-001',
       receiptDate: '2026-01-22',
       customerId: customers.custNamAnh.id,
       branchId: branches.branchNamAnhQ10.id,
       salesOrderId: orders.order1.id,
       amount: 200_000_000,
-      method: 'bank_transfer',
       companyBankAccountId: companyBankAccounts.vcbAccount.id,
       note: 'Nam Anh chuyển khoản trả nợ đợt 1 cho Order 1',
       createdBy: adminId,
     },
     {
-      voucherNumber: 'PT-260210-002',
       receiptDate: '2026-02-10',
       customerId: customers.custThanhDat.id,
       branchId: branches.branchThanhDatTD.id,
       salesOrderId: orders.order3.id,
       amount: 100_000_000,
-      method: 'bank_transfer',
       companyBankAccountId: companyBankAccounts.vcbAccount.id,
       note: 'Thành Đạt đặt cọc/thanh toán đợt 1',
       createdBy: adminId,

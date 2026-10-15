@@ -149,10 +149,8 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
     const list = await db
       .select({
         id: receiptVouchers.id,
-        voucherNumber: receiptVouchers.voucherNumber,
         receiptDate: receiptVouchers.receiptDate,
         amount: receiptVouchers.amount,
-        method: receiptVouchers.method,
         note: receiptVouchers.note,
         customerId: receiptVouchers.customerId,
         customerName: customers.name,
@@ -187,7 +185,6 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
       branchId: z.number().int().nullable().optional(),
       salesOrderId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền phải > 0'),
-      method: z.enum(PAYMENT_METHODS),
       companyBankAccountId: z.number().int().nullable().optional(),
       note: z.string().trim().nullable().optional(),
     }),

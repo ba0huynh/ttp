@@ -385,7 +385,9 @@ function ReconcilePage() {
                                 ? 'Phiếu Chi'
                                 : 'Trả Nợ Khế Ước'}
                           </Badge>
-                          <span className="font-mono font-bold text-slate-900 text-xs">
+                          <span
+                            className={`font-bold text-slate-900 text-xs ${s.type === 'receipt' ? '' : 'font-mono'}`}
+                          >
                             {s.number}
                           </span>
                         </div>

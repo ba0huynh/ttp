@@ -4,6 +4,7 @@ import { db } from '../../db/index.ts'
 import {
   bankStatementLines,
   bankStatements,
+  customers,
   importBatches,
   loanContracts,
   loanRepayments,
@@ -110,7 +111,6 @@ export async function createReceiptVoucher(
     branchId?: number | null
     salesOrderId?: number | null
     amount: number
-    method: 'cash' | 'bank_transfer'
     companyBankAccountId?: number | null
     note?: string | null
   },
@@ -125,24 +125,13 @@ export async function createReceiptVoucher(
     if (!b || b.customerId !== input.customerId)
       throw new BusinessError('Điểm bán không thuộc khách hàng')
   }
-  const voucherNumber = await nextDocNumber(
-    db,
-    receiptVouchers,
-    receiptVouchers.voucherNumber,
-    'PT',
-    input.receiptDate,
-  )
   const [r] = await db
     .insert(receiptVouchers)
     .values({
       ...input,
-      voucherNumber,
       branchId: input.branchId ?? null,
       salesOrderId: input.salesOrderId ?? null,
-      companyBankAccountId:
-        input.method === 'bank_transfer'
-          ? (input.companyBankAccountId ?? null)
-          : null,
+      companyBankAccountId: input.companyBankAccountId ?? null,
       note: input.note ?? null,
       createdBy: userId ?? null,
     })
@@ -261,11 +250,12 @@ export async function suggestMatches(lineId: number) {
     const rows = await db
       .select({
         id: receiptVouchers.id,
-        number: receiptVouchers.voucherNumber,
+        number: customers.name,
         date: receiptVouchers.receiptDate,
         amount: receiptVouchers.amount,
       })
       .from(receiptVouchers)
+      .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
       .where(
         and(
           eq(receiptVouchers.amount, num(line.credit)),

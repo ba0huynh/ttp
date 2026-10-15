@@ -42,7 +42,7 @@ export function BankLabel({
   children: React.ReactNode
 }) {
   return (
-    <span className="inline-flex items-center gap-2 min-w-0">
+    <span className="inline-flex max-w-full min-w-0 items-center gap-2">
       <BankLogo src={image} name={name} />
       <span className="truncate">{children}</span>
     </span>

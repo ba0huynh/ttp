@@ -318,7 +318,7 @@ function LoansPage() {
                   value={String(bankId)}
                   onValueChange={(val) => setBankId(Number(val))}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
