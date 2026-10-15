@@ -144,7 +144,6 @@ export async function getPayablesSummary() {
       return {
         supplierId: s.id,
         supplierName: s.name,
-        country: s.country,
         batches: num(pMap.get(s.id)?.batches),
         purchased: purchasedTotal,
         paid: paidTotal,

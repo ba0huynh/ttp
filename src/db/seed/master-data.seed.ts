@@ -112,19 +112,13 @@ export async function seedMasterData() {
     .values([
       {
         name: 'Thai Honda Manufacturing Co., Ltd',
-        country: 'Thái Lan',
         taxCode: 'TH0105508001234',
         address: '410 Lat Krabang Industrial Estate, Bangkok, Thailand',
-        contactPerson: 'Mr. Somchai',
-        phone: '+66 2 326 0641',
       },
       {
         name: 'PT Astra Honda Motor',
-        country: 'Indonesia',
         taxCode: 'ID010002345678000',
         address: 'Jl. Laksda Yos Sudarso, Sunter 1, Jakarta, Indonesia',
-        contactPerson: 'Bambang Sugiharto',
-        phone: '+62 21 651 8080',
       },
     ])
     .$returningId()

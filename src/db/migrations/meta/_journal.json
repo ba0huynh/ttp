@@ -43,6 +43,13 @@
       "when": 1792022583255,
       "tag": "0005_chunky_jackal",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "5",
+      "when": 1792022869579,
+      "tag": "0006_furry_network",
+      "breakpoints": true
     }
   ]
 }

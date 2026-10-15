@@ -376,7 +376,7 @@ function NewBatchPage() {
                           value={String(s.id)}
                           className="text-xs"
                         >
-                          {s.name} ({s.country})
+                          {s.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

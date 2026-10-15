@@ -399,6 +399,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Seeds**: `master-data.seed.ts` finds existing rows by name (`byName`) and banks by short name (`byShortName`: Vietcombank, BIDV, Techcombank); `bank.seed.ts` dedupes the VietQR list by `shortName`.
 - **Engine capacity**: `motorcycle_models.engine_capacity` was removed too (schema, form, table, seed). Migration `0004_far_reaper.sql` drops the column and its data; apply it with `npm run migration:run`.
 - **Brand**: `motorcycle_models.brand` ("Hãng Xe") was removed as well, and the model name column is now labelled "Tên Xe" (was "Tên Thương Mại"). Migration `0005_*.sql` drops the column; the sales-order detail and inventory-by-model queries no longer return `brand`.
+- **Suppliers**: `suppliers.country`, `suppliers.phone` and `suppliers.contact_person` were removed (schema, form, tables, seed, payables report and the "(country)" suffix in supplier dropdowns); the list is titled "Danh Sách Nhà Cung Cấp". Migration `0006_*.sql` drops the three columns. Supplier `email`, `tax_code`, `address` and `note` remain in the schema.
 - **Caveat**: dropping the unique codes removes the only uniqueness guard on these tables, so duplicate names are now possible. Add a unique index on `name` if that becomes a problem.
 
 ---

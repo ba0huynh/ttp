@@ -85,7 +85,6 @@ function MasterDataPage() {
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
   const [sName, setSName] = React.useState('')
-  const [sCountry, setSCountry] = React.useState('Thái Lan')
 
   // Modal Bank
   const [bankOpen, setBankOpen] = React.useState(false)
@@ -113,7 +112,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveSupplier.mutateAsync({
-        data: { name: sName, country: sCountry },
+        data: { name: sName },
       })
       setSupplierOpen(false)
     } catch (err: unknown) {
@@ -257,7 +256,7 @@ function MasterDataPage() {
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
                 <CardTitle className="text-sm font-bold text-slate-800">
-                  Danh Sách Nhà Cung Cấp Nước Ngoài
+                  Danh Sách Nhà Cung Cấp
                 </CardTitle>
                 <Button
                   size="sm"
@@ -276,8 +275,6 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Công Ty Cung Cấp</TableHead>
-                      <TableHead>Quốc Gia</TableHead>
-                      <TableHead>Liên Hệ / Điện Thoại</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -286,12 +283,6 @@ function MasterDataPage() {
                       <TableRow key={s.id}>
                         <TableCell className="font-bold text-slate-900">
                           {s.name}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {s.country ?? '—'}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {s.contactPerson ?? s.phone ?? '—'}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -494,14 +485,6 @@ function MasterDataPage() {
                   onChange={(e) => setSName(e.target.value)}
                   className="h-8 text-xs font-semibold"
                   placeholder="Thai Honda Co., Ltd"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Quốc Gia</Label>
-                <Input
-                  value={sCountry}
-                  onChange={(e) => setSCountry(e.target.value)}
-                  className="h-8 text-xs"
                 />
               </div>
               <DialogFooter className="pt-2">

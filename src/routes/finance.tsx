@@ -352,7 +352,6 @@ function FinancePage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Nhà Cung Cấp</TableHead>
-                      <TableHead>Quốc Gia</TableHead>
                       <TableHead className="text-center">Số Lô Xe</TableHead>
                       <TableHead className="text-right">
                         Tổng Tiền Hàng
@@ -371,9 +370,6 @@ function FinancePage() {
                       >
                         <TableCell className="font-bold text-slate-900">
                           {p.supplierName}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {p.country ?? '—'}
                         </TableCell>
                         <TableCell className="text-center font-medium">
                           {p.batches} lô
@@ -743,7 +739,7 @@ function FinancePage() {
                         value={String(s.id)}
                         className="text-xs"
                       >
-                        {s.name} ({s.country})
+                        {s.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

@@ -120,12 +120,9 @@ export const companyBankAccounts = mysqlTable('company_bank_accounts', {
 export const suppliers = mysqlTable('suppliers', {
   id: int('id').primaryKey().autoincrement(),
   name: varchar('name', { length: 255 }).notNull(),
-  country: varchar('country', { length: 80 }),
   taxCode: varchar('tax_code', { length: 30 }),
   address: varchar('address', { length: 255 }),
-  phone: varchar('phone', { length: 30 }),
   email: varchar('email', { length: 191 }),
-  contactPerson: varchar('contact_person', { length: 150 }),
   note: text('note'),
   ...timestamps,
 })

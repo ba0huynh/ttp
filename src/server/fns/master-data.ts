@@ -104,12 +104,9 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       name: z.string().trim().min(1),
-      country: opt,
       taxCode: opt,
       address: opt,
-      phone: opt,
       email: opt,
-      contactPerson: opt,
       note: opt,
     }),
   )
