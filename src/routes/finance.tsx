@@ -315,7 +315,6 @@ function FinancePage() {
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Khách Hàng Mẹ</TableHead>
                       <TableHead>Pháp Nhân Điểm Bán Chịu Nợ</TableHead>
-                      <TableHead>Mã Số Thuế</TableHead>
                       <TableHead className="text-right">Tổng Mua Xe</TableHead>
                       <TableHead className="text-right">
                         Đã Thanh Toán
@@ -333,9 +332,6 @@ function FinancePage() {
                         </TableCell>
                         <TableCell className="font-medium text-emerald-900">
                           {r.branchId ? r.entityName : 'Pháp nhân chính KH mẹ'}
-                        </TableCell>
-                        <TableCell className="font-mono text-slate-500">
-                          {r.taxCode ?? '—'}
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-700">
                           {formatVnd(r.sold)}
@@ -601,7 +597,7 @@ function FinancePage() {
                         value={String(b.id)}
                         className="text-xs"
                       >
-                        {b.name} ({b.code})
+                        {b.name}
                       </SelectItem>
                     ))}
                   </SelectContent>

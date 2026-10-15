@@ -57,7 +57,6 @@ export async function getReceivablesSummary() {
       branchId: number | null
       customerName: string
       entityName: string
-      taxCode: string | null
       sold: number
       paid: number
     }
@@ -73,7 +72,6 @@ export async function getReceivablesSummary() {
         branchId,
         customerName: c?.name ?? '?',
         entityName: b?.name ?? c?.name ?? '?',
-        taxCode: b?.taxCode ?? null,
         sold: 0,
         paid: 0,
       }

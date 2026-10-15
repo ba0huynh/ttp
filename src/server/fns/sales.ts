@@ -91,8 +91,6 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         customerName: customers.name,
         branchId: salesOrders.branchId,
         branchName: posBranches.name,
-        branchTaxCode: posBranches.taxCode,
-        branchAddress: posBranches.address,
       })
       .from(salesOrders)
       .innerJoin(customers, eq(customers.id, salesOrders.customerId))

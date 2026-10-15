@@ -405,7 +405,7 @@ function NewSalesOrderPage() {
                           value={String(b.id)}
                           className="text-xs"
                         >
-                          {b.name} ({b.code})
+                          {b.name}
                         </SelectItem>
                       ))}
                     </SelectContent>

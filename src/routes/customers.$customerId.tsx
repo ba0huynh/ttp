@@ -4,11 +4,11 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowLeft, Banknote, Plus, Store, Wallet } from 'lucide-react'
+import { ArrowLeft, Plus, Store } from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { PageHeader, StatCard } from '#/components/layout/StatCard.tsx'
+import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -76,21 +76,10 @@ function CustomerDetailPage() {
   })
 
   const [newBranchOpen, setNewBranchOpen] = React.useState(false)
-  const [branchCode, setBranchCode] = React.useState('')
   const [branchName, setBranchName] = React.useState('')
-  const [branchTaxCode, setBranchTaxCode] = React.useState('')
-  const [branchAddress, setBranchAddress] = React.useState('')
-  const [branchPhone, setBranchPhone] = React.useState('')
-
-  const totalSold = receivables.reduce((s, r) => s + r.sold, 0)
-  const totalPaid = receivables.reduce((s, r) => s + r.paid, 0)
 
   const openNewBranch = () => {
-    setBranchCode(`DB-${customer.id}-${branches.length + 1}`)
     setBranchName('')
-    setBranchTaxCode('')
-    setBranchAddress('')
-    setBranchPhone('')
     setNewBranchOpen(true)
   }
 
@@ -100,11 +89,7 @@ function CustomerDetailPage() {
       await saveBranch.mutateAsync({
         data: {
           customerId: customer.id,
-          code: branchCode,
           name: branchName,
-          taxCode: branchTaxCode,
-          address: branchAddress,
-          phone: branchPhone,
           isActive: true,
         },
       })
@@ -130,32 +115,6 @@ function CustomerDetailPage() {
           title={customer.name}
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard
-            label="Điểm bán trực thuộc"
-            icon={Store}
-            value={branches.length}
-            unit="điểm bán"
-          />
-          <StatCard
-            label="Tổng mua xe"
-            icon={Banknote}
-            tone="blue"
-            value={formatVnd(totalSold)}
-          />
-          <StatCard
-            label="Đã thanh toán"
-            icon={Wallet}
-            value={formatVnd(totalPaid)}
-          />
-          <StatCard
-            label="Còn nợ"
-            icon={Wallet}
-            tone="rose"
-            value={formatVnd(totalSold - totalPaid)}
-          />
-        </div>
-
         {/* 1. Affiliated branches */}
         <Card>
           <CardHeader className="flex flex-row items-center justify-between border-b">
@@ -177,52 +136,17 @@ function CustomerDetailPage() {
                 <div className="text-xs font-bold text-emerald-950">
                   Nhập Thông Tin Điểm Bán Trực Thuộc Mới:
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Mã Điểm Bán *
-                    </Label>
-                    <Input
-                      required
-                      value={branchCode}
-                      onChange={(e) => setBranchCode(e.target.value)}
-                      className="h-8 text-xs bg-white font-mono"
-                    />
-                  </div>
-                  <div className="sm:col-span-2 space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Tên Pháp Nhân Điểm Bán *
-                    </Label>
-                    <Input
-                      required
-                      placeholder="Showroom..."
-                      value={branchName}
-                      onChange={(e) => setBranchName(e.target.value)}
-                      className="h-8 text-xs bg-white font-semibold"
-                    />
-                  </div>
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Mã Số Thuế Điểm Bán
-                    </Label>
-                    <Input
-                      placeholder="Mã số thuế chi nhánh..."
-                      value={branchTaxCode}
-                      onChange={(e) => setBranchTaxCode(e.target.value)}
-                      className="h-8 text-xs bg-white font-mono"
-                    />
-                  </div>
-                  <div className="sm:col-span-2 space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Địa Chỉ Giao Nhận Xe
-                    </Label>
-                    <Input
-                      placeholder="Địa chỉ showroom nhận xe..."
-                      value={branchAddress}
-                      onChange={(e) => setBranchAddress(e.target.value)}
-                      className="h-8 text-xs bg-white"
-                    />
-                  </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">
+                    Tên Điểm Bán *
+                  </Label>
+                  <Input
+                    required
+                    placeholder="Showroom..."
+                    value={branchName}
+                    onChange={(e) => setBranchName(e.target.value)}
+                    className="h-8 text-xs bg-white font-semibold"
+                  />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
                   <Button
@@ -250,18 +174,14 @@ function CustomerDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Mã Điểm Bán</TableHead>
-                    <TableHead>Tên Pháp Nhân Điểm Bán</TableHead>
-                    <TableHead>MST Điểm Bán</TableHead>
-                    <TableHead>Địa Chỉ Nhận Xe</TableHead>
-                    <TableHead>Số ĐT</TableHead>
+                    <TableHead>Tên Điểm Bán</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
                   {branches.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={1}
                         className="text-center py-6 text-slate-400"
                       >
                         Chưa có điểm bán trực thuộc. Đơn hàng sẽ ghi trực tiếp
@@ -271,20 +191,8 @@ function CustomerDetailPage() {
                   ) : (
                     branches.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-mono font-bold text-slate-900">
-                          {b.code}
-                        </TableCell>
                         <TableCell className="font-semibold text-slate-800">
                           {b.name}
-                        </TableCell>
-                        <TableCell className="font-mono text-slate-600">
-                          {b.taxCode ?? '—'}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {b.address ?? '—'}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {b.phone ?? '—'}
                         </TableCell>
                       </TableRow>
                     ))

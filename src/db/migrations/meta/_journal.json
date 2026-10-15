@@ -71,6 +71,13 @@
       "when": 1792024304609,
       "tag": "0009_tough_bedlam",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "5",
+      "when": 1792024855702,
+      "tag": "0010_hot_nehzno",
+      "breakpoints": true
     }
   ]
 }

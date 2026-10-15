@@ -39,7 +39,6 @@ export const listCustomerOptionsFn = createServerFn({ method: 'GET' })
       .select({
         id: posBranches.id,
         customerId: posBranches.customerId,
-        code: posBranches.code,
         name: posBranches.name,
         isActive: posBranches.isActive,
       })
@@ -96,11 +95,7 @@ export const saveBranchFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       customerId: z.number(),
-      code: z.string().trim().min(1, 'Nhập mã điểm bán'),
-      name: z.string().trim().min(1, 'Nhập tên pháp nhân điểm bán'),
-      taxCode: opt,
-      address: opt,
-      phone: opt,
+      name: z.string().trim().min(1, 'Nhập tên điểm bán'),
       contactPerson: opt,
       isActive: z.boolean(),
     }),

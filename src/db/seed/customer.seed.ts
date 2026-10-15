@@ -23,13 +23,13 @@ export async function seedCustomers() {
       customers: { custNamAnh, custThanhDat },
       branches: {
         branchNamAnhQ10: existingBranches.find(
-          (b) => b.code === 'DB-NAMANH-Q10',
+          (b) => b.name === 'Showroom Nam Anh Quận 10',
         )!,
         branchNamAnhBD: existingBranches.find(
-          (b) => b.code === 'DB-NAMANH-BD',
+          (b) => b.name === 'Showroom Nam Anh Bình Dương',
         )!,
         branchThanhDatTD: existingBranches.find(
-          (b) => b.code === 'DB-THANHDAT-TD',
+          (b) => b.name === 'Cửa hàng Thành Đạt Thủ Đức',
         )!,
       },
     }
@@ -55,31 +55,19 @@ export async function seedCustomers() {
     .values([
       {
         customerId: custNamAnh.id,
-        code: 'DB-NAMANH-Q10',
         name: 'Showroom Nam Anh Quận 10',
-        taxCode: '0315891234-001',
-        address: '280 Ba Tháng Hai, Phường 12, Quận 10, TP.HCM',
-        phone: '0908 111 223',
         contactPerson: 'Nguyễn Văn Tuấn',
         isActive: true,
       },
       {
         customerId: custNamAnh.id,
-        code: 'DB-NAMANH-BD',
         name: 'Showroom Nam Anh Bình Dương',
-        taxCode: '0315891234-002',
-        address: '45 Đại Lộ Bình Dương, TP. Thủ Dầu Một, Bình Dương',
-        phone: '0908 111 224',
         contactPerson: 'Phạm Thị Lan',
         isActive: true,
       },
       {
         customerId: custThanhDat.id,
-        code: 'DB-THANHDAT-TD',
         name: 'Cửa hàng Thành Đạt Thủ Đức',
-        taxCode: '0314789654-001',
-        address: '102 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
-        phone: '0903 333 445',
         contactPerson: 'Trần Văn Đạt',
         isActive: true,
       },
