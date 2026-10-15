@@ -335,13 +335,11 @@ export async function getReports(from: string, to: string) {
       bankName: banks.name,
       principal: loanContracts.principalAmount,
       rate: loanContracts.interestRate,
-      status: loanContracts.status,
-      maturityDate: loanContracts.maturityDate,
       principalPaid: sql<string>`coalesce((select sum(r.principal_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
     })
     .from(loanContracts)
     .innerJoin(banks, eq(banks.id, loanContracts.bankId))
-    .orderBy(asc(loanContracts.maturityDate))
+    .orderBy(asc(loanContracts.disbursementDate))
 
   // All independent: run them concurrently (each is a network round trip)
   const [

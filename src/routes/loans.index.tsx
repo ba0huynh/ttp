@@ -4,7 +4,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Calculator, CheckCircle2, Landmark, Plus } from 'lucide-react'
+import { Calculator, Plus } from 'lucide-react'
 import * as React from 'react'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
@@ -20,7 +20,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -42,7 +41,7 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
+import { formatVnd, todayIso } from '#/lib/business.ts'
 import { currentUserQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import { saveLoanContractFn } from '#/server/fns/finance.ts'
 
@@ -80,8 +79,6 @@ function LoansPage() {
   const [principalAmount, setPrincipalAmount] = React.useState(2_000_000_000)
   const [interestRate, setInterestRate] = React.useState(8.5)
   const [disbursementDate, setDisbursementDate] = React.useState(todayIso())
-  const [maturityDate, setMaturityDate] = React.useState('2026-12-31')
-  const [note, setNote] = React.useState('')
   const savingLoan = saveLoan.isPending
 
   const handleCreateLoan = async (e: React.FormEvent) => {
@@ -94,8 +91,6 @@ function LoansPage() {
           principalAmount,
           interestRate,
           disbursementDate,
-          maturityDate,
-          note,
         },
       })
       setNewLoanOpen(false)
@@ -103,10 +98,6 @@ function LoansPage() {
       alert((err as Error).message || 'Lỗi khi tạo khế ước vay')
     }
   }
-
-  const totalPrincipal = loans.reduce((s, l) => s + l.principalAmount, 0)
-  const totalOutstanding = loans.reduce((s, l) => s + l.outstanding, 0)
-  const totalRepaid = loans.reduce((s, l) => s + l.principalPaid, 0)
 
   return (
     <AppLayout user={user}>
@@ -133,53 +124,6 @@ function LoansPage() {
           </Button>
         </div>
 
-        {/* 3 Summary cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <Card className="border-slate-200">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-slate-500 font-medium">
-                Tổng Tiền Đã Vay Giải Ngân
-              </div>
-              <div className="text-2xl font-black text-slate-900 mt-1">
-                {formatVnd(totalPrincipal)}
-              </div>
-              <div className="text-[11px] text-slate-500">
-                {loans.length} khế ước tín dụng
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-purple-200 bg-purple-50/40">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-purple-800 font-medium flex items-center gap-1">
-                <Landmark className="size-3.5" />
-                Dư Nợ Gốc Hiện Tại
-              </div>
-              <div className="text-2xl font-black text-purple-950 mt-1">
-                {formatVnd(totalOutstanding)}
-              </div>
-              <div className="text-[11px] text-purple-700">
-                Đang chịu lãi hàng ngày
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-emerald-200 bg-emerald-50/40">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-emerald-800 font-medium flex items-center gap-1">
-                <CheckCircle2 className="size-3.5" />
-                Gốc Đã Trả Ngân Hàng
-              </div>
-              <div className="text-2xl font-black text-emerald-950 mt-1">
-                {formatVnd(totalRepaid)}
-              </div>
-              <div className="text-[11px] text-emerald-700">
-                Giảm trừ dư nợ thành công
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Loan Contracts Table */}
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -197,13 +141,9 @@ function LoansPage() {
                   <TableRow className="text-xs bg-slate-50/70">
                     <TableHead>Số Khế Ước</TableHead>
                     <TableHead>Ngân Hàng</TableHead>
-                    <TableHead className="text-right">Hạn Mức Vay</TableHead>
                     <TableHead className="text-center">Lãi Suất</TableHead>
-                    <TableHead>Ngày Giải Ngân</TableHead>
-                    <TableHead>Ngày Đáo Hạn</TableHead>
                     <TableHead className="text-right">Gốc Đã Trả</TableHead>
                     <TableHead className="text-right">Dư Nợ Còn Lại</TableHead>
-                    <TableHead className="text-center">Trạng Thái</TableHead>
                     <TableHead className="text-center">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -224,9 +164,6 @@ function LoansPage() {
                           {l.bankName}
                         </BankLabel>
                       </TableCell>
-                      <TableCell className="text-right font-bold text-slate-900">
-                        {formatVnd(l.principalAmount)}
-                      </TableCell>
                       <TableCell className="text-center">
                         <Badge
                           variant="outline"
@@ -235,31 +172,11 @@ function LoansPage() {
                           {l.interestRate}%/năm
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-slate-600">
-                        {formatDate(l.disbursementDate)}
-                      </TableCell>
-                      <TableCell className="text-slate-600">
-                        {formatDate(l.maturityDate)}
-                      </TableCell>
                       <TableCell className="text-right text-emerald-800 font-medium">
                         {formatVnd(l.principalPaid)}
                       </TableCell>
                       <TableCell className="text-right font-bold text-purple-900">
                         {formatVnd(l.outstanding)}
-                      </TableCell>
-                      <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={
-                            l.status === 'settled'
-                              ? 'bg-slate-100 text-slate-600'
-                              : 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                          }
-                        >
-                          {l.status === 'settled'
-                            ? 'Đã tất toán'
-                            : 'Đang hoạt động'}
-                        </Badge>
                       </TableCell>
                       <TableCell className="text-center">
                         <Button
@@ -287,21 +204,16 @@ function LoansPage() {
 
         {/* Create New Loan Contract Modal */}
         <Dialog open={newLoanOpen} onOpenChange={setNewLoanOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
                 Tạo Khế Ước Vay Ngân Hàng Mới
               </DialogTitle>
-              <DialogDescription className="text-xs">
-                Ghi nhận hợp đồng tín dụng tài trợ nhập khẩu lô xe
-              </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleCreateLoan} className="space-y-3 pt-2">
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">
-                  Số Khế Ước / Hợp Đồng Tín Dụng *
-                </Label>
+                <Label className="text-xs font-semibold">Khế Ước Vay *</Label>
                 <Input
                   required
                   value={contractNumber}
@@ -386,29 +298,6 @@ function LoansPage() {
                     className="h-8 text-xs"
                   />
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Ngày Đáo Hạn *
-                  </Label>
-                  <Input
-                    type="date"
-                    required
-                    value={maturityDate}
-                    onChange={(e) => setMaturityDate(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Ghi Chú</Label>
-                <Input
-                  value={note}
-                  onChange={(e) => setNote(e.target.value)}
-                  placeholder="Mục đích vay vốn..."
-                  className="h-8 text-xs"
-                />
               </div>
 
               <DialogFooter className="pt-2">

@@ -498,4 +498,19 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 36, 37,... above this line upon completing tasks)_
+### Lesson 36: Loan Contracts Without Maturity Date / Status; Slimmer Loan List
+
+- **Change**: `loan_contracts.maturity_date` and `loan_contracts.status` were removed (schema, server fns, seed, loan form, list and detail page, reports). The `/loans` list no longer shows the three summary cards or the columns Hạn Mức Vay, Ngày Giải Ngân, Ngày Đáo Hạn and Trạng Thái. Migration `0016_gigantic_bloodstrike.sql` drops both columns; apply it with `npm run migration:run`. **Saving a loan contract fails until it is applied** (`maturity_date` is `NOT NULL` with no default).
+- **Kept on purpose**: `principal_amount` and `disbursement_date` stay in the table because the declining-balance interest (`calculateLoanInterest`), outstanding balance and reports need them; they are only hidden from the list (the detail page still shows them).
+- **Status is derived**: `listLoansFn` and `getLoanStatus` return `status` as `'settled'` when `principal - principalPaid <= 0.5`, else `'active'`. `recordLoanRepayment` no longer updates a status column. Consumers (dashboard active-loan count, loan picker in `/batches/new`, detail badge) keep reading `status` unchanged. `LOAN_STATUSES` no longer exists.
+- **Reports**: the loans list in `getReports` is now ordered by `disbursement_date` (it used to be by maturity date).
+
+---
+
+### Lesson 37: Loan Contracts Without a Note
+
+- **Change**: `loan_contracts.note` ("Ghi Chú") was removed (schema, server fns, seed, new-loan dialog). Migration `0017_uneven_red_skull.sql` drops the column; apply with `npm run migration:run`. The column is nullable, so saving a loan keeps working before it is applied, but `maturity_date` (Lesson 36) is still `NOT NULL` until `0016` runs. Repayment notes (`loan_repayments.note`) are unchanged.
+
+---
+
+_(Next Agent: Append Lesson 38, 39,... above this line upon completing tasks)_

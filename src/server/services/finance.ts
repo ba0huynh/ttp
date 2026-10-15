@@ -57,14 +57,19 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
     0,
   )
   const interestPaid = repayments.reduce((s, r) => s + num(r.interestAmount), 0)
+  const outstanding = num(loan.principalAmount) - principalPaid
   return {
-    loan,
+    // status is derived: settled once no principal remains
+    loan: {
+      ...loan,
+      status: outstanding <= 0.5 ? ('settled' as const) : ('active' as const),
+    },
     repayments,
     batches,
     asOf,
     principalPaid,
     interestPaid,
-    outstanding: num(loan.principalAmount) - principalPaid,
+    outstanding,
     accruedInterest: interest.totalInterest,
     interestDue: interest.totalInterest - interestPaid,
     segments: interest.segments,
@@ -84,20 +89,13 @@ export async function recordLoanRepayment(input: {
     throw new BusinessError('Số tiền trả gốc vượt quá dư nợ còn lại')
   if (input.principalAmount <= 0 && input.interestAmount <= 0)
     throw new BusinessError('Số tiền trả phải lớn hơn 0')
-  await db.transaction(async (tx) => {
-    await tx.insert(loanRepayments).values({
-      loanContractId: input.loanContractId,
-      paymentDate: input.paymentDate,
-      principalAmount: input.principalAmount,
-      interestAmount: input.interestAmount,
-      companyBankAccountId: input.companyBankAccountId ?? null,
-      note: input.note ?? null,
-    })
-    const remaining = status.outstanding - input.principalAmount
-    await tx
-      .update(loanContracts)
-      .set({ status: remaining <= 0.5 ? 'settled' : 'active' })
-      .where(eq(loanContracts.id, input.loanContractId))
+  await db.insert(loanRepayments).values({
+    loanContractId: input.loanContractId,
+    paymentDate: input.paymentDate,
+    principalAmount: input.principalAmount,
+    interestAmount: input.interestAmount,
+    companyBankAccountId: input.companyBankAccountId ?? null,
+    note: input.note ?? null,
   })
 }
 

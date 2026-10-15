@@ -173,8 +173,6 @@ export const posBranches = mysqlTable(
 /* 04. BANK LOANS & CREDIT CONTRACTS                                         */
 /* ========================================================================== */
 
-export const LOAN_STATUSES = ['active', 'settled'] as const
-
 export const loanContracts = mysqlTable('loan_contracts', {
   id: int('id').primaryKey().autoincrement(),
   contractNumber: varchar('contract_number', { length: 50 }).notNull().unique(),
@@ -189,9 +187,6 @@ export const loanContracts = mysqlTable('loan_contracts', {
     mode: 'number',
   }).notNull(),
   disbursementDate: date('disbursement_date', { mode: 'string' }).notNull(),
-  maturityDate: date('maturity_date', { mode: 'string' }).notNull(),
-  status: mysqlEnum('status', LOAN_STATUSES).default('active').notNull(),
-  note: text('note'),
   ...timestamps,
 })
 

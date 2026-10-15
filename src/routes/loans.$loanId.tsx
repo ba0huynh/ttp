@@ -4,19 +4,12 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import {
-  ArrowLeft,
-  Banknote,
-  CheckCircle2,
-  CreditCard,
-  Landmark,
-  Percent,
-} from 'lucide-react'
+import { ArrowLeft, CreditCard } from 'lucide-react'
 import * as React from 'react'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { PageHeader, StatCard } from '#/components/layout/StatCard.tsx'
+import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Card, CardContent } from '#/components/ui/card.tsx'
@@ -101,7 +94,6 @@ function LoanDetailPage() {
   const [repayBankAccountId, setRepayBankAccountId] = React.useState<
     number | null
   >(master.bankAccounts[0]?.id ?? null)
-  const [repayNote, setRepayNote] = React.useState('')
   const repaying = repayLoan.isPending
 
   const handleRepaySubmit = async (e: React.FormEvent) => {
@@ -114,14 +106,12 @@ function LoanDetailPage() {
           principalAmount: repayPrincipal,
           interestAmount: repayInterest,
           companyBankAccountId: repayBankAccountId,
-          note: repayNote,
         },
       })
       // Same cache as useSuspenseQuery above; re-fill the interest still due
       const fresh = await queryClient.query(loanDetailQuery(id))
       setRepayPrincipal(0)
       setRepayInterest(fresh.interestDue > 0 ? fresh.interestDue : 0)
-      setRepayNote('')
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi ghi nhận trả nợ')
     }
@@ -146,52 +136,10 @@ function LoanDetailPage() {
           description={
             <>
               Lãi suất: <strong>{loan.interestRate}%/năm</strong> · Giải ngân:{' '}
-              {formatDate(loan.disbursementDate)} · Đáo hạn:{' '}
-              {formatDate(loan.maturityDate)}
+              {formatDate(loan.disbursementDate)}
             </>
           }
-          actions={
-            <Badge
-              variant="outline"
-              className={
-                loan.status === 'settled'
-                  ? 'bg-slate-100 text-slate-600'
-                  : 'bg-emerald-50 text-emerald-800 border-emerald-300'
-              }
-            >
-              {loan.status === 'settled' ? 'Đã tất toán' : 'Đang hoạt động'}
-            </Badge>
-          }
         />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard
-            label="Hạn mức vay"
-            icon={Banknote}
-            tone="blue"
-            value={formatVnd(loan.principalAmount)}
-          />
-          <StatCard
-            label="Dư nợ gốc"
-            icon={Landmark}
-            tone="violet"
-            value={formatVnd(loanDetail.outstanding)}
-            hint={`Đã trả gốc ${formatVnd(loanDetail.principalPaid)}`}
-          />
-          <StatCard
-            label="Tổng lãi phát sinh"
-            icon={Percent}
-            tone="amber"
-            value={formatVnd(loanDetail.accruedInterest)}
-            hint={`Đã trả lãi ${formatVnd(loanDetail.interestPaid)}`}
-          />
-          <StatCard
-            label="Lãi còn phải trả"
-            icon={CheckCircle2}
-            value={formatVnd(Math.max(loanDetail.interestDue, 0))}
-            hint={`Tính đến ${formatDate(loanDetail.asOf)}`}
-          />
-        </div>
 
         <div className="space-y-5">
           {/* 0. Import batches financed by this loan contract */}
@@ -296,7 +244,6 @@ function LoanDetailPage() {
                         <TableHead className="text-right">
                           Tổng Thanh Toán
                         </TableHead>
-                        <TableHead>Ghi Chú</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody className="text-xs">
@@ -316,9 +263,6 @@ function LoanDetailPage() {
                               Number(r.principalAmount) +
                                 Number(r.interestAmount),
                             )}
-                          </TableCell>
-                          <TableCell className="text-slate-500">
-                            {r.note ?? '—'}
                           </TableCell>
                         </TableRow>
                       ))}
@@ -418,13 +362,7 @@ function LoanDetailPage() {
                 </div>
               </div>
 
-              <div className="flex items-center justify-between pt-1">
-                <Input
-                  placeholder="Nội dung/ghi chú chuyển khoản..."
-                  value={repayNote}
-                  onChange={(e) => setRepayNote(e.target.value)}
-                  className="h-8 text-xs bg-white max-w-md mr-2"
-                />
+              <div className="flex items-center justify-end pt-1">
                 <Button
                   type="submit"
                   disabled={

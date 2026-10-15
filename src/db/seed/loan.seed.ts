@@ -45,9 +45,6 @@ export async function seedLoans({
         principalAmount: 2_000_000_000,
         interestRate: 8.5,
         disbursementDate: '2026-01-10',
-        maturityDate: '2026-07-10',
-        status: 'active',
-        note: 'Vay tài trợ nhập khẩu lô xe Honda Thái Lan',
       },
       {
         contractNumber: 'KU-2026-BIDV-02',
@@ -55,9 +52,6 @@ export async function seedLoans({
         principalAmount: 1_500_000_000,
         interestRate: 8.8,
         disbursementDate: '2026-02-15',
-        maturityDate: '2026-08-15',
-        status: 'active',
-        note: 'Vay tài trợ nhập khẩu lô xe Honda Indonesia',
       },
     ])
     .$returningId()

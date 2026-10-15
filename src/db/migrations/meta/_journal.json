@@ -113,6 +113,20 @@
       "when": 1792029250446,
       "tag": "0015_amazing_machine_man",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "5",
+      "when": 1792050525309,
+      "tag": "0016_gigantic_bloodstrike",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "5",
+      "when": 1792050568035,
+      "tag": "0017_uneven_red_skull",
+      "breakpoints": true
     }
   ]
 }

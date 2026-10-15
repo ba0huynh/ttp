@@ -1,0 +1,1 @@
+ALTER TABLE `loan_contracts` DROP COLUMN `note`;

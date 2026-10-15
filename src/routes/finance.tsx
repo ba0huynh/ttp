@@ -462,7 +462,7 @@ function FinancePage() {
                     setReceiptBranchId(null)
                   }}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
@@ -489,7 +489,7 @@ function FinancePage() {
                     setReceiptBranchId(val === 'none' ? null : Number(val))
                   }
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue placeholder="Chọn chi nhánh/điểm bán" />
                   </SelectTrigger>
                   <SelectContent>
@@ -615,7 +615,7 @@ function FinancePage() {
                   value={String(paymentSupplierId)}
                   onValueChange={(val) => setPaymentSupplierId(Number(val))}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

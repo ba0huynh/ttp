@@ -4,7 +4,6 @@ import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
 import {
-  LOAN_STATUSES,
   MATCH_TYPES,
   PAYEE_TYPES,
   bankStatementLines,
@@ -53,9 +52,6 @@ export const listLoansFn = createServerFn({ method: 'GET' })
         principalAmount: loanContracts.principalAmount,
         interestRate: loanContracts.interestRate,
         disbursementDate: loanContracts.disbursementDate,
-        maturityDate: loanContracts.maturityDate,
-        status: loanContracts.status,
-        note: loanContracts.note,
         principalPaid: sql<string>`coalesce((select sum(r.principal_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
         interestPaid: sql<string>`coalesce((select sum(r.interest_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
       })
@@ -73,6 +69,8 @@ export const listLoansFn = createServerFn({ method: 'GET' })
         principalPaid: paid,
         interestPaid: num(l.interestPaid),
         outstanding: p - paid,
+        // Derived: a loan is settled once no principal remains
+        status: p - paid <= 0.5 ? ('settled' as const) : ('active' as const),
       }
     })
   })
@@ -94,9 +92,6 @@ export const saveLoanContractFn = createServerFn({ method: 'POST' })
       principalAmount: z.number().positive('Số tiền vay phải > 0'),
       interestRate: z.number().min(0, 'Lãi suất %/năm'),
       disbursementDate: z.string().min(10),
-      maturityDate: z.string().min(10),
-      status: z.enum(LOAN_STATUSES).optional(),
-      note: z.string().trim().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
