@@ -148,6 +148,20 @@
       "when": 1792054852302,
       "tag": "0020_strong_cloak",
       "breakpoints": true
+    },
+    {
+      "idx": 21,
+      "version": "5",
+      "when": 1792058941176,
+      "tag": "0021_sleepy_ghost_rider",
+      "breakpoints": true
+    },
+    {
+      "idx": 22,
+      "version": "5",
+      "when": 1792058965366,
+      "tag": "0022_eager_green_goblin",
+      "breakpoints": true
     }
   ]
 }

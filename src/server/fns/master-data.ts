@@ -11,7 +11,7 @@ import {
   suppliers,
 } from '#/db/schema.ts'
 import { isDuplicateError } from '#/server/services/common.ts'
-import { authMiddleware } from './middleware.ts'
+import { authMiddleware, requirePermission } from './middleware.ts'
 
 const opt = z.string().trim().nullable().optional()
 
@@ -56,7 +56,7 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
 
 /* ----------------------------------- Banks ---------------------------------- */
 export const saveBankFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('master-data.manage')])
   .validator(
     z.object({
       id: z.number().optional(),
@@ -73,7 +73,7 @@ export const saveBankFn = createServerFn({ method: 'POST' })
 
 /* --------------------------- Company Bank Accounts --------------------------- */
 export const saveBankAccountFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('master-data.manage')])
   .validator(
     z.object({
       id: z.number().optional(),
@@ -98,7 +98,7 @@ export const saveBankAccountFn = createServerFn({ method: 'POST' })
 
 /* --------------------------------- Suppliers --------------------------------- */
 export const saveSupplierFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('master-data.manage')])
   .validator(
     z.object({
       id: z.number().optional(),
@@ -119,7 +119,7 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
 
 /* ----------------------------- Motorcycle Models ----------------------------- */
 export const saveModelFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('master-data.manage')])
   .validator(
     z.object({
       id: z.number().optional(),
@@ -141,7 +141,7 @@ export const saveModelFn = createServerFn({ method: 'POST' })
 
 /* ----------------------------------- Colors ---------------------------------- */
 export const saveColorFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('master-data.manage')])
   .validator(
     z.object({
       id: z.number().optional(),
@@ -167,7 +167,7 @@ const deletable = {
 }
 
 export const deleteMasterDataFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('master-data.manage')])
   .validator(
     z.object({
       entity: z.enum([

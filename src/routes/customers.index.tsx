@@ -7,6 +7,7 @@ import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Eye, Plus } from 'lucide-react'
 import * as React from 'react'
 
+import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -39,12 +40,14 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { formatVnd } from '#/lib/business.ts'
 import { customersQuery, currentUserQuery } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import { saveCustomerFn } from '#/server/fns/customers.ts'
 
 export const Route = createFileRoute('/customers/')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'customers.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -97,17 +100,19 @@ function CustomersPage() {
               nhận xe.
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => {
-              setName('')
-              setNewCustOpen(true)
-            }}
-            className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
-          >
-            <Plus className="size-4" />
-            Thêm Khách Hàng Mẹ
-          </Button>
+          <Can permission="customers.manage">
+            <Button
+              size="sm"
+              onClick={() => {
+                setName('')
+                setNewCustOpen(true)
+              }}
+              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
+            >
+              <Plus className="size-4" />
+              Thêm Khách Hàng Mẹ
+            </Button>
+          </Can>
         </div>
 
         {/* Customers Table */}

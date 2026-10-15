@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Eye, Plus } from 'lucide-react'
 
+import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -25,11 +26,13 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { currentUserQuery, salesOrdersQuery } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/sales/')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'sales.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -56,15 +59,17 @@ function SalesPage() {
               tồn kho hóa đơn) là <strong>2 nghiệp vụ độc lập</strong>.
             </p>
           </div>
-          <Link to="/sales/new">
-            <Button
-              size="sm"
-              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
-            >
-              <Plus className="size-4" />
-              Lập Phiếu Bán Xe
-            </Button>
-          </Link>
+          <Can permission="sales.create">
+            <Link to="/sales/new">
+              <Button
+                size="sm"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
+              >
+                <Plus className="size-4" />
+                Lập Phiếu Bán Xe
+              </Button>
+            </Link>
+          </Can>
         </div>
 
         {/* Orders Table */}

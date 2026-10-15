@@ -16,6 +16,7 @@ import * as React from 'react'
 
 import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
+import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -57,6 +58,7 @@ import {
   bankStatementsQuery,
   currentUserQuery,
 } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import {
   matchStatementLineFn,
   setStatementLineStatusFn,
@@ -67,6 +69,7 @@ export const Route = createFileRoute('/reconcile')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'reconcile.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -163,17 +166,19 @@ function ReconcilePage() {
             </p>
           </div>
 
-          <div className="flex gap-2">
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setImportOpen(true)}
-              className="gap-1.5 font-semibold"
-            >
-              <Upload className="size-4" />
-              Nhập Sao Kê
-            </Button>
-          </div>
+          <Can permission="reconcile.manage">
+            <div className="flex gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setImportOpen(true)}
+                className="gap-1.5 font-semibold"
+              >
+                <Upload className="size-4" />
+                Nhập Sao Kê
+              </Button>
+            </div>
+          </Can>
         </div>
 
         <ImportStatementDialog

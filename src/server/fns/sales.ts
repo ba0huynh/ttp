@@ -23,10 +23,10 @@ import {
   recordDelivery,
   recordInvoice,
 } from '#/server/services/sales.ts'
-import { authMiddleware } from './middleware.ts'
+import { requirePermission } from './middleware.ts'
 
 export const listSalesOrdersFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('sales.view', 'dashboard.view')])
   .handler(async () => {
     const list = await db
       .select({
@@ -72,7 +72,7 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
   })
 
 export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('sales.view')])
   .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     const [order] = await db
@@ -181,7 +181,7 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
   })
 
 export const createSalesOrderFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('sales.create')])
   .validator(
     z.object({
       orderDate: z.string().min(10),
@@ -201,7 +201,7 @@ export const createSalesOrderFn = createServerFn({ method: 'POST' })
   })
 
 export const recordDeliveryFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('sales.deliver')])
   .validator(
     z.object({
       salesOrderId: z.number().int(),
@@ -218,7 +218,7 @@ export const recordDeliveryFn = createServerFn({ method: 'POST' })
   })
 
 export const recordInvoiceFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('sales.invoice')])
   .validator(
     z.object({
       salesOrderId: z.number().int(),
@@ -234,7 +234,7 @@ export const recordInvoiceFn = createServerFn({ method: 'POST' })
   })
 
 export const cancelSalesOrderFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('sales.create')])
   .validator(z.object({ orderId: z.number().int() }))
   .handler(async ({ data }) => {
     await cancelSalesOrder(data.orderId)

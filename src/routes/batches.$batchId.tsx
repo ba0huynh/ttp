@@ -8,11 +8,14 @@ import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { formatDate } from '#/lib/business.ts'
 import { batchDetailQuery, currentUserQuery } from '#/lib/queries.ts'
+import { hasPermission } from '#/lib/permissions.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/batches/$batchId')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'batches.view')
     return { user }
   },
   loader: async ({ context: { queryClient }, params }) => {
@@ -71,7 +74,13 @@ function BatchDetailPage() {
           }
         />
 
-        <BatchEditor detail={data} />
+        {/* Read-only for roles without batches.manage: every control is disabled */}
+        <fieldset
+          disabled={!hasPermission(user, 'batches.manage')}
+          className="min-w-0 space-y-6 border-0 p-0"
+        >
+          <BatchEditor detail={data} />
+        </fieldset>
       </div>
     </AppLayout>
   )

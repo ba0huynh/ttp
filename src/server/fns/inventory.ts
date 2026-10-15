@@ -2,16 +2,16 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
 import { getInventorySummary, listVehicles } from '#/server/services/reports.ts'
-import { authMiddleware } from './middleware.ts'
+import { requirePermission } from './middleware.ts'
 
 export const getInventorySummaryFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('inventory.view', 'dashboard.view')])
   .handler(async () => {
     return getInventorySummary()
   })
 
 export const listVehiclesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('inventory.view', 'dashboard.view')])
   .validator(
     z.object({
       batchId: z.number().int().optional(),
@@ -25,7 +25,7 @@ export const listVehiclesFn = createServerFn({ method: 'GET' })
   })
 
 export const getAvailableVehiclesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('inventory.view', 'sales.create')])
   .handler(async () => {
     return listVehicles({ stock: 'available' })
   })

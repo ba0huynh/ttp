@@ -53,11 +53,13 @@ import {
 } from '#/lib/business.ts'
 import { createBatchFn } from '#/server/fns/batches.ts'
 import { loansQuery, masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/batches/new')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'batches.manage')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {

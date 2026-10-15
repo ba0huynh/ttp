@@ -27,44 +27,97 @@ import {
   SheetDescription,
   SheetTitle,
 } from '#/components/ui/sheet.tsx'
-import { ROLE_LABELS } from '#/lib/business.ts'
+import { hasPermission } from '#/lib/permissions.ts'
+import type { PermissionKey } from '#/lib/permissions.ts'
 import { logoutFn } from '#/server/fns/auth.ts'
 
 interface NavItem {
   title: string
   href: string
   icon: React.ComponentType<{ className?: string }>
+  /** Hidden from the sidebar when the user lacks it (no value = everyone) */
+  permission?: PermissionKey
 }
 
 const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
   {
     group: 'Điều hành',
     items: [
-      { title: 'Bàn làm việc', href: '/', icon: LayoutDashboard },
-      { title: 'Báo cáo & Phân tích', href: '/reports', icon: PieChart },
+      {
+        title: 'Bàn làm việc',
+        href: '/',
+        icon: LayoutDashboard,
+        permission: 'dashboard.view',
+      },
+      {
+        title: 'Báo cáo & Phân tích',
+        href: '/reports',
+        icon: PieChart,
+        permission: 'reports.view',
+      },
     ],
   },
   {
     group: 'Kho & Xe máy',
     items: [
-      { title: 'Nhập lô & Giá vốn', href: '/batches', icon: PackagePlus },
-      { title: 'Kho xe (2 Kho)', href: '/inventory', icon: Warehouse },
-      { title: 'Bán hàng & Xuất xe', href: '/sales', icon: FileText },
+      {
+        title: 'Nhập lô & Giá vốn',
+        href: '/batches',
+        icon: PackagePlus,
+        permission: 'batches.view',
+      },
+      {
+        title: 'Kho xe (2 Kho)',
+        href: '/inventory',
+        icon: Warehouse,
+        permission: 'inventory.view',
+      },
+      {
+        title: 'Bán hàng & Xuất xe',
+        href: '/sales',
+        icon: FileText,
+        permission: 'sales.view',
+      },
     ],
   },
   {
     group: 'Tài chính & Đối soát',
     items: [
-      { title: 'Khế ước vay ngân hàng', href: '/loans', icon: Landmark },
-      { title: 'Thu chi & Công nợ', href: '/finance', icon: Banknote },
-      { title: 'Đối chiếu sao kê', href: '/reconcile', icon: ArrowRightLeft },
+      {
+        title: 'Khế ước vay ngân hàng',
+        href: '/loans',
+        icon: Landmark,
+        permission: 'loans.view',
+      },
+      {
+        title: 'Thu chi & Công nợ',
+        href: '/finance',
+        icon: Banknote,
+        permission: 'finance.view',
+      },
+      {
+        title: 'Đối chiếu sao kê',
+        href: '/reconcile',
+        icon: ArrowRightLeft,
+        permission: 'reconcile.view',
+      },
     ],
   },
   {
     group: 'Đối tác & Thiết lập',
     items: [
-      { title: 'Khách hàng & Điểm bán', href: '/customers', icon: Building2 },
-      { title: 'Danh mục hệ thống', href: '/master-data', icon: Boxes },
+      {
+        title: 'Khách hàng & Điểm bán',
+        href: '/customers',
+        icon: Building2,
+        permission: 'customers.view',
+      },
+      {
+        title: 'Danh mục hệ thống',
+        href: '/master-data',
+        icon: Boxes,
+        permission: 'master-data.view',
+      },
       { title: 'Cài đặt công ty & User', href: '/settings', icon: Settings },
     ],
   },
@@ -81,7 +134,9 @@ interface AppLayoutProps {
     id: number
     username: string
     fullName: string
-    role: string
+    roleName: string
+    isAdmin: boolean
+    permissions: string[]
   } | null
 }
 
@@ -171,29 +226,35 @@ export function AppLayout({ children, user }: AppLayoutProps) {
           </div>
 
           <div className="flex items-center gap-2 shrink-0">
-            <Button
-              asChild
-              variant="outline"
-              size="sm"
-              className="hidden md:inline-flex text-xs"
-            >
-              <Link to="/inventory" preload="intent">
-                <Warehouse className="size-3.5 text-emerald-700" />
-                Tra cứu 2 kho
-              </Link>
-            </Button>
-            <Button asChild variant="outline" size="sm" className="text-xs">
-              <Link to="/sales/new" preload="intent">
-                <Plus className="size-3.5 text-emerald-700" />
-                <span className="hidden sm:inline">Phiếu bán</span>
-              </Link>
-            </Button>
-            <Button asChild size="sm" className="text-xs">
-              <Link to="/batches/new" preload="intent">
-                <PackagePlus className="size-3.5" />
-                <span className="hidden sm:inline">Nhập lô mới</span>
-              </Link>
-            </Button>
+            {hasPermission(user, 'inventory.view') && (
+              <Button
+                asChild
+                variant="outline"
+                size="sm"
+                className="hidden md:inline-flex text-xs"
+              >
+                <Link to="/inventory" preload="intent">
+                  <Warehouse className="size-3.5 text-emerald-700" />
+                  Tra cứu 2 kho
+                </Link>
+              </Button>
+            )}
+            {hasPermission(user, 'sales.create') && (
+              <Button asChild variant="outline" size="sm" className="text-xs">
+                <Link to="/sales/new" preload="intent">
+                  <Plus className="size-3.5 text-emerald-700" />
+                  <span className="hidden sm:inline">Phiếu bán</span>
+                </Link>
+              </Button>
+            )}
+            {hasPermission(user, 'batches.manage') && (
+              <Button asChild size="sm" className="text-xs">
+                <Link to="/batches/new" preload="intent">
+                  <PackagePlus className="size-3.5" />
+                  <span className="hidden sm:inline">Nhập lô mới</span>
+                </Link>
+              </Button>
+            )}
           </div>
         </header>
 
@@ -222,6 +283,14 @@ function SidebarBody({
     window.location.href = '/login'
   }
 
+  // Only the pages the user's role may open
+  const visibleGroups = NAV_GROUPS.map((g) => ({
+    ...g,
+    items: g.items.filter(
+      (i) => !i.permission || hasPermission(user, i.permission),
+    ),
+  })).filter((g) => g.items.length > 0)
+
   const initials = (user?.fullName ?? 'U')
     .split(' ')
     .filter(Boolean)
@@ -244,7 +313,7 @@ function SidebarBody({
       </div>
 
       <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 py-4 space-y-5">
-        {NAV_GROUPS.map((grp) => (
+        {visibleGroups.map((grp) => (
           <div key={grp.group}>
             <div className="px-3 pb-1.5 text-[10.5px] font-semibold text-slate-500 uppercase tracking-[0.12em]">
               {grp.group}
@@ -299,7 +368,7 @@ function SidebarBody({
             </div>
             <div className="text-[11px] text-slate-500 truncate flex items-center gap-1.5">
               <span className="inline-block size-1.5 rounded-full bg-emerald-400" />
-              {ROLE_LABELS[user?.role ?? ''] ?? user?.role ?? '—'}
+              {user?.roleName ?? '—'}
             </div>
           </div>
           <Button

@@ -18,6 +18,7 @@ import {
   int,
   mysqlEnum,
   mysqlTable,
+  primaryKey,
   text,
   timestamp,
   uniqueIndex,
@@ -39,8 +40,26 @@ const timestamps = {
 /* 01. USERS & SYSTEM AUTH                                                    */
 /* ========================================================================== */
 
-export const USER_ROLES = ['admin', 'accountant', 'sales', 'warehouse'] as const
-export type UserRole = (typeof USER_ROLES)[number]
+/** A role groups permissions; `isAdmin` roles implicitly hold every permission */
+export const roles = mysqlTable('roles', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 100 }).notNull().unique(),
+  description: varchar('description', { length: 255 }),
+  isAdmin: boolean('is_admin').default(false).notNull(),
+  ...timestamps,
+})
+
+/** Permission keys of a role (the catalogue lives in src/lib/permissions.ts) */
+export const rolePermissions = mysqlTable(
+  'role_permissions',
+  {
+    roleId: int('role_id')
+      .notNull()
+      .references(() => roles.id, { onDelete: 'cascade' }),
+    permission: varchar('permission', { length: 64 }).notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.roleId, t.permission] })],
+)
 
 export const users = mysqlTable('users', {
   id: int('id').primaryKey().autoincrement(),
@@ -49,7 +68,9 @@ export const users = mysqlTable('users', {
   passwordHash: varchar('password_hash', { length: 255 }).notNull(),
   fullName: varchar('full_name', { length: 150 }).notNull(),
   phone: varchar('phone', { length: 20 }),
-  role: mysqlEnum('role', USER_ROLES).default('sales').notNull(),
+  roleId: int('role_id')
+    .notNull()
+    .references(() => roles.id),
   isActive: boolean('is_active').default(true).notNull(),
   lastLoginAt: timestamp('last_login_at', { mode: 'date' }),
   ...timestamps,
@@ -547,9 +568,25 @@ export const bankStatementLines = mysqlTable(
 /* RELATIONS                                                                  */
 /* ========================================================================== */
 
-export const usersRelations = relations(users, ({ many }) => ({
+export const usersRelations = relations(users, ({ one, many }) => ({
   sessions: many(sessions),
+  role: one(roles, { fields: [users.roleId], references: [roles.id] }),
 }))
+
+export const rolesRelations = relations(roles, ({ many }) => ({
+  users: many(users),
+  permissions: many(rolePermissions),
+}))
+
+export const rolePermissionsRelations = relations(
+  rolePermissions,
+  ({ one }) => ({
+    role: one(roles, {
+      fields: [rolePermissions.roleId],
+      references: [roles.id],
+    }),
+  }),
+)
 
 export const sessionsRelations = relations(sessions, ({ one }) => ({
   user: one(users, { fields: [sessions.userId], references: [users.id] }),

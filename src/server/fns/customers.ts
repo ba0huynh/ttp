@@ -9,12 +9,12 @@ import {
   getCustomerStatement,
   getReceivablesSummary,
 } from '#/server/services/reports.ts'
-import { authMiddleware } from './middleware.ts'
+import { authMiddleware, requirePermission } from './middleware.ts'
 
 const opt = z.string().trim().nullable().optional()
 
 export const listCustomersFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('customers.view')])
   .handler(async () => {
     // Independent queries run together (each one is a network round trip)
     const [list, ar] = await Promise.all([
@@ -63,7 +63,7 @@ export const listCustomerOptionsFn = createServerFn({ method: 'GET' })
   })
 
 export const getCustomerDetailFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('customers.view')])
   .validator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     // Independent queries run together: each one is a network round trip
@@ -83,7 +83,7 @@ export const getCustomerDetailFn = createServerFn({ method: 'GET' })
   })
 
 export const saveCustomerFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('customers.manage')])
   .validator(
     z.object({
       id: z.number().optional(),
@@ -102,7 +102,7 @@ export const saveCustomerFn = createServerFn({ method: 'POST' })
   })
 
 export const saveBranchFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('customers.manage')])
   .validator(
     z.object({
       id: z.number().optional(),

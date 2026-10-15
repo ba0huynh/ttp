@@ -31,7 +31,7 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { ROLE_LABELS, formatDate, formatVnd } from '#/lib/business.ts'
+import { formatDate, formatVnd } from '#/lib/business.ts'
 import {
   inventorySummaryQuery,
   loansQuery,
@@ -39,6 +39,7 @@ import {
   vehiclesQuery,
   currentUserQuery,
 } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/')({
   beforeLoad: async ({ context: { queryClient } }) => {
@@ -46,6 +47,7 @@ export const Route = createFileRoute('/')({
     if (!user) {
       throw redirect({ to: '/login' })
     }
+    requirePagePermission(user, 'dashboard.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -73,7 +75,7 @@ function DashboardPage() {
     <AppLayout user={user}>
       <div className="space-y-6">
         <PageHeader
-          eyebrow={`Xin chào, ${user.fullName} · ${ROLE_LABELS[user.role] ?? user.role}`}
+          eyebrow={`Xin chào, ${user.fullName} · ${user.roleName}`}
           title="Bàn làm việc"
           description="Dòng tiền, tồn kho 2 lớp (thực tế và hóa đơn) và dư nợ khế ước vay — cập nhật theo thời gian thực."
         />

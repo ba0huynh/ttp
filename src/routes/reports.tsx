@@ -30,11 +30,13 @@ import {
   reportsQuery,
   currentUserQuery,
 } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/reports')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'reports.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {

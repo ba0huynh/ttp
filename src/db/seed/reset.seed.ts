@@ -21,6 +21,8 @@ import {
   paymentVouchers,
   posBranches,
   receiptVouchers,
+  rolePermissions,
+  roles,
   salesOrderItems,
   salesOrders,
   suppliers,
@@ -59,6 +61,8 @@ export async function resetDatabase() {
   await db.delete(companyBankAccounts)
   await db.delete(banks)
   await db.delete(users)
+  await db.delete(rolePermissions)
+  await db.delete(roles)
   await db.delete(companyInfo)
 
   await db.execute(sql`SET FOREIGN_KEY_CHECKS = 1;`)

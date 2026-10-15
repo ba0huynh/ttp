@@ -38,12 +38,15 @@ import {
   loanDetailQuery,
   masterDataQuery,
 } from '#/lib/queries.ts'
+import { hasPermission } from '#/lib/permissions.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import { recordLoanPaymentFn } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/loans/$loanId')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'loans.view')
     return { user }
   },
   loader: async ({ context: { queryClient }, params }) => {
@@ -278,96 +281,99 @@ function LoanDetailPage() {
           </Card>
 
           {/* 3. Record New Principal / Interest Repayment Form */}
-          {loanDetail.outstanding > 0 && (
-            <form
-              onSubmit={handleRepaySubmit}
-              className="p-4 bg-purple-50/60 border border-purple-200 rounded-lg space-y-3"
-            >
-              <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
-                <CreditCard className="size-4 text-purple-700" />
-                Ghi Nhận Đợt Trả Nợ Gốc / Lãi Mới:
-              </div>
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 text-xs">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Ngày Thanh Toán *
-                  </Label>
-                  <Input
-                    type="date"
-                    required
-                    value={repayDate}
-                    onChange={(e) => setRepayDate(e.target.value)}
-                    className="h-8 text-xs bg-white"
-                  />
+          {loanDetail.outstanding > 0 &&
+            hasPermission(user, 'loans.manage') && (
+              <form
+                onSubmit={handleRepaySubmit}
+                className="p-4 bg-purple-50/60 border border-purple-200 rounded-lg space-y-3"
+              >
+                <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
+                  <CreditCard className="size-4 text-purple-700" />
+                  Ghi Nhận Đợt Trả Nợ Gốc / Lãi Mới:
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Trả Nợ Gốc (VNĐ)
-                  </Label>
-                  <MoneyInput
-                    value={repayPrincipal}
-                    onValueChange={setRepayPrincipal}
-                    className="h-8 text-xs bg-white font-bold text-emerald-900"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 text-xs">
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Ngày Thanh Toán *
+                    </Label>
+                    <Input
+                      type="date"
+                      required
+                      value={repayDate}
+                      onChange={(e) => setRepayDate(e.target.value)}
+                      className="h-8 text-xs bg-white"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Trả Nợ Gốc (VNĐ)
+                    </Label>
+                    <MoneyInput
+                      value={repayPrincipal}
+                      onValueChange={setRepayPrincipal}
+                      className="h-8 text-xs bg-white font-bold text-emerald-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Trả Nợ Lãi (VNĐ)
+                    </Label>
+                    <MoneyInput
+                      value={repayInterest}
+                      onValueChange={setRepayInterest}
+                      className="h-8 text-xs bg-white font-bold text-purple-900"
+                    />
+                  </div>
+
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Tài Khoản Chi Tiền
+                    </Label>
+                    <SearchSelect
+                      className="w-full h-8 text-xs bg-white"
+                      value={
+                        repayBankAccountId ? String(repayBankAccountId) : 'none'
+                      }
+                      onValueChange={(val) =>
+                        setRepayBankAccountId(
+                          val === 'none' ? null : Number(val),
+                        )
+                      }
+                    >
+                      {master.bankAccounts
+                        .filter((a) => a.isActive)
+                        .map((a) => (
+                          <SearchSelectItem
+                            key={a.id}
+                            value={String(a.id)}
+                            className="text-xs"
+                          >
+                            <BankLabel image={a.bankImage} name={a.bankName}>
+                              {a.bankName} &bull; {a.accountNumber}
+                            </BankLabel>
+                          </SearchSelectItem>
+                        ))}
+                    </SearchSelect>
+                  </div>
                 </div>
 
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Trả Nợ Lãi (VNĐ)
-                  </Label>
-                  <MoneyInput
-                    value={repayInterest}
-                    onValueChange={setRepayInterest}
-                    className="h-8 text-xs bg-white font-bold text-purple-900"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Tài Khoản Chi Tiền
-                  </Label>
-                  <SearchSelect
-                    className="w-full h-8 text-xs bg-white"
-                    value={
-                      repayBankAccountId ? String(repayBankAccountId) : 'none'
+                <div className="flex items-center justify-end pt-1">
+                  <Button
+                    type="submit"
+                    disabled={
+                      repaying || (repayPrincipal <= 0 && repayInterest <= 0)
                     }
-                    onValueChange={(val) =>
-                      setRepayBankAccountId(val === 'none' ? null : Number(val))
-                    }
+                    size="sm"
+                    className="h-8 text-xs bg-purple-700 hover:bg-purple-800 text-white font-semibold shrink-0"
                   >
-                    {master.bankAccounts
-                      .filter((a) => a.isActive)
-                      .map((a) => (
-                        <SearchSelectItem
-                          key={a.id}
-                          value={String(a.id)}
-                          className="text-xs"
-                        >
-                          <BankLabel image={a.bankImage} name={a.bankName}>
-                            {a.bankName} &bull; {a.accountNumber}
-                          </BankLabel>
-                        </SearchSelectItem>
-                      ))}
-                  </SearchSelect>
+                    {repaying ? 'Đang lưu...' : 'Xác Nhận Trả Nợ'}
+                  </Button>
                 </div>
-              </div>
-
-              <div className="flex items-center justify-end pt-1">
-                <Button
-                  type="submit"
-                  disabled={
-                    repaying || (repayPrincipal <= 0 && repayInterest <= 0)
-                  }
-                  size="sm"
-                  className="h-8 text-xs bg-purple-700 hover:bg-purple-800 text-white font-semibold shrink-0"
-                >
-                  {repaying ? 'Đang lưu...' : 'Xác Nhận Trả Nợ'}
-                </Button>
-              </div>
-            </form>
-          )}
+              </form>
+            )}
         </div>
       </div>
     </AppLayout>

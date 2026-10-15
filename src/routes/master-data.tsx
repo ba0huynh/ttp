@@ -19,6 +19,7 @@ import { z } from 'zod'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
+import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -62,6 +63,7 @@ import {
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
 import { masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import {
   deleteMasterDataFn,
   saveBankAccountFn,
@@ -81,6 +83,7 @@ export const Route = createFileRoute('/master-data')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'master-data.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -316,17 +319,19 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Dòng Xe Máy Nhập Khẩu
                 </CardTitle>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setMName('')
-                    setModelOpen(true)
-                  }}
-                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
-                >
-                  <Plus className="size-3.5" />
-                  Thêm Dòng Xe
-                </Button>
+                <Can permission="master-data.manage">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setMName('')
+                      setModelOpen(true)
+                    }}
+                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm Dòng Xe
+                  </Button>
+                </Can>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
@@ -343,16 +348,18 @@ function MasterDataPage() {
                           {m.name}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              handleDelete('motorcycleModels', m.id)
-                            }
-                            className="size-7 text-slate-400 hover:text-rose-600"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
+                          <Can permission="master-data.manage">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleDelete('motorcycleModels', m.id)
+                              }
+                              className="size-7 text-slate-400 hover:text-rose-600"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </Can>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -370,17 +377,19 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Nhà Cung Cấp
                 </CardTitle>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setSName('')
-                    setSupplierOpen(true)
-                  }}
-                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
-                >
-                  <Plus className="size-3.5" />
-                  Thêm Nhà Cung Cấp
-                </Button>
+                <Can permission="master-data.manage">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setSName('')
+                      setSupplierOpen(true)
+                    }}
+                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm Nhà Cung Cấp
+                  </Button>
+                </Can>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
@@ -397,14 +406,16 @@ function MasterDataPage() {
                           {s.name}
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete('suppliers', s.id)}
-                            className="size-7 text-slate-400 hover:text-rose-600"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
+                          <Can permission="master-data.manage">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete('suppliers', s.id)}
+                              className="size-7 text-slate-400 hover:text-rose-600"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </Can>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -422,17 +433,19 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Ngân Hàng Cho Vay & Tài Khoản Công Ty
                 </CardTitle>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setBName('')
-                    setBankOpen(true)
-                  }}
-                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
-                >
-                  <Plus className="size-3.5" />
-                  Thêm Ngân Hàng
-                </Button>
+                <Can permission="master-data.manage">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setBName('')
+                      setBankOpen(true)
+                    }}
+                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm Ngân Hàng
+                  </Button>
+                </Can>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
@@ -451,14 +464,16 @@ function MasterDataPage() {
                           </BankLabel>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete('banks', b.id)}
-                            className="size-7 text-slate-400 hover:text-rose-600"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
+                          <Can permission="master-data.manage">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete('banks', b.id)}
+                              className="size-7 text-slate-400 hover:text-rose-600"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </Can>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -476,14 +491,16 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Tài Khoản Ngân Hàng Của Công Ty
                 </CardTitle>
-                <Button
-                  size="sm"
-                  onClick={openNewAccount}
-                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
-                >
-                  <Plus className="size-3.5" />
-                  Thêm Tài Khoản
-                </Button>
+                <Can permission="master-data.manage">
+                  <Button
+                    size="sm"
+                    onClick={openNewAccount}
+                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm Tài Khoản
+                  </Button>
+                </Can>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
@@ -528,26 +545,30 @@ function MasterDataPage() {
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => openEditAccount(a)}
-                              className="size-7 text-slate-400 hover:text-emerald-700"
-                              aria-label="Sửa"
-                            >
-                              <Pencil className="size-3.5" />
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                handleDelete('companyBankAccounts', a.id)
-                              }
-                              className="size-7 text-slate-400 hover:text-rose-600"
-                              aria-label="Xóa"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditAccount(a)}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            </Can>
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDelete('companyBankAccounts', a.id)
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                                aria-label="Xóa"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </Can>
                           </div>
                         </TableCell>
                       </TableRow>
@@ -566,17 +587,19 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Bảng Màu Sắc Xe Chuẩn Hóa
                 </CardTitle>
-                <Button
-                  size="sm"
-                  onClick={() => {
-                    setCName('')
-                    setColorOpen(true)
-                  }}
-                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
-                >
-                  <Plus className="size-3.5" />
-                  Thêm Màu
-                </Button>
+                <Can permission="master-data.manage">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setCName('')
+                      setColorOpen(true)
+                    }}
+                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm Màu
+                  </Button>
+                </Can>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
@@ -601,14 +624,16 @@ function MasterDataPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() => handleDelete('colors', c.id)}
-                            className="size-7 text-slate-400 hover:text-rose-600"
-                          >
-                            <Trash2 className="size-3.5" />
-                          </Button>
+                          <Can permission="master-data.manage">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete('colors', c.id)}
+                              className="size-7 text-slate-400 hover:text-rose-600"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </Can>
                         </TableCell>
                       </TableRow>
                     ))}

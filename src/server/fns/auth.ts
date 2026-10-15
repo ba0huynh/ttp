@@ -14,6 +14,7 @@ import {
   authenticate,
   createPasswordResetToken,
   createSession,
+  defaultRoleId,
   deleteSession,
   getUserBySessionToken,
   hashPassword,
@@ -100,7 +101,7 @@ export const registerFn = createServerFn({ method: 'POST' })
       email: data.email,
       fullName: data.fullName,
       passwordHash: await hashPassword(data.password),
-      role: isFirst ? 'admin' : 'sales',
+      roleId: await defaultRoleId(isFirst),
       isActive: isFirst,
     })
     return { pendingApproval: !isFirst }

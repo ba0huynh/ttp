@@ -9,6 +9,7 @@ import * as React from 'react'
 import { z } from 'zod'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
+import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -61,6 +62,7 @@ import {
   receivablesQuery,
   currentUserQuery,
 } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import {
   createPaymentVoucherFn,
   createReceiptVoucherFn,
@@ -76,6 +78,7 @@ export const Route = createFileRoute('/finance')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'finance.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -198,25 +201,27 @@ function FinancePage() {
             </p>
           </div>
 
-          <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => setReceiptOpen(true)}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
-            >
-              <Plus className="size-4" />
-              Lập Phiếu Thu Tiền
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setPaymentOpen(true)}
-              className="border-slate-300 text-slate-800 gap-1.5 shadow-xs"
-            >
-              <Plus className="size-4" />
-              Lập Phiếu Chi
-            </Button>
-          </div>
+          <Can permission="finance.manage">
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                onClick={() => setReceiptOpen(true)}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
+              >
+                <Plus className="size-4" />
+                Lập Phiếu Thu Tiền
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPaymentOpen(true)}
+                className="border-slate-300 text-slate-800 gap-1.5 shadow-xs"
+              >
+                <Plus className="size-4" />
+                Lập Phiếu Chi
+              </Button>
+            </div>
+          </Can>
         </div>
 
         {/* Tabbed interface */}

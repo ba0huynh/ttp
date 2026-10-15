@@ -1,13 +1,15 @@
 import {
   useMutation,
+  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Building2, Lock, Plus, Users } from 'lucide-react'
+import { Building2, Lock, Plus, ShieldCheck, Users } from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import { RolesTab } from '#/components/settings/RolesTab.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -29,12 +31,9 @@ import {
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import { Switch } from '#/components/ui/switch.tsx'
 import {
   Table,
@@ -54,12 +53,13 @@ import {
   TabsList,
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
-import { ROLE_LABELS } from '#/lib/business.ts'
+import { hasPermission } from '#/lib/permissions.ts'
 import { changePasswordFn } from '#/server/fns/auth.ts'
 import {
   companyProfileQuery,
-  usersQuery,
   currentUserQuery,
+  rolesQuery,
+  usersQuery,
 } from '#/lib/queries.ts'
 import { saveUserFn, updateCompanyProfileFn } from '#/server/fns/system.ts'
 
@@ -69,10 +69,13 @@ export const Route = createFileRoute('/settings')({
     if (!user) throw redirect({ to: '/login' })
     return { user }
   },
-  loader: async ({ context: { queryClient } }) => {
+  loader: async ({ context: { queryClient, user } }) => {
+    const canUsers = hasPermission(user, 'users.manage')
+    const canRoles = hasPermission(user, 'roles.manage')
     await Promise.all([
       queryClient.query(companyProfileQuery()),
-      queryClient.query(usersQuery()),
+      canUsers && queryClient.query(usersQuery()),
+      (canUsers || canRoles) && queryClient.query(rolesQuery()),
     ])
   },
   component: SettingsPage,
@@ -81,7 +84,17 @@ export const Route = createFileRoute('/settings')({
 function SettingsPage() {
   const { user } = Route.useRouteContext()
   const { data: company } = useSuspenseQuery(companyProfileQuery())
-  const { data: usersList } = useSuspenseQuery(usersQuery())
+  const canCompany = hasPermission(user, 'company.manage')
+  const canUsers = hasPermission(user, 'users.manage')
+  const canRoles = hasPermission(user, 'roles.manage')
+  const { data: usersList = [] } = useQuery({
+    ...usersQuery(),
+    enabled: canUsers,
+  })
+  const { data: rolesList = [] } = useQuery({
+    ...rolesQuery(),
+    enabled: canUsers || canRoles,
+  })
   const usersPg = usePagination(usersList)
   const queryClient = useQueryClient()
   const updateCompany = useMutation({
@@ -128,7 +141,7 @@ function SettingsPage() {
   const [uEmail, setUEmail] = React.useState('')
   const [uFullName, setUFullName] = React.useState('')
   const [uPhone, setUPhone] = React.useState('')
-  const [uRole, setURole] = React.useState<any>('sales')
+  const [uRoleId, setURoleId] = React.useState<number | null>(null)
   const [uActive, setUActive] = React.useState(true)
   const [uPassword, setUPassword] = React.useState('')
 
@@ -174,6 +187,7 @@ function SettingsPage() {
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!uRoleId) return alert('Chưa chọn vai trò')
     try {
       await saveUser.mutateAsync({
         data: {
@@ -182,7 +196,7 @@ function SettingsPage() {
           email: uEmail,
           fullName: uFullName,
           phone: uPhone || null,
-          role: uRole,
+          roleId: uRoleId,
           isActive: uActive,
           password: uPassword,
         },
@@ -215,13 +229,22 @@ function SettingsPage() {
               <Building2 className="size-3.5" />
               Thông Tin Công Ty
             </TabsTrigger>
-            {user.role === 'admin' && (
+            {canUsers && (
               <TabsTrigger
                 value="users"
                 className="text-xs font-semibold gap-1.5"
               >
                 <Users className="size-3.5" />
                 Quản Lý Người Dùng ({usersList.length})
+              </TabsTrigger>
+            )}
+            {canRoles && (
+              <TabsTrigger
+                value="roles"
+                className="text-xs font-semibold gap-1.5"
+              >
+                <ShieldCheck className="size-3.5" />
+                Vai Trò & Phân Quyền ({rolesList.length})
               </TabsTrigger>
             )}
             <TabsTrigger
@@ -259,7 +282,7 @@ function SettingsPage() {
                       Tên Doanh Nghiệp *
                     </Label>
                     <Input
-                      disabled={user.role !== 'admin'}
+                      disabled={!canCompany}
                       value={cName}
                       onChange={(e) => setCName(e.target.value)}
                       className="h-8 text-xs font-bold"
@@ -272,7 +295,7 @@ function SettingsPage() {
                         Mã Số Thuế *
                       </Label>
                       <Input
-                        disabled={user.role !== 'admin'}
+                        disabled={!canCompany}
                         value={cTax}
                         onChange={(e) => setCTax(e.target.value)}
                         className="h-8 text-xs font-mono font-bold"
@@ -283,7 +306,7 @@ function SettingsPage() {
                         Người Đại Diện Pháp Luật
                       </Label>
                       <Input
-                        disabled={user.role !== 'admin'}
+                        disabled={!canCompany}
                         value={cRep}
                         onChange={(e) => setCRep(e.target.value)}
                         className="h-8 text-xs"
@@ -296,7 +319,7 @@ function SettingsPage() {
                       Địa Chỉ Trụ Sở *
                     </Label>
                     <Input
-                      disabled={user.role !== 'admin'}
+                      disabled={!canCompany}
                       value={cAddress}
                       onChange={(e) => setCAddress(e.target.value)}
                       className="h-8 text-xs"
@@ -309,7 +332,7 @@ function SettingsPage() {
                         Số Điện Thoại
                       </Label>
                       <Input
-                        disabled={user.role !== 'admin'}
+                        disabled={!canCompany}
                         value={cPhone}
                         onChange={(e) => setCPhone(e.target.value)}
                         className="h-8 text-xs"
@@ -320,7 +343,7 @@ function SettingsPage() {
                         Email Liên Hệ
                       </Label>
                       <Input
-                        disabled={user.role !== 'admin'}
+                        disabled={!canCompany}
                         value={cEmail}
                         onChange={(e) => setCEmail(e.target.value)}
                         className="h-8 text-xs"
@@ -328,7 +351,7 @@ function SettingsPage() {
                     </div>
                   </div>
                 </CardContent>
-                {user.role === 'admin' && (
+                {canCompany && (
                   <CardFooter className="py-3 px-4 border-t border-slate-100 flex justify-end">
                     <Button
                       type="submit"
@@ -345,7 +368,7 @@ function SettingsPage() {
           </TabsContent>
 
           {/* Tab 2: User Management */}
-          {user.role === 'admin' && (
+          {canUsers && (
             <TabsContent value="users">
               <Card className="border-slate-200 shadow-xs">
                 <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
@@ -360,7 +383,7 @@ function SettingsPage() {
                       setUEmail('')
                       setUFullName('')
                       setUPhone('')
-                      setURole('sales')
+                      setURoleId(rolesList[0]?.id ?? null)
                       setUActive(true)
                       setUPassword('')
                       setUserModalOpen(true)
@@ -402,7 +425,7 @@ function SettingsPage() {
                               variant="outline"
                               className="text-[11px] font-semibold"
                             >
-                              {ROLE_LABELS[u.role] ?? u.role}
+                              {u.roleName}
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
@@ -428,7 +451,7 @@ function SettingsPage() {
                                 setUEmail(u.email)
                                 setUFullName(u.fullName)
                                 setUPhone(u.phone ?? '')
-                                setURole(u.role)
+                                setURoleId(u.roleId)
                                 setUActive(u.isActive)
                                 setUPassword('')
                                 setUserModalOpen(true)
@@ -444,6 +467,13 @@ function SettingsPage() {
                   <TablePagination pagination={usersPg} />
                 </CardContent>
               </Card>
+            </TabsContent>
+          )}
+
+          {/* Roles & permissions */}
+          {canRoles && (
+            <TabsContent value="roles">
+              <RolesTab roles={rolesList} />
             </TabsContent>
           )}
 
@@ -559,28 +589,22 @@ function SettingsPage() {
                 <Label className="text-xs font-semibold">
                   Vai Trò Phân Quyền *
                 </Label>
-                <Select
-                  value={uRole}
-                  onValueChange={(val: any) => setURole(val)}
+                <SearchSelect
+                  value={uRoleId ? String(uRoleId) : ''}
+                  onValueChange={(v) => setURoleId(Number(v))}
+                  className="h-8 w-full text-xs"
+                  placeholder="Chọn vai trò"
                 >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="admin" className="text-xs">
-                      👑 Quản trị viên (Admin)
-                    </SelectItem>
-                    <SelectItem value="accountant" className="text-xs">
-                      💼 Kế toán (Công nợ & HĐ)
-                    </SelectItem>
-                    <SelectItem value="sales" className="text-xs">
-                      🏷️ Nhân viên Kinh doanh
-                    </SelectItem>
-                    <SelectItem value="warehouse" className="text-xs">
-                      📦 Thủ kho (Giao xe vật lý)
-                    </SelectItem>
-                  </SelectContent>
-                </Select>
+                  {rolesList.map((r) => (
+                    <SearchSelectItem
+                      key={r.id}
+                      value={String(r.id)}
+                      className="text-xs"
+                    >
+                      {r.name}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
               </div>
 
               <div className="space-y-1">

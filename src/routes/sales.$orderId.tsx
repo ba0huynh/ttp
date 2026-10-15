@@ -48,6 +48,8 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
 import { currentUserQuery, salesOrderDetailQuery } from '#/lib/queries.ts'
+import { hasPermission } from '#/lib/permissions.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import {
   cancelSalesOrderFn,
   recordDeliveryFn,
@@ -58,6 +60,7 @@ export const Route = createFileRoute('/sales/$orderId')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'sales.view')
     return { user }
   },
   loader: async ({ context: { queryClient }, params }) => {
@@ -122,6 +125,8 @@ function SalesOrderPage() {
   const [actionError, setActionError] = React.useState<string | null>(null)
   const actionLoading = deliveryMutation.isPending || invoiceMutation.isPending
 
+  const canDeliver = hasPermission(user, 'sales.deliver')
+  const canInvoice = hasPermission(user, 'sales.invoice')
   const canCancel = items.every((i) => !i.isDelivered && !i.isInvoiced)
 
   const openDeliveryModal = () => {
@@ -228,13 +233,13 @@ function SalesOrderPage() {
           }
           actions={
             <>
-              {items.some((i) => !i.isDelivered) && (
+              {canDeliver && items.some((i) => !i.isDelivered) && (
                 <Button size="sm" onClick={openDeliveryModal}>
                   <Truck className="size-4" />
                   Giao xe thực tế
                 </Button>
               )}
-              {items.some((i) => !i.isInvoiced) && (
+              {canInvoice && items.some((i) => !i.isInvoiced) && (
                 <Button
                   size="sm"
                   variant="outline"
@@ -245,7 +250,7 @@ function SalesOrderPage() {
                   Xuất hóa đơn nội bộ
                 </Button>
               )}
-              {canCancel && (
+              {canCancel && hasPermission(user, 'sales.create') && (
                 <Button
                   size="sm"
                   variant="ghost"

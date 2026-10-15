@@ -26,7 +26,11 @@ import {
 import { getMasterDataFn } from '#/server/fns/master-data.ts'
 import { getReportsFn } from '#/server/fns/reports.ts'
 import { getSalesOrderDetailFn, listSalesOrdersFn } from '#/server/fns/sales.ts'
-import { getCompanyProfileFn, listUsersFn } from '#/server/fns/system.ts'
+import {
+  getCompanyProfileFn,
+  listRolesFn,
+  listUsersFn,
+} from '#/server/fns/system.ts'
 
 /**
  * Nguồn duy nhất cho mọi truy vấn đọc dữ liệu (TanStack Query).
@@ -164,6 +168,13 @@ export const usersQuery = () =>
     queryKey: ['settings', 'users'],
     // Chỉ admin được xem; vai trò khác nhận danh sách rỗng như trước đây
     queryFn: () => listUsersFn().catch(() => []),
+  })
+
+export const rolesQuery = () =>
+  queryOptions({
+    queryKey: ['settings', 'roles'],
+    // Only users who may manage users / roles get data; others see an empty list
+    queryFn: () => listRolesFn().catch(() => []),
   })
 
 /**

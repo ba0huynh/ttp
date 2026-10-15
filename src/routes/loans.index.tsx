@@ -8,6 +8,7 @@ import { Calculator, Plus } from 'lucide-react'
 import * as React from 'react'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
+import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -45,12 +46,14 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { formatVnd, todayIso } from '#/lib/business.ts'
 import { currentUserQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import { saveLoanContractFn } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/loans/')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'loans.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -117,14 +120,16 @@ function LoansPage() {
               chính xác theo từng lần trả gốc thực tế.
             </p>
           </div>
-          <Button
-            size="sm"
-            onClick={() => setNewLoanOpen(true)}
-            className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 shadow-xs"
-          >
-            <Plus className="size-4" />
-            Tạo Khế Ước Mới
-          </Button>
+          <Can permission="loans.manage">
+            <Button
+              size="sm"
+              onClick={() => setNewLoanOpen(true)}
+              className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 shadow-xs"
+            >
+              <Plus className="size-4" />
+              Tạo Khế Ước Mới
+            </Button>
+          </Can>
         </div>
 
         {/* Loan Contracts Table */}

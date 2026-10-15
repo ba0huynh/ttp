@@ -3,7 +3,13 @@ import { promisify } from 'node:util'
 import { and, eq, gt, isNull, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
-import { passwordResetTokens, sessions, users } from '../../db/schema.ts'
+import {
+  passwordResetTokens,
+  rolePermissions,
+  roles,
+  sessions,
+  users,
+} from '../../db/schema.ts'
 
 const scryptAsync = promisify(scrypt) as (
   password: string,
@@ -47,30 +53,48 @@ export type SessionUser = {
   username: string
   email: string
   fullName: string
-  role: (typeof users.$inferSelect)['role']
+  roleId: number
+  roleName: string
+  /** Admin roles hold every permission */
+  isAdmin: boolean
+  permissions: string[]
 }
 
+/** One round trip: session + user + role + the role's permission keys */
 export async function getUserBySessionToken(
   token: string,
 ): Promise<SessionUser | null> {
-  const [row] = await db
+  const rows = await db
     .select({
       id: users.id,
       username: users.username,
       email: users.email,
       fullName: users.fullName,
-      role: users.role,
       isActive: users.isActive,
+      roleId: roles.id,
+      roleName: roles.name,
+      isAdmin: roles.isAdmin,
+      permission: rolePermissions.permission,
     })
     .from(sessions)
     .innerJoin(users, eq(users.id, sessions.userId))
+    .innerJoin(roles, eq(roles.id, users.roleId))
+    .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
     .where(
       and(eq(sessions.id, sha256(token)), gt(sessions.expiresAt, sql`NOW()`)),
     )
-    .limit(1)
+  const row = rows[0]
   if (!row || !row.isActive) return null
-  const { isActive: _ignored, ...user } = row
-  return user
+  return {
+    id: row.id,
+    username: row.username,
+    email: row.email,
+    fullName: row.fullName,
+    roleId: row.roleId,
+    roleName: row.roleName,
+    isAdmin: row.isAdmin,
+    permissions: rows.flatMap((r) => (r.permission ? [r.permission] : [])),
+  }
 }
 
 export async function deleteSession(token: string) {
@@ -130,4 +154,22 @@ export async function resetPasswordWithToken(token: string, password: string) {
     await tx.delete(sessions).where(eq(sessions.userId, row.userId))
   })
   return true
+}
+
+/**
+ * Role of a self-registered account: an admin role for the very first user,
+ * otherwise the non-admin role with the fewest permissions (an admin can
+ * change it when approving the account).
+ */
+export async function defaultRoleId(isFirst: boolean) {
+  const [row] = await db
+    .select({ id: roles.id })
+    .from(roles)
+    .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
+    .where(eq(roles.isAdmin, isFirst))
+    .groupBy(roles.id)
+    .orderBy(sql`count(${rolePermissions.permission})`, roles.id)
+    .limit(1)
+  if (!row) throw new Error('Chưa có vai trò nào trong hệ thống')
+  return row.id
 }

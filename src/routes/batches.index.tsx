@@ -2,6 +2,7 @@ import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import { Eye, PackagePlus } from 'lucide-react'
 
+import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -25,11 +26,13 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { batchesQuery, currentUserQuery } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/batches/')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'batches.view')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
@@ -57,15 +60,17 @@ function BatchesPage() {
               từng xe để tính <strong>Giá vốn chính xác</strong>.
             </p>
           </div>
-          <Link to="/batches/new">
-            <Button
-              size="sm"
-              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
-            >
-              <PackagePlus className="size-4" />
-              Nhập Lô Xe Mới
-            </Button>
-          </Link>
+          <Can permission="batches.manage">
+            <Link to="/batches/new">
+              <Button
+                size="sm"
+                className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
+              >
+                <PackagePlus className="size-4" />
+                Nhập Lô Xe Mới
+              </Button>
+            </Link>
+          </Can>
         </div>
 
         {/* Batches Table */}

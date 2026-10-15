@@ -1,8 +1,9 @@
 import { createMiddleware } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 
-import type { UserRole } from '#/db/schema.ts'
 import { UNAUTHENTICATED_MESSAGE } from '#/lib/auth-errors.ts'
+import { hasAnyPermission } from '#/lib/permissions.ts'
+import type { PermissionKey } from '#/lib/permissions.ts'
 import {
   SESSION_COOKIE,
   getUserBySessionToken,
@@ -41,15 +42,17 @@ export const authMiddleware = createMiddleware({ type: 'function' })
     return next({ context: { user } })
   })
 
-export function assertRole(user: { role: UserRole }, roles: UserRole[]) {
-  if (user.role !== 'admin' && !roles.includes(user.role)) {
-    throw new Error('Bạn không có quyền thực hiện thao tác này')
-  }
-}
-
-export const adminMiddleware = createMiddleware({ type: 'function' })
-  .middleware([authMiddleware])
-  .server(async ({ next, context }) => {
-    assertRole(context.user, [])
-    return next()
-  })
+/**
+ * Authentication + permission check: the user's role must hold at least one of
+ * the permissions (admin roles hold all). Use it instead of `authMiddleware`
+ * on every server function that reads or changes protected data.
+ */
+export const requirePermission = (...keys: PermissionKey[]) =>
+  createMiddleware({ type: 'function' })
+    .middleware([authMiddleware])
+    .server(async ({ next, context }) => {
+      if (!hasAnyPermission(context.user, keys)) {
+        throw new Error('Bạn không có quyền thực hiện thao tác này')
+      }
+      return next()
+    })

@@ -2,10 +2,10 @@ import { createServerFn } from '@tanstack/react-start'
 import { z } from 'zod'
 
 import { getReports } from '#/server/services/reports.ts'
-import { authMiddleware } from './middleware.ts'
+import { requirePermission } from './middleware.ts'
 
 export const getReportsFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('reports.view')])
   .validator(
     z.object({
       from: z.string().min(10),

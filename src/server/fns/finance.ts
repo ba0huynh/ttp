@@ -33,14 +33,16 @@ import {
   getPayablesSummary,
   getReceivablesSummary,
 } from '#/server/services/reports.ts'
-import { authMiddleware } from './middleware.ts'
+import { requirePermission } from './middleware.ts'
 
 /* -------------------------------------------------------------------------- */
 /* 04. Bank Loans                                                             */
 /* -------------------------------------------------------------------------- */
 
 export const listLoansFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([
+    requirePermission('loans.view', 'batches.manage', 'dashboard.view'),
+  ])
   .handler(async () => {
     const list = await db
       .select({
@@ -76,14 +78,14 @@ export const listLoansFn = createServerFn({ method: 'GET' })
   })
 
 export const getLoanDetailFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('loans.view')])
   .validator(z.object({ id: z.number().int(), asOf: z.string().optional() }))
   .handler(async ({ data }) => {
     return getLoanStatus(data.id, data.asOf)
   })
 
 export const saveLoanContractFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('loans.manage')])
   .validator(
     z.object({
       id: z.number().int().optional(),
@@ -110,7 +112,7 @@ export const saveLoanContractFn = createServerFn({ method: 'POST' })
   })
 
 export const recordLoanPaymentFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('loans.manage')])
   .validator(
     z.object({
       loanContractId: z.number().int(),
@@ -131,13 +133,13 @@ export const recordLoanPaymentFn = createServerFn({ method: 'POST' })
 /* -------------------------------------------------------------------------- */
 
 export const getReceivablesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('finance.view')])
   .handler(async () => {
     return getReceivablesSummary()
   })
 
 export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('finance.view')])
   .handler(async () => {
     const list = await db
       .select({
@@ -169,7 +171,7 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
   })
 
 export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('finance.manage')])
   .validator(
     z.object({
       receiptDate: z.string().min(10),
@@ -190,13 +192,13 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
 /* -------------------------------------------------------------------------- */
 
 export const getPayablesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('finance.view')])
   .handler(async () => {
     return getPayablesSummary()
   })
 
 export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('finance.view')])
   .handler(async () => {
     const list = await db
       .select({
@@ -228,7 +230,7 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
   })
 
 export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('finance.manage')])
   .validator(
     z.object({
       paymentDate: z.string().min(10),
@@ -250,7 +252,7 @@ export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
 /* -------------------------------------------------------------------------- */
 
 export const listBankStatementsFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('reconcile.view')])
   .handler(async () => {
     const list = await db
       .select({
@@ -288,7 +290,7 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
   })
 
 export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('reconcile.view')])
   .validator(z.object({ id: z.number().int() }))
   .handler(async ({ data }) => {
     const [statement] = await db
@@ -330,7 +332,7 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
   })
 
 export const importBankStatementFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('reconcile.manage')])
   .validator(
     z.object({
       companyBankAccountId: z.number().int(),
@@ -352,14 +354,14 @@ export const importBankStatementFn = createServerFn({ method: 'POST' })
   })
 
 export const suggestMatchesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('reconcile.view')])
   .validator(z.object({ lineId: z.number().int() }))
   .handler(async ({ data }) => {
     return suggestMatches(data.lineId)
   })
 
 export const matchStatementLineFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('reconcile.manage')])
   .validator(
     z.object({
       lineId: z.number().int(),
@@ -373,7 +375,7 @@ export const matchStatementLineFn = createServerFn({ method: 'POST' })
   })
 
 export const setStatementLineStatusFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('reconcile.manage')])
   .validator(
     z.object({
       lineId: z.number().int(),

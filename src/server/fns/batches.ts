@@ -26,10 +26,10 @@ import {
   updateBatchPricing,
 } from '#/server/services/batches.ts'
 import { num } from '#/server/services/common.ts'
-import { authMiddleware } from './middleware.ts'
+import { requirePermission } from './middleware.ts'
 
 export const listBatchesFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.view')])
   .handler(async () => {
     const rows = await db
       .select({
@@ -79,7 +79,7 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
   })
 
 export const getBatchDetailFn = createServerFn({ method: 'GET' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.view')])
   .validator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     const [batch] = await db
@@ -155,7 +155,7 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
   })
 
 export const createBatchFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.manage')])
   .validator(
     z.object({
       supplierId: z.number().int(),
@@ -189,7 +189,7 @@ export const createBatchFn = createServerFn({ method: 'POST' })
   })
 
 export const addVehiclesToBatchFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.manage')])
   .validator(
     z.object({
       batchId: z.number().int(),
@@ -210,7 +210,7 @@ export const addVehiclesToBatchFn = createServerFn({ method: 'POST' })
   })
 
 export const removeVehicleFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.manage')])
   .validator(z.object({ vehicleId: z.number().int() }))
   .handler(async ({ data }) => {
     await removeVehicle(data.vehicleId)
@@ -218,7 +218,7 @@ export const removeVehicleFn = createServerFn({ method: 'POST' })
   })
 
 export const addBatchExpenseFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.manage')])
   .validator(
     z.object({
       batchId: z.number().int(),
@@ -235,7 +235,7 @@ export const addBatchExpenseFn = createServerFn({ method: 'POST' })
   })
 
 export const removeBatchExpenseFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.manage')])
   .validator(z.object({ expenseId: z.number().int() }))
   .handler(async ({ data }) => {
     await removeBatchExpense(data.expenseId)
@@ -243,7 +243,7 @@ export const removeBatchExpenseFn = createServerFn({ method: 'POST' })
   })
 
 export const updateBatchPricingFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.manage')])
   .validator(
     z.object({
       batchId: z.number().int(),
@@ -263,7 +263,7 @@ export const updateBatchPricingFn = createServerFn({ method: 'POST' })
 
 /** Module 04: link / re-link a batch to the loan contract that financed it */
 export const updateBatchInfoFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
+  .middleware([requirePermission('batches.manage')])
   .validator(
     z.object({
       batchId: z.number().int(),

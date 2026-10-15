@@ -1,6 +1,7 @@
 import { hashPassword } from '../../server/services/auth.ts'
 import { db } from '../index.ts'
 import { users } from '../schema.ts'
+import { seedRoles } from './role.seed.ts'
 
 /**
  * Seeds internal user accounts with hashed credentials.
@@ -13,6 +14,12 @@ import { users } from '../schema.ts'
  * Idempotent: skips the insert if `users` already has rows.
  */
 export async function seedUsers() {
+  const roleIds = await seedRoles()
+  const roleId = (name: string) => {
+    const id = roleIds.get(name)
+    if (!id) throw new Error(`Role "${name}" not found`)
+    return id
+  }
   const existingUsers = await db.select().from(users)
   if (existingUsers.length > 0) {
     console.log(' -> Users already seeded, skipping...')
@@ -31,7 +38,7 @@ export async function seedUsers() {
         passwordHash: await hashPassword('Admin@123'),
         fullName: 'Quản trị viên Hệ thống',
         phone: '0901 888 999',
-        role: 'admin',
+        roleId: roleId('Quản trị'),
         isActive: true,
       },
       {
@@ -40,7 +47,7 @@ export async function seedUsers() {
         passwordHash: await hashPassword('Ktp@12345'),
         fullName: 'Trần Thị Thu Thảo (Kế toán)',
         phone: '0902 123 456',
-        role: 'accountant',
+        roleId: roleId('Kế toán'),
         isActive: true,
       },
       {
@@ -49,7 +56,7 @@ export async function seedUsers() {
         passwordHash: await hashPassword('Sale@12345'),
         fullName: 'Nguyễn Văn Hùng (Kinh doanh)',
         phone: '0903 654 321',
-        role: 'sales',
+        roleId: roleId('Kinh doanh'),
         isActive: true,
       },
       {
@@ -58,7 +65,7 @@ export async function seedUsers() {
         passwordHash: await hashPassword('Kho@12345'),
         fullName: 'Lê Hoàng Nam (Thủ kho)',
         phone: '0904 999 888',
-        role: 'warehouse',
+        roleId: roleId('Thủ kho'),
         isActive: true,
       },
     ])

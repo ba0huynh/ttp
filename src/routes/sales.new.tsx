@@ -53,12 +53,14 @@ import {
   customerOptionsQuery,
   currentUserQuery,
 } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import { createSalesOrderFn } from '#/server/fns/sales.ts'
 
 export const Route = createFileRoute('/sales/new')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'sales.create')
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {

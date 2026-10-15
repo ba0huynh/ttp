@@ -32,12 +32,14 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { formatVnd } from '#/lib/business.ts'
 import { currentUserQuery, customerDetailQuery } from '#/lib/queries.ts'
+import { requirePagePermission } from '#/lib/route-guard.ts'
 import { saveBranchFn } from '#/server/fns/customers.ts'
 
 export const Route = createFileRoute('/customers/$customerId')({
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
+    requirePagePermission(user, 'customers.view')
     return { user }
   },
   loader: async ({ context: { queryClient }, params }) => {

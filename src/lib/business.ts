@@ -193,10 +193,3 @@ export const EXPENSE_TYPE_LABELS: Record<string, string> = {
   customs_fee: 'Phí hải quan',
   other: 'Chi phí khác',
 }
-
-export const ROLE_LABELS: Record<string, string> = {
-  admin: 'Quản trị',
-  accountant: 'Kế toán',
-  sales: 'Kinh doanh',
-  warehouse: 'Kho',
-}
