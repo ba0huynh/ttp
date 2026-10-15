@@ -79,9 +79,6 @@ function NewBatchPage() {
   const navigate = useNavigate()
 
   // General batch information
-  const [batchCode, setBatchCode] = React.useState(
-    `LO-${todayIso().replace(/-/g, '')}`,
-  )
   const [supplierId, setSupplierId] = React.useState<number>(
     master.suppliers[0]?.id ?? 1,
   )
@@ -89,7 +86,6 @@ function NewBatchPage() {
     null,
   )
   const [importDate, setImportDate] = React.useState(todayIso())
-  const [customsDeclarationNo, setCustomsDeclarationNo] = React.useState('')
   const [note, setNote] = React.useState('')
 
   // Selling price configuration
@@ -237,11 +233,9 @@ function NewBatchPage() {
     try {
       await createBatch.mutateAsync({
         data: {
-          batchCode,
           supplierId,
           loanContractId,
           importDate,
-          customsDeclarationNo,
           pricingBase,
           pricingMethod,
           pricingValue,
@@ -341,16 +335,6 @@ function NewBatchPage() {
               </CardHeader>
               <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Mã Lô Nhập *</Label>
-                  <Input
-                    required
-                    value={batchCode}
-                    onChange={(e) => setBatchCode(e.target.value)}
-                    className="h-8 text-xs font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
                   <Label className="text-xs font-semibold">
                     Ngày Nhập Cảng/Kho *
                   </Label>
@@ -413,18 +397,6 @@ function NewBatchPage() {
                         </SearchSelectItem>
                       ))}
                   </SearchSelect>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Số Tờ Khai Hải Quan
-                  </Label>
-                  <Input
-                    placeholder="Ví dụ: HQ-1002938475"
-                    value={customsDeclarationNo}
-                    onChange={(e) => setCustomsDeclarationNo(e.target.value)}
-                    className="h-8 text-xs"
-                  />
                 </div>
 
                 <div className="space-y-1">

@@ -46,12 +46,8 @@ export async function seedBatches({
   const existingBatches = await db.select().from(importBatches)
   if (existingBatches.length > 0) {
     console.log(' -> Import batches already seeded, skipping...')
-    const batch1 = existingBatches.find(
-      (b) => b.batchCode === 'LO-2026-01-THAI',
-    )!
-    const batch2 = existingBatches.find(
-      (b) => b.batchCode === 'LO-2026-02-INDO',
-    )!
+    const batch1 = existingBatches.find((b) => b.importDate === '2026-01-15')!
+    const batch2 = existingBatches.find((b) => b.importDate === '2026-02-20')!
 
     // Preserve the original insertion order (batch1's 10 vehicles, then
     // batch2's 4 vehicles): sales.ts indexes vIds by fixed position.
@@ -78,11 +74,9 @@ export async function seedBatches({
   const [batch1] = await db
     .insert(importBatches)
     .values({
-      batchCode: 'LO-2026-01-THAI',
       supplierId: suppliers.supplierThai.id,
       loanContractId: loans.loanVcb.id,
       importDate: '2026-01-15',
-      customsDeclarationNo: 'HQ-1002938475',
       pricingBase: 'cost_price',
       pricingMethod: 'percent',
       pricingValue: 8, // 8% profit margin on cost price
@@ -238,11 +232,9 @@ export async function seedBatches({
   const [batch2] = await db
     .insert(importBatches)
     .values({
-      batchCode: 'LO-2026-02-INDO',
       supplierId: suppliers.supplierIndo.id,
       loanContractId: loans.loanBidv.id,
       importDate: '2026-02-20',
-      customsDeclarationNo: 'HQ-2005987112',
       pricingBase: 'cost_price',
       pricingMethod: 'fixed_amount',
       pricingValue: 3_500_000, // Fixed 3.5M markup on cost price

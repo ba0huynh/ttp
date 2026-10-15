@@ -32,7 +32,7 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
+import { formatDate, formatVnd, todayIso, batchLabel } from '#/lib/business.ts'
 import {
   currentUserQuery,
   loanDetailQuery,
@@ -167,7 +167,7 @@ function LoanDetailPage() {
                       params={{ batchId: String(b.id) }}
                       className="hover:underline"
                     >
-                      {b.batchCode} ({formatDate(b.importDate)})
+                      {batchLabel(b)}
                     </Link>
                   </Badge>
                 ))}

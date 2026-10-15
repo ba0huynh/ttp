@@ -62,7 +62,7 @@ function BatchDetailPage() {
               Danh sách lô xe
             </Link>
           }
-          title={`Lô ${data.batch.batchCode}`}
+          title={`Lô nhập ${formatDate(data.batch.importDate)}`}
           description={
             <>
               Nhà cung cấp: <strong>{data.batch.supplierName}</strong> · Ngày

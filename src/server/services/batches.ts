@@ -34,11 +34,9 @@ export interface ExpenseInput {
 }
 
 export interface CreateBatchInput {
-  batchCode: string
   supplierId: number
   loanContractId?: number | null
   importDate: string
-  customsDeclarationNo?: string | null
   pricingBase: PricingBase
   pricingMethod: PricingMethod
   pricingValue: number
@@ -140,11 +138,9 @@ export async function createBatch(input: CreateBatchInput, userId?: number) {
       const [created] = await tx
         .insert(importBatches)
         .values({
-          batchCode: input.batchCode.trim(),
           supplierId: input.supplierId,
           loanContractId: input.loanContractId ?? null,
           importDate: input.importDate,
-          customsDeclarationNo: input.customsDeclarationNo ?? null,
           pricingBase: input.pricingBase,
           pricingMethod: input.pricingMethod,
           pricingValue: input.pricingValue,
@@ -256,7 +252,6 @@ export async function updateBatchInfo(
   batchId: number,
   p: {
     loanContractId: number | null
-    customsDeclarationNo: string | null
     note: string | null
     importDate: string
   },

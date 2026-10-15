@@ -141,6 +141,13 @@
       "when": 1792053973712,
       "tag": "0019_condemned_tomas",
       "breakpoints": true
+    },
+    {
+      "idx": 20,
+      "version": "5",
+      "when": 1792054852302,
+      "tag": "0020_strong_cloak",
+      "breakpoints": true
     }
   ]
 }

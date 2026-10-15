@@ -562,4 +562,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 44, 45,... above this line upon completing tasks)_
+### Lesson 44: Import Batches Without a Code or Customs Declaration Number
+
+- **Change**: `import_batches.batch_code` ("Mã Lô", e.g. LO-2026-02-INDO) and `import_batches.customs_declaration_no` ("Số Tờ Khai Hải Quan") were removed (schema, create/update services and validators, queries, seed, create-batch form, batch editor, batch list). Migration `0020_strong_cloak.sql` drops the unique index and both columns; apply with `npm run migration:run`. **Creating a batch fails until it is applied** (`batch_code` is `NOT NULL` with no default).
+- **Batch display name**: since a batch has no code, every place that showed it uses `batchLabel({ importDate, supplierName })` from `src/lib/business.ts`, e.g. "Lô 20/02/2026 · PT Astra Honda Motor" (inventory lot badge and search, vehicle picker in a new sale, batches listed under a loan). The vehicle inventory query and the loan batches query therefore also join `suppliers`. The batch list has no code column (Ngày Nhập and Nhà Cung Cấp identify the row) and the detail page title is "Lô nhập dd/mm/yyyy".
+- **Caveat**: two batches from the same supplier on the same day look identical in these labels; open them by row link / id instead.
+- **Seed**: `batch.seed.ts` finds already-seeded batches by `import_date` (2026-01-15 / 2026-02-20).
+
+---
+
+_(Next Agent: Append Lesson 45, 46,... above this line upon completing tasks)_

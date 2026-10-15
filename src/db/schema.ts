@@ -227,7 +227,6 @@ export const importBatches = mysqlTable(
   'import_batches',
   {
     id: int('id').primaryKey().autoincrement(),
-    batchCode: varchar('batch_code', { length: 50 }).notNull().unique(),
     supplierId: int('supplier_id')
       .notNull()
       .references(() => suppliers.id),
@@ -236,7 +235,6 @@ export const importBatches = mysqlTable(
       onDelete: 'set null',
     }),
     importDate: date('import_date', { mode: 'string' }).notNull(),
-    customsDeclarationNo: varchar('customs_declaration_no', { length: 50 }),
     /** Batch-wide wholesale pricing configuration */
     pricingBase: mysqlEnum('pricing_base', PRICING_BASES)
       .default('cost_price')

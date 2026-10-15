@@ -83,7 +83,6 @@ function BatchesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead>Mã Lô</TableHead>
                     <TableHead>Ngày Nhập</TableHead>
                     <TableHead>Nhà Cung Cấp</TableHead>
                     <TableHead>Khế Ước Vay</TableHead>
@@ -102,14 +101,6 @@ function BatchesPage() {
                 <TableBody className="text-xs">
                   {batchesPg.pageItems.map((b) => (
                     <TableRow key={b.id} className="hover:bg-slate-50/80">
-                      <TableCell className="font-mono font-bold text-slate-900">
-                        {b.batchCode}
-                        {b.customsDeclarationNo && (
-                          <div className="text-[10px] text-slate-400 font-normal">
-                            TK: {b.customsDeclarationNo}
-                          </div>
-                        )}
-                      </TableCell>
                       <TableCell className="text-slate-600">
                         {formatDate(b.importDate)}
                       </TableCell>

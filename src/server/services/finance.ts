@@ -35,10 +35,11 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
   const batches = await db
     .select({
       id: importBatches.id,
-      batchCode: importBatches.batchCode,
       importDate: importBatches.importDate,
+      supplierName: suppliers.name,
     })
     .from(importBatches)
+    .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
     .where(eq(importBatches.loanContractId, loanId))
     .orderBy(importBatches.importDate)
 

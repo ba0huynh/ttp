@@ -245,7 +245,8 @@ export async function listVehicles(filter: {
       isInvoiced: vehicles.isInvoiced,
       invoicedAt: vehicles.invoicedAt,
       batchId: importBatches.id,
-      batchCode: importBatches.batchCode,
+      importDate: importBatches.importDate,
+      supplierName: suppliers.name,
       modelName: motorcycleModels.name,
       colorName: colors.name,
       colorHex: colors.hex,
@@ -253,6 +254,7 @@ export async function listVehicles(filter: {
     })
     .from(vehicles)
     .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))
+    .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
     .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
     .innerJoin(colors, eq(colors.id, vehicles.colorId))
     .leftJoin(salesOrderItems, eq(salesOrderItems.vehicleId, vehicles.id))

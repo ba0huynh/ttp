@@ -34,9 +34,7 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
     const rows = await db
       .select({
         id: importBatches.id,
-        batchCode: importBatches.batchCode,
         importDate: importBatches.importDate,
-        customsDeclarationNo: importBatches.customsDeclarationNo,
         pricingBase: importBatches.pricingBase,
         pricingMethod: importBatches.pricingMethod,
         pricingValue: importBatches.pricingValue,
@@ -56,9 +54,7 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
       .groupBy(
         importBatches.id,
-        importBatches.batchCode,
         importBatches.importDate,
-        importBatches.customsDeclarationNo,
         importBatches.pricingBase,
         importBatches.pricingMethod,
         importBatches.pricingValue,
@@ -89,13 +85,11 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
     const [batch] = await db
       .select({
         id: importBatches.id,
-        batchCode: importBatches.batchCode,
         supplierId: importBatches.supplierId,
         supplierName: suppliers.name,
         loanContractId: importBatches.loanContractId,
         loanContractNumber: loanContracts.contractNumber,
         importDate: importBatches.importDate,
-        customsDeclarationNo: importBatches.customsDeclarationNo,
         pricingBase: importBatches.pricingBase,
         pricingMethod: importBatches.pricingMethod,
         pricingValue: importBatches.pricingValue,
@@ -164,11 +158,9 @@ export const createBatchFn = createServerFn({ method: 'POST' })
   .middleware([authMiddleware])
   .validator(
     z.object({
-      batchCode: z.string().trim().min(1, 'Nhập mã lô'),
       supplierId: z.number().int(),
       loanContractId: z.number().int().nullable().optional(),
       importDate: z.string().min(10),
-      customsDeclarationNo: z.string().trim().nullable().optional(),
       pricingBase: z.enum(PRICING_BASES),
       pricingMethod: z.enum(PRICING_METHODS),
       pricingValue: z.number().min(0),
@@ -277,7 +269,6 @@ export const updateBatchInfoFn = createServerFn({ method: 'POST' })
       batchId: z.number().int(),
       loanContractId: z.number().int().nullable(),
       importDate: z.string().min(10),
-      customsDeclarationNo: z.string().trim().nullable(),
       note: z.string().trim().nullable(),
     }),
   )

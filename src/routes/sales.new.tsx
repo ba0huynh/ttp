@@ -47,7 +47,7 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { formatVnd, todayIso } from '#/lib/business.ts'
+import { formatVnd, todayIso, batchLabel } from '#/lib/business.ts'
 import {
   availableVehiclesQuery,
   customerOptionsQuery,
@@ -459,7 +459,7 @@ function NewSalesOrderPage() {
                             variant="outline"
                             className="font-mono text-[10px]"
                           >
-                            {v.batchCode}
+                            {batchLabel(v)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right font-bold text-emerald-900">

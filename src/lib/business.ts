@@ -176,6 +176,13 @@ export const formatDate = (d: string | Date | null | undefined) => {
   const [y, m, day] = s.slice(0, 10).split('-')
   return `${day}/${m}/${y}`
 }
+
+/** Display name of an import batch: "Lô 20/02/2026 · PT Astra Honda Motor" */
+export const batchLabel = (b: {
+  importDate: string | Date
+  supplierName?: string | null
+}) =>
+  `Lô ${formatDate(b.importDate)}${b.supplierName ? ` · ${b.supplierName}` : ''}`
 export const todayIso = () => new Date().toISOString().slice(0, 10)
 
 export const EXPENSE_TYPE_LABELS: Record<string, string> = {

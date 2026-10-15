@@ -26,7 +26,7 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import { formatVnd } from '#/lib/business.ts'
+import { formatVnd, batchLabel } from '#/lib/business.ts'
 import {
   inventorySummaryQuery,
   vehiclesQuery,
@@ -65,7 +65,7 @@ function InventoryPage() {
       !v.chassisNumber.toLowerCase().includes(q) &&
       !v.engineNumber.toLowerCase().includes(q) &&
       !v.modelName.toLowerCase().includes(q) &&
-      !v.batchCode.toLowerCase().includes(q)
+      !batchLabel(v).toLowerCase().includes(q)
     ) {
       return false
     }
@@ -232,7 +232,7 @@ function InventoryPage() {
                             variant="outline"
                             className="font-mono text-[11px]"
                           >
-                            {v.batchCode}
+                            {batchLabel(v)}
                           </Badge>
                         </TableCell>
                         <TableCell className="text-right text-slate-600">

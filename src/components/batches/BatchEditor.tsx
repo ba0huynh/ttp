@@ -108,9 +108,6 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
     detail.batch.loanContractId,
   )
   const [importDate, setImportDate] = React.useState(detail.batch.importDate)
-  const [customs, setCustoms] = React.useState(
-    detail.batch.customsDeclarationNo ?? '',
-  )
   const [note, setNote] = React.useState(detail.batch.note ?? '')
   const save = useBatchMutation(updateBatchInfoFn)
 
@@ -142,14 +139,6 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
           />
         </div>
         <div className="space-y-1">
-          <Label className="text-[11px]">Số tờ khai hải quan</Label>
-          <Input
-            value={customs}
-            onChange={(e) => setCustoms(e.target.value)}
-            className="h-8 text-xs bg-white"
-          />
-        </div>
-        <div className="space-y-1">
           <Label className="text-[11px]">Ghi chú</Label>
           <Input
             value={note}
@@ -170,7 +159,6 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
                 batchId: detail.batch.id,
                 loanContractId: loanId,
                 importDate,
-                customsDeclarationNo: customs || null,
                 note: note || null,
               },
             })
