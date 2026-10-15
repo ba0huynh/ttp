@@ -418,6 +418,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Gotcha**: `vite.config.ts` now uses the `defineConfig(({ mode }) => ...)` function form. Restart the dev server after editing `PORT`. Docker is unaffected: the image sets `PORT=3000` itself and `.env` is not copied into it. `docker:prod` maps host `3001` to container `3000`.
 - **Not verified**: `node_modules` was missing when this was made, so `npx tsc --noEmit` and a dev-server run were not executed.
 
+### Lesson 27: `DEFAULT (now())` Fails on Older MySQL / MariaDB
+
+- **Symptom**: `npm run migration:run` on the server fails at the first `CREATE TABLE` with `ER_PARSE_ERROR ... near '(now())'`.
+- **Cause**: drizzle-kit renders `timestamp().defaultNow()` as `DEFAULT (now())`, an expression default that only MySQL >= 8.0.13 accepts. MariaDB and MySQL 5.7 reject it.
+- **Fix**: `0000_wet_sentinel.sql` now uses `DEFAULT CURRENT_TIMESTAMP` (45 occurrences), which every version accepts and behaves identically. Databases that already applied `0000` are unaffected, since migrations are tracked by file name only.
+- **Gotcha**: if `npm run db:generate` ever emits `DEFAULT (now())` again for a new column, replace it with `DEFAULT CURRENT_TIMESTAMP` by hand before committing.
+
 ---
 
-_(Next Agent: Append Lesson 27, 28,... above this line upon completing tasks)_
+_(Next Agent: Append Lesson 28, 29,... above this line upon completing tasks)_
