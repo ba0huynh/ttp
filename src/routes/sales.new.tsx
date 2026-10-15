@@ -83,7 +83,6 @@ function NewSalesOrderPage() {
     customers[0]?.id ?? 1,
   )
   const [branchId, setBranchId] = React.useState<number | null>(null)
-  const [note, setNote] = React.useState('')
 
   // Selected vehicles to sell: vehicleId -> custom unitPrice
   const [selectedItems, setSelectedItems] = React.useState<
@@ -164,7 +163,6 @@ function NewSalesOrderPage() {
             vehicleId: i.vehicleId,
             unitPrice: i.unitPrice,
           })),
-          note,
         },
       })
       await queryClient.invalidateQueries()
@@ -192,7 +190,7 @@ function NewSalesOrderPage() {
             </Link>
             <div>
               <h1 className="text-xl font-bold tracking-tight text-slate-900">
-                Lập Phiếu Bán Xe Sỉ Mới
+                Lập Phiếu Bán Xe Mới
               </h1>
               <p className="text-xs text-slate-500">
                 Doanh thu tính về Khách mẹ &bull; Công nợ ghi theo Pháp nhân
@@ -401,18 +399,6 @@ function NewSalesOrderPage() {
                     Hóa đơn và công nợ phải thu sẽ gắn liền với điểm bán này.
                   </p>
                 </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Ghi Chú Đơn Hàng
-                  </Label>
-                  <Input
-                    placeholder="Ghi chú giao xe, thỏa thuận thanh toán..."
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
               </CardContent>
             </Card>
           </div>
@@ -420,10 +406,10 @@ function NewSalesOrderPage() {
 
         {/* Modal: Select vehicles from inventory */}
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-          <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-5xl">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Chọn Xe Từ Kho Để Bán Sỉ
+                Chọn Xe Từ Kho Để Bán
               </DialogTitle>
               <DialogDescription className="text-xs">
                 Chỉ hiển thị những xe chưa từng được gán vào bất kỳ đơn bán nào
@@ -439,7 +425,6 @@ function NewSalesOrderPage() {
                     <TableHead>Số Khung (VIN)</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead>Lô Nhập</TableHead>
-                    <TableHead className="text-right">Giá Vốn</TableHead>
                     <TableHead className="text-right">Giá Bán Lô</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -476,9 +461,6 @@ function NewSalesOrderPage() {
                           >
                             {v.batchCode}
                           </Badge>
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-slate-600">
-                          {formatVnd(v.costPrice)}
                         </TableCell>
                         <TableCell className="text-right font-bold text-emerald-900">
                           {formatVnd(v.sellingPrice)}

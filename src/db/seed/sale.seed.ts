@@ -66,7 +66,6 @@ export async function seedSales({
       branchId: branches.branchNamAnhQ10.id,
       status: 'confirmed',
       totalAmount: 305_000_000,
-      note: 'Đơn hàng bán sỉ 2 SH 150i và 1 Wave 125i',
       createdBy: adminId,
     })
     .$returningId()
@@ -160,7 +159,6 @@ export async function seedSales({
       branchId: branches.branchNamAnhBD.id,
       status: 'confirmed',
       totalAmount: 195_000_000,
-      note: 'Khách yêu cầu xuất hóa đơn trước để vay vốn, xe gửi kho chờ chở sau',
       createdBy: adminId,
     })
     .$returningId()
@@ -223,7 +221,6 @@ export async function seedSales({
       branchId: branches.branchThanhDatTD.id,
       status: 'confirmed',
       totalAmount: 195_000_000,
-      note: 'Đã giao xe giao trước, hóa đơn xuất dồn cuối tháng',
       createdBy: adminId,
     })
     .$returningId()

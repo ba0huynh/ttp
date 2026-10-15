@@ -9,19 +9,11 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import {
-  ArrowLeft,
-  Banknote,
-  FileCheck,
-  PackagePlus,
-  Truck,
-  Warehouse,
-  XCircle,
-} from 'lucide-react'
+import { ArrowLeft, FileCheck, Truck, XCircle } from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { PageHeader, StatCard } from '#/components/layout/StatCard.tsx'
+import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -129,8 +121,6 @@ function SalesOrderPage() {
   const [actionError, setActionError] = React.useState<string | null>(null)
   const actionLoading = deliveryMutation.isPending || invoiceMutation.isPending
 
-  const deliveredCount = items.filter((i) => i.isDelivered).length
-  const invoicedCount = items.filter((i) => i.isInvoiced).length
   const canCancel = items.every((i) => !i.isDelivered && !i.isInvoiced)
 
   const openDeliveryModal = () => {
@@ -265,31 +255,6 @@ function SalesOrderPage() {
             </>
           }
         />
-
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-          <StatCard
-            label="Tổng tiền phiếu"
-            icon={Banknote}
-            tone="amber"
-            value={formatVnd(order.totalAmount)}
-            hint={`${items.length} xe trong phiếu`}
-          />
-          <StatCard
-            label="Kho thực tế"
-            icon={Warehouse}
-            value={`${deliveredCount}/${items.length}`}
-            unit="xe đã giao"
-            hint="Giao xe giảm tồn kho vật lý"
-          />
-          <StatCard
-            label="Kho hóa đơn"
-            icon={PackagePlus}
-            tone="blue"
-            value={`${invoicedCount}/${items.length}`}
-            unit="xe đã xuất HĐ"
-            hint="Xuất hóa đơn giảm tồn kho hóa đơn"
-          />
-        </div>
 
         <Card>
           <CardHeader className="border-b">

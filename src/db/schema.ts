@@ -338,7 +338,6 @@ export const salesOrders = mysqlTable(
       .default('confirmed')
       .notNull(),
     totalAmount: money('total_amount').default(0).notNull(),
-    note: text('note'),
     createdBy: int('created_by').references(() => users.id),
     ...timestamps,
   },

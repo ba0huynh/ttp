@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { AlertCircle, Package, Search, Warehouse } from 'lucide-react'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
+import { Search } from 'lucide-react'
 import * as React from 'react'
 
 import { DualInventoryBadge } from '#/components/inventory/DualInventoryBadge.tsx'
@@ -102,81 +102,6 @@ function InventoryPage() {
               xe máy.
             </p>
           </div>
-          <Link to="/batches/new">
-            <Button
-              size="sm"
-              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
-            >
-              <Package className="size-4" />
-              Nhập Lô Mới
-            </Button>
-          </Link>
-        </div>
-
-        {/* 4 Summary Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-          <Card className="border-slate-200">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-slate-500 font-medium">
-                Tổng xe trong hệ thống
-              </div>
-              <div className="text-2xl font-black text-slate-900 mt-1">
-                {summary.total}
-              </div>
-              <div className="text-[11px] text-slate-500">
-                Đã nhập khẩu vào kho
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-emerald-200 bg-emerald-50/40">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-emerald-800 font-medium flex items-center gap-1">
-                <Warehouse className="size-3.5" />
-                Tồn Kho Thực Tế
-              </div>
-              <div className="text-2xl font-black text-emerald-950 mt-1">
-                {summary.physical}{' '}
-                <span className="text-xs font-normal">xe</span>
-              </div>
-              <div className="text-[11px] text-emerald-700 truncate">
-                Trị giá: {formatVnd(summary.physicalValue)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-blue-200 bg-blue-50/40">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-blue-800 font-medium flex items-center gap-1">
-                <Package className="size-3.5" />
-                Tồn Kho Hóa Đơn
-              </div>
-              <div className="text-2xl font-black text-blue-950 mt-1">
-                {summary.invoiced}{' '}
-                <span className="text-xs font-normal">xe</span>
-              </div>
-              <div className="text-[11px] text-blue-700 truncate">
-                Trị giá: {formatVnd(summary.invoicedValue)}
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-amber-200 bg-amber-50/40">
-            <CardContent className="pt-4 pb-3">
-              <div className="text-xs text-amber-800 font-medium flex items-center gap-1">
-                <AlertCircle className="size-3.5" />
-                Lệch 2 Kho Bình Thường
-              </div>
-              <div className="text-2xl font-black text-amber-950 mt-1">
-                {summary.invoicedNotDelivered + summary.deliveredNotInvoiced}{' '}
-                <span className="text-xs font-normal">xe</span>
-              </div>
-              <div className="text-[11px] text-amber-700">
-                {summary.invoicedNotDelivered} chờ giao &bull;{' '}
-                {summary.deliveredNotInvoiced} chờ HĐ
-              </div>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Filters bar */}
@@ -262,9 +187,7 @@ function InventoryPage() {
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead>Lô Nhập</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>
-                    <TableHead className="text-right">CP Phân Bổ</TableHead>
                     <TableHead className="text-right">Giá Vốn Xe</TableHead>
-                    <TableHead className="text-right">Giá Bán Lô</TableHead>
                     <TableHead className="text-center">
                       Kho Kép (2 Kho)
                     </TableHead>
@@ -275,7 +198,7 @@ function InventoryPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={10}
+                        colSpan={8}
                         className="text-center py-8 text-slate-400"
                       >
                         Không tìm thấy chiếc xe nào phù hợp bộ lọc
@@ -315,14 +238,8 @@ function InventoryPage() {
                         <TableCell className="text-right text-slate-600">
                           {formatVnd(v.importPrice)}
                         </TableCell>
-                        <TableCell className="text-right text-slate-500">
-                          +{formatVnd(v.allocatedExpense)}
-                        </TableCell>
                         <TableCell className="text-right font-bold text-slate-900">
                           {formatVnd(v.costPrice)}
-                        </TableCell>
-                        <TableCell className="text-right font-bold text-emerald-800">
-                          {formatVnd(v.sellingPrice)}
                         </TableCell>
                         <TableCell className="text-center">
                           <DualInventoryBadge

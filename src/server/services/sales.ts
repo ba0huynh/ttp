@@ -23,7 +23,6 @@ export interface CreateSalesOrderInput {
   customerId: number
   branchId?: number | null
   items: { vehicleId: number; unitPrice?: number | null }[]
-  note?: string | null
 }
 
 /**
@@ -85,7 +84,6 @@ export async function createSalesOrder(
           customerId: input.customerId,
           branchId: input.branchId ?? null,
           totalAmount: total,
-          note: input.note ?? null,
           createdBy: userId ?? null,
         })
         .$returningId()

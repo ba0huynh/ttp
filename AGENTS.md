@@ -556,4 +556,10 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 43, 44,... above this line upon completing tasks)_
+### Lesson 43: Sales Orders Without a Note; No Stat Cards on the Sale Detail
+
+- **Change**: `sales_orders.note` ("Ghi Chú Đơn Hàng") was removed (schema, create service and validator, list/detail queries, seed, new-sale form). Delivery notes and invoices keep their own `note` columns. Migration `0019_*.sql` drops the column; apply with `npm run migration:run` (the column is nullable, so creating a sale still works before it runs, but `0018` must be applied first because `order_number` is `NOT NULL`). The create page is titled "Lập Phiếu Bán Xe Mới", the list "Bán Hàng", and the sale detail page no longer shows the three summary cards (total, physical stock, invoiced stock); the per-vehicle status badges in the table remain.
+
+---
+
+_(Next Agent: Append Lesson 44, 45,... above this line upon completing tasks)_

@@ -34,7 +34,6 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
         orderDate: salesOrders.orderDate,
         status: salesOrders.status,
         totalAmount: salesOrders.totalAmount,
-        note: salesOrders.note,
         customerId: salesOrders.customerId,
         customerName: customers.name,
         branchId: salesOrders.branchId,
@@ -56,7 +55,6 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
         salesOrders.orderDate,
         salesOrders.status,
         salesOrders.totalAmount,
-        salesOrders.note,
         salesOrders.customerId,
         customers.name,
         salesOrders.branchId,
@@ -83,7 +81,6 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         orderDate: salesOrders.orderDate,
         status: salesOrders.status,
         totalAmount: salesOrders.totalAmount,
-        note: salesOrders.note,
         customerId: salesOrders.customerId,
         customerName: customers.name,
         branchId: salesOrders.branchId,
@@ -196,7 +193,6 @@ export const createSalesOrderFn = createServerFn({ method: 'POST' })
           unitPrice: z.number().positive().optional(),
         }),
       ),
-      note: z.string().trim().nullable().optional(),
     }),
   )
   .handler(async ({ data, context }) => {
