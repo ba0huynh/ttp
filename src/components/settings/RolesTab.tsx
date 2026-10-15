@@ -21,6 +21,7 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import {
   Table,
   TableBody,
@@ -224,12 +225,14 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
                   placeholder="Ví dụ: Trưởng kho"
                 />
               </div>
-              <div className="space-y-1">
+              <div className="space-y-1 sm:col-span-2">
                 <Label className="text-xs font-semibold">Mô Tả</Label>
-                <Input
+                <Textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
-                  className="h-8 text-xs"
+                  maxLength={255}
+                  rows={2}
+                  className="min-h-16 text-xs"
                 />
               </div>
             </div>

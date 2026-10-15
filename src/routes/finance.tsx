@@ -30,6 +30,7 @@ import {
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import {
   SearchSelect,
   SearchSelectItem,
@@ -671,11 +672,13 @@ function FinancePage() {
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Nội Dung Chi</Label>
-                <Input
+                <Textarea
                   value={paymentDesc}
                   onChange={(e) => setPaymentDesc(e.target.value)}
                   placeholder="Thanh toán đợt 1 tiền hàng..."
-                  className="h-8 text-xs"
+                  maxLength={255}
+                  rows={2}
+                  className="min-h-16 text-xs"
                 />
               </div>
 

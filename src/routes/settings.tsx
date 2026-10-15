@@ -30,6 +30,7 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import {
   SearchSelect,
   SearchSelectItem,
@@ -318,11 +319,12 @@ function SettingsPage() {
                     <Label className="text-xs font-semibold">
                       Địa Chỉ Trụ Sở *
                     </Label>
-                    <Input
+                    <Textarea
                       disabled={!canCompany}
                       value={cAddress}
                       onChange={(e) => setCAddress(e.target.value)}
-                      className="h-8 text-xs"
+                      rows={2}
+                      className="min-h-16 text-xs"
                     />
                   </div>
 
