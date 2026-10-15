@@ -81,7 +81,6 @@ function MasterDataPage() {
   // Modal Model
   const [modelOpen, setModelOpen] = React.useState(false)
   const [mName, setMName] = React.useState('')
-  const [mBrand, setMBrand] = React.useState('Honda')
 
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
@@ -102,7 +101,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveModel.mutateAsync({
-        data: { name: mName, brand: mBrand },
+        data: { name: mName },
       })
       setModelOpen(false)
     } catch (err: unknown) {
@@ -223,8 +222,7 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Tên Thương Mại</TableHead>
-                      <TableHead>Hãng Xe</TableHead>
+                      <TableHead>Tên Xe</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -233,9 +231,6 @@ function MasterDataPage() {
                       <TableRow key={m.id}>
                         <TableCell className="font-semibold text-slate-800">
                           {m.name}
-                        </TableCell>
-                        <TableCell className="text-slate-600">
-                          {m.brand}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -448,23 +443,13 @@ function MasterDataPage() {
             </DialogHeader>
             <form onSubmit={handleSaveModel} className="space-y-3 pt-2">
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">
-                  Tên Thương Mại *
-                </Label>
+                <Label className="text-xs font-semibold">Tên Xe *</Label>
                 <Input
                   required
                   value={mName}
                   onChange={(e) => setMName(e.target.value)}
                   className="h-8 text-xs"
                   placeholder="Honda SH 150i ABS"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Hãng Xe</Label>
-                <Input
-                  value={mBrand}
-                  onChange={(e) => setMBrand(e.target.value)}
-                  className="h-8 text-xs"
                 />
               </div>
               <DialogFooter className="pt-2">

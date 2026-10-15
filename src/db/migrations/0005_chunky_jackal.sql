@@ -1,0 +1,1 @@
+ALTER TABLE `motorcycle_models` DROP COLUMN `brand`;

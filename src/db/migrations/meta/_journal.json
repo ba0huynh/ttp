@@ -36,6 +36,13 @@
       "when": 1792022418587,
       "tag": "0004_far_reaper",
       "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "5",
+      "when": 1792022583255,
+      "tag": "0005_chunky_jackal",
+      "breakpoints": true
     }
   ]
 }

@@ -186,13 +186,12 @@ function getInventoryByModel() {
     .select({
       modelId: motorcycleModels.id,
       modelName: motorcycleModels.name,
-      brand: motorcycleModels.brand,
       physical: sql<number>`sum(case when ${vehicles.isDelivered} = 0 then 1 else 0 end)`,
       invoiced: sql<number>`sum(case when ${vehicles.isInvoiced} = 0 then 1 else 0 end)`,
     })
     .from(vehicles)
     .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
-    .groupBy(motorcycleModels.id, motorcycleModels.name, motorcycleModels.brand)
+    .groupBy(motorcycleModels.id, motorcycleModels.name)
     .orderBy(asc(motorcycleModels.name))
 }
 

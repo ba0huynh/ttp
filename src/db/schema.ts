@@ -133,7 +133,6 @@ export const suppliers = mysqlTable('suppliers', {
 export const motorcycleModels = mysqlTable('motorcycle_models', {
   id: int('id').primaryKey().autoincrement(),
   name: varchar('name', { length: 150 }).notNull(),
-  brand: varchar('brand', { length: 80 }).notNull(),
   description: text('description'),
   ...timestamps,
 })

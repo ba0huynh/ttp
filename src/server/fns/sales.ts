@@ -116,7 +116,6 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         isInvoiced: vehicles.isInvoiced,
         invoicedAt: vehicles.invoicedAt,
         modelName: motorcycleModels.name,
-        brand: motorcycleModels.brand,
         colorName: colors.name,
       })
       .from(salesOrderItems)
