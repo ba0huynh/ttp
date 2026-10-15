@@ -16,15 +16,27 @@ const opt = z.string().trim().nullable().optional()
 export const listCustomersFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
-    const list = await db
-      .select({
-        id: customers.id,
-        name: customers.name,
-        branchCount: sql<number>`(select count(*) from ${posBranches} b where b.customer_id = ${customers.id})`,
-      })
-      .from(customers)
-      .orderBy(asc(customers.name))
-    return list.map((c) => ({ ...c, branchCount: Number(c.branchCount) }))
+    // Independent queries run together (each one is a network round trip)
+    const [list, ar] = await Promise.all([
+      db
+        .select({
+          id: customers.id,
+          name: customers.name,
+          branchCount: sql<number>`(select count(*) from ${posBranches} b where b.customer_id = customers.id)`,
+        })
+        .from(customers)
+        .orderBy(asc(customers.name)),
+      getReceivablesSummary(),
+    ])
+    // Still owed per PARENT customer = sum over all its branch entities
+    return list.map((c) => {
+      const rows = ar.filter((r) => r.customerId === c.id)
+      return {
+        ...c,
+        branchCount: Number(c.branchCount),
+        balance: rows.reduce((s, r) => s + r.balance, 0),
+      }
+    })
   })
 
 /** Customers + branches — used for sales order / receipt dropdowns */

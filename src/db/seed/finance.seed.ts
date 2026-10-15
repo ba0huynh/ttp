@@ -126,7 +126,6 @@ export async function seedFinance({
     {
       statementId: statement.id,
       transactionDate: '2026-01-18',
-      reference: 'FT260189912',
       description: 'CHUYEN TIEN TT THAI HONDA MANUFACTURING CO LTD',
       debit: 500_000_000,
       credit: 0,
@@ -138,7 +137,6 @@ export async function seedFinance({
     {
       statementId: statement.id,
       transactionDate: '2026-01-22',
-      reference: 'FT260220014',
       description: 'CTY XE MAY NAM ANH THANH TOAN TIEN XE',
       debit: 0,
       credit: 200_000_000,
@@ -150,7 +148,6 @@ export async function seedFinance({
     {
       statementId: statement.id,
       transactionDate: '2026-02-10',
-      reference: 'FT260410088',
       description: 'DNTN THANH DAT CHUYEN KHOAN TIEN HANG',
       debit: 0,
       credit: 100_000_000,
@@ -162,7 +159,6 @@ export async function seedFinance({
     {
       statementId: statement.id,
       transactionDate: '2026-02-25',
-      reference: 'FT260561109',
       description: 'TRU NO GOC VA LAI KHE UOC KU-2026-VCB-01',
       debit: 521_438_356,
       credit: 0,
@@ -174,7 +170,6 @@ export async function seedFinance({
     {
       statementId: statement.id,
       transactionDate: '2026-02-26',
-      reference: 'FT260572233',
       description: 'KHACH HANG LE VAN A CK TIEN COC XE',
       debit: 0,
       credit: 50_000_000,
@@ -184,7 +179,6 @@ export async function seedFinance({
     {
       statementId: statement.id,
       transactionDate: '2026-02-27',
-      reference: 'FT260583344',
       description: 'PHI QUAN LY TAI KHOAN VA SMS BANKING',
       debit: 220_000,
       credit: 0,

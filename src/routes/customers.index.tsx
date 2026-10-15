@@ -33,6 +33,7 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import { formatVnd } from '#/lib/business.ts'
 import { customersQuery, currentUserQuery } from '#/lib/queries.ts'
 import { saveCustomerFn } from '#/server/fns/customers.ts'
 
@@ -120,6 +121,7 @@ function CustomersPage() {
                     <TableHead className="text-center">
                       Số Điểm Bán Con
                     </TableHead>
+                    <TableHead className="text-right">Còn Nợ</TableHead>
                     <TableHead className="text-center">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -136,6 +138,9 @@ function CustomersPage() {
                         >
                           {c.branchCount} điểm bán
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right font-black text-rose-900">
+                        {formatVnd(c.balance)}
                       </TableCell>
                       <TableCell className="text-center">
                         <Button

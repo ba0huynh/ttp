@@ -175,7 +175,7 @@ function getInventoryTotals() {
       invoicedValue: sql<string>`coalesce(sum(case when ${vehicles.isInvoiced} = 0 then ${vehicles.costPrice} else 0 end),0)`,
       invoicedNotDelivered: sql<number>`sum(case when ${vehicles.isInvoiced} = 1 and ${vehicles.isDelivered} = 0 then 1 else 0 end)`,
       deliveredNotInvoiced: sql<number>`sum(case when ${vehicles.isDelivered} = 1 and ${vehicles.isInvoiced} = 0 then 1 else 0 end)`,
-      unsold: sql<number>`sum(case when not exists (select 1 from ${salesOrderItems} i where i.vehicle_id = ${vehicles.id}) then 1 else 0 end)`,
+      unsold: sql<number>`sum(case when not exists (select 1 from ${salesOrderItems} i where i.vehicle_id = vehicles.id) then 1 else 0 end)`,
     })
     .from(vehicles)
 }

@@ -5,13 +5,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import {
-  ArrowRightLeft,
-  Check,
-  CheckCircle2,
-  Sparkles,
-  Upload,
-} from 'lucide-react'
+import { ArrowRightLeft, Check, CheckCircle2, Upload } from 'lucide-react'
 import * as React from 'react'
 
 import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
@@ -49,7 +43,6 @@ import {
   currentUserQuery,
 } from '#/lib/queries.ts'
 import {
-  autoMatchStatementFn,
   matchStatementLineFn,
   setStatementLineStatusFn,
   suggestMatchesFn,
@@ -103,12 +96,6 @@ function ReconcilePage() {
     mutationFn: setStatementLineStatusFn,
     onSuccess: refresh,
   })
-  const autoMatch = useMutation({
-    mutationFn: autoMatchStatementFn,
-    onSuccess: refresh,
-  })
-  const autoMatching = autoMatch.isPending
-
   const openSuggestModal = (lineId: number) => setMatchingLineId(lineId)
 
   const handleMatch = async (matchedType: any, matchedId: number) => {
@@ -124,20 +111,6 @@ function ReconcilePage() {
       setMatchingLineId(null)
     } catch (err: unknown) {
       alert((err as Error).message || 'Lỗi khi khớp giao dịch')
-    }
-  }
-
-  const handleAutoMatch = async () => {
-    if (!selectedStatementId) return
-    try {
-      const res = await autoMatch.mutateAsync({
-        data: { statementId: selectedStatementId },
-      })
-      alert(
-        `Đã tự động đối chiếu khớp ${res.matched}/${res.total} dòng giao dịch phù hợp!`,
-      )
-    } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi tự động đối chiếu')
     }
   }
 
@@ -167,15 +140,6 @@ function ReconcilePage() {
             >
               <Upload className="size-4" />
               Nhập Sao Kê
-            </Button>
-            <Button
-              size="sm"
-              disabled={autoMatching || !selectedStatementId}
-              onClick={handleAutoMatch}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs font-semibold"
-            >
-              <Sparkles className="size-4" />
-              {autoMatching ? 'Đang khớp...' : 'Tự Động Đối Chiếu Nhanh'}
             </Button>
           </div>
         </div>
@@ -249,7 +213,6 @@ function ReconcilePage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50/70">
                       <TableHead>Ngày GD</TableHead>
-                      <TableHead>Mã Tham Chiếu</TableHead>
                       <TableHead>Nội Dung Diễn Giải</TableHead>
                       <TableHead className="text-right">
                         Tiền Ra (Ghi Nợ)
@@ -268,9 +231,6 @@ function ReconcilePage() {
                         <TableRow key={l.id} className="hover:bg-slate-50/80">
                           <TableCell className="font-mono text-slate-600">
                             {formatDate(l.transactionDate)}
-                          </TableCell>
-                          <TableCell className="font-mono text-slate-500 font-medium">
-                            {l.reference ?? '—'}
                           </TableCell>
                           <TableCell className="max-w-md font-medium text-slate-900">
                             {l.description}

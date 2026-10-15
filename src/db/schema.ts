@@ -550,7 +550,6 @@ export const bankStatementLines = mysqlTable(
       .notNull()
       .references(() => bankStatements.id, { onDelete: 'cascade' }),
     transactionDate: date('transaction_date', { mode: 'string' }).notNull(),
-    reference: varchar('reference', { length: 100 }),
     description: varchar('description', { length: 500 }),
     /** Outgoing money (debit) */
     debit: money('debit').default(0).notNull(),

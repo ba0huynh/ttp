@@ -431,4 +431,21 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 28, 29,... above this line upon completing tasks)_
+### Lesson 28: Drizzle Drops Table Names in Single-Table Selects (correlated subqueries)
+
+- **Bug**: in a `db.select(...).from(table)` with **no join**, Drizzle renders `${table.id}` as a bare `id`. Inside a raw correlated subquery (`(select count(*) from pos_branches b where b.customer_id = ${customers.id})`) that bare `id` binds to the _subquery's_ own table, so the comparison is silently wrong. Symptoms found: the customer list said "1 điểm bán" for a customer with 2 branches, and the inventory "unsold" count was wrong.
+- **Rule**: in raw `sql` subqueries inside a single-table select, write the outer column literally and qualified (`customers.id`, `vehicles.id`). With a join Drizzle qualifies columns itself, so `${table.col}` is safe there. When unsure, check `query.toSQL().sql`.
+- **Fixed**: `listCustomersFn` (branch count) and `getInventoryTotals` (unsold). Verified against plain SQL (unsold = 7 both ways).
+- **Customer list columns**: besides the branch count, the list shows **Còn Nợ** only (no paid column), the sum of the amount still owed over the customer's branch entities (from `getReceivablesSummary()`).
+
+---
+
+### Lesson 29: Bank Statement Import — No Reference Column, No Auto-Match, Dialog Width
+
+- **Reference removed**: `bank_statement_lines.reference` ("Mã Tham Chiếu") is gone (schema, import service, server validator, seed, reconcile table, import preview). Migration `0011_*.sql` drops the column. The **paste/CSV column order is now `Date | Description | Debit (money out) | Credit (money in) | Balance (optional)`** (`src/lib/statement-import.ts`, the "Dán mẫu" sample and the dialog hint were updated). Anyone pasting the old 6-column layout will get shifted columns.
+- **Auto-match removed**: the "Tự Động Đối Chiếu Nhanh" button, `autoMatchStatementFn` and `autoMatchStatement()` no longer exist. Matching is manual only ("Tìm khớp" → suggestions via `suggestMatchesFn`).
+- **Dialog width pitfall**: the base `DialogContent` (`src/components/ui/dialog.tsx`) ends with `sm:max-w-lg` (512 px). A plain `max-w-3xl` / `max-w-xl` / `max-w-md` class on a `DialogContent` is **ignored** at `sm` and up, so those dialogs are all 512 px wide. Use the prefixed form (`sm:max-w-5xl`) to really change it, as the import dialog now does (1024 px). Other dialogs still carry the ineffective classes.
+
+---
+
+_(Next Agent: Append Lesson 30, 31,... above this line upon completing tasks)_

@@ -1,0 +1,1 @@
+ALTER TABLE `bank_statement_lines` DROP COLUMN `reference`;

@@ -23,7 +23,6 @@ import {
 } from '#/db/schema.ts'
 import { isDuplicateError, num } from '#/server/services/common.ts'
 import {
-  autoMatchStatement,
   createPaymentVoucher,
   createReceiptVoucher,
   getLoanStatus,
@@ -369,7 +368,6 @@ export const importBankStatementFn = createServerFn({ method: 'POST' })
       lines: z.array(
         z.object({
           transactionDate: z.string().min(10),
-          reference: z.string().trim().nullable().optional(),
           description: z.string().trim().nullable().optional(),
           debit: z.number().min(0),
           credit: z.number().min(0),
@@ -415,11 +413,4 @@ export const setStatementLineStatusFn = createServerFn({ method: 'POST' })
   .handler(async ({ data }) => {
     await setStatementLineStatus(data.lineId, data.status)
     return { ok: true }
-  })
-
-export const autoMatchStatementFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .validator(z.object({ statementId: z.number().int() }))
-  .handler(async ({ data }) => {
-    return autoMatchStatement(data.statementId)
   })

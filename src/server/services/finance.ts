@@ -1,4 +1,4 @@
-import { and, eq, gte, isNull, lte, sql } from 'drizzle-orm'
+import { and, eq, gte, lte, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
@@ -204,7 +204,6 @@ export async function createPaymentVoucher(
 
 export interface StatementLineInput {
   transactionDate: string
-  reference?: string | null
   description?: string | null
   debit: number
   credit: number
@@ -240,7 +239,6 @@ export async function importBankStatement(
       input.lines.map((l) => ({
         statementId: s.id,
         transactionDate: l.transactionDate,
-        reference: l.reference ?? null,
         description: l.description ?? null,
         debit: l.debit,
         credit: l.credit,
@@ -358,27 +356,4 @@ export async function setStatementLineStatus(
     .update(bankStatementLines)
     .set({ status, matchedType: null, matchedId: null })
     .where(eq(bankStatementLines.id, lineId))
-}
-
-/** Auto-match statement lines that have exactly 1 unambiguous candidate */
-export async function autoMatchStatement(statementId: number) {
-  const lines = await db
-    .select({ id: bankStatementLines.id })
-    .from(bankStatementLines)
-    .where(
-      and(
-        eq(bankStatementLines.statementId, statementId),
-        eq(bankStatementLines.status, 'unmatched'),
-        isNull(bankStatementLines.matchedId),
-      ),
-    )
-  let matched = 0
-  for (const l of lines) {
-    const s = await suggestMatches(l.id)
-    if (s.length === 1) {
-      await matchStatementLine(l.id, s[0].type, s[0].id)
-      matched++
-    }
-  }
-  return { matched, total: lines.length }
 }

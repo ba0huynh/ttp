@@ -36,9 +36,9 @@ import { masterDataQuery } from '#/lib/queries.ts'
 import { parseStatementText } from '#/lib/statement-import.ts'
 import { importBankStatementFn } from '#/server/fns/finance.ts'
 
-const SAMPLE = `Ngày GD\tSố tham chiếu\tNội dung\tGhi nợ\tGhi có\tSố dư
-05/03/2026\tFT26064001\tCTY MOTO SAI GON TT PBX-2603-0001\t\t250.000.000\t1.250.000.000
-08/03/2026\tFT26067002\tTT tien hang lo LOT-2602\t180.000.000\t\t1.070.000.000`
+const SAMPLE = `Ngày GD	Nội dung	Ghi nợ	Ghi có	Số dư
+05/03/2026	CTY MOTO SAI GON TT PBX-2603-0001		250.000.000	1.250.000.000
+08/03/2026	TT tien hang lo LOT-2602	180.000.000		1.070.000.000`
 
 /** Module 10: import a bank statement by pasting rows from Excel or loading a CSV file */
 export function ImportStatementDialog({
@@ -129,7 +129,7 @@ export function ImportStatementDialog({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900">
             Nhập Sao Kê Ngân Hàng
@@ -137,8 +137,7 @@ export function ImportStatementDialog({
           <DialogDescription className="text-xs">
             Dán các dòng copy từ Excel hoặc chọn file CSV. Thứ tự cột:{' '}
             <strong>
-              Ngày GD | Số tham chiếu | Nội dung | Ghi nợ (tiền ra) | Ghi có
-              (tiền vào) | Số dư
+              Ngày GD | Nội dung | Ghi nợ (tiền ra) | Ghi có (tiền vào) | Số dư
             </strong>{' '}
             (dòng tiêu đề sẽ tự bỏ qua).
           </DialogDescription>
@@ -236,7 +235,7 @@ export function ImportStatementDialog({
               value={text}
               onChange={(e) => setText(e.target.value)}
               placeholder="Dán dữ liệu từ Excel vào đây..."
-              className="font-mono text-[11px] min-h-32"
+              className="font-mono text-[11px] min-h-48"
             />
           </div>
 
@@ -273,12 +272,11 @@ export function ImportStatementDialog({
                   </span>
                 )}
               </div>
-              <div className="max-h-56 overflow-auto rounded-md border border-slate-200">
+              <div className="max-h-72 overflow-auto rounded-md border border-slate-200">
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50/70">
                       <TableHead>Ngày GD</TableHead>
-                      <TableHead>Tham chiếu</TableHead>
                       <TableHead>Nội dung</TableHead>
                       <TableHead className="text-right">Ghi nợ</TableHead>
                       <TableHead className="text-right">Ghi có</TableHead>
@@ -289,9 +287,6 @@ export function ImportStatementDialog({
                       <TableRow key={i}>
                         <TableCell className="font-mono">
                           {formatDate(l.transactionDate)}
-                        </TableCell>
-                        <TableCell className="font-mono text-slate-500">
-                          {l.reference ?? '—'}
                         </TableCell>
                         <TableCell className="max-w-xs truncate">
                           {l.description}

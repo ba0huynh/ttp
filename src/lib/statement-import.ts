@@ -3,12 +3,11 @@
  * CSV file (comma / semicolon separated) into statement lines.
  *
  * Expected column order (header rows and rows without a valid date are skipped):
- *   Date | Reference | Description | Debit (money out) | Credit (money in) | Balance (optional)
+ *   Date | Description | Debit (money out) | Credit (money in) | Balance (optional)
  */
 
 export interface ParsedStatementLine {
   transactionDate: string
-  reference: string | null
   description: string | null
   debit: number
   credit: number
@@ -93,8 +92,10 @@ export function parseStatementText(text: string): StatementParseResult {
 
   text.split(/\r?\n/).forEach((row, idx) => {
     if (row.trim() === '') return
-    const [date, reference, description, debitRaw, creditRaw, balanceRaw] =
-      splitRow(row, delimiter)
+    const [date, description, debitRaw, creditRaw, balanceRaw] = splitRow(
+      row,
+      delimiter,
+    )
     const transactionDate = parseStatementDate(date ?? '')
     if (!transactionDate) {
       // Header rows and titles skip silently; a malformed date (e.g. 31/02) is reported
@@ -120,7 +121,6 @@ export function parseStatementText(text: string): StatementParseResult {
     }
     lines.push({
       transactionDate,
-      reference: reference || null,
       description: description || null,
       debit,
       credit,
