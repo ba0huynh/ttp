@@ -182,7 +182,7 @@ function DashboardPage() {
             }
           />
           <StatCard
-            label="Tổng đơn bán sỉ"
+            label="Tổng đơn bán"
             icon={Banknote}
             tone="amber"
             value={formatVnd(totalSalesRevenue)}
@@ -223,7 +223,7 @@ function DashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50/50">
-                      <TableHead>Số Khung (VIN)</TableHead>
+                      <TableHead>Số Khung</TableHead>
                       <TableHead>Dòng xe / Màu</TableHead>
                       <TableHead className="text-right">Giá Vốn</TableHead>
                       <TableHead className="text-center">Kho Kép</TableHead>
@@ -267,7 +267,7 @@ function DashboardPage() {
             <CardHeader className="pb-3 border-b border-slate-100 flex flex-row items-center justify-between">
               <div>
                 <CardTitle className="text-base font-bold text-slate-900">
-                  Đơn Bán Sỉ Gần Đây
+                  Đơn Bán Gần Đây
                 </CardTitle>
                 <CardDescription className="text-xs">
                   Theo dõi tiến độ giao xe vật lý và lập hóa đơn

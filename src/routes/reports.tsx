@@ -125,7 +125,7 @@ function ReportsPage() {
           <Card className="border-slate-200">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-slate-500 uppercase">
-                Tổng Doanh Thu Bán Sỉ
+                Tổng Doanh Thu
               </CardTitle>
             </CardHeader>
             <CardContent>
