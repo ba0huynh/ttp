@@ -25,6 +25,7 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -41,6 +42,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatVnd, todayIso } from '#/lib/business.ts'
 import { currentUserQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import { saveLoanContractFn } from '#/server/fns/finance.ts'
@@ -63,6 +68,7 @@ export const Route = createFileRoute('/loans/')({
 function LoansPage() {
   const { user } = Route.useRouteContext()
   const { data: loans } = useSuspenseQuery(loansQuery())
+  const loansPg = usePagination(loans)
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const queryClient = useQueryClient()
   const saveLoan = useMutation({
@@ -148,7 +154,7 @@ function LoansPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {loans.map((l) => (
+                  {loansPg.pageItems.map((l) => (
                     <TableRow key={l.id} className="hover:bg-slate-50/80">
                       <TableCell className="font-mono font-bold text-purple-900">
                         <Link
@@ -199,6 +205,7 @@ function LoansPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={loansPg} />
           </CardContent>
         </Card>
 
@@ -254,15 +261,10 @@ function LoansPage() {
                   <Label className="text-xs font-semibold">
                     Số Tiền Vay (VNĐ) *
                   </Label>
-                  <Input
-                    type="number"
-                    min="1000000"
-                    step="10000000"
+                  <MoneyInput
                     required
                     value={principalAmount}
-                    onChange={(e) =>
-                      setPrincipalAmount(Number(e.target.value) || 0)
-                    }
+                    onValueChange={setPrincipalAmount}
                     className="h-8 text-xs font-bold"
                   />
                 </div>

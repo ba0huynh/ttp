@@ -45,6 +45,10 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
+import {
   Tabs,
   TabsContent,
   TabsList,
@@ -78,6 +82,7 @@ function SettingsPage() {
   const { user } = Route.useRouteContext()
   const { data: company } = useSuspenseQuery(companyProfileQuery())
   const { data: usersList } = useSuspenseQuery(usersQuery())
+  const usersPg = usePagination(usersList)
   const queryClient = useQueryClient()
   const updateCompany = useMutation({
     mutationFn: updateCompanyProfileFn,
@@ -381,7 +386,7 @@ function SettingsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="text-xs">
-                      {usersList.map((u: any) => (
+                      {usersPg.pageItems.map((u: any) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-mono font-bold text-slate-900">
                             {u.username}
@@ -436,6 +441,7 @@ function SettingsPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <TablePagination pagination={usersPg} />
                 </CardContent>
               </Card>
             </TabsContent>

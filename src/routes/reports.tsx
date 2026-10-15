@@ -20,6 +20,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { EXPENSE_TYPE_LABELS, formatVnd } from '#/lib/business.ts'
 import {
   defaultReportRange,
@@ -51,6 +55,14 @@ function ReportsPage() {
   const [loading, startTransition] = React.useTransition()
   const { data: report } = useSuspenseQuery(
     reportsQuery(applied.from, applied.to),
+  )
+  const customerRevenuePg = usePagination(
+    report.revenueByCustomer,
+    `${applied.from}|${applied.to}`,
+  )
+  const modelRevenuePg = usePagination(
+    report.revenueByModel,
+    `${applied.from}|${applied.to}`,
   )
 
   const handleFilter = (e: React.FormEvent) => {
@@ -199,7 +211,7 @@ function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {report.revenueByCustomer.map((c) => (
+                  {customerRevenuePg.pageItems.map((c) => (
                     <TableRow
                       key={c.customerId}
                       className="hover:bg-slate-50/80"
@@ -220,6 +232,7 @@ function ReportsPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination pagination={customerRevenuePg} />
             </CardContent>
           </Card>
 
@@ -244,7 +257,7 @@ function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {report.revenueByModel.map((m, idx) => (
+                  {modelRevenuePg.pageItems.map((m, idx) => (
                     <TableRow key={idx} className="hover:bg-slate-50/80">
                       <TableCell className="font-semibold text-slate-900">
                         {m.modelName}
@@ -262,6 +275,7 @@ function ReportsPage() {
                   ))}
                 </TableBody>
               </Table>
+              <TablePagination pagination={modelRevenuePg} />
             </CardContent>
           </Card>
         </div>

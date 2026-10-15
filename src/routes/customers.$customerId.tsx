@@ -26,6 +26,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatVnd } from '#/lib/business.ts'
 import { currentUserQuery, customerDetailQuery } from '#/lib/queries.ts'
 import { saveBranchFn } from '#/server/fns/customers.ts'
@@ -68,6 +72,8 @@ function CustomerDetailPage() {
   const { data } = useSuspenseQuery(customerDetailQuery(Number(customerId)))
   const queryClient = useQueryClient()
   const { customer, branches, receivables } = data
+  const branchesPg = usePagination(branches)
+  const receivablesPg = usePagination(receivables)
 
   // A branch changes the customer list, detail and receivables
   const saveBranch = useMutation({
@@ -189,7 +195,7 @@ function CustomerDetailPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    branches.map((b) => (
+                    branchesPg.pageItems.map((b) => (
                       <TableRow key={b.id}>
                         <TableCell className="font-semibold text-slate-800">
                           {b.name}
@@ -200,6 +206,7 @@ function CustomerDetailPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={branchesPg} />
           </CardContent>
         </Card>
 
@@ -232,7 +239,7 @@ function CustomerDetailPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    receivables.map((r, idx) => (
+                    receivablesPg.pageItems.map((r, idx) => (
                       <TableRow key={idx}>
                         <TableCell className="font-semibold text-slate-900">
                           {r.entityName}
@@ -252,6 +259,7 @@ function CustomerDetailPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={receivablesPg} />
           </CardContent>
         </Card>
       </div>

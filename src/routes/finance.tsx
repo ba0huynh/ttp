@@ -27,6 +27,7 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -43,6 +44,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import {
   Tabs,
   TabsContent,
@@ -97,6 +102,10 @@ function FinancePage() {
   const { data: payables } = useSuspenseQuery(payablesQuery())
   const { data: receipts } = useSuspenseQuery(receiptsQuery())
   const { data: payments } = useSuspenseQuery(paymentsQuery())
+  const receivablesPg = usePagination(receivables)
+  const payablesPg = usePagination(payables)
+  const receiptsPg = usePagination(receipts)
+  const paymentsPg = usePagination(payments)
   const { data: customers } = useSuspenseQuery(customerOptionsQuery())
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const queryClient = useQueryClient()
@@ -263,7 +272,7 @@ function FinancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {receivables.map((r, idx) => (
+                    {receivablesPg.pageItems.map((r, idx) => (
                       <TableRow key={idx} className="hover:bg-slate-50/80">
                         <TableCell className="font-semibold text-slate-900">
                           {r.customerName}
@@ -284,6 +293,7 @@ function FinancePage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={receivablesPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -311,7 +321,7 @@ function FinancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {payables.map((p) => (
+                    {payablesPg.pageItems.map((p) => (
                       <TableRow
                         key={p.supplierId}
                         className="hover:bg-slate-50/80"
@@ -332,6 +342,7 @@ function FinancePage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={payablesPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -356,7 +367,7 @@ function FinancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {receipts.map((r) => (
+                    {receiptsPg.pageItems.map((r) => (
                       <TableRow key={r.id} className="hover:bg-slate-50/80">
                         <TableCell className="text-slate-600">
                           {formatDate(r.receiptDate)}
@@ -383,6 +394,7 @@ function FinancePage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={receiptsPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -406,7 +418,7 @@ function FinancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {payments.map((p) => (
+                    {paymentsPg.pageItems.map((p) => (
                       <TableRow key={p.id} className="hover:bg-slate-50/80">
                         <TableCell className="text-slate-600">
                           {formatDate(p.paymentDate)}
@@ -424,6 +436,7 @@ function FinancePage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={paymentsPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -513,15 +526,10 @@ function FinancePage() {
                 <Label className="text-xs font-semibold">
                   Số Tiền Thu (VNĐ) *
                 </Label>
-                <Input
-                  type="number"
-                  min="1000"
-                  step="500000"
+                <MoneyInput
                   required
                   value={receiptAmount}
-                  onChange={(e) =>
-                    setReceiptAmount(Number(e.target.value) || 0)
-                  }
+                  onValueChange={setReceiptAmount}
                   className="h-8 text-xs font-bold text-emerald-900"
                 />
               </div>
@@ -636,15 +644,10 @@ function FinancePage() {
                 <Label className="text-xs font-semibold">
                   Số Tiền Chi (VNĐ) *
                 </Label>
-                <Input
-                  type="number"
-                  min="1000"
-                  step="500000"
+                <MoneyInput
                   required
                   value={paymentAmount}
-                  onChange={(e) =>
-                    setPaymentAmount(Number(e.target.value) || 0)
-                  }
+                  onValueChange={setPaymentAmount}
                   className="h-8 text-xs font-bold text-rose-900"
                 />
               </div>

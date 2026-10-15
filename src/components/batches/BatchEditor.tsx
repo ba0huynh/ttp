@@ -6,6 +6,7 @@ import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -254,14 +255,22 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
           <Label className="text-[11px]">
             {method === 'percent' ? 'Tỷ lệ (%)' : 'Số tiền (VNĐ)'}
           </Label>
-          <Input
-            type="number"
-            min={0}
-            step={method === 'percent' ? 0.1 : 100_000}
-            value={value}
-            onChange={(e) => setValue(Number(e.target.value) || 0)}
-            className="h-8 text-xs bg-white"
-          />
+          {method === 'percent' ? (
+            <Input
+              type="number"
+              min={0}
+              step={0.1}
+              value={value}
+              onChange={(e) => setValue(Number(e.target.value) || 0)}
+              className="h-8 text-xs bg-white"
+            />
+          ) : (
+            <MoneyInput
+              value={value}
+              onValueChange={setValue}
+              className="h-8 text-xs bg-white"
+            />
+          )}
         </div>
         <Button
           size="sm"
@@ -384,13 +393,10 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
           onChange={(e) => setDescription(e.target.value)}
           className="h-8 text-xs bg-white"
         />
-        <Input
-          type="number"
-          min={0}
-          step={100_000}
+        <MoneyInput
           placeholder="Số tiền"
           value={amount || ''}
-          onChange={(e) => setAmount(Number(e.target.value) || 0)}
+          onValueChange={setAmount}
           className="h-8 text-xs bg-white"
         />
         <Button
@@ -584,13 +590,10 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           onChange={(e) => setEngine(e.target.value)}
           className="h-8 text-xs bg-white font-mono"
         />
-        <Input
-          type="number"
-          min={0}
-          step={100_000}
+        <MoneyInput
           placeholder="Đơn giá nhập"
           value={price || ''}
-          onChange={(e) => setPrice(Number(e.target.value) || 0)}
+          onValueChange={setPrice}
           className="h-8 text-xs bg-white"
         />
         <Button

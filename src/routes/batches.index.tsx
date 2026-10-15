@@ -19,6 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { batchesQuery, currentUserQuery } from '#/lib/queries.ts'
 
@@ -37,6 +41,7 @@ export const Route = createFileRoute('/batches/')({
 function BatchesPage() {
   const { user } = Route.useRouteContext()
   const { data: batches } = useSuspenseQuery(batchesQuery())
+  const batchesPg = usePagination(batches)
 
   return (
     <AppLayout user={user}>
@@ -95,7 +100,7 @@ function BatchesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {batches.map((b) => (
+                  {batchesPg.pageItems.map((b) => (
                     <TableRow key={b.id} className="hover:bg-slate-50/80">
                       <TableCell className="font-mono font-bold text-slate-900">
                         {b.batchCode}
@@ -170,6 +175,7 @@ function BatchesPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={batchesPg} />
           </CardContent>
         </Card>
       </div>

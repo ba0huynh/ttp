@@ -22,6 +22,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatVnd } from '#/lib/business.ts'
 import {
   inventorySummaryQuery,
@@ -81,6 +85,7 @@ function InventoryPage() {
     }
     return true
   })
+  const vehiclesPg = usePagination(filtered, `${search}|${filterStock}`)
 
   return (
     <AppLayout user={user}>
@@ -277,7 +282,7 @@ function InventoryPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    filtered.map((v) => (
+                    vehiclesPg.pageItems.map((v) => (
                       <TableRow key={v.id} className="hover:bg-slate-50/80">
                         <TableCell className="font-mono font-bold text-slate-900">
                           {v.chassisNumber}
@@ -345,6 +350,7 @@ function InventoryPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={vehiclesPg} />
           </CardContent>
         </Card>
       </div>

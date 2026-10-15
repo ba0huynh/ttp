@@ -24,6 +24,7 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -519,14 +520,11 @@ function NewBatchPage() {
                           />
                         </TableCell>
                         <TableCell className="text-right">
-                          <Input
-                            type="number"
-                            min="0"
-                            step="100000"
+                          <MoneyInput
                             value={e.amount}
-                            onChange={(ev) => {
+                            onValueChange={(n) => {
                               const updated = [...expenses]
-                              updated[idx].amount = Number(ev.target.value) || 0
+                              updated[idx].amount = n
                               setExpenses(updated)
                             }}
                             className="h-7 text-xs text-right font-medium"
@@ -667,15 +665,11 @@ function NewBatchPage() {
                             </Select>
                           </TableCell>
                           <TableCell className="text-right">
-                            <Input
-                              type="number"
-                              min="1"
-                              step="500000"
+                            <MoneyInput
                               value={v.importPrice}
-                              onChange={(ev) => {
+                              onValueChange={(n) => {
                                 const updated = [...vehicles]
-                                updated[idx].importPrice =
-                                  Number(ev.target.value) || 0
+                                updated[idx].importPrice = n
                                 setVehicles(updated)
                               }}
                               className="h-7 text-xs text-right font-medium"
@@ -765,15 +759,23 @@ function NewBatchPage() {
                       ? 'Tỉ Lệ Lợi Nhuận (%)'
                       : 'Số Tiền Cộng Thêm (VNĐ)'}
                   </Label>
-                  <Input
-                    type="number"
-                    step={pricingMethod === 'percent' ? '0.5' : '500000'}
-                    value={pricingValue}
-                    onChange={(e) =>
-                      setPricingValue(Number(e.target.value) || 0)
-                    }
-                    className="h-8 text-xs font-bold"
-                  />
+                  {pricingMethod === 'percent' ? (
+                    <Input
+                      type="number"
+                      step="0.5"
+                      value={pricingValue}
+                      onChange={(e) =>
+                        setPricingValue(Number(e.target.value) || 0)
+                      }
+                      className="h-8 text-xs font-bold"
+                    />
+                  ) : (
+                    <MoneyInput
+                      value={pricingValue}
+                      onValueChange={setPricingValue}
+                      className="h-8 text-xs font-bold"
+                    />
+                  )}
                 </div>
               </CardContent>
             </Card>

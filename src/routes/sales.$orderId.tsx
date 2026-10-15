@@ -49,6 +49,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
 import { currentUserQuery, salesOrderDetailQuery } from '#/lib/queries.ts'
 import {
@@ -96,6 +100,7 @@ function SalesOrderPage() {
   const queryClient = useQueryClient()
   const { data } = useSuspenseQuery(salesOrderDetailQuery(Number(orderId)))
   const { order, items } = data
+  const itemsPg = usePagination(items)
 
   // Delivery / invoicing / cancelling change physical stock, invoiced stock,
   // receivables and the dashboard together, so refresh the whole cache.
@@ -305,7 +310,7 @@ function SalesOrderPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {items.map((i) => (
+                  {itemsPg.pageItems.map((i) => (
                     <TableRow key={i.id}>
                       <TableCell className="font-mono font-bold text-slate-900">
                         {i.chassisNumber}
@@ -360,6 +365,7 @@ function SalesOrderPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={itemsPg} />
           </CardContent>
         </Card>
 

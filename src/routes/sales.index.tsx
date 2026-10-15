@@ -19,6 +19,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { currentUserQuery, salesOrdersQuery } from '#/lib/queries.ts'
 
@@ -37,6 +41,7 @@ export const Route = createFileRoute('/sales/')({
 function SalesPage() {
   const { user } = Route.useRouteContext()
   const { data: orders } = useSuspenseQuery(salesOrdersQuery())
+  const ordersPg = usePagination(orders)
   return (
     <AppLayout user={user}>
       <div className="space-y-6">
@@ -89,7 +94,7 @@ function SalesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {orders.map((o) => (
+                  {ordersPg.pageItems.map((o) => (
                     <TableRow key={o.id} className="hover:bg-slate-50/80">
                       <TableCell className="font-mono font-bold text-emerald-800">
                         {o.orderNumber}
@@ -167,6 +172,7 @@ function SalesPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={ordersPg} />
           </CardContent>
         </Card>
       </div>

@@ -36,6 +36,10 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
+import {
   Tabs,
   TabsContent,
   TabsList,
@@ -71,6 +75,10 @@ function MasterDataPage() {
   const { tab } = Route.useSearch()
   const navigate = Route.useNavigate()
   const { data: master } = useSuspenseQuery(masterDataQuery())
+  const modelsPg = usePagination(master.models)
+  const suppliersPg = usePagination(master.suppliers)
+  const banksPg = usePagination(master.banks)
+  const colorsPg = usePagination(master.colors)
   const queryClient = useQueryClient()
   // Danh mục được dùng ở lô nhập, vay, thu chi... nên làm mới toàn bộ cache
   const refresh = () => queryClient.invalidateQueries()
@@ -242,7 +250,7 @@ function MasterDataPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {master.models.map((m) => (
+                    {modelsPg.pageItems.map((m) => (
                       <TableRow key={m.id}>
                         <TableCell className="font-semibold text-slate-800">
                           {m.name}
@@ -263,6 +271,7 @@ function MasterDataPage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={modelsPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -295,7 +304,7 @@ function MasterDataPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {master.suppliers.map((s) => (
+                    {suppliersPg.pageItems.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="font-bold text-slate-900">
                           {s.name}
@@ -314,6 +323,7 @@ function MasterDataPage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={suppliersPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -346,7 +356,7 @@ function MasterDataPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {master.banks.map((b) => (
+                    {banksPg.pageItems.map((b) => (
                       <TableRow key={b.id}>
                         <TableCell className="font-semibold text-slate-900">
                           <BankLabel image={b.image} name={b.name}>
@@ -367,6 +377,7 @@ function MasterDataPage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={banksPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -399,7 +410,7 @@ function MasterDataPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {master.colors.map((c) => (
+                    {colorsPg.pageItems.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell>
                           <div className="flex items-center gap-2 font-semibold text-slate-800">
@@ -426,6 +437,7 @@ function MasterDataPage() {
                     ))}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={colorsPg} />
               </CardContent>
             </Card>
           </TabsContent>

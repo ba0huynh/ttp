@@ -14,6 +14,7 @@ import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Card, CardContent } from '#/components/ui/card.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -30,6 +31,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
 import {
   currentUserQuery,
@@ -79,6 +84,7 @@ function LoanDetailPage() {
   const id = Number(loanId)
   const { data: loanDetail } = useSuspenseQuery(loanDetailQuery(id))
   const { data: master } = useSuspenseQuery(masterDataQuery())
+  const repaymentsPg = usePagination<any>(loanDetail.repayments)
   const queryClient = useQueryClient()
   const repayLoan = useMutation({
     mutationFn: recordLoanPaymentFn,
@@ -247,7 +253,7 @@ function LoanDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="text-xs">
-                      {loanDetail.repayments.map((r: any) => (
+                      {repaymentsPg.pageItems.map((r: any) => (
                         <TableRow key={r.id}>
                           <TableCell className="font-medium">
                             {formatDate(r.paymentDate)}
@@ -268,6 +274,7 @@ function LoanDetailPage() {
                       ))}
                     </TableBody>
                   </Table>
+                  <TablePagination pagination={repaymentsPg} />
                 </div>
               )}
             </CardContent>
@@ -302,14 +309,9 @@ function LoanDetailPage() {
                   <Label className="text-xs font-semibold">
                     Trả Nợ Gốc (VNĐ)
                   </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="1000000"
+                  <MoneyInput
                     value={repayPrincipal}
-                    onChange={(e) =>
-                      setRepayPrincipal(Number(e.target.value) || 0)
-                    }
+                    onValueChange={setRepayPrincipal}
                     className="h-8 text-xs bg-white font-bold text-emerald-900"
                   />
                 </div>
@@ -318,14 +320,9 @@ function LoanDetailPage() {
                   <Label className="text-xs font-semibold">
                     Trả Nợ Lãi (VNĐ)
                   </Label>
-                  <Input
-                    type="number"
-                    min="0"
-                    step="10000"
+                  <MoneyInput
                     value={repayInterest}
-                    onChange={(e) =>
-                      setRepayInterest(Number(e.target.value) || 0)
-                    }
+                    onValueChange={setRepayInterest}
                     className="h-8 text-xs bg-white font-bold text-purple-900"
                   />
                 </div>

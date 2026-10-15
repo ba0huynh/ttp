@@ -15,6 +15,7 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
 import {
   Select,
   SelectContent,
@@ -263,18 +264,14 @@ export function ImportStatementDialog({
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1000}
+                        <MoneyInput
                           value={r.debit}
-                          onChange={(e) =>
+                          blankZero
+                          onValueChange={(n) =>
                             update(r.key, {
-                              debit: e.target.value,
+                              debit: n > 0 ? String(n) : '',
                               // one side only: entering money out clears money in
-                              ...(amountOf(e.target.value) > 0
-                                ? { credit: '' }
-                                : {}),
+                              ...(n > 0 ? { credit: '' } : {}),
                             })
                           }
                           onPaste={handlePaste}
@@ -282,17 +279,13 @@ export function ImportStatementDialog({
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
-                          type="number"
-                          min={0}
-                          step={1000}
+                        <MoneyInput
                           value={r.credit}
-                          onChange={(e) =>
+                          blankZero
+                          onValueChange={(n) =>
                             update(r.key, {
-                              credit: e.target.value,
-                              ...(amountOf(e.target.value) > 0
-                                ? { debit: '' }
-                                : {}),
+                              credit: n > 0 ? String(n) : '',
+                              ...(n > 0 ? { debit: '' } : {}),
                             })
                           }
                           onPaste={handlePaste}

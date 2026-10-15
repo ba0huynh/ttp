@@ -50,6 +50,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import {
   bankStatementDetailQuery,
@@ -87,6 +91,10 @@ function ReconcilePage() {
     ...bankStatementDetailQuery(selectedStatementId ?? 0),
     enabled: selectedStatementId !== null,
   })
+  const linesPg = usePagination<any>(
+    statementDetail?.lines ?? [],
+    selectedStatementId,
+  )
 
   // Matching suggestions
   const [matchingLineId, setMatchingLineId] = React.useState<number | null>(
@@ -265,7 +273,7 @@ function ReconcilePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {statementDetail?.lines?.map((l: any) => {
+                    {linesPg.pageItems.map((l: any) => {
                       const isMatched = l.status === 'matched'
                       return (
                         <TableRow key={l.id} className="hover:bg-slate-50/80">
@@ -335,6 +343,7 @@ function ReconcilePage() {
                     })}
                   </TableBody>
                 </Table>
+                <TablePagination pagination={linesPg} />
               </div>
             )}
           </CardContent>

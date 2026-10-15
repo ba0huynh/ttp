@@ -33,6 +33,10 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { formatVnd } from '#/lib/business.ts'
 import { customersQuery, currentUserQuery } from '#/lib/queries.ts'
 import { saveCustomerFn } from '#/server/fns/customers.ts'
@@ -52,6 +56,7 @@ export const Route = createFileRoute('/customers/')({
 function CustomersPage() {
   const { user } = Route.useRouteContext()
   const { data: customers } = useSuspenseQuery(customersQuery())
+  const customersPg = usePagination(customers)
   const queryClient = useQueryClient()
 
   // Create Parent Customer Modal
@@ -126,7 +131,7 @@ function CustomersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {customers.map((c) => (
+                  {customersPg.pageItems.map((c) => (
                     <TableRow key={c.id} className="hover:bg-slate-50/80">
                       <TableCell>
                         <div className="font-bold text-slate-900">{c.name}</div>
@@ -164,6 +169,7 @@ function CustomersPage() {
                 </TableBody>
               </Table>
             </div>
+            <TablePagination pagination={customersPg} />
           </CardContent>
         </Card>
 

@@ -513,4 +513,23 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 38, 39,... above this line upon completing tasks)_
+### Lesson 38: Money Inputs Show Thousands Separators (`MoneyInput`)
+
+- **Change**: every VND amount box uses `MoneyInput` (`src/components/ui/money-input.tsx`), which displays `1.500.000` (vi-VN grouping) while typing. It is a `type="text"` / `inputMode="numeric"` input: non-digits are stripped, the value is a whole number. API: `value` (number or `''`), `onValueChange(n: number)`, optional `blankZero` to show an empty box for 0 (used in the statement import table, whose state is a string).
+- **Where**: receipt/payment dialogs (`/finance`), new loan principal and loan repayments, batch expenses / vehicle import prices / pricing amount (`batches.new`, `BatchEditor`), sale unit prices (`sales.new`), statement debit/credit.
+- **Not converted on purpose**: percentages and the interest rate stay `type="number"` (they need decimals): `loans.index` interest rate and the "percent" branch of the batch pricing value. Pricing inputs switch between `Input` (percent) and `MoneyInput` (fixed amount).
+- **Gotcha**: `min` / `step` / native `required` number validation no longer apply to these boxes; guard amounts in the server validators (`z.number().positive()` is already there).
+
+---
+
+### Lesson 39: Table Pagination (`usePagination` + `TablePagination`)
+
+- **What**: every list table is paginated client-side (all lists are already fully loaded) with `src/components/ui/table-pagination.tsx`: `usePagination(items, resetKey?)` returns `{ pageItems, page, pageSize, pageCount, total, setPage, setPageSize }` (default 10 per page; options 10 / 20 / 50 / 100) and `<TablePagination pagination={pg} />` renders "Hiển thị 11–14 / 14", the rows-per-page select, numbered page buttons with "…" gaps, prev/next and "Trang x / y". The footer is hidden when the list has 10 rows or fewer.
+- **Usage**: call the hook unconditionally near the data query (`const ordersPg = usePagination(orders)`), map over `ordersPg.pageItems`, and put `<TablePagination pagination={ordersPg} />` right after the table's scroll container (inside `CardContent`, not inside the `overflow-x-auto` div, so it does not scroll sideways). Pass a `resetKey` for lists that are filtered or switch source (inventory search/filter, reports date range, reconcile statement) so the table returns to page 1. The page is clamped, so a list that shrinks never leaves you on a missing page.
+- **Paginated**: batches, customers (list, branches, receivables), sales (list, order items), loans (list, repayments), finance (4 tabs), master data (4 tabs), inventory, bank statement lines, reports (revenue by customer / model), users in `/settings`.
+- **Not paginated on purpose**: editable entry tables (new batch expenses/vehicles, new sale items, statement import rows, batch editor), the vehicle picker dialog, the loan interest schedule, dashboard "recent" top-6 lists and the small expense summary.
+- **Gotcha**: row keys that used the array index (`key={idx}`) are now page-relative; that is fine because React only compares siblings of the current page.
+
+---
+
+_(Next Agent: Append Lesson 40, 41,... above this line upon completing tasks)_

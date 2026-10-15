@@ -33,6 +33,7 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -297,15 +298,11 @@ function NewSalesOrderPage() {
                               {formatVnd(item.costPrice)}
                             </TableCell>
                             <TableCell className="text-right">
-                              <Input
-                                type="number"
-                                min="1"
-                                step="500000"
+                              <MoneyInput
                                 value={item.unitPrice}
-                                onChange={(e) => {
+                                onValueChange={(n) => {
                                   const updated = [...selectedItems]
-                                  updated[idx].unitPrice =
-                                    Number(e.target.value) || 0
+                                  updated[idx].unitPrice = n
                                   setSelectedItems(updated)
                                 }}
                                 className="h-7 text-xs text-right font-bold text-emerald-900"
