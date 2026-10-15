@@ -1,0 +1,1 @@
+ALTER TABLE `receipt_vouchers` DROP COLUMN `note`;

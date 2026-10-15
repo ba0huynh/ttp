@@ -58,7 +58,6 @@ export async function seedFinance({
       salesOrderId: orders.order1.id,
       amount: 200_000_000,
       companyBankAccountId: companyBankAccounts.vcbAccount.id,
-      note: 'Nam Anh chuyển khoản trả nợ đợt 1 cho Order 1',
       createdBy: adminId,
     },
     {
@@ -68,7 +67,6 @@ export async function seedFinance({
       salesOrderId: orders.order3.id,
       amount: 100_000_000,
       companyBankAccountId: companyBankAccounts.vcbAccount.id,
-      note: 'Thành Đạt đặt cọc/thanh toán đợt 1',
       createdBy: adminId,
     },
   ])

@@ -149,7 +149,6 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
         id: receiptVouchers.id,
         receiptDate: receiptVouchers.receiptDate,
         amount: receiptVouchers.amount,
-        note: receiptVouchers.note,
         customerId: receiptVouchers.customerId,
         customerName: customers.name,
         branchId: receiptVouchers.branchId,
@@ -184,7 +183,6 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
       salesOrderId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
-      note: z.string().trim().nullable().optional(),
     }),
   )
   .handler(async ({ data, context }) => {

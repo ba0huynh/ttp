@@ -123,7 +123,6 @@ function FinancePage() {
   const [receiptAccountId, setReceiptAccountId] = React.useState<number | null>(
     master.bankAccounts[0]?.id ?? null,
   )
-  const [receiptNote, setReceiptNote] = React.useState('')
 
   // Payment Voucher modal
   const [paymentOpen, setPaymentOpen] = React.useState(false)
@@ -150,7 +149,6 @@ function FinancePage() {
           branchId: receiptBranchId,
           amount: receiptAmount,
           companyBankAccountId: receiptAccountId,
-          note: receiptNote,
         },
       })
       setReceiptOpen(false)
@@ -562,16 +560,6 @@ function FinancePage() {
                 </div>
               </div>
 
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Ghi Chú</Label>
-                <Input
-                  value={receiptNote}
-                  onChange={(e) => setReceiptNote(e.target.value)}
-                  placeholder="Thanh toán đợt 1..."
-                  className="h-8 text-xs"
-                />
-              </div>
-
               <DialogFooter className="pt-2">
                 <Button
                   type="button"
@@ -603,7 +591,7 @@ function FinancePage() {
                 Lập Phiếu Chi Tiền
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Chi trả tiền hàng cho nhà cung cấp hoặc thanh toán chi phí lô xe
+                Chi trả tiền hàng cho nhà cung cấp
               </DialogDescription>
             </DialogHeader>
 

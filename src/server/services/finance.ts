@@ -113,7 +113,6 @@ export async function createReceiptVoucher(
     salesOrderId?: number | null
     amount: number
     companyBankAccountId?: number | null
-    note?: string | null
   },
   userId?: number,
 ) {
@@ -133,7 +132,6 @@ export async function createReceiptVoucher(
       branchId: input.branchId ?? null,
       salesOrderId: input.salesOrderId ?? null,
       companyBankAccountId: input.companyBankAccountId ?? null,
-      note: input.note ?? null,
       createdBy: userId ?? null,
     })
     .$returningId()

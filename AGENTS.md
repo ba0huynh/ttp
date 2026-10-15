@@ -463,4 +463,18 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 31, 32,... above this line upon completing tasks)_
+### Lesson 31: Dialog Content Overflowing Its Right Padding
+
+- **Symptom**: In a dialog, form fields had normal padding on the left but nearly touched the right edge.
+- **Cause**: `DialogContent` is a CSS grid with an implicit `auto` column, which grows to the min-content width of its widest child (e.g. a Select showing a long bank name) and overflows the padding.
+- **Fix**: `DialogContent` in `src/components/ui/dialog.tsx` now uses `grid-cols-[minmax(0,1fr)]`, so children are capped at the dialog's inner width.
+
+---
+
+### Lesson 32: Receipt Vouchers Without a Note
+
+- **Change**: `receipt_vouchers.note` ("Ghi Chú") was removed (schema, service, server fns, seed, receipt dialog). Migration `0015_amazing_machine_man.sql` drops the column; apply it with `npm run migration:run` (it is the third pending migration after 0013 and 0014). The column is nullable, so creating receipts keeps working before it is applied. Loan repayment, batch and sales notes are unchanged.
+
+---
+
+_(Next Agent: Append Lesson 33, 34,... above this line upon completing tasks)_
