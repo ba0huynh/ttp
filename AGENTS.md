@@ -425,6 +425,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Fix**: `0000_wet_sentinel.sql` now uses `DEFAULT CURRENT_TIMESTAMP` (45 occurrences), which every version accepts and behaves identically. Databases that already applied `0000` are unaffected, since migrations are tracked by file name only.
 - **Gotcha**: if `npm run db:generate` ever emits `DEFAULT (now())` again for a new column, replace it with `DEFAULT CURRENT_TIMESTAMP` by hand before committing.
 
+### Lesson 28: Seed Finds Banks by Keyword, Not Exact Name
+
+- **Symptom**: `npm run seed` on the server fails with `Expected bank "Ngân hàng TMCP Ngoại Thương Việt Nam" but found none` right after inserting 76 banks.
+- **Fix**: `master-data.seed.ts` now locates Vietcombank / BIDV / Techcombank with `bankByKeyword` (`ngoai thuong`, `dau tu va phat trien`, `ky thuong`) against `foldBankName()` (lowercase, no diacritics, in `bank.seed.ts`), so renamed or differently-normalised names still match. `normalizeBankName` also applies NFC.
+- **Gotcha**: if the keyword still isn't found, the stored names are probably garbled (`?`) because the database or table charset is not `utf8mb4` (common on old MySQL/MariaDB defaults of latin1). Check with `SELECT name FROM banks LIMIT 5;` and `SHOW CREATE TABLE banks;`, then convert the database to `utf8mb4`.
+
 ---
 
-_(Next Agent: Append Lesson 28, 29,... above this line upon completing tasks)_
+_(Next Agent: Append Lesson 29, 30,... above this line upon completing tasks)_

@@ -1,5 +1,5 @@
 import { db } from '../index.ts'
-import { normalizeBankName, seedBanks } from './bank.seed.ts'
+import { foldBankName, seedBanks } from './bank.seed.ts'
 import {
   companyBankAccounts,
   suppliers,
@@ -18,18 +18,26 @@ function byName<T extends { name: string }>(rows: T[], name: string): T {
   return row
 }
 
-/** Banks: matched by name ignoring case, because older rows differ from VietQR only in capitalisation */
-const bankByName = (rows: { name: string; id: number }[], n: string) => {
-  const row = rows.find(
-    (r) => normalizeBankName(r.name) === normalizeBankName(n),
-  )
-  if (!row) throw new Error(`Expected bank "${n}" but found none`)
+/**
+ * Banks are found by a distinctive keyword of their legal name (ignoring case
+ * and diacritics), so small naming changes in the VietQR catalog don't break
+ * seeding.
+ */
+const bankByKeyword = (
+  rows: { name: string; id: number }[],
+  keyword: string,
+) => {
+  const row = rows.find((r) => foldBankName(r.name).includes(keyword))
+  if (!row)
+    throw new Error(
+      `Expected a bank whose name contains "${keyword}" but found none among ${rows.length} banks. If the names look garbled (e.g. "?"), the database or table charset is not utf8mb4.`,
+    )
   return row
 }
 
-const BANK_VCB = 'Ngân hàng TMCP Ngoại Thương Việt Nam'
-const BANK_BIDV = 'Ngân hàng TMCP Đầu tư và Phát triển Việt Nam'
-const BANK_TCB = 'Ngân hàng TMCP Kỹ thương Việt Nam'
+const BANK_VCB = 'ngoai thuong'
+const BANK_BIDV = 'dau tu va phat trien'
+const BANK_TCB = 'ky thuong'
 
 /**
  * Seeds master catalog data:
@@ -52,9 +60,9 @@ export async function seedMasterData() {
 
     return {
       banks: {
-        vcb: bankByName(allBanks, BANK_VCB),
-        bidv: bankByName(allBanks, BANK_BIDV),
-        tcb: bankByName(allBanks, BANK_TCB),
+        vcb: bankByKeyword(allBanks, BANK_VCB),
+        bidv: bankByKeyword(allBanks, BANK_BIDV),
+        tcb: bankByKeyword(allBanks, BANK_TCB),
       },
       companyBankAccounts: {
         vcbAccount: existingAccounts.find(
@@ -87,9 +95,9 @@ export async function seedMasterData() {
   }
 
   console.log(' -> Seeding company bank accounts...')
-  const vcb = bankByName(allBanks, BANK_VCB)
-  const bidv = bankByName(allBanks, BANK_BIDV)
-  const tcb = bankByName(allBanks, BANK_TCB)
+  const vcb = bankByKeyword(allBanks, BANK_VCB)
+  const bidv = bankByKeyword(allBanks, BANK_BIDV)
+  const tcb = bankByKeyword(allBanks, BANK_TCB)
 
   const insertedAccounts = await db
     .insert(companyBankAccounts)
