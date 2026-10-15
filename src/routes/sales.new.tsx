@@ -362,7 +362,7 @@ function NewSalesOrderPage() {
                       setBranchId(null) // Reset branch
                     }}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -389,7 +389,7 @@ function NewSalesOrderPage() {
                       setBranchId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs">
                       <SelectValue placeholder="Chọn showroom/chi nhánh" />
                     </SelectTrigger>
                     <SelectContent>

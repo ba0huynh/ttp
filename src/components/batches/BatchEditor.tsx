@@ -119,7 +119,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
             value={loanId ? String(loanId) : 'none'}
             onValueChange={(v) => setLoanId(v === 'none' ? null : Number(v))}
           >
-            <SelectTrigger className="h-8 text-xs bg-white">
+            <SelectTrigger className="h-8 w-full text-xs bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -227,7 +227,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
         <div className="space-y-1">
           <Label className="text-[11px]">Gốc tính giá</Label>
           <Select value={base} onValueChange={(v) => setBase(v as PricingBase)}>
-            <SelectTrigger className="h-8 text-xs bg-white">
+            <SelectTrigger className="h-8 w-full text-xs bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -242,7 +242,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
             value={method}
             onValueChange={(v) => setMethod(v as PricingMethod)}
           >
-            <SelectTrigger className="h-8 text-xs bg-white">
+            <SelectTrigger className="h-8 w-full text-xs bg-white">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -376,7 +376,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
         <Select value={type} onValueChange={(v) => setType(v as ExpenseType)}>
-          <SelectTrigger className="h-8 text-xs bg-white">
+          <SelectTrigger className="h-8 w-full text-xs bg-white">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -552,7 +552,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           value={effModel ? String(effModel) : ''}
           onValueChange={(v) => setModelId(Number(v))}
         >
-          <SelectTrigger className="h-8 text-xs bg-white">
+          <SelectTrigger className="h-8 w-full text-xs bg-white">
             <SelectValue placeholder="Dòng xe" />
           </SelectTrigger>
           <SelectContent>
@@ -567,7 +567,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           value={effColor ? String(effColor) : ''}
           onValueChange={(v) => setColorId(Number(v))}
         >
-          <SelectTrigger className="h-8 text-xs bg-white">
+          <SelectTrigger className="h-8 w-full text-xs bg-white">
             <SelectValue placeholder="Màu xe" />
           </SelectTrigger>
           <SelectContent>

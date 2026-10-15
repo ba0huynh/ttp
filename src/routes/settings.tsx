@@ -563,7 +563,7 @@ function SettingsPage() {
                   value={uRole}
                   onValueChange={(val: any) => setURole(val)}
                 >
-                  <SelectTrigger className="h-8 text-xs">
+                  <SelectTrigger className="h-8 w-full text-xs">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>

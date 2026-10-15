@@ -82,8 +82,8 @@ export function TablePagination<T>({
   pagination: Pagination<T>
   className?: string
 }) {
-  // Nothing to choose when even the smallest page size shows every row
-  if (p.total <= PAGE_SIZE_OPTIONS[0]) return null
+  // An empty table has no rows to page through
+  if (p.total === 0) return null
 
   const from = (p.page - 1) * p.pageSize + 1
   const to = Math.min(p.page * p.pageSize, p.total)

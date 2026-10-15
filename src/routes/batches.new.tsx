@@ -367,7 +367,7 @@ function NewBatchPage() {
                     value={String(supplierId)}
                     onValueChange={(val) => setSupplierId(Number(val))}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs">
                       <SelectValue placeholder="Chọn nhà cung cấp" />
                     </SelectTrigger>
                     <SelectContent>
@@ -394,7 +394,7 @@ function NewBatchPage() {
                       setLoanContractId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs">
                       <SelectValue placeholder="Chọn khế ước vay (nếu có)" />
                     </SelectTrigger>
                     <SelectContent>
@@ -489,7 +489,7 @@ function NewBatchPage() {
                               setExpenses(updated)
                             }}
                           >
-                            <SelectTrigger className="h-7 text-xs">
+                            <SelectTrigger className="h-7 w-full text-xs">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent>
@@ -623,7 +623,7 @@ function NewBatchPage() {
                                 setVehicles(updated)
                               }}
                             >
-                              <SelectTrigger className="h-7 text-xs">
+                              <SelectTrigger className="h-7 w-full text-xs">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -648,7 +648,7 @@ function NewBatchPage() {
                                 setVehicles(updated)
                               }}
                             >
-                              <SelectTrigger className="h-7 text-xs">
+                              <SelectTrigger className="h-7 w-full text-xs">
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>
@@ -717,7 +717,7 @@ function NewBatchPage() {
                     value={pricingBase}
                     onValueChange={(val: any) => setPricingBase(val)}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -739,7 +739,7 @@ function NewBatchPage() {
                     value={pricingMethod}
                     onValueChange={(val: any) => setPricingMethod(val)}
                   >
-                    <SelectTrigger className="h-8 text-xs">
+                    <SelectTrigger className="h-8 w-full text-xs">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
