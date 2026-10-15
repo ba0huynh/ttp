@@ -13,7 +13,6 @@ import { AlertCircle, ArrowLeft, Check, Plus, Trash2 } from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -86,7 +85,6 @@ function NewBatchPage() {
     null,
   )
   const [importDate, setImportDate] = React.useState(todayIso())
-  const [note, setNote] = React.useState('')
 
   // Selling price configuration
   const [pricingBase, setPricingBase] = React.useState<
@@ -239,7 +237,6 @@ function NewBatchPage() {
           pricingBase,
           pricingMethod,
           pricingValue,
-          note,
           vehicles: vehicles.map((v) => ({
             modelId: v.modelId,
             colorId: v.colorId,
@@ -330,14 +327,12 @@ function NewBatchPage() {
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
-                  1. Thông Tin Lô Xe & Nguồn Vốn
+                  1. Thông Tin Lô Xe
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-3 text-xs">
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Ngày Nhập Cảng/Kho *
-                  </Label>
+                  <Label className="text-xs font-semibold">Ngày Nhập *</Label>
                   <Input
                     type="date"
                     required
@@ -370,9 +365,7 @@ function NewBatchPage() {
                 </div>
 
                 <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Khế Ước Vay Ngân Hàng (Tài trợ lô)
-                  </Label>
+                  <Label className="text-xs font-semibold">Khế Ước Vay</Label>
                   <SearchSelect
                     className="h-8 w-full text-xs"
                     placeholder="Chọn khế ước vay (nếu có)"
@@ -397,16 +390,6 @@ function NewBatchPage() {
                         </SearchSelectItem>
                       ))}
                   </SearchSelect>
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Ghi Chú Lô</Label>
-                  <Input
-                    placeholder="Ghi chú nội bộ lô xe..."
-                    value={note}
-                    onChange={(e) => setNote(e.target.value)}
-                    className="h-8 text-xs"
-                  />
                 </div>
               </CardContent>
             </Card>
@@ -738,48 +721,6 @@ function NewBatchPage() {
                       className="h-8 text-xs font-bold"
                     />
                   )}
-                </div>
-              </CardContent>
-            </Card>
-
-            {/* Cost price & Below-cost warning live preview table */}
-            <Card className="border-slate-200 shadow-xs">
-              <CardHeader className="py-3 px-4 border-b border-slate-100">
-                <CardTitle className="text-sm font-bold text-slate-800">
-                  Xem Trước Giá Vốn & Giá Bán Lô
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Phân bổ chi phí theo tỉ trọng giá trị xe
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="p-3 space-y-3">
-                <div className="space-y-2 max-h-[350px] overflow-y-auto pr-1">
-                  {previewVehicles.map((v) => (
-                    <div
-                      key={v.id}
-                      className="p-2.5 rounded-lg border border-slate-200 bg-slate-50/50 space-y-1.5"
-                    >
-                      <div className="flex items-center justify-between text-xs font-semibold">
-                        <span className="font-mono text-slate-900">
-                          {v.chassisNumber}
-                        </span>
-                        <span className="text-emerald-800 font-bold">
-                          Bán: {formatVnd(v.sellingPrice)}
-                        </span>
-                      </div>
-
-                      <div className="flex items-center justify-between text-[11px] text-slate-500">
-                        <span>Nhập: {formatVnd(v.importPrice)}</span>
-                        <span>CP bổ: +{formatVnd(v.allocatedExpense)}</span>
-                      </div>
-
-                      <CostWarningAlert
-                        sellingPrice={v.sellingPrice}
-                        costPrice={v.costPrice}
-                        importPrice={v.importPrice}
-                      />
-                    </div>
-                  ))}
                 </div>
               </CardContent>
             </Card>

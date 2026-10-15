@@ -22,6 +22,7 @@ import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
 import {
   Card,
   CardContent,
@@ -234,7 +235,15 @@ function MasterDataPage() {
   }
 
   const handleDelete = async (entity: any, id: number) => {
-    if (!confirm('Bạn có chắc chắn muốn xóa mục danh mục này?')) return
+    if (
+      !(await confirmDialog({
+        title: 'Xóa mục danh mục này?',
+        description: 'Không thể xóa nếu mục đang được dùng ở chứng từ khác.',
+        confirmLabel: 'Xóa',
+        destructive: true,
+      }))
+    )
+      return
     try {
       await deleteItem.mutateAsync({ data: { entity, id } })
     } catch (err: unknown) {

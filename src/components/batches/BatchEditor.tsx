@@ -5,6 +5,7 @@ import * as React from 'react'
 import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
@@ -108,11 +109,10 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
     detail.batch.loanContractId,
   )
   const [importDate, setImportDate] = React.useState(detail.batch.importDate)
-  const [note, setNote] = React.useState(detail.batch.note ?? '')
   const save = useBatchMutation(updateBatchInfoFn)
 
   return (
-    <Section title="Thông Tin Lô & Khế Ước Vay Tài Trợ">
+    <Section title="Thông Tin Lô">
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
         <div className="space-y-1">
           <Label className="text-[11px]">Khế ước vay</Label>
@@ -138,14 +138,6 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
             className="h-8 text-xs bg-white"
           />
         </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Ghi chú</Label>
-          <Input
-            value={note}
-            onChange={(e) => setNote(e.target.value)}
-            className="h-8 text-xs bg-white"
-          />
-        </div>
       </div>
       <div className="flex justify-end">
         <Button
@@ -159,7 +151,6 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
                 batchId: detail.batch.id,
                 loanContractId: loanId,
                 importDate,
-                note: note || null,
               },
             })
           }
@@ -279,7 +270,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
           {save.isPending ? 'Đang áp dụng...' : 'Áp dụng cho cả lô'}
         </Button>
       </div>
-      {worst && (
+      {worst && isBelowCost(worst.newPrice, worst.costPrice) && (
         <CostWarningAlert
           sellingPrice={worst.newPrice}
           costPrice={worst.costPrice}
@@ -350,9 +341,14 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
               size="sm"
               className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
               disabled={remove.isPending}
-              onClick={() => {
+              onClick={async () => {
                 if (
-                  confirm('Xóa khoản chi phí này? Giá vốn cả lô sẽ tính lại.')
+                  await confirmDialog({
+                    title: 'Xóa khoản chi phí này?',
+                    description: 'Giá vốn cả lô sẽ được tính lại.',
+                    confirmLabel: 'Xóa',
+                    destructive: true,
+                  })
                 )
                   remove.mutate({ data: { expenseId: e.id } })
               }}
@@ -516,11 +512,14 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         size="sm"
                         className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
                         disabled={remove.isPending}
-                        onClick={() => {
+                        onClick={async () => {
                           if (
-                            confirm(
-                              `Xóa xe ${v.chassisNumber} khỏi lô? Chi phí lô sẽ phân bổ lại.`,
-                            )
+                            await confirmDialog({
+                              title: `Xóa xe ${v.chassisNumber} khỏi lô?`,
+                              description: 'Chi phí lô sẽ được phân bổ lại.',
+                              confirmLabel: 'Xóa',
+                              destructive: true,
+                            })
                           )
                             remove.mutate({ data: { vehicleId: v.id } })
                         }}

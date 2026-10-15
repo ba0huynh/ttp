@@ -252,7 +252,6 @@ export async function updateBatchInfo(
   batchId: number,
   p: {
     loanContractId: number | null
-    note: string | null
     importDate: string
   },
 ) {

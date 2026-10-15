@@ -1,12 +1,12 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowLeft, Banknote, Landmark, PackagePlus, Truck } from 'lucide-react'
+import { ArrowLeft } from 'lucide-react'
 
 import { BatchEditor } from '#/components/batches/BatchEditor.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { PageHeader, StatCard } from '#/components/layout/StatCard.tsx'
+import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { formatDate, formatVnd } from '#/lib/business.ts'
+import { formatDate } from '#/lib/business.ts'
 import { batchDetailQuery, currentUserQuery } from '#/lib/queries.ts'
 
 export const Route = createFileRoute('/batches/$batchId')({
@@ -46,9 +46,6 @@ function BatchDetailPage() {
   const { batchId } = Route.useParams()
   const { data } = useSuspenseQuery(batchDetailQuery(Number(batchId)))
 
-  const totalImport = data.vehicles.reduce((s, v) => s + v.importPrice, 0)
-  const totalExpense = data.expenses.reduce((s, e) => s + e.amount, 0)
-
   return (
     <AppLayout user={user}>
       <div className="space-y-6">
@@ -73,34 +70,6 @@ function BatchDetailPage() {
             </>
           }
         />
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
-          <StatCard
-            label="Số xe trong lô"
-            icon={PackagePlus}
-            value={data.vehicles.length}
-            unit="chiếc"
-          />
-          <StatCard
-            label="Tiền hàng"
-            icon={Banknote}
-            tone="blue"
-            value={formatVnd(totalImport)}
-          />
-          <StatCard
-            label="Chi phí lô"
-            icon={Truck}
-            tone="amber"
-            value={formatVnd(totalExpense)}
-            hint={`${data.expenses.length} khoản chi phí`}
-          />
-          <StatCard
-            label="Tổng giá vốn lô"
-            icon={Landmark}
-            tone="violet"
-            value={formatVnd(totalImport + totalExpense)}
-          />
-        </div>
 
         <BatchEditor detail={data} />
       </div>

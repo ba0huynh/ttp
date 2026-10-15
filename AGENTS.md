@@ -571,4 +571,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 45, 46,... above this line upon completing tasks)_
+### Lesson 45: Confirmation Dialogs Instead of `window.confirm`
+
+- **Rule**: never call `window.confirm`. Use `confirmDialog` from `src/components/ui/confirm-dialog.tsx`: `if (!(await confirmDialog({ title: "Xóa ...?", description: "...", confirmLabel: "Xóa", destructive: true }))) return`. It returns a Promise<boolean> (true = confirmed; Esc, Cancel or a click outside = false). `destructive` makes the confirm button red; `cancelLabel` / `confirmLabel` override the default "Hủy" / "Xác nhận".
+- **How it works**: a module-level function opens a single `<ConfirmDialogHost />` (built on the shadcn `AlertDialog`) that is mounted once inside `AppLayout`, so any page that uses `AppLayout` can call it without extra markup. Without a host it falls back to the browser dialog.
+- **Converted**: removing a batch expense or a vehicle (`BatchEditor`), deleting master data (`/master-data`), cancelling a sales order (`sales.$orderId`). Error messages still use `alert()` in many forms; replace them with toasts (`sonner`) if that is wanted.
+
+---
+
+_(Next Agent: Append Lesson 46, 47,... above this line upon completing tasks)_

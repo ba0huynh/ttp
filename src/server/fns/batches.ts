@@ -269,7 +269,6 @@ export const updateBatchInfoFn = createServerFn({ method: 'POST' })
       batchId: z.number().int(),
       loanContractId: z.number().int().nullable(),
       importDate: z.string().min(10),
-      note: z.string().trim().nullable(),
     }),
   )
   .handler(async ({ data }) => {

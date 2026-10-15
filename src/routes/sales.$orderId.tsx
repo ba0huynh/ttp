@@ -17,6 +17,7 @@ import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
 import {
   Card,
   CardContent,
@@ -187,9 +188,13 @@ function SalesOrderPage() {
 
   const handleCancelOrder = async () => {
     if (
-      !confirm(
-        'Bạn có chắc chắn muốn hủy phiếu bán xe này? Các xe sẽ được trả lại trạng thái chưa bán.',
-      )
+      !(await confirmDialog({
+        title: 'Hủy phiếu bán xe này?',
+        description: 'Các xe sẽ được trả lại trạng thái chưa bán.',
+        confirmLabel: 'Hủy phiếu bán',
+        cancelLabel: 'Giữ lại',
+        destructive: true,
+      }))
     )
       return
     try {
