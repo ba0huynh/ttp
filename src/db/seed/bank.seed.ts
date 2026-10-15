@@ -21,7 +21,21 @@ interface BankRow {
  * can differ from VietQR only in capitalisation ("Ngoại thương" vs "Ngoại Thương").
  */
 export const normalizeBankName = (name: string) =>
-  name.trim().replace(/\s+/g, ' ').toLowerCase()
+  name.trim().replace(/\s+/g, ' ').toLowerCase().normalize('NFC')
+
+/**
+ * Lowercase, diacritic-free form used for keyword lookups, so a bank is still
+ * found when the API renames it slightly ("TMCP" vs "Thương mại cổ phần").
+ */
+export const foldBankName = (name: string) =>
+  name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replaceAll('đ', 'd')
+    .replaceAll('Đ', 'D')
+    .toLowerCase()
+    .replace(/\s+/g, ' ')
+    .trim()
 
 /** Downloads the current list of Vietnamese banks supported by VietQR */
 export async function fetchVietQrBanks() {

@@ -10,8 +10,8 @@ CREATE TABLE `bank_statement_lines` (
 	`status` enum('unmatched','matched','ignored') NOT NULL DEFAULT 'unmatched',
 	`matched_type` enum('receipt','payment','loan_repayment'),
 	`matched_id` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `bank_statement_lines_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -23,8 +23,8 @@ CREATE TABLE `bank_statements` (
 	`file_name` varchar(255),
 	`note` text,
 	`created_by` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `bank_statements_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -33,8 +33,8 @@ CREATE TABLE `banks` (
 	`code` varchar(20) NOT NULL,
 	`name` varchar(255) NOT NULL,
 	`short_name` varchar(50) NOT NULL,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `banks_id` PRIMARY KEY(`id`),
 	CONSTRAINT `banks_code_unique` UNIQUE(`code`)
 );
@@ -45,8 +45,8 @@ CREATE TABLE `batch_expenses` (
 	`expense_type` enum('import_tax','vat_import','shipping_international','shipping_domestic','customs_fee','other') NOT NULL,
 	`description` varchar(255),
 	`amount` decimal(18,2) NOT NULL,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `batch_expenses_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -55,8 +55,8 @@ CREATE TABLE `colors` (
 	`code` varchar(30) NOT NULL,
 	`name` varchar(80) NOT NULL,
 	`hex` varchar(7),
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `colors_id` PRIMARY KEY(`id`),
 	CONSTRAINT `colors_code_unique` UNIQUE(`code`)
 );
@@ -68,8 +68,8 @@ CREATE TABLE `company_bank_accounts` (
 	`account_name` varchar(255) NOT NULL,
 	`branch` varchar(150),
 	`is_active` boolean NOT NULL DEFAULT true,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `company_bank_accounts_id` PRIMARY KEY(`id`),
 	CONSTRAINT `company_bank_accounts_account_number_unique` UNIQUE(`account_number`)
 );
@@ -83,8 +83,8 @@ CREATE TABLE `company_info` (
 	`email` varchar(191),
 	`representative` varchar(150),
 	`website` varchar(191),
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `company_info_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -98,8 +98,8 @@ CREATE TABLE `customers` (
 	`email` varchar(191),
 	`contact_person` varchar(150),
 	`note` text,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `customers_id` PRIMARY KEY(`id`),
 	CONSTRAINT `customers_code_unique` UNIQUE(`code`)
 );
@@ -121,8 +121,8 @@ CREATE TABLE `delivery_notes` (
 	`transport_info` varchar(255),
 	`note` text,
 	`created_by` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `delivery_notes_id` PRIMARY KEY(`id`),
 	CONSTRAINT `delivery_notes_note_number_unique` UNIQUE(`note_number`)
 );
@@ -139,8 +139,8 @@ CREATE TABLE `import_batches` (
 	`pricing_value` decimal(18,2) NOT NULL DEFAULT 0,
 	`note` text,
 	`created_by` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `import_batches_id` PRIMARY KEY(`id`),
 	CONSTRAINT `import_batches_batch_code_unique` UNIQUE(`batch_code`)
 );
@@ -163,8 +163,8 @@ CREATE TABLE `invoices` (
 	`total_amount` decimal(18,2) NOT NULL,
 	`note` text,
 	`created_by` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `invoices_id` PRIMARY KEY(`id`),
 	CONSTRAINT `invoices_invoice_number_unique` UNIQUE(`invoice_number`)
 );
@@ -179,8 +179,8 @@ CREATE TABLE `loan_contracts` (
 	`maturity_date` date NOT NULL,
 	`status` enum('active','settled') NOT NULL DEFAULT 'active',
 	`note` text,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `loan_contracts_id` PRIMARY KEY(`id`),
 	CONSTRAINT `loan_contracts_contract_number_unique` UNIQUE(`contract_number`)
 );
@@ -193,8 +193,8 @@ CREATE TABLE `loan_repayments` (
 	`interest_amount` decimal(18,2) NOT NULL DEFAULT 0,
 	`company_bank_account_id` int,
 	`note` text,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `loan_repayments_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -205,8 +205,8 @@ CREATE TABLE `motorcycle_models` (
 	`brand` varchar(80) NOT NULL,
 	`engine_capacity` int,
 	`description` text,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `motorcycle_models_id` PRIMARY KEY(`id`),
 	CONSTRAINT `motorcycle_models_code_unique` UNIQUE(`code`)
 );
@@ -217,7 +217,7 @@ CREATE TABLE `password_reset_tokens` (
 	`token_hash` varchar(64) NOT NULL,
 	`expires_at` timestamp NOT NULL,
 	`used_at` timestamp,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `password_reset_tokens_id` PRIMARY KEY(`id`),
 	CONSTRAINT `password_reset_tokens_token_hash_unique` UNIQUE(`token_hash`)
 );
@@ -235,8 +235,8 @@ CREATE TABLE `payment_vouchers` (
 	`company_bank_account_id` int,
 	`description` varchar(255),
 	`created_by` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `payment_vouchers_id` PRIMARY KEY(`id`),
 	CONSTRAINT `payment_vouchers_voucher_number_unique` UNIQUE(`voucher_number`)
 );
@@ -251,8 +251,8 @@ CREATE TABLE `pos_branches` (
 	`phone` varchar(30),
 	`contact_person` varchar(150),
 	`is_active` boolean NOT NULL DEFAULT true,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `pos_branches_id` PRIMARY KEY(`id`),
 	CONSTRAINT `pos_branches_code_unique` UNIQUE(`code`)
 );
@@ -269,8 +269,8 @@ CREATE TABLE `receipt_vouchers` (
 	`company_bank_account_id` int,
 	`note` text,
 	`created_by` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `receipt_vouchers_id` PRIMARY KEY(`id`),
 	CONSTRAINT `receipt_vouchers_voucher_number_unique` UNIQUE(`voucher_number`)
 );
@@ -281,7 +281,7 @@ CREATE TABLE `sales_order_items` (
 	`vehicle_id` int NOT NULL,
 	`unit_price` decimal(18,2) NOT NULL,
 	`cost_price` decimal(18,2) NOT NULL,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `sales_order_items_id` PRIMARY KEY(`id`),
 	CONSTRAINT `sales_order_items_vehicle_uq` UNIQUE(`vehicle_id`)
 );
@@ -296,8 +296,8 @@ CREATE TABLE `sales_orders` (
 	`total_amount` decimal(18,2) NOT NULL DEFAULT 0,
 	`note` text,
 	`created_by` int,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `sales_orders_id` PRIMARY KEY(`id`),
 	CONSTRAINT `sales_orders_order_number_unique` UNIQUE(`order_number`)
 );
@@ -306,7 +306,7 @@ CREATE TABLE `sessions` (
 	`id` varchar(64) NOT NULL,
 	`user_id` int NOT NULL,
 	`expires_at` timestamp NOT NULL,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	CONSTRAINT `sessions_id` PRIMARY KEY(`id`)
 );
 --> statement-breakpoint
@@ -321,8 +321,8 @@ CREATE TABLE `suppliers` (
 	`email` varchar(191),
 	`contact_person` varchar(150),
 	`note` text,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `suppliers_id` PRIMARY KEY(`id`),
 	CONSTRAINT `suppliers_code_unique` UNIQUE(`code`)
 );
@@ -337,8 +337,8 @@ CREATE TABLE `users` (
 	`role` enum('admin','accountant','sales','warehouse') NOT NULL DEFAULT 'sales',
 	`is_active` boolean NOT NULL DEFAULT true,
 	`last_login_at` timestamp,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `users_id` PRIMARY KEY(`id`),
 	CONSTRAINT `users_username_unique` UNIQUE(`username`),
 	CONSTRAINT `users_email_unique` UNIQUE(`email`)
@@ -359,8 +359,8 @@ CREATE TABLE `vehicles` (
 	`delivered_at` date,
 	`is_invoiced` boolean NOT NULL DEFAULT false,
 	`invoiced_at` date,
-	`created_at` timestamp NOT NULL DEFAULT (now()),
-	`updated_at` timestamp NOT NULL DEFAULT (now()) ON UPDATE CURRENT_TIMESTAMP,
+	`created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+	`updated_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
 	CONSTRAINT `vehicles_id` PRIMARY KEY(`id`),
 	CONSTRAINT `vehicles_chassis_number_unique` UNIQUE(`chassis_number`),
 	CONSTRAINT `vehicles_engine_number_unique` UNIQUE(`engine_number`)

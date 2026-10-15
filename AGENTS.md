@@ -477,4 +477,25 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 33, 34,... above this line upon completing tasks)_
+### Lesson 33: App Port Comes From `.env` (`PORT`)
+
+- **Change**: the port is no longer hardcoded in `package.json`. `PORT` in `.env` (default `3000`) drives `npm run dev` and `vite preview` through `loadEnv` in `vite.config.ts` (`strictPort: true`, so a busy port fails loudly instead of silently moving). `npm run start` runs `node --env-file-if-exists=.env dist/server/index.mjs`, so Nitro reads the same `PORT`.
+- **Gotcha**: `vite.config.ts` now uses the `defineConfig(({ mode }) => ...)` function form. Restart the dev server after editing `PORT`. Docker is unaffected: the image sets `PORT=3000` itself and `.env` is not copied into it. `docker:prod` maps host `3001` to container `3000`.
+- **Not verified**: `node_modules` was missing when this was made, so `npx tsc --noEmit` and a dev-server run were not executed.
+
+### Lesson 34: `DEFAULT (now())` Fails on Older MySQL / MariaDB
+
+- **Symptom**: `npm run migration:run` on the server fails at the first `CREATE TABLE` with `ER_PARSE_ERROR ... near '(now())'`.
+- **Cause**: drizzle-kit renders `timestamp().defaultNow()` as `DEFAULT (now())`, an expression default that only MySQL >= 8.0.13 accepts. MariaDB and MySQL 5.7 reject it.
+- **Fix**: `0000_wet_sentinel.sql` now uses `DEFAULT CURRENT_TIMESTAMP` (45 occurrences), which every version accepts and behaves identically. Databases that already applied `0000` are unaffected, since migrations are tracked by file name only.
+- **Gotcha**: if `npm run db:generate` ever emits `DEFAULT (now())` again for a new column, replace it with `DEFAULT CURRENT_TIMESTAMP` by hand before committing.
+
+### Lesson 35: Seed Finds Banks by Keyword, Not Exact Name
+
+- **Symptom**: `npm run seed` on the server fails with `Expected bank "Ngân hàng TMCP Ngoại Thương Việt Nam" but found none` right after inserting 76 banks.
+- **Fix**: `master-data.seed.ts` now locates Vietcombank / BIDV / Techcombank with `bankByKeyword` (`ngoai thuong`, `dau tu va phat trien`, `ky thuong`) against `foldBankName()` (lowercase, no diacritics, in `bank.seed.ts`), so renamed or differently-normalised names still match. `normalizeBankName` also applies NFC.
+- **Gotcha**: if the keyword still isn't found, the stored names are probably garbled (`?`) because the database or table charset is not `utf8mb4` (common on old MySQL/MariaDB defaults of latin1). Check with `SELECT name FROM banks LIMIT 5;` and `SHOW CREATE TABLE banks;`, then convert the database to `utf8mb4`.
+
+---
+
+_(Next Agent: Append Lesson 36, 37,... above this line upon completing tasks)_

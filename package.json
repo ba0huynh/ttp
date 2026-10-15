@@ -6,10 +6,10 @@
     "#/*": "./src/*"
   },
   "scripts": {
-    "dev": "vite dev --port 3000",
+    "dev": "vite dev",
     "generate-routes": "tsr generate",
     "build": "vite build",
-    "start": "node dist/server/index.mjs",
+    "start": "node --env-file-if-exists=.env dist/server/index.mjs",
     "build:start": "npm run build && npm run start",
     "preview": "vite preview",
     "lint": "eslint",
