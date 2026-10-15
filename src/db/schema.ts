@@ -438,8 +438,6 @@ export const invoiceItems = mysqlTable(
 /* 08–09. DEBT & CASHFLOW: RECEIPT / PAYMENT VOUCHERS                         */
 /* ========================================================================== */
 
-export const PAYMENT_METHODS = ['cash', 'bank_transfer'] as const
-
 export const receiptVouchers = mysqlTable(
   'receipt_vouchers',
   {
@@ -476,20 +474,13 @@ export const paymentVouchers = mysqlTable(
   'payment_vouchers',
   {
     id: int('id').primaryKey().autoincrement(),
-    voucherNumber: varchar('voucher_number', { length: 50 }).notNull().unique(),
     paymentDate: date('payment_date', { mode: 'string' }).notNull(),
     payeeType: mysqlEnum('payee_type', PAYEE_TYPES)
       .default('supplier')
       .notNull(),
     supplierId: int('supplier_id').references(() => suppliers.id),
-    batchId: int('batch_id').references(() => importBatches.id, {
-      onDelete: 'set null',
-    }),
     payeeName: varchar('payee_name', { length: 255 }),
     amount: money('amount').notNull(),
-    method: mysqlEnum('method', PAYMENT_METHODS)
-      .default('bank_transfer')
-      .notNull(),
     companyBankAccountId: int('company_bank_account_id'),
     description: varchar('description', { length: 255 }),
     createdBy: int('created_by').references(() => users.id),
@@ -756,10 +747,6 @@ export const paymentVouchersRelations = relations(
     supplier: one(suppliers, {
       fields: [paymentVouchers.supplierId],
       references: [suppliers.id],
-    }),
-    batch: one(importBatches, {
-      fields: [paymentVouchers.batchId],
-      references: [importBatches.id],
     }),
   }),
 )

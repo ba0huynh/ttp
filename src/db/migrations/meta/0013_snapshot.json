@@ -101,17 +101,12 @@
       "indexes": {
         "bank_statement_lines_statement_idx": {
           "name": "bank_statement_lines_statement_idx",
-          "columns": [
-            "statement_id"
-          ],
+          "columns": ["statement_id"],
           "isUnique": false
         },
         "bank_statement_lines_match_idx": {
           "name": "bank_statement_lines_match_idx",
-          "columns": [
-            "matched_type",
-            "matched_id"
-          ],
+          "columns": ["matched_type", "matched_id"],
           "isUnique": false
         }
       },
@@ -120,12 +115,8 @@
           "name": "bank_statement_lines_statement_id_bank_statements_id_fk",
           "tableFrom": "bank_statement_lines",
           "tableTo": "bank_statements",
-          "columnsFrom": [
-            "statement_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["statement_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -133,9 +124,7 @@
       "compositePrimaryKeys": {
         "bank_statement_lines_id": {
           "name": "bank_statement_lines_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -196,12 +185,8 @@
           "name": "bank_statements_created_by_users_id_fk",
           "tableFrom": "bank_statements",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -209,12 +194,8 @@
           "name": "bank_statements_bank_account_fk",
           "tableFrom": "bank_statements",
           "tableTo": "company_bank_accounts",
-          "columnsFrom": [
-            "company_bank_account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_bank_account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -222,9 +203,7 @@
       "compositePrimaryKeys": {
         "bank_statements_id": {
           "name": "bank_statements_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -277,9 +256,7 @@
       "compositePrimaryKeys": {
         "banks_id": {
           "name": "banks_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -344,9 +321,7 @@
       "indexes": {
         "batch_expenses_batch_idx": {
           "name": "batch_expenses_batch_idx",
-          "columns": [
-            "batch_id"
-          ],
+          "columns": ["batch_id"],
           "isUnique": false
         }
       },
@@ -355,12 +330,8 @@
           "name": "batch_expenses_batch_id_import_batches_id_fk",
           "tableFrom": "batch_expenses",
           "tableTo": "import_batches",
-          "columnsFrom": [
-            "batch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["batch_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -368,9 +339,7 @@
       "compositePrimaryKeys": {
         "batch_expenses_id": {
           "name": "batch_expenses_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -423,9 +392,7 @@
       "compositePrimaryKeys": {
         "colors_id": {
           "name": "colors_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -501,12 +468,8 @@
           "name": "company_bank_accounts_bank_id_banks_id_fk",
           "tableFrom": "company_bank_accounts",
           "tableTo": "banks",
-          "columnsFrom": [
-            "bank_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["bank_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -514,17 +477,13 @@
       "compositePrimaryKeys": {
         "company_bank_accounts_id": {
           "name": "company_bank_accounts_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "company_bank_accounts_account_number_unique": {
           "name": "company_bank_accounts_account_number_unique",
-          "columns": [
-            "account_number"
-          ]
+          "columns": ["account_number"]
         }
       },
       "checkConstraint": {}
@@ -611,9 +570,7 @@
       "compositePrimaryKeys": {
         "company_info_id": {
           "name": "company_info_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -673,9 +630,7 @@
       "compositePrimaryKeys": {
         "customers_id": {
           "name": "customers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -709,9 +664,7 @@
       "indexes": {
         "delivery_note_items_vehicle_uq": {
           "name": "delivery_note_items_vehicle_uq",
-          "columns": [
-            "vehicle_id"
-          ],
+          "columns": ["vehicle_id"],
           "isUnique": true
         }
       },
@@ -720,12 +673,8 @@
           "name": "delivery_note_items_delivery_note_id_delivery_notes_id_fk",
           "tableFrom": "delivery_note_items",
           "tableTo": "delivery_notes",
-          "columnsFrom": [
-            "delivery_note_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["delivery_note_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -733,12 +682,8 @@
           "name": "delivery_note_items_vehicle_id_vehicles_id_fk",
           "tableFrom": "delivery_note_items",
           "tableTo": "vehicles",
-          "columnsFrom": [
-            "vehicle_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["vehicle_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -746,9 +691,7 @@
       "compositePrimaryKeys": {
         "delivery_note_items_id": {
           "name": "delivery_note_items_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -837,12 +780,8 @@
           "name": "delivery_notes_sales_order_id_sales_orders_id_fk",
           "tableFrom": "delivery_notes",
           "tableTo": "sales_orders",
-          "columnsFrom": [
-            "sales_order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sales_order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -850,12 +789,8 @@
           "name": "delivery_notes_created_by_users_id_fk",
           "tableFrom": "delivery_notes",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -863,17 +798,13 @@
       "compositePrimaryKeys": {
         "delivery_notes_id": {
           "name": "delivery_notes_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "delivery_notes_note_number_unique": {
           "name": "delivery_notes_note_number_unique",
-          "columns": [
-            "note_number"
-          ]
+          "columns": ["note_number"]
         }
       },
       "checkConstraint": {}
@@ -982,16 +913,12 @@
       "indexes": {
         "import_batches_supplier_idx": {
           "name": "import_batches_supplier_idx",
-          "columns": [
-            "supplier_id"
-          ],
+          "columns": ["supplier_id"],
           "isUnique": false
         },
         "import_batches_loan_idx": {
           "name": "import_batches_loan_idx",
-          "columns": [
-            "loan_contract_id"
-          ],
+          "columns": ["loan_contract_id"],
           "isUnique": false
         }
       },
@@ -1000,12 +927,8 @@
           "name": "import_batches_supplier_id_suppliers_id_fk",
           "tableFrom": "import_batches",
           "tableTo": "suppliers",
-          "columnsFrom": [
-            "supplier_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["supplier_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1013,12 +936,8 @@
           "name": "import_batches_loan_contract_id_loan_contracts_id_fk",
           "tableFrom": "import_batches",
           "tableTo": "loan_contracts",
-          "columnsFrom": [
-            "loan_contract_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["loan_contract_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1026,12 +945,8 @@
           "name": "import_batches_created_by_users_id_fk",
           "tableFrom": "import_batches",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1039,17 +954,13 @@
       "compositePrimaryKeys": {
         "import_batches_id": {
           "name": "import_batches_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "import_batches_batch_code_unique": {
           "name": "import_batches_batch_code_unique",
-          "columns": [
-            "batch_code"
-          ]
+          "columns": ["batch_code"]
         }
       },
       "checkConstraint": {}
@@ -1089,9 +1000,7 @@
       "indexes": {
         "invoice_items_vehicle_uq": {
           "name": "invoice_items_vehicle_uq",
-          "columns": [
-            "vehicle_id"
-          ],
+          "columns": ["vehicle_id"],
           "isUnique": true
         }
       },
@@ -1100,12 +1009,8 @@
           "name": "invoice_items_invoice_id_invoices_id_fk",
           "tableFrom": "invoice_items",
           "tableTo": "invoices",
-          "columnsFrom": [
-            "invoice_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["invoice_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1113,12 +1018,8 @@
           "name": "invoice_items_vehicle_id_vehicles_id_fk",
           "tableFrom": "invoice_items",
           "tableTo": "vehicles",
-          "columnsFrom": [
-            "vehicle_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["vehicle_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1126,9 +1027,7 @@
       "compositePrimaryKeys": {
         "invoice_items_id": {
           "name": "invoice_items_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1217,12 +1116,8 @@
           "name": "invoices_sales_order_id_sales_orders_id_fk",
           "tableFrom": "invoices",
           "tableTo": "sales_orders",
-          "columnsFrom": [
-            "sales_order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sales_order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1230,12 +1125,8 @@
           "name": "invoices_branch_id_pos_branches_id_fk",
           "tableFrom": "invoices",
           "tableTo": "pos_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["branch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1243,12 +1134,8 @@
           "name": "invoices_created_by_users_id_fk",
           "tableFrom": "invoices",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1256,17 +1143,13 @@
       "compositePrimaryKeys": {
         "invoices_id": {
           "name": "invoices_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "invoices_invoice_number_unique": {
           "name": "invoices_invoice_number_unique",
-          "columns": [
-            "invoice_number"
-          ]
+          "columns": ["invoice_number"]
         }
       },
       "checkConstraint": {}
@@ -1362,12 +1245,8 @@
           "name": "loan_contracts_bank_id_banks_id_fk",
           "tableFrom": "loan_contracts",
           "tableTo": "banks",
-          "columnsFrom": [
-            "bank_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["bank_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1375,17 +1254,13 @@
       "compositePrimaryKeys": {
         "loan_contracts_id": {
           "name": "loan_contracts_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "loan_contracts_contract_number_unique": {
           "name": "loan_contracts_contract_number_unique",
-          "columns": [
-            "contract_number"
-          ]
+          "columns": ["contract_number"]
         }
       },
       "checkConstraint": {}
@@ -1465,9 +1340,7 @@
       "indexes": {
         "loan_repayments_loan_idx": {
           "name": "loan_repayments_loan_idx",
-          "columns": [
-            "loan_contract_id"
-          ],
+          "columns": ["loan_contract_id"],
           "isUnique": false
         }
       },
@@ -1476,12 +1349,8 @@
           "name": "loan_repayments_loan_contract_id_loan_contracts_id_fk",
           "tableFrom": "loan_repayments",
           "tableTo": "loan_contracts",
-          "columnsFrom": [
-            "loan_contract_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["loan_contract_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1489,12 +1358,8 @@
           "name": "loan_repayments_bank_account_fk",
           "tableFrom": "loan_repayments",
           "tableTo": "company_bank_accounts",
-          "columnsFrom": [
-            "company_bank_account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_bank_account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1502,9 +1367,7 @@
       "compositePrimaryKeys": {
         "loan_repayments_id": {
           "name": "loan_repayments_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1557,9 +1420,7 @@
       "compositePrimaryKeys": {
         "motorcycle_models_id": {
           "name": "motorcycle_models_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -1618,12 +1479,8 @@
           "name": "password_reset_tokens_user_id_users_id_fk",
           "tableFrom": "password_reset_tokens",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1631,17 +1488,13 @@
       "compositePrimaryKeys": {
         "password_reset_tokens_id": {
           "name": "password_reset_tokens_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "password_reset_tokens_token_hash_unique": {
           "name": "password_reset_tokens_token_hash_unique",
-          "columns": [
-            "token_hash"
-          ]
+          "columns": ["token_hash"]
         }
       },
       "checkConstraint": {}
@@ -1756,9 +1609,7 @@
       "indexes": {
         "payment_vouchers_supplier_idx": {
           "name": "payment_vouchers_supplier_idx",
-          "columns": [
-            "supplier_id"
-          ],
+          "columns": ["supplier_id"],
           "isUnique": false
         }
       },
@@ -1767,12 +1618,8 @@
           "name": "payment_vouchers_supplier_id_suppliers_id_fk",
           "tableFrom": "payment_vouchers",
           "tableTo": "suppliers",
-          "columnsFrom": [
-            "supplier_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["supplier_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1780,12 +1627,8 @@
           "name": "payment_vouchers_batch_id_import_batches_id_fk",
           "tableFrom": "payment_vouchers",
           "tableTo": "import_batches",
-          "columnsFrom": [
-            "batch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["batch_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -1793,12 +1636,8 @@
           "name": "payment_vouchers_created_by_users_id_fk",
           "tableFrom": "payment_vouchers",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -1806,12 +1645,8 @@
           "name": "payment_vouchers_bank_account_fk",
           "tableFrom": "payment_vouchers",
           "tableTo": "company_bank_accounts",
-          "columnsFrom": [
-            "company_bank_account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_bank_account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -1819,17 +1654,13 @@
       "compositePrimaryKeys": {
         "payment_vouchers_id": {
           "name": "payment_vouchers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "payment_vouchers_voucher_number_unique": {
           "name": "payment_vouchers_voucher_number_unique",
-          "columns": [
-            "voucher_number"
-          ]
+          "columns": ["voucher_number"]
         }
       },
       "checkConstraint": {}
@@ -1894,9 +1725,7 @@
       "indexes": {
         "pos_branches_customer_idx": {
           "name": "pos_branches_customer_idx",
-          "columns": [
-            "customer_id"
-          ],
+          "columns": ["customer_id"],
           "isUnique": false
         }
       },
@@ -1905,12 +1734,8 @@
           "name": "pos_branches_customer_id_customers_id_fk",
           "tableFrom": "pos_branches",
           "tableTo": "customers",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1918,9 +1743,7 @@
       "compositePrimaryKeys": {
         "pos_branches_id": {
           "name": "pos_branches_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2013,16 +1836,12 @@
       "indexes": {
         "receipt_vouchers_customer_idx": {
           "name": "receipt_vouchers_customer_idx",
-          "columns": [
-            "customer_id"
-          ],
+          "columns": ["customer_id"],
           "isUnique": false
         },
         "receipt_vouchers_branch_idx": {
           "name": "receipt_vouchers_branch_idx",
-          "columns": [
-            "branch_id"
-          ],
+          "columns": ["branch_id"],
           "isUnique": false
         }
       },
@@ -2031,12 +1850,8 @@
           "name": "receipt_vouchers_customer_id_customers_id_fk",
           "tableFrom": "receipt_vouchers",
           "tableTo": "customers",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2044,12 +1859,8 @@
           "name": "receipt_vouchers_branch_id_pos_branches_id_fk",
           "tableFrom": "receipt_vouchers",
           "tableTo": "pos_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["branch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2057,12 +1868,8 @@
           "name": "receipt_vouchers_sales_order_id_sales_orders_id_fk",
           "tableFrom": "receipt_vouchers",
           "tableTo": "sales_orders",
-          "columnsFrom": [
-            "sales_order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sales_order_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         },
@@ -2070,12 +1877,8 @@
           "name": "receipt_vouchers_created_by_users_id_fk",
           "tableFrom": "receipt_vouchers",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2083,12 +1886,8 @@
           "name": "receipt_vouchers_bank_account_fk",
           "tableFrom": "receipt_vouchers",
           "tableTo": "company_bank_accounts",
-          "columnsFrom": [
-            "company_bank_account_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["company_bank_account_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2096,9 +1895,7 @@
       "compositePrimaryKeys": {
         "receipt_vouchers_id": {
           "name": "receipt_vouchers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2154,16 +1951,12 @@
       "indexes": {
         "sales_order_items_vehicle_uq": {
           "name": "sales_order_items_vehicle_uq",
-          "columns": [
-            "vehicle_id"
-          ],
+          "columns": ["vehicle_id"],
           "isUnique": true
         },
         "sales_order_items_order_idx": {
           "name": "sales_order_items_order_idx",
-          "columns": [
-            "sales_order_id"
-          ],
+          "columns": ["sales_order_id"],
           "isUnique": false
         }
       },
@@ -2172,12 +1965,8 @@
           "name": "sales_order_items_sales_order_id_sales_orders_id_fk",
           "tableFrom": "sales_order_items",
           "tableTo": "sales_orders",
-          "columnsFrom": [
-            "sales_order_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["sales_order_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2185,12 +1974,8 @@
           "name": "sales_order_items_vehicle_id_vehicles_id_fk",
           "tableFrom": "sales_order_items",
           "tableTo": "vehicles",
-          "columnsFrom": [
-            "vehicle_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["vehicle_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2198,9 +1983,7 @@
       "compositePrimaryKeys": {
         "sales_order_items_id": {
           "name": "sales_order_items_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2295,16 +2078,12 @@
       "indexes": {
         "sales_orders_customer_idx": {
           "name": "sales_orders_customer_idx",
-          "columns": [
-            "customer_id"
-          ],
+          "columns": ["customer_id"],
           "isUnique": false
         },
         "sales_orders_branch_idx": {
           "name": "sales_orders_branch_idx",
-          "columns": [
-            "branch_id"
-          ],
+          "columns": ["branch_id"],
           "isUnique": false
         }
       },
@@ -2313,12 +2092,8 @@
           "name": "sales_orders_customer_id_customers_id_fk",
           "tableFrom": "sales_orders",
           "tableTo": "customers",
-          "columnsFrom": [
-            "customer_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["customer_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2326,12 +2101,8 @@
           "name": "sales_orders_branch_id_pos_branches_id_fk",
           "tableFrom": "sales_orders",
           "tableTo": "pos_branches",
-          "columnsFrom": [
-            "branch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["branch_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2339,12 +2110,8 @@
           "name": "sales_orders_created_by_users_id_fk",
           "tableFrom": "sales_orders",
           "tableTo": "users",
-          "columnsFrom": [
-            "created_by"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["created_by"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2352,17 +2119,13 @@
       "compositePrimaryKeys": {
         "sales_orders_id": {
           "name": "sales_orders_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "sales_orders_order_number_unique": {
           "name": "sales_orders_order_number_unique",
-          "columns": [
-            "order_number"
-          ]
+          "columns": ["order_number"]
         }
       },
       "checkConstraint": {}
@@ -2403,9 +2166,7 @@
       "indexes": {
         "sessions_user_idx": {
           "name": "sessions_user_idx",
-          "columns": [
-            "user_id"
-          ],
+          "columns": ["user_id"],
           "isUnique": false
         }
       },
@@ -2414,12 +2175,8 @@
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
           "tableTo": "users",
-          "columnsFrom": [
-            "user_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["user_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -2427,9 +2184,7 @@
       "compositePrimaryKeys": {
         "sessions_id": {
           "name": "sessions_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2503,9 +2258,7 @@
       "compositePrimaryKeys": {
         "suppliers_id": {
           "name": "suppliers_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {},
@@ -2602,23 +2355,17 @@
       "compositePrimaryKeys": {
         "users_id": {
           "name": "users_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "users_username_unique": {
           "name": "users_username_unique",
-          "columns": [
-            "username"
-          ]
+          "columns": ["username"]
         },
         "users_email_unique": {
           "name": "users_email_unique",
-          "columns": [
-            "email"
-          ]
+          "columns": ["email"]
         }
       },
       "checkConstraint": {}
@@ -2750,30 +2497,22 @@
       "indexes": {
         "vehicles_batch_idx": {
           "name": "vehicles_batch_idx",
-          "columns": [
-            "batch_id"
-          ],
+          "columns": ["batch_id"],
           "isUnique": false
         },
         "vehicles_model_idx": {
           "name": "vehicles_model_idx",
-          "columns": [
-            "model_id"
-          ],
+          "columns": ["model_id"],
           "isUnique": false
         },
         "vehicles_delivered_idx": {
           "name": "vehicles_delivered_idx",
-          "columns": [
-            "is_delivered"
-          ],
+          "columns": ["is_delivered"],
           "isUnique": false
         },
         "vehicles_invoiced_idx": {
           "name": "vehicles_invoiced_idx",
-          "columns": [
-            "is_invoiced"
-          ],
+          "columns": ["is_invoiced"],
           "isUnique": false
         }
       },
@@ -2782,12 +2521,8 @@
           "name": "vehicles_batch_id_import_batches_id_fk",
           "tableFrom": "vehicles",
           "tableTo": "import_batches",
-          "columnsFrom": [
-            "batch_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["batch_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -2795,12 +2530,8 @@
           "name": "vehicles_model_id_motorcycle_models_id_fk",
           "tableFrom": "vehicles",
           "tableTo": "motorcycle_models",
-          "columnsFrom": [
-            "model_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["model_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -2808,12 +2539,8 @@
           "name": "vehicles_color_id_colors_id_fk",
           "tableFrom": "vehicles",
           "tableTo": "colors",
-          "columnsFrom": [
-            "color_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["color_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -2821,23 +2548,17 @@
       "compositePrimaryKeys": {
         "vehicles_id": {
           "name": "vehicles_id",
-          "columns": [
-            "id"
-          ]
+          "columns": ["id"]
         }
       },
       "uniqueConstraints": {
         "vehicles_chassis_number_unique": {
           "name": "vehicles_chassis_number_unique",
-          "columns": [
-            "chassis_number"
-          ]
+          "columns": ["chassis_number"]
         },
         "vehicles_engine_number_unique": {
           "name": "vehicles_engine_number_unique",
-          "columns": [
-            "engine_number"
-          ]
+          "columns": ["engine_number"]
         }
       },
       "checkConstraint": {}

@@ -49,7 +49,7 @@ export async function seed({ reset = false }: { reset?: boolean } = {}) {
   const { loans } = await seedLoans({ banks, companyBankAccounts })
 
   // Step 6: Seed import batches, logistics/customs expenses, and vehicles with cost allocation
-  const { batches, vIds } = await seedBatches({
+  const { vIds } = await seedBatches({
     adminId,
     suppliers,
     loans,
@@ -72,7 +72,6 @@ export async function seed({ reset = false }: { reset?: boolean } = {}) {
     branches,
     orders,
     suppliers,
-    batches,
     companyBankAccounts,
   })
 

@@ -10,7 +10,6 @@ import { z } from 'zod'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -52,7 +51,6 @@ import {
 } from '#/components/ui/tabs.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
 import {
-  batchesQuery,
   customerOptionsQuery,
   masterDataQuery,
   payablesQuery,
@@ -86,7 +84,6 @@ export const Route = createFileRoute('/finance')({
       queryClient.query(paymentsQuery()),
       queryClient.query(customerOptionsQuery()),
       queryClient.query(masterDataQuery()),
-      queryClient.query(batchesQuery()),
     ])
   },
   component: FinancePage,
@@ -102,7 +99,6 @@ function FinancePage() {
   const { data: payments } = useSuspenseQuery(paymentsQuery())
   const { data: customers } = useSuspenseQuery(customerOptionsQuery())
   const { data: master } = useSuspenseQuery(masterDataQuery())
-  const { data: batches } = useSuspenseQuery(batchesQuery())
   const queryClient = useQueryClient()
   // Phiếu thu/chi đổi công nợ, sao kê và dashboard nên làm mới toàn bộ cache
   const createReceipt = useMutation({
@@ -135,13 +131,7 @@ function FinancePage() {
   const [paymentSupplierId, setPaymentSupplierId] = React.useState<number>(
     master.suppliers[0]?.id ?? 1,
   )
-  const [paymentBatchId, setPaymentBatchId] = React.useState<number | null>(
-    batches[0]?.id ?? null,
-  )
   const [paymentAmount, setPaymentAmount] = React.useState(100_000_000)
-  const [paymentMethod, setPaymentMethod] = React.useState<
-    'cash' | 'bank_transfer'
-  >('bank_transfer')
   const [paymentAccountId, setPaymentAccountId] = React.useState<number | null>(
     master.bankAccounts[0]?.id ?? null,
   )
@@ -177,9 +167,7 @@ function FinancePage() {
           paymentDate,
           payeeType: 'supplier',
           supplierId: paymentSupplierId,
-          batchId: paymentBatchId,
           amount: paymentAmount,
-          method: paymentMethod,
           companyBankAccountId: paymentAccountId,
           description: paymentDesc,
         },
@@ -413,10 +401,8 @@ function FinancePage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Số Phiếu Chi</TableHead>
                       <TableHead>Ngày Chi</TableHead>
                       <TableHead>Đối Tượng Nhận</TableHead>
-                      <TableHead>Lô Xe Liên Quan</TableHead>
                       <TableHead className="text-right">Số Tiền Chi</TableHead>
                       <TableHead>Nội Dung</TableHead>
                     </TableRow>
@@ -424,26 +410,11 @@ function FinancePage() {
                   <TableBody className="text-xs">
                     {payments.map((p) => (
                       <TableRow key={p.id} className="hover:bg-slate-50/80">
-                        <TableCell className="font-mono font-bold text-slate-900">
-                          {p.voucherNumber}
-                        </TableCell>
                         <TableCell className="text-slate-600">
                           {formatDate(p.paymentDate)}
                         </TableCell>
                         <TableCell className="font-semibold text-slate-900">
                           {p.supplierName ?? p.payeeName}
-                        </TableCell>
-                        <TableCell>
-                          {p.batchCode ? (
-                            <Badge
-                              variant="outline"
-                              className="font-mono text-[10px]"
-                            >
-                              {p.batchCode}
-                            </Badge>
-                          ) : (
-                            '—'
-                          )}
                         </TableCell>
                         <TableCell className="text-right font-black text-rose-900">
                           {formatVnd(p.amount)}
@@ -675,36 +646,6 @@ function FinancePage() {
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
-                  Lô Xe Liên Quan (nếu có)
-                </Label>
-                <Select
-                  value={paymentBatchId ? String(paymentBatchId) : 'none'}
-                  onValueChange={(val) =>
-                    setPaymentBatchId(val === 'none' ? null : Number(val))
-                  }
-                >
-                  <SelectTrigger className="h-8 text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-xs">
-                      Không gắn lô cụ thể
-                    </SelectItem>
-                    {batches.map((b) => (
-                      <SelectItem
-                        key={b.id}
-                        value={String(b.id)}
-                        className="text-xs"
-                      >
-                        {b.batchCode} &bull; {b.supplierName}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">
                   Số Tiền Chi (VNĐ) *
                 </Label>
                 <Input
@@ -720,60 +661,34 @@ function FinancePage() {
                 />
               </div>
 
-              <div className="space-y-3">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Hình Thức Chi</Label>
-                  <Select
-                    value={paymentMethod}
-                    onValueChange={(val: 'cash' | 'bank_transfer') =>
-                      setPaymentMethod(val)
-                    }
-                  >
-                    <SelectTrigger className="h-8 w-full text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="bank_transfer" className="text-xs">
-                        Chuyển khoản
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Tài Khoản Chi</Label>
+                <Select
+                  value={paymentAccountId ? String(paymentAccountId) : 'none'}
+                  onValueChange={(val) =>
+                    setPaymentAccountId(val === 'none' ? null : Number(val))
+                  }
+                >
+                  <SelectTrigger className="h-8 w-full text-xs">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none" className="text-xs">
+                      Không chọn (tiền mặt)
+                    </SelectItem>
+                    {master.bankAccounts.map((b) => (
+                      <SelectItem
+                        key={b.id}
+                        value={String(b.id)}
+                        className="text-xs"
+                      >
+                        <BankLabel image={b.bankImage} name={b.bankName}>
+                          {b.bankName} &bull; {b.accountNumber}
+                        </BankLabel>
                       </SelectItem>
-                      <SelectItem value="cash" className="text-xs">
-                        Tiền mặt
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                {paymentMethod === 'bank_transfer' && (
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Tài Khoản Chi
-                    </Label>
-                    <Select
-                      value={
-                        paymentAccountId ? String(paymentAccountId) : 'none'
-                      }
-                      onValueChange={(val) =>
-                        setPaymentAccountId(val === 'none' ? null : Number(val))
-                      }
-                    >
-                      <SelectTrigger className="h-8 w-full text-xs">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {master.bankAccounts.map((b) => (
-                          <SelectItem
-                            key={b.id}
-                            value={String(b.id)}
-                            className="text-xs"
-                          >
-                            <BankLabel image={b.bankImage} name={b.bankName}>
-                              {b.bankName} &bull; {b.accountNumber}
-                            </BankLabel>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                )}
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
 
               <div className="space-y-1">

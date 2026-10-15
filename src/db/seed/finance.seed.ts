@@ -24,10 +24,6 @@ interface SeedFinanceParams {
     supplierThai: { id: number }
     supplierIndo: { id: number }
   }
-  batches: {
-    batch1: { id: number }
-    batch2: { id: number }
-  }
   companyBankAccounts: {
     vcbAccount: { id: number }
     bidvAccount: { id: number }
@@ -45,7 +41,6 @@ export async function seedFinance({
   branches,
   orders,
   suppliers,
-  batches,
   companyBankAccounts,
 }: SeedFinanceParams) {
   const [existingStatement] = await db.select().from(bankStatements).limit(1)
@@ -80,25 +75,19 @@ export async function seedFinance({
 
   await db.insert(paymentVouchers).values([
     {
-      voucherNumber: 'PC-260118-001',
       paymentDate: '2026-01-18',
       payeeType: 'supplier',
       supplierId: suppliers.supplierThai.id,
-      batchId: batches.batch1.id,
       amount: 500_000_000,
-      method: 'bank_transfer',
       companyBankAccountId: companyBankAccounts.vcbAccount.id,
       description: 'Thanh toán tiền hàng đợt 1 cho Thai Honda',
       createdBy: adminId,
     },
     {
-      voucherNumber: 'PC-260222-002',
       paymentDate: '2026-02-22',
       payeeType: 'supplier',
       supplierId: suppliers.supplierIndo.id,
-      batchId: batches.batch2.id,
       amount: 300_000_000,
-      method: 'bank_transfer',
       companyBankAccountId: companyBankAccounts.bidvAccount.id,
       description: 'Thanh toán tiền hàng cho PT Astra Honda',
       createdBy: adminId,

@@ -11,10 +11,11 @@ import {
   paymentVouchers,
   posBranches,
   receiptVouchers,
+  suppliers,
 } from '../../db/schema.ts'
 import type { MatchType } from '../../db/schema.ts'
 import { calculateLoanInterest, todayIso } from '../../lib/business.ts'
-import { BusinessError, nextDocNumber, num } from './common.ts'
+import { BusinessError, num } from './common.ts'
 
 /* -------------------------------------------------------------------------- */
 /* 04. Bank Loans                                                             */
@@ -148,10 +149,8 @@ export async function createPaymentVoucher(
     paymentDate: string
     payeeType: 'supplier' | 'other'
     supplierId?: number | null
-    batchId?: number | null
     payeeName?: string | null
     amount: number
-    method: 'cash' | 'bank_transfer'
     companyBankAccountId?: number | null
     description?: string | null
   },
@@ -160,26 +159,14 @@ export async function createPaymentVoucher(
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
   if (input.payeeType === 'supplier' && !input.supplierId)
     throw new BusinessError('Chưa chọn nhà cung cấp')
-  const voucherNumber = await nextDocNumber(
-    db,
-    paymentVouchers,
-    paymentVouchers.voucherNumber,
-    'PC',
-    input.paymentDate,
-  )
   const [r] = await db
     .insert(paymentVouchers)
     .values({
       ...input,
-      voucherNumber,
       supplierId:
         input.payeeType === 'supplier' ? (input.supplierId ?? null) : null,
-      batchId: input.batchId ?? null,
       payeeName: input.payeeName ?? null,
-      companyBankAccountId:
-        input.method === 'bank_transfer'
-          ? (input.companyBankAccountId ?? null)
-          : null,
+      companyBankAccountId: input.companyBankAccountId ?? null,
       description: input.description ?? null,
       createdBy: userId ?? null,
     })
@@ -274,11 +261,12 @@ export async function suggestMatches(lineId: number) {
   const payments = await db
     .select({
       id: paymentVouchers.id,
-      number: paymentVouchers.voucherNumber,
+      number: sql<string>`coalesce(${suppliers.name}, ${paymentVouchers.payeeName}, '')`,
       date: paymentVouchers.paymentDate,
       amount: paymentVouchers.amount,
     })
     .from(paymentVouchers)
+    .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
     .where(
       and(
         eq(paymentVouchers.amount, num(line.debit)),

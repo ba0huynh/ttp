@@ -386,7 +386,7 @@ function ReconcilePage() {
                                 : 'Trả Nợ Khế Ước'}
                           </Badge>
                           <span
-                            className={`font-bold text-slate-900 text-xs ${s.type === 'receipt' ? '' : 'font-mono'}`}
+                            className={`font-bold text-slate-900 text-xs ${s.type === 'loan_repayment' ? 'font-mono' : ''}`}
                           >
                             {s.number}
                           </span>

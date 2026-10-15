@@ -7,13 +7,11 @@ import {
   LOAN_STATUSES,
   MATCH_TYPES,
   PAYEE_TYPES,
-  PAYMENT_METHODS,
   bankStatementLines,
   bankStatements,
   banks,
   companyBankAccounts,
   customers,
-  importBatches,
   loanContracts,
   loanRepayments,
   paymentVouchers,
@@ -210,23 +208,19 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
     const list = await db
       .select({
         id: paymentVouchers.id,
-        voucherNumber: paymentVouchers.voucherNumber,
         paymentDate: paymentVouchers.paymentDate,
         payeeType: paymentVouchers.payeeType,
         payeeName: paymentVouchers.payeeName,
         amount: paymentVouchers.amount,
-        method: paymentVouchers.method,
         description: paymentVouchers.description,
         supplierId: paymentVouchers.supplierId,
         supplierName: suppliers.name,
-        batchCode: importBatches.batchCode,
         accountNumber: companyBankAccounts.accountNumber,
         bankName: banks.name,
         bankImage: banks.image,
       })
       .from(paymentVouchers)
       .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
-      .leftJoin(importBatches, eq(importBatches.id, paymentVouchers.batchId))
       .leftJoin(
         companyBankAccounts,
         eq(companyBankAccounts.id, paymentVouchers.companyBankAccountId),
@@ -247,10 +241,8 @@ export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
       paymentDate: z.string().min(10),
       payeeType: z.enum(PAYEE_TYPES),
       supplierId: z.number().int().nullable().optional(),
-      batchId: z.number().int().nullable().optional(),
       payeeName: z.string().trim().nullable().optional(),
       amount: z.number().positive('Số tiền chi phải > 0'),
-      method: z.enum(PAYMENT_METHODS),
       companyBankAccountId: z.number().int().nullable().optional(),
       description: z.string().trim().nullable().optional(),
     }),
