@@ -20,10 +20,7 @@ export const listCustomersFn = createServerFn({ method: 'GET' })
       .select({
         id: customers.id,
         name: customers.name,
-        taxCode: customers.taxCode,
-        phone: customers.phone,
         address: customers.address,
-        contactPerson: customers.contactPerson,
         branchCount: sql<number>`(select count(*) from ${posBranches} b where b.customer_id = ${customers.id})`,
         revenue: sql<string>`coalesce((select sum(o.total_amount) from ${salesOrders} o where o.customer_id = ${customers.id} and o.status = 'confirmed'),0)`,
       })
@@ -68,20 +65,19 @@ export const getCustomerDetailFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .validator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
-    const [customer] = await db
-      .select()
-      .from(customers)
-      .where(eq(customers.id, data.id))
+    // Independent queries run together: each one is a network round trip
+    const [[customer], branches, statement, summary] = await Promise.all([
+      db.select().from(customers).where(eq(customers.id, data.id)),
+      db
+        .select()
+        .from(posBranches)
+        .where(eq(posBranches.customerId, data.id))
+        .orderBy(asc(posBranches.name)),
+      getCustomerStatement(data.id),
+      getReceivablesSummary(),
+    ])
     if (!customer) throw new Error('Không tìm thấy khách hàng')
-    const branches = await db
-      .select()
-      .from(posBranches)
-      .where(eq(posBranches.customerId, data.id))
-      .orderBy(asc(posBranches.name))
-    const statement = await getCustomerStatement(data.id)
-    const ar = (await getReceivablesSummary()).filter(
-      (r) => r.customerId === data.id,
-    )
+    const ar = summary.filter((r) => r.customerId === data.id)
     return { customer, branches, ...statement, receivables: ar }
   })
 
@@ -91,11 +87,8 @@ export const saveCustomerFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       name: z.string().trim().min(1, 'Nhập tên KH'),
-      taxCode: opt,
       address: opt,
-      phone: opt,
       email: opt,
-      contactPerson: opt,
       note: opt,
     }),
   )

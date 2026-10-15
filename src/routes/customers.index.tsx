@@ -58,10 +58,7 @@ function CustomersPage() {
   // Create Parent Customer Modal
   const [newCustOpen, setNewCustOpen] = React.useState(false)
   const [name, setName] = React.useState('')
-  const [taxCode, setTaxCode] = React.useState('')
-  const [phone, setPhone] = React.useState('')
   const [address, setAddress] = React.useState('')
-  const [contactPerson, setContactPerson] = React.useState('')
 
   // Mọi thay đổi khách hàng/điểm bán ảnh hưởng danh sách, chi tiết và công nợ
   const saveCustomer = useMutation({
@@ -74,10 +71,7 @@ function CustomersPage() {
       await saveCustomer.mutateAsync({
         data: {
           name,
-          taxCode,
-          phone,
           address,
-          contactPerson,
         },
       })
       setNewCustOpen(false)
@@ -105,10 +99,7 @@ function CustomersPage() {
             size="sm"
             onClick={() => {
               setName('')
-              setTaxCode('')
-              setPhone('')
               setAddress('')
-              setContactPerson('')
               setNewCustOpen(true)
             }}
             className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
@@ -131,11 +122,9 @@ function CustomersPage() {
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
                     <TableHead>Tên Doanh Nghiệp (Khách Mẹ)</TableHead>
-                    <TableHead>MST</TableHead>
                     <TableHead className="text-center">
                       Số Điểm Bán Con
                     </TableHead>
-                    <TableHead>Điện Thoại / Liên Hệ</TableHead>
                     <TableHead className="text-right">Doanh Thu Mua</TableHead>
                     <TableHead className="text-right">Tổng Dư Nợ</TableHead>
                     <TableHead className="text-center">Thao tác</TableHead>
@@ -152,9 +141,6 @@ function CustomersPage() {
                           </div>
                         )}
                       </TableCell>
-                      <TableCell className="font-mono text-slate-600">
-                        {c.taxCode ?? '—'}
-                      </TableCell>
                       <TableCell className="text-center">
                         <Badge
                           variant="outline"
@@ -162,16 +148,6 @@ function CustomersPage() {
                         >
                           {c.branchCount} điểm bán
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="font-medium text-slate-700">
-                          {c.phone ?? '—'}
-                        </div>
-                        {c.contactPerson && (
-                          <div className="text-[11px] text-slate-400">
-                            {c.contactPerson}
-                          </div>
-                        )}
                       </TableCell>
                       <TableCell className="text-right font-bold text-slate-900">
                         {formatVnd(c.revenue)}
@@ -230,46 +206,12 @@ function CustomersPage() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Mã Số Thuế</Label>
-                  <Input
-                    placeholder="031..."
-                    value={taxCode}
-                    onChange={(e) => setTaxCode(e.target.value)}
-                    className="h-8 text-xs font-mono"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Số Điện Thoại</Label>
-                  <Input
-                    placeholder="090..."
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-              </div>
-
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Địa Chỉ Trụ Sở</Label>
                 <Input
                   placeholder="Địa chỉ trụ sở chính..."
                   value={address}
                   onChange={(e) => setAddress(e.target.value)}
-                  className="h-8 text-xs"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">
-                  Người Đại Diện / Liên Hệ
-                </Label>
-                <Input
-                  placeholder="Họ tên người liên hệ..."
-                  value={contactPerson}
-                  onChange={(e) => setContactPerson(e.target.value)}
                   className="h-8 text-xs"
                 />
               </div>

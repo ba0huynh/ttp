@@ -88,9 +88,7 @@ function CustomerDetailPage() {
   const openNewBranch = () => {
     setBranchCode(`DB-${customer.id}-${branches.length + 1}`)
     setBranchName('')
-    setBranchTaxCode(
-      customer.taxCode ? `${customer.taxCode}-00${branches.length + 1}` : '',
-    )
+    setBranchTaxCode('')
     setBranchAddress('')
     setBranchPhone('')
     setNewBranchOpen(true)
@@ -130,14 +128,7 @@ function CustomerDetailPage() {
             </Link>
           }
           title={customer.name}
-          description={
-            <>
-              MST: {customer.taxCode ?? '—'} · Địa chỉ:{' '}
-              {customer.address ?? '—'}
-              {customer.phone && <> · ĐT: {customer.phone}</>}
-              {customer.contactPerson && <> ({customer.contactPerson})</>}
-            </>
-          }
+          description={<>Địa chỉ: {customer.address ?? '—'}</>}
         />
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">

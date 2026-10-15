@@ -89,8 +89,6 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         note: salesOrders.note,
         customerId: salesOrders.customerId,
         customerName: customers.name,
-        customerTaxCode: customers.taxCode,
-        customerPhone: customers.phone,
         branchId: salesOrders.branchId,
         branchName: posBranches.name,
         branchTaxCode: posBranches.taxCode,

@@ -73,7 +73,7 @@ export async function getReceivablesSummary() {
         branchId,
         customerName: c?.name ?? '?',
         entityName: b?.name ?? c?.name ?? '?',
-        taxCode: b?.taxCode ?? c?.taxCode ?? null,
+        taxCode: b?.taxCode ?? null,
         sold: 0,
         paid: 0,
       }
@@ -90,7 +90,7 @@ export async function getReceivablesSummary() {
 }
 
 export async function getCustomerStatement(customerId: number) {
-  const orders = await db
+  const ordersQuery = db
     .select({
       id: salesOrders.id,
       date: salesOrders.orderDate,
@@ -102,11 +102,13 @@ export async function getCustomerStatement(customerId: number) {
     .from(salesOrders)
     .where(eq(salesOrders.customerId, customerId))
     .orderBy(desc(salesOrders.orderDate))
-  const receipts = await db
+  const receiptsQuery = db
     .select()
     .from(receiptVouchers)
     .where(eq(receiptVouchers.customerId, customerId))
     .orderBy(desc(receiptVouchers.receiptDate))
+  // Independent queries: run them together instead of one round trip each
+  const [orders, receipts] = await Promise.all([ordersQuery, receiptsQuery])
   return { orders, receipts }
 }
 

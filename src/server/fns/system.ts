@@ -3,7 +3,7 @@ import { asc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
-import { USER_ROLES, companyInfo, users } from '#/db/schema.ts'
+import { USER_ROLES, companyInfo, sessions, users } from '#/db/schema.ts'
 import { hashPassword } from '#/server/services/auth.ts'
 import { adminMiddleware, authMiddleware } from './middleware.ts'
 
@@ -89,6 +89,11 @@ export const saveUserFn = createServerFn({ method: 'POST' })
           ...(password ? { passwordHash: await hashPassword(password) } : {}),
         })
         .where(eq(users.id, id))
+      // A deactivated account, or one whose password an admin just reset, must
+      // not keep working (or come back to life when re-activated) with an old
+      // session. Its next request gets UNAUTHENTICATED and the client logs out.
+      if (!rest.isActive || password)
+        await db.delete(sessions).where(eq(sessions.userId, id))
     } else {
       if (!password) throw new Error('Nhập mật khẩu cho tài khoản mới')
       await db

@@ -11,12 +11,12 @@ export async function seedCustomers() {
   if (existingCustomers.length > 0) {
     console.log(' -> Customers already seeded, skipping...')
     const existingBranches = await db.select().from(posBranches)
-    // Customers have no business code, so look them up by tax code
+    // Customers have no business code, so look them up by name
     const custNamAnh = existingCustomers.find(
-      (c) => c.taxCode === '0315891234',
+      (c) => c.name === 'CÔNG TY TNHH THƯƠNG MẠI XE MÁY NAM ANH',
     )!
     const custThanhDat = existingCustomers.find(
-      (c) => c.taxCode === '0314789654',
+      (c) => c.name === 'DOANH NGHIỆP TƯ NHÂN XE MÁY THÀNH ĐẠT',
     )!
 
     return {
@@ -41,17 +41,11 @@ export async function seedCustomers() {
     .values([
       {
         name: 'CÔNG TY TNHH THƯƠNG MẠI XE MÁY NAM ANH',
-        taxCode: '0315891234',
         address: '568 Cách Mạng Tháng 8, Phường 11, Quận 3, TP.HCM',
-        phone: '0908 111 222',
-        contactPerson: 'Ông Nam (Giám đốc)',
       },
       {
         name: 'DOANH NGHIỆP TƯ NHÂN XE MÁY THÀNH ĐẠT',
-        taxCode: '0314789654',
         address: '102 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
-        phone: '0903 333 444',
-        contactPerson: 'Bà Đạt',
       },
     ])
     .$returningId()

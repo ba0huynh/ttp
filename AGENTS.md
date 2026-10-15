@@ -412,4 +412,23 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 26, 27,... above this line upon completing tasks)_
+### Lesson 26: Ending a Session Remotely (deactivate user → automatic logout)
+
+- **Server**: `authMiddleware` throws an Error whose message starts with `UNAUTHENTICATED` (`src/lib/auth-errors.ts`) when the cookie has no valid session. `getUserBySessionToken` already rejects inactive users, so a deactivated account stops working on its very next request. `saveUserFn` additionally **deletes the user's rows in `sessions`** when the account is deactivated or an admin sets a new password, so an old cookie cannot come back to life if the account is re-activated later.
+- **Client**: `src/integrations/tanstack-query/root-provider.tsx` registers `QueryCache`/`MutationCache` `onError` handlers. Any query or mutation failing with `UNAUTHENTICATED` triggers `window.location.href = '/login'` (a full load, so no stale user data stays in memory). It is skipped on `/login` and runs once.
+- **Verified end to end** (Playwright, two browser contexts): user "kho" logged in → admin deactivates "kho" in `/settings` → "kho" clicks a sidebar link → lands on `/login`; logging in again is refused ("tài khoản chưa được kích hoạt").
+- **Limits**: logout happens on the *next server call*, not instantly (there is no push). Pages shown from the 30 s query cache can keep rendering until something refetches. `changePasswordFn` (a user changing their own password) does not end their other sessions.
+- **Convention**: new server functions must use `authMiddleware` / `adminMiddleware` so they return this error; do not throw your own "session expired" text.
+
+---
+
+### Lesson 27: Customer Contact Fields Removed; "Whole App Is Broken" Triage
+
+- **Customers**: `customers.tax_code`, `customers.phone` and `customers.contact_person` were removed (schema, list columns, create form, detail header, seed, sales-order detail, AR summary). Migration `0008_*.sql` drops them (existing data is lost). Branches (`pos_branches`) **keep** their own MST, phone and contact person. `customer.seed.ts` now finds existing customers by name. `getCustomerDetailFn` and `getCustomerStatement` run their independent queries with `Promise.all` (detail page ~2.4 s → ~1.1 s).
+- **Symptom**: the whole site slow, every click reloads the page, buttons that open dialogs do nothing. **Cause seen**: the dev server's Vite cache held an *empty* transform of `src/integrations/tanstack-query/root-provider.tsx` (file was caught mid-rewrite), so the browser logged `The requested module ... does not provide an export named 'getContext'`, React never hydrated, and the page behaved like plain server HTML. **Check**: `curl http://localhost:3000/src/<file>` and look for the exports, or open the browser console. **Fix**: touch the file (`touch <file>`) or restart `npm run dev`, then hard-refresh (Ctrl+F5).
+- **Prevention**: avoid rewriting a module with `cat >` / truncate-then-write while the dev server runs; write the file in one step (editor/Edit tool) so the watcher never sees an empty file.
+- **Measured** (Playwright, admin, port 3000): sidebar navigation 90–150 ms when data is cached, ~1.4 s the first time a page loads (remote database round trips), 0 full page loads.
+
+---
+
+_(Next Agent: Append Lesson 28, 29,... above this line upon completing tasks)_

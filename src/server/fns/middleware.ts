@@ -2,6 +2,7 @@ import { createMiddleware } from '@tanstack/react-start'
 import { getCookie } from '@tanstack/react-start/server'
 
 import type { UserRole } from '#/db/schema.ts'
+import { UNAUTHENTICATED_MESSAGE } from '#/lib/auth-errors.ts'
 import {
   SESSION_COOKIE,
   getUserBySessionToken,
@@ -36,8 +37,7 @@ export const authMiddleware = createMiddleware({ type: 'function' })
   .server(async ({ next }) => {
     const token = getCookie(SESSION_COOKIE)
     const user = token ? await getUserBySessionToken(token) : null
-    if (!user)
-      throw new Error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại')
+    if (!user) throw new Error(UNAUTHENTICATED_MESSAGE)
     return next({ context: { user } })
   })
 
