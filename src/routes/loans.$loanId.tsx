@@ -17,12 +17,9 @@ import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -99,7 +96,7 @@ function LoanDetailPage() {
   )
   const [repayBankAccountId, setRepayBankAccountId] = React.useState<
     number | null
-  >(master.bankAccounts[0]?.id ?? null)
+  >(master.bankAccounts.find((a) => a.isActive)?.id ?? null)
   const repaying = repayLoan.isPending
 
   const handleRepaySubmit = async (e: React.FormEvent) => {
@@ -331,7 +328,8 @@ function LoanDetailPage() {
                   <Label className="text-xs font-semibold">
                     Tài Khoản Chi Tiền
                   </Label>
-                  <Select
+                  <SearchSelect
+                    className="w-full h-8 text-xs bg-white"
                     value={
                       repayBankAccountId ? String(repayBankAccountId) : 'none'
                     }
@@ -339,12 +337,10 @@ function LoanDetailPage() {
                       setRepayBankAccountId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SelectTrigger className="w-full h-8 text-xs bg-white">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {master.bankAccounts.map((a) => (
-                        <SelectItem
+                    {master.bankAccounts
+                      .filter((a) => a.isActive)
+                      .map((a) => (
+                        <SearchSelectItem
                           key={a.id}
                           value={String(a.id)}
                           className="text-xs"
@@ -352,10 +348,9 @@ function LoanDetailPage() {
                           <BankLabel image={a.bankImage} name={a.bankName}>
                             {a.bankName} &bull; {a.accountNumber}
                           </BankLabel>
-                        </SelectItem>
+                        </SearchSelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
+                  </SearchSelect>
                 </div>
               </div>
 

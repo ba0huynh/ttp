@@ -34,6 +34,10 @@ import {
   SelectValue,
 } from '#/components/ui/select.tsx'
 import {
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
+import {
   Table,
   TableBody,
   TableCell,
@@ -363,58 +367,52 @@ function NewBatchPage() {
                   <Label className="text-xs font-semibold">
                     Nhà Cung Cấp *
                   </Label>
-                  <Select
+                  <SearchSelect
+                    className="h-8 w-full text-xs"
+                    placeholder="Chọn nhà cung cấp"
                     value={String(supplierId)}
                     onValueChange={(val) => setSupplierId(Number(val))}
                   >
-                    <SelectTrigger className="h-8 w-full text-xs">
-                      <SelectValue placeholder="Chọn nhà cung cấp" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {master.suppliers.map((s) => (
-                        <SelectItem
-                          key={s.id}
-                          value={String(s.id)}
-                          className="text-xs"
-                        >
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {master.suppliers.map((s) => (
+                      <SearchSelectItem
+                        key={s.id}
+                        value={String(s.id)}
+                        className="text-xs"
+                      >
+                        {s.name}
+                      </SearchSelectItem>
+                    ))}
+                  </SearchSelect>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">
                     Khế Ước Vay Ngân Hàng (Tài trợ lô)
                   </Label>
-                  <Select
+                  <SearchSelect
+                    className="h-8 w-full text-xs"
+                    placeholder="Chọn khế ước vay (nếu có)"
                     value={loanContractId ? String(loanContractId) : 'none'}
                     onValueChange={(val) =>
                       setLoanContractId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SelectTrigger className="h-8 w-full text-xs">
-                      <SelectValue placeholder="Chọn khế ước vay (nếu có)" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none" className="text-xs">
-                        Vốn tự có (Không vay ngân hàng)
-                      </SelectItem>
-                      {loans
-                        .filter((l) => l.status === 'active')
-                        .map((l) => (
-                          <SelectItem
-                            key={l.id}
-                            value={String(l.id)}
-                            className="text-xs"
-                          >
-                            {l.contractNumber} ({l.bankName}) &bull; Dư nợ:{' '}
-                            {formatVnd(l.outstanding)}
-                          </SelectItem>
-                        ))}
-                    </SelectContent>
-                  </Select>
+                    <SearchSelectItem value="none" className="text-xs">
+                      Vốn tự có (Không vay ngân hàng)
+                    </SearchSelectItem>
+                    {loans
+                      .filter((l) => l.status === 'active')
+                      .map((l) => (
+                        <SearchSelectItem
+                          key={l.id}
+                          value={String(l.id)}
+                          className="text-xs"
+                        >
+                          {l.contractNumber} ({l.bankName}) &bull; Dư nợ:{' '}
+                          {formatVnd(l.outstanding)}
+                        </SearchSelectItem>
+                      ))}
+                  </SearchSelect>
                 </div>
 
                 <div className="space-y-1">
@@ -615,7 +613,8 @@ function NewBatchPage() {
                             />
                           </TableCell>
                           <TableCell>
-                            <Select
+                            <SearchSelect
+                              className="h-7 w-full text-xs"
                               value={String(v.modelId)}
                               onValueChange={(val) => {
                                 const updated = [...vehicles]
@@ -623,24 +622,20 @@ function NewBatchPage() {
                                 setVehicles(updated)
                               }}
                             >
-                              <SelectTrigger className="h-7 w-full text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {master.models.map((m) => (
-                                  <SelectItem
-                                    key={m.id}
-                                    value={String(m.id)}
-                                    className="text-xs"
-                                  >
-                                    {m.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              {master.models.map((m) => (
+                                <SearchSelectItem
+                                  key={m.id}
+                                  value={String(m.id)}
+                                  className="text-xs"
+                                >
+                                  {m.name}
+                                </SearchSelectItem>
+                              ))}
+                            </SearchSelect>
                           </TableCell>
                           <TableCell>
-                            <Select
+                            <SearchSelect
+                              className="h-7 w-full text-xs"
                               value={String(v.colorId)}
                               onValueChange={(val) => {
                                 const updated = [...vehicles]
@@ -648,21 +643,16 @@ function NewBatchPage() {
                                 setVehicles(updated)
                               }}
                             >
-                              <SelectTrigger className="h-7 w-full text-xs">
-                                <SelectValue />
-                              </SelectTrigger>
-                              <SelectContent>
-                                {master.colors.map((c) => (
-                                  <SelectItem
-                                    key={c.id}
-                                    value={String(c.id)}
-                                    className="text-xs"
-                                  >
-                                    {c.name}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
+                              {master.colors.map((c) => (
+                                <SearchSelectItem
+                                  key={c.id}
+                                  value={String(c.id)}
+                                  className="text-xs"
+                                >
+                                  {c.name}
+                                </SearchSelectItem>
+                              ))}
+                            </SearchSelect>
                           </TableCell>
                           <TableCell className="text-right">
                             <MoneyInput

@@ -532,4 +532,21 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 40, 41,... above this line upon completing tasks)_
+### Lesson 40: Company Bank Accounts Tab in Master Data
+
+- **What**: `/master-data?tab=accounts` ("Tài Khoản Ngân Hàng") lists, creates, edits and deletes the company's own bank accounts (`company_bank_accounts`: account name, bank, account number, branch, active flag). Bank accounts are chosen in receipts, payments, loan repayments and statement import, so they must be maintained here first. No schema change: `saveBankAccountFn` / `deleteMasterDataFn('companyBankAccounts')` and the `bankAccounts` list in `getMasterDataFn` already existed; only the UI was missing.
+- **Behaviour**: the account number is unique; deleting an account that is used by a voucher, repayment or statement fails with the "đang được sử dụng" message, so set it to "Ngừng dùng" (inactive) instead. Inactive accounts are hidden from the dropdowns in the finance dialogs.
+- **Distinction**: the "Ngân Hàng" tab is the catalogue of banks (VietQR list); this tab is the company's own accounts at those banks.
+
+---
+
+### Lesson 41: Searchable Dropdowns for Table-Backed Options (`SearchSelect`)
+
+- **Rule**: a dropdown whose options come from a table (banks, bank accounts, customers, branches, suppliers, models, colors, loans, statements) uses `SearchSelect` / `SearchSelectItem` from `src/components/ui/search-select.tsx`: a popover with a search box on top. Dropdowns with a fixed, short list of choices (pricing method / base, expense type, user role, rows per page) keep the plain Radix `Select`.
+- **API**: drop-in shape of `Select` without the trigger/content wrappers: `<SearchSelect value="12" onValueChange={...} className="h-8 w-full text-xs" placeholder="Chọn..."><SearchSelectItem value="12">label or JSX</SearchSelectItem>…</SearchSelect>`. `value` is a string (use `'none'` for a "no selection" item). The trigger shows the selected item's children; search matches the text of the children (also inside JSX such as `BankLabel`), ignoring case and Vietnamese diacritics ("ngoai thuong" finds "Ngoại thương"). Arrow keys + Enter pick an option.
+- **Why not Radix `Select`**: its items steal focus on pointer move and handle typeahead keys, so a search input inside the content cannot be typed in reliably. `SearchSelect` is built on `Popover`; the list stops wheel events so it scrolls inside modal dialogs.
+- **Gotcha**: `SearchSelectItem` renders nothing on its own; `SearchSelect` reads only its direct children (arrays are fine, wrapping items in a fragment or custom component is not).
+
+---
+
+_(Next Agent: Append Lesson 42, 43,... above this line upon completing tasks)_

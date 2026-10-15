@@ -36,12 +36,9 @@ import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -355,58 +352,51 @@ function NewSalesOrderPage() {
                   <Label className="text-xs font-semibold">
                     Khách Hàng Mẹ * (Ghi nhận Doanh thu)
                   </Label>
-                  <Select
+                  <SearchSelect
+                    className="h-8 w-full text-xs"
                     value={String(customerId)}
                     onValueChange={(val) => {
                       setCustomerId(Number(val))
                       setBranchId(null) // Reset branch
                     }}
                   >
-                    <SelectTrigger className="h-8 w-full text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {customers.map((c) => (
-                        <SelectItem
-                          key={c.id}
-                          value={String(c.id)}
-                          className="text-xs"
-                        >
-                          {c.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    {customers.map((c) => (
+                      <SearchSelectItem
+                        key={c.id}
+                        value={String(c.id)}
+                        className="text-xs"
+                      >
+                        {c.name}
+                      </SearchSelectItem>
+                    ))}
+                  </SearchSelect>
                 </div>
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">
                     Điểm Bán Trực Thuộc Nhận Xe (Ghi nhận Công Nợ & HĐ)
                   </Label>
-                  <Select
+                  <SearchSelect
+                    className="h-8 w-full text-xs"
+                    placeholder="Chọn showroom/chi nhánh"
                     value={branchId ? String(branchId) : 'none'}
                     onValueChange={(val) =>
                       setBranchId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SelectTrigger className="h-8 w-full text-xs">
-                      <SelectValue placeholder="Chọn showroom/chi nhánh" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none" className="text-xs">
-                        Trực tiếp Pháp nhân Khách hàng Mẹ
-                      </SelectItem>
-                      {branches.map((b) => (
-                        <SelectItem
-                          key={b.id}
-                          value={String(b.id)}
-                          className="text-xs"
-                        >
-                          {b.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                    <SearchSelectItem value="none" className="text-xs">
+                      Trực tiếp Pháp nhân Khách hàng Mẹ
+                    </SearchSelectItem>
+                    {branches.map((b) => (
+                      <SearchSelectItem
+                        key={b.id}
+                        value={String(b.id)}
+                        className="text-xs"
+                      >
+                        {b.name}
+                      </SearchSelectItem>
+                    ))}
+                  </SearchSelect>
                   <p className="text-[11px] text-slate-500 pt-0.5">
                     Hóa đơn và công nợ phải thu sẽ gắn liền với điểm bán này.
                   </p>

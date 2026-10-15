@@ -36,12 +36,9 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -196,32 +193,29 @@ function ReconcilePage() {
         {statements.length > 0 && (
           <div className="max-w-2xl space-y-1.5">
             <Label className="text-xs font-semibold">Sao kê</Label>
-            <Select
+            <SearchSelect
+              className="h-10 w-full bg-card text-sm"
+              placeholder="Chọn sao kê"
               value={selectedStatementId ? String(selectedStatementId) : ''}
               onValueChange={(v) => setSelectedStatementId(Number(v))}
             >
-              <SelectTrigger className="h-10 w-full bg-card text-sm">
-                <SelectValue placeholder="Chọn sao kê" />
-              </SelectTrigger>
-              <SelectContent>
-                {statements.map((s) => (
-                  <SelectItem key={s.id} value={String(s.id)}>
-                    <span className="flex items-center gap-3">
-                      <BankLabel image={s.bankImage} name={s.bankName}>
-                        {s.bankName} ({s.accountNumber})
-                      </BankLabel>
-                      <span className="text-xs text-slate-400">#{s.id}</span>
-                      <Badge
-                        variant="secondary"
-                        className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"
-                      >
-                        Khớp {s.matchedCount}/{s.lineCount}
-                      </Badge>
-                    </span>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {statements.map((s) => (
+                <SearchSelectItem key={s.id} value={String(s.id)}>
+                  <span className="flex items-center gap-3">
+                    <BankLabel image={s.bankImage} name={s.bankName}>
+                      {s.bankName} ({s.accountNumber})
+                    </BankLabel>
+                    <span className="text-xs text-slate-400">#{s.id}</span>
+                    <Badge
+                      variant="secondary"
+                      className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"
+                    >
+                      Khớp {s.matchedCount}/{s.lineCount}
+                    </Badge>
+                  </span>
+                </SearchSelectItem>
+              ))}
+            </SearchSelect>
           </div>
         )}
 

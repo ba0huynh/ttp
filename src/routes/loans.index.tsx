@@ -28,12 +28,9 @@ import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -233,27 +230,23 @@ function LoansPage() {
                 <Label className="text-xs font-semibold">
                   Ngân Hàng Thương Mại *
                 </Label>
-                <Select
+                <SearchSelect
+                  className="h-8 w-full text-xs"
                   value={String(bankId)}
                   onValueChange={(val) => setBankId(Number(val))}
                 >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {master.banks.map((b) => (
-                      <SelectItem
-                        key={b.id}
-                        value={String(b.id)}
-                        className="text-xs"
-                      >
-                        <BankLabel image={b.image} name={b.name}>
-                          {b.name}
-                        </BankLabel>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {master.banks.map((b) => (
+                    <SearchSelectItem
+                      key={b.id}
+                      value={String(b.id)}
+                      className="text-xs"
+                    >
+                      <BankLabel image={b.image} name={b.name}>
+                        {b.name}
+                      </BankLabel>
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
               </div>
 
               <div className="grid grid-cols-2 gap-2">

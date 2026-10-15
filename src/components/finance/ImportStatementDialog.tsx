@@ -17,12 +17,9 @@ import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -196,23 +193,20 @@ export function ImportStatementDialog({
 
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold">Tài khoản ngân hàng</Label>
-            <Select
+            <SearchSelect
+              className="h-8 w-full text-xs"
+              placeholder="Chọn tài khoản"
               value={effectiveAccountId ? String(effectiveAccountId) : ''}
               onValueChange={(val) => setAccountId(Number(val))}
             >
-              <SelectTrigger className="h-8 w-full text-xs">
-                <SelectValue placeholder="Chọn tài khoản" />
-              </SelectTrigger>
-              <SelectContent>
-                {accounts.map((a) => (
-                  <SelectItem key={a.id} value={String(a.id)}>
-                    <BankLabel image={a.bankImage} name={a.bankName}>
-                      {a.bankName} — {a.accountNumber}
-                    </BankLabel>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {accounts.map((a) => (
+                <SearchSelectItem key={a.id} value={String(a.id)}>
+                  <BankLabel image={a.bankImage} name={a.bankName}>
+                    {a.bankName} — {a.accountNumber}
+                  </BankLabel>
+                </SearchSelectItem>
+              ))}
+            </SearchSelect>
           </div>
 
           <div className="space-y-2">

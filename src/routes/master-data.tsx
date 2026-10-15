@@ -4,13 +4,23 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Boxes, Landmark, Palette, Plus, Trash2, Truck } from 'lucide-react'
+import {
+  Boxes,
+  CreditCard,
+  Landmark,
+  Palette,
+  Pencil,
+  Plus,
+  Trash2,
+  Truck,
+} from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -27,6 +37,11 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import {
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
+import { Switch } from '#/components/ui/switch.tsx'
 import {
   Table,
   TableBody,
@@ -48,6 +63,7 @@ import {
 import { masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
 import {
   deleteMasterDataFn,
+  saveBankAccountFn,
   saveBankFn,
   saveColorFn,
   saveModelFn,
@@ -57,7 +73,9 @@ import {
 export const Route = createFileRoute('/master-data')({
   // The active tab lives in the URL (?tab=...) so a reload stays on it
   validateSearch: z.object({
-    tab: z.enum(['models', 'suppliers', 'banks', 'colors']).catch('models'),
+    tab: z
+      .enum(['models', 'suppliers', 'banks', 'accounts', 'colors'])
+      .catch('models'),
   }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
@@ -78,6 +96,7 @@ function MasterDataPage() {
   const modelsPg = usePagination(master.models)
   const suppliersPg = usePagination(master.suppliers)
   const banksPg = usePagination(master.banks)
+  const accountsPg = usePagination(master.bankAccounts)
   const colorsPg = usePagination(master.colors)
   const queryClient = useQueryClient()
   // Danh mục được dùng ở lô nhập, vay, thu chi... nên làm mới toàn bộ cache
@@ -89,6 +108,10 @@ function MasterDataPage() {
   })
   const saveBank = useMutation({ mutationFn: saveBankFn, onSuccess: refresh })
   const saveColor = useMutation({ mutationFn: saveColorFn, onSuccess: refresh })
+  const saveAccount = useMutation({
+    mutationFn: saveBankAccountFn,
+    onSuccess: refresh,
+  })
   const deleteItem = useMutation({
     mutationFn: deleteMasterDataFn,
     onSuccess: refresh,
@@ -105,6 +128,34 @@ function MasterDataPage() {
   // Modal Bank
   const [bankOpen, setBankOpen] = React.useState(false)
   const [bName, setBName] = React.useState('')
+
+  // Modal Company Bank Account (create / edit)
+  const [accountOpen, setAccountOpen] = React.useState(false)
+  const [accId, setAccId] = React.useState<number | null>(null)
+  const [accBankId, setAccBankId] = React.useState<number | null>(null)
+  const [accName, setAccName] = React.useState('')
+  const [accNumber, setAccNumber] = React.useState('')
+  const [accBranch, setAccBranch] = React.useState('')
+  const [accActive, setAccActive] = React.useState(true)
+
+  const openNewAccount = () => {
+    setAccId(null)
+    setAccBankId(master.banks[0]?.id ?? null)
+    setAccName('')
+    setAccNumber('')
+    setAccBranch('')
+    setAccActive(true)
+    setAccountOpen(true)
+  }
+  const openEditAccount = (a: (typeof master.bankAccounts)[number]) => {
+    setAccId(a.id)
+    setAccBankId(a.bankId)
+    setAccName(a.accountName)
+    setAccNumber(a.accountNumber)
+    setAccBranch(a.branch ?? '')
+    setAccActive(a.isActive)
+    setAccountOpen(true)
+  }
 
   // Modal Color
   const [colorOpen, setColorOpen] = React.useState(false)
@@ -147,6 +198,26 @@ function MasterDataPage() {
     }
   }
 
+  const handleSaveAccount = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!accBankId) return alert('Chưa chọn ngân hàng')
+    try {
+      await saveAccount.mutateAsync({
+        data: {
+          id: accId ?? undefined,
+          bankId: accBankId,
+          accountName: accName,
+          accountNumber: accNumber,
+          branch: accBranch.trim() || null,
+          isActive: accActive,
+        },
+      })
+      setAccountOpen(false)
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Lỗi khi lưu tài khoản ngân hàng')
+    }
+  }
+
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
     const hex = cHex.trim() ? normalizeHex(cHex) : null
@@ -179,8 +250,8 @@ function MasterDataPage() {
             Danh Mục Dữ Liệu Cốt Lõi (Master Data)
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Quản lý Dòng xe, Nhà cung cấp nhập khẩu, Ngân hàng và Bảng màu chuẩn
-            hóa toàn hệ thống.
+            Quản lý Dòng xe, Nhà cung cấp nhập khẩu, Ngân hàng, Tài khoản ngân
+            hàng của công ty và Bảng màu chuẩn hóa toàn hệ thống.
           </p>
         </div>
 
@@ -212,6 +283,13 @@ function MasterDataPage() {
             >
               <Landmark className="size-3.5" />
               Ngân Hàng ({master.banks.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="accounts"
+              className="text-xs font-semibold gap-1.5"
+            >
+              <CreditCard className="size-3.5" />
+              Tài Khoản Ngân Hàng ({master.bankAccounts.length})
             </TabsTrigger>
             <TabsTrigger
               value="colors"
@@ -378,6 +456,96 @@ function MasterDataPage() {
                   </TableBody>
                 </Table>
                 <TablePagination pagination={banksPg} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Company bank accounts */}
+          <TabsContent value="accounts">
+            <Card className="border-slate-200 shadow-xs">
+              <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-bold text-slate-800">
+                  Danh Sách Tài Khoản Ngân Hàng Của Công Ty
+                </CardTitle>
+                <Button
+                  size="sm"
+                  onClick={openNewAccount}
+                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                >
+                  <Plus className="size-3.5" />
+                  Thêm Tài Khoản
+                </Button>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="text-xs bg-slate-50">
+                      <TableHead>Tên Tài Khoản</TableHead>
+                      <TableHead>Ngân Hàng</TableHead>
+                      <TableHead>Số Tài Khoản</TableHead>
+                      <TableHead>Chi Nhánh</TableHead>
+                      <TableHead className="text-center">Trạng Thái</TableHead>
+                      <TableHead className="w-20"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="text-xs">
+                    {accountsPg.pageItems.map((a) => (
+                      <TableRow key={a.id}>
+                        <TableCell className="font-semibold text-slate-900">
+                          {a.accountName}
+                        </TableCell>
+                        <TableCell className="text-slate-800">
+                          <BankLabel image={a.bankImage} name={a.bankName}>
+                            {a.bankName}
+                          </BankLabel>
+                        </TableCell>
+                        <TableCell className="font-mono font-bold text-slate-900">
+                          {a.accountNumber}
+                        </TableCell>
+                        <TableCell className="text-slate-600">
+                          {a.branch || '—'}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="outline"
+                            className={
+                              a.isActive
+                                ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
+                                : 'bg-slate-100 text-slate-600'
+                            }
+                          >
+                            {a.isActive ? 'Đang dùng' : 'Ngừng dùng'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => openEditAccount(a)}
+                              className="size-7 text-slate-400 hover:text-emerald-700"
+                              aria-label="Sửa"
+                            >
+                              <Pencil className="size-3.5" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() =>
+                                handleDelete('companyBankAccounts', a.id)
+                              }
+                              className="size-7 text-slate-400 hover:text-rose-600"
+                              aria-label="Xóa"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination pagination={accountsPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -565,6 +733,92 @@ function MasterDataPage() {
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
                   {saveBank.isPending ? 'Đang lưu...' : 'Lưu Ngân Hàng'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Company Bank Account Modal */}
+        <Dialog open={accountOpen} onOpenChange={setAccountOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                {accId ? 'Sửa Tài Khoản Ngân Hàng' : 'Thêm Tài Khoản Ngân Hàng'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaveAccount} className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Tên Tài Khoản *</Label>
+                <Input
+                  required
+                  value={accName}
+                  onChange={(e) => setAccName(e.target.value)}
+                  className="h-8 text-xs"
+                  placeholder="CÔNG TY TNHH TM DV TRƯỜNG THỊNH PHÁT"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Ngân Hàng *</Label>
+                <SearchSelect
+                  className="h-8 w-full text-xs"
+                  placeholder="Chọn ngân hàng"
+                  value={accBankId ? String(accBankId) : ''}
+                  onValueChange={(v) => setAccBankId(Number(v))}
+                >
+                  {master.banks.map((b) => (
+                    <SearchSelectItem
+                      key={b.id}
+                      value={String(b.id)}
+                      className="text-xs"
+                    >
+                      <BankLabel image={b.image} name={b.name}>
+                        {b.name}
+                      </BankLabel>
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Số Tài Khoản *</Label>
+                <Input
+                  required
+                  value={accNumber}
+                  onChange={(e) => setAccNumber(e.target.value)}
+                  className="h-8 text-xs font-mono"
+                  placeholder="0071001234567"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Chi Nhánh</Label>
+                <Input
+                  value={accBranch}
+                  onChange={(e) => setAccBranch(e.target.value)}
+                  className="h-8 text-xs"
+                  placeholder="Chi nhánh TP. Hồ Chí Minh"
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <Label className="text-xs font-semibold">Đang sử dụng</Label>
+                <Switch checked={accActive} onCheckedChange={setAccActive} />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAccountOpen(false)}
+                  className="h-8 text-xs"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saveAccount.isPending}
+                  size="sm"
+                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+                >
+                  {saveAccount.isPending ? 'Đang lưu...' : 'Lưu Tài Khoản'}
                 </Button>
               </DialogFooter>
             </form>

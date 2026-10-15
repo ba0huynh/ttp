@@ -30,12 +30,9 @@ import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '#/components/ui/select.tsx'
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -130,7 +127,7 @@ function FinancePage() {
   )
   const [receiptAmount, setReceiptAmount] = React.useState(50_000_000)
   const [receiptAccountId, setReceiptAccountId] = React.useState<number | null>(
-    master.bankAccounts[0]?.id ?? null,
+    master.bankAccounts.find((a) => a.isActive)?.id ?? null,
   )
 
   // Payment Voucher modal
@@ -141,7 +138,7 @@ function FinancePage() {
   )
   const [paymentAmount, setPaymentAmount] = React.useState(100_000_000)
   const [paymentAccountId, setPaymentAccountId] = React.useState<number | null>(
-    master.bankAccounts[0]?.id ?? null,
+    master.bankAccounts.find((a) => a.isActive)?.id ?? null,
   )
   const [paymentDesc, setPaymentDesc] = React.useState('')
 
@@ -468,58 +465,51 @@ function FinancePage() {
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Khách Hàng Mẹ *</Label>
-                <Select
+                <SearchSelect
+                  className="h-8 w-full text-xs"
                   value={String(receiptCustomerId)}
                   onValueChange={(val) => {
                     setReceiptCustomerId(Number(val))
                     setReceiptBranchId(null)
                   }}
                 >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {customers.map((c) => (
-                      <SelectItem
-                        key={c.id}
-                        value={String(c.id)}
-                        className="text-xs"
-                      >
-                        {c.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {customers.map((c) => (
+                    <SearchSelectItem
+                      key={c.id}
+                      value={String(c.id)}
+                      className="text-xs"
+                    >
+                      {c.name}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
               </div>
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
                   Điểm Bán Thanh Toán (Công nợ trừ theo pháp nhân này)
                 </Label>
-                <Select
+                <SearchSelect
+                  className="h-8 w-full text-xs"
+                  placeholder="Chọn chi nhánh/điểm bán"
                   value={receiptBranchId ? String(receiptBranchId) : 'none'}
                   onValueChange={(val) =>
                     setReceiptBranchId(val === 'none' ? null : Number(val))
                   }
                 >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue placeholder="Chọn chi nhánh/điểm bán" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-xs">
-                      Trực tiếp KH mẹ
-                    </SelectItem>
-                    {branchOptions.map((b) => (
-                      <SelectItem
-                        key={b.id}
-                        value={String(b.id)}
-                        className="text-xs"
-                      >
-                        {b.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <SearchSelectItem value="none" className="text-xs">
+                    Trực tiếp KH mẹ
+                  </SearchSelectItem>
+                  {branchOptions.map((b) => (
+                    <SearchSelectItem
+                      key={b.id}
+                      value={String(b.id)}
+                      className="text-xs"
+                    >
+                      {b.name}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
               </div>
 
               <div className="space-y-1">
@@ -539,21 +529,20 @@ function FinancePage() {
                   <Label className="text-xs font-semibold">
                     Tài Khoản Nhận
                   </Label>
-                  <Select
+                  <SearchSelect
+                    className="h-8 w-full text-xs"
                     value={receiptAccountId ? String(receiptAccountId) : 'none'}
                     onValueChange={(val) =>
                       setReceiptAccountId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SelectTrigger className="h-8 w-full text-xs">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="none" className="text-xs">
-                        Không chọn (tiền mặt)
-                      </SelectItem>
-                      {master.bankAccounts.map((a) => (
-                        <SelectItem
+                    <SearchSelectItem value="none" className="text-xs">
+                      Không chọn (tiền mặt)
+                    </SearchSelectItem>
+                    {master.bankAccounts
+                      .filter((a) => a.isActive)
+                      .map((a) => (
+                        <SearchSelectItem
                           key={a.id}
                           value={String(a.id)}
                           className="text-xs"
@@ -561,10 +550,9 @@ function FinancePage() {
                           <BankLabel image={a.bankImage} name={a.bankName}>
                             {a.bankName} ({a.accountNumber})
                           </BankLabel>
-                        </SelectItem>
+                        </SearchSelectItem>
                       ))}
-                    </SelectContent>
-                  </Select>
+                  </SearchSelect>
                 </div>
               </div>
 
@@ -619,25 +607,21 @@ function FinancePage() {
                 <Label className="text-xs font-semibold">
                   Nhà Cung Cấp Thụ Hưởng *
                 </Label>
-                <Select
+                <SearchSelect
+                  className="h-8 w-full text-xs"
                   value={String(paymentSupplierId)}
                   onValueChange={(val) => setPaymentSupplierId(Number(val))}
                 >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {master.suppliers.map((s) => (
-                      <SelectItem
-                        key={s.id}
-                        value={String(s.id)}
-                        className="text-xs"
-                      >
-                        {s.name}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  {master.suppliers.map((s) => (
+                    <SearchSelectItem
+                      key={s.id}
+                      value={String(s.id)}
+                      className="text-xs"
+                    >
+                      {s.name}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
               </div>
 
               <div className="space-y-1">
@@ -654,21 +638,20 @@ function FinancePage() {
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tài Khoản Chi</Label>
-                <Select
+                <SearchSelect
+                  className="h-8 w-full text-xs"
                   value={paymentAccountId ? String(paymentAccountId) : 'none'}
                   onValueChange={(val) =>
                     setPaymentAccountId(val === 'none' ? null : Number(val))
                   }
                 >
-                  <SelectTrigger className="h-8 w-full text-xs">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none" className="text-xs">
-                      Không chọn (tiền mặt)
-                    </SelectItem>
-                    {master.bankAccounts.map((b) => (
-                      <SelectItem
+                  <SearchSelectItem value="none" className="text-xs">
+                    Không chọn (tiền mặt)
+                  </SearchSelectItem>
+                  {master.bankAccounts
+                    .filter((a) => a.isActive)
+                    .map((b) => (
+                      <SearchSelectItem
                         key={b.id}
                         value={String(b.id)}
                         className="text-xs"
@@ -676,10 +659,9 @@ function FinancePage() {
                         <BankLabel image={b.bankImage} name={b.bankName}>
                           {b.bankName} &bull; {b.accountNumber}
                         </BankLabel>
-                      </SelectItem>
+                      </SearchSelectItem>
                     ))}
-                  </SelectContent>
-                </Select>
+                </SearchSelect>
               </div>
 
               <div className="space-y-1">

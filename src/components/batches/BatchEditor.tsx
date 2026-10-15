@@ -16,6 +16,10 @@ import {
   SelectValue,
 } from '#/components/ui/select.tsx'
 import {
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
+import {
   Table,
   TableBody,
   TableCell,
@@ -115,22 +119,18 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
         <div className="space-y-1">
           <Label className="text-[11px]">Khế ước vay</Label>
-          <Select
+          <SearchSelect
+            className="h-8 w-full text-xs bg-white"
             value={loanId ? String(loanId) : 'none'}
             onValueChange={(v) => setLoanId(v === 'none' ? null : Number(v))}
           >
-            <SelectTrigger className="h-8 w-full text-xs bg-white">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="none">Vốn tự có</SelectItem>
-              {loans.map((l) => (
-                <SelectItem key={l.id} value={String(l.id)}>
-                  {l.contractNumber} — {l.bankName}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+            <SearchSelectItem value="none">Vốn tự có</SearchSelectItem>
+            {loans.map((l) => (
+              <SearchSelectItem key={l.id} value={String(l.id)}>
+                {l.contractNumber} — {l.bankName}
+              </SearchSelectItem>
+            ))}
+          </SearchSelect>
         </div>
         <div className="space-y-1">
           <Label className="text-[11px]">Ngày nhập</Label>
@@ -548,36 +548,30 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         </Table>
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
-        <Select
+        <SearchSelect
+          className="h-8 w-full text-xs bg-white"
+          placeholder="Dòng xe"
           value={effModel ? String(effModel) : ''}
           onValueChange={(v) => setModelId(Number(v))}
         >
-          <SelectTrigger className="h-8 w-full text-xs bg-white">
-            <SelectValue placeholder="Dòng xe" />
-          </SelectTrigger>
-          <SelectContent>
-            {models.map((m) => (
-              <SelectItem key={m.id} value={String(m.id)}>
-                {m.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-        <Select
+          {models.map((m) => (
+            <SearchSelectItem key={m.id} value={String(m.id)}>
+              {m.name}
+            </SearchSelectItem>
+          ))}
+        </SearchSelect>
+        <SearchSelect
+          className="h-8 w-full text-xs bg-white"
+          placeholder="Màu xe"
           value={effColor ? String(effColor) : ''}
           onValueChange={(v) => setColorId(Number(v))}
         >
-          <SelectTrigger className="h-8 w-full text-xs bg-white">
-            <SelectValue placeholder="Màu xe" />
-          </SelectTrigger>
-          <SelectContent>
-            {colors.map((c) => (
-              <SelectItem key={c.id} value={String(c.id)}>
-                {c.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+          {colors.map((c) => (
+            <SearchSelectItem key={c.id} value={String(c.id)}>
+              {c.name}
+            </SearchSelectItem>
+          ))}
+        </SearchSelect>
         <Input
           placeholder="Số khung"
           value={chassis}
