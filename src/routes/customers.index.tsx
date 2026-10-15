@@ -19,7 +19,6 @@ import {
 import {
   Dialog,
   DialogContent,
-  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -58,7 +57,6 @@ function CustomersPage() {
   // Create Parent Customer Modal
   const [newCustOpen, setNewCustOpen] = React.useState(false)
   const [name, setName] = React.useState('')
-  const [address, setAddress] = React.useState('')
 
   // Mọi thay đổi khách hàng/điểm bán ảnh hưởng danh sách, chi tiết và công nợ
   const saveCustomer = useMutation({
@@ -71,7 +69,6 @@ function CustomersPage() {
       await saveCustomer.mutateAsync({
         data: {
           name,
-          address,
         },
       })
       setNewCustOpen(false)
@@ -99,7 +96,6 @@ function CustomersPage() {
             size="sm"
             onClick={() => {
               setName('')
-              setAddress('')
               setNewCustOpen(true)
             }}
             className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
@@ -135,11 +131,6 @@ function CustomersPage() {
                     <TableRow key={c.id} className="hover:bg-slate-50/80">
                       <TableCell>
                         <div className="font-bold text-slate-900">{c.name}</div>
-                        {c.address && (
-                          <div className="text-[11px] text-slate-500 truncate max-w-xs">
-                            {c.address}
-                          </div>
-                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -182,14 +173,11 @@ function CustomersPage() {
 
         {/* Add Parent Customer Modal */}
         <Dialog open={newCustOpen} onOpenChange={setNewCustOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-w-md" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
                 Thêm Khách Hàng Mẹ Mới
               </DialogTitle>
-              <DialogDescription className="text-xs">
-                Doanh nghiệp đối tác ký hợp đồng khung mua xe sỉ
-              </DialogDescription>
             </DialogHeader>
 
             <form onSubmit={handleCreateCustomer} className="space-y-3 pt-2">
@@ -203,16 +191,6 @@ function CustomersPage() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   className="h-8 text-xs font-bold"
-                />
-              </div>
-
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Địa Chỉ Trụ Sở</Label>
-                <Input
-                  placeholder="Địa chỉ trụ sở chính..."
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className="h-8 text-xs"
                 />
               </div>
 

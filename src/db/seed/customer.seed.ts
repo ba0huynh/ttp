@@ -41,11 +41,9 @@ export async function seedCustomers() {
     .values([
       {
         name: 'CÔNG TY TNHH THƯƠNG MẠI XE MÁY NAM ANH',
-        address: '568 Cách Mạng Tháng 8, Phường 11, Quận 3, TP.HCM',
       },
       {
         name: 'DOANH NGHIỆP TƯ NHÂN XE MÁY THÀNH ĐẠT',
-        address: '102 Võ Văn Ngân, TP. Thủ Đức, TP.HCM',
       },
     ])
     .$returningId()

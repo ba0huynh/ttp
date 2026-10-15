@@ -20,7 +20,6 @@ export const listCustomersFn = createServerFn({ method: 'GET' })
       .select({
         id: customers.id,
         name: customers.name,
-        address: customers.address,
         branchCount: sql<number>`(select count(*) from ${posBranches} b where b.customer_id = ${customers.id})`,
         revenue: sql<string>`coalesce((select sum(o.total_amount) from ${salesOrders} o where o.customer_id = ${customers.id} and o.status = 'confirmed'),0)`,
       })
@@ -87,7 +86,6 @@ export const saveCustomerFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       name: z.string().trim().min(1, 'Nhập tên KH'),
-      address: opt,
       email: opt,
       note: opt,
     }),

@@ -148,7 +148,6 @@ export const colors = mysqlTable('colors', {
 export const customers = mysqlTable('customers', {
   id: int('id').primaryKey().autoincrement(),
   name: varchar('name', { length: 255 }).notNull(),
-  address: varchar('address', { length: 255 }),
   email: varchar('email', { length: 191 }),
   note: text('note'),
   ...timestamps,
