@@ -138,25 +138,21 @@ export async function seedMasterData() {
       {
         name: 'Honda SH 150i ABS',
         brand: 'Honda',
-        engineCapacity: 150,
         description: 'Dòng xe tay ga cao cấp nhập khẩu nguyên chiếc',
       },
       {
         name: 'Honda Wave 125i Thái',
         brand: 'Honda',
-        engineCapacity: 125,
         description: 'Dòng xe số bền bỉ, tiết kiệm xăng nhập khẩu Thái Lan',
       },
       {
         name: 'Honda Vario 160 CBS',
         brand: 'Honda',
-        engineCapacity: 160,
         description: 'Dòng xe tay ga thể thao nhập khẩu Indonesia',
       },
       {
         name: 'Honda Scoopy Club12',
         brand: 'Honda',
-        engineCapacity: 110,
         description: 'Dòng xe tay ga thời trang cổ điển phong cách trẻ',
       },
     ])

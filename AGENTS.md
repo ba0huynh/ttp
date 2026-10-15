@@ -397,6 +397,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Change**: the `code` column was removed from `banks`, `suppliers`, `motorcycle_models` and `colors` (schema, server functions, `/master-data` tables and forms, seeds). Rows are identified by `id` and `name` (banks: `shortName`). Still kept: `pos_branches.code`, `batch_code`, loan `contract_number`, document numbers.
 - **Migration**: `0003_outgoing_bruce_banner.sql` drops the four `*_code_unique` indexes, then the four columns. **It permanently deletes the existing codes**; apply it with `npm run migration:run` before using the app again (the old columns are `NOT NULL` with no default, so inserts fail until then).
 - **Seeds**: `master-data.seed.ts` finds existing rows by name (`byName`) and banks by short name (`byShortName`: Vietcombank, BIDV, Techcombank); `bank.seed.ts` dedupes the VietQR list by `shortName`.
+- **Engine capacity**: `motorcycle_models.engine_capacity` was removed too (schema, form, table, seed). Migration `0004_far_reaper.sql` drops the column and its data; apply it with `npm run migration:run`.
 - **Caveat**: dropping the unique codes removes the only uniqueness guard on these tables, so duplicate names are now possible. Add a unique index on `name` if that becomes a problem.
 
 ---

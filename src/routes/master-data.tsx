@@ -82,7 +82,6 @@ function MasterDataPage() {
   const [modelOpen, setModelOpen] = React.useState(false)
   const [mName, setMName] = React.useState('')
   const [mBrand, setMBrand] = React.useState('Honda')
-  const [mCc, setMCc] = React.useState(150)
 
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
@@ -103,7 +102,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveModel.mutateAsync({
-        data: { name: mName, brand: mBrand, engineCapacity: mCc },
+        data: { name: mName, brand: mBrand },
       })
       setModelOpen(false)
     } catch (err: unknown) {
@@ -226,9 +225,6 @@ function MasterDataPage() {
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Thương Mại</TableHead>
                       <TableHead>Hãng Xe</TableHead>
-                      <TableHead className="text-center">
-                        Dung Tích Động Cơ
-                      </TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -240,9 +236,6 @@ function MasterDataPage() {
                         </TableCell>
                         <TableCell className="text-slate-600">
                           {m.brand}
-                        </TableCell>
-                        <TableCell className="text-center">
-                          {m.engineCapacity ? `${m.engineCapacity}cc` : '—'}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -466,26 +459,13 @@ function MasterDataPage() {
                   placeholder="Honda SH 150i ABS"
                 />
               </div>
-              <div className="grid grid-cols-2 gap-2">
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Hãng Xe</Label>
-                  <Input
-                    value={mBrand}
-                    onChange={(e) => setMBrand(e.target.value)}
-                    className="h-8 text-xs"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Dung Tích (cc)
-                  </Label>
-                  <Input
-                    type="number"
-                    value={mCc}
-                    onChange={(e) => setMCc(Number(e.target.value))}
-                    className="h-8 text-xs"
-                  />
-                </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Hãng Xe</Label>
+                <Input
+                  value={mBrand}
+                  onChange={(e) => setMBrand(e.target.value)}
+                  className="h-8 text-xs"
+                />
               </div>
               <DialogFooter className="pt-2">
                 <Button

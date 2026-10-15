@@ -129,7 +129,6 @@ export const saveModelFn = createServerFn({ method: 'POST' })
       id: z.number().optional(),
       name: z.string().trim().min(1),
       brand: z.string().trim().min(1),
-      engineCapacity: z.number().int().nullable().optional(),
       description: opt,
     }),
   )
