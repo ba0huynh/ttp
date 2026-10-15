@@ -86,10 +86,13 @@ interface AppLayoutProps {
 
 export function AppLayout({ children, user }: AppLayoutProps) {
   const routerState = useRouterState()
-  const isLoading = routerState.isLoading
   const currentPath =
     routerState.resolvedLocation?.pathname ?? routerState.location.pathname
   const targetPath = routerState.location.pathname
+  // Only a change of PAGE shows the loading skeleton. A search-only change
+  // (switching a tab: ?tab=...) stays on the same page, so the page and its
+  // tab bar remain on screen instead of being swapped for the skeleton.
+  const isLoading = routerState.isLoading && currentPath !== targetPath
   const [mobileOpen, setMobileOpen] = React.useState(false)
 
   // Close the mobile drawer once navigation starts

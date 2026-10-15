@@ -3,7 +3,7 @@ import { asc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
-import { customers, posBranches, salesOrders } from '#/db/schema.ts'
+import { customers, posBranches } from '#/db/schema.ts'
 import { isDuplicateError } from '#/server/services/common.ts'
 import {
   getCustomerStatement,
@@ -21,19 +21,10 @@ export const listCustomersFn = createServerFn({ method: 'GET' })
         id: customers.id,
         name: customers.name,
         branchCount: sql<number>`(select count(*) from ${posBranches} b where b.customer_id = ${customers.id})`,
-        revenue: sql<string>`coalesce((select sum(o.total_amount) from ${salesOrders} o where o.customer_id = ${customers.id} and o.status = 'confirmed'),0)`,
       })
       .from(customers)
       .orderBy(asc(customers.name))
-    const ar = await getReceivablesSummary()
-    return list.map((c) => ({
-      ...c,
-      branchCount: Number(c.branchCount),
-      revenue: Number(c.revenue),
-      balance: ar
-        .filter((r) => r.customerId === c.id)
-        .reduce((s, r) => s + r.balance, 0),
-    }))
+    return list.map((c) => ({ ...c, branchCount: Number(c.branchCount) }))
   })
 
 /** Customers + branches — used for sales order / receipt dropdowns */
