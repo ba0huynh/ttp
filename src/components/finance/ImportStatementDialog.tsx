@@ -166,8 +166,8 @@ export function ImportStatementDialog({
               <SelectContent>
                 {accounts.map((a) => (
                   <SelectItem key={a.id} value={String(a.id)}>
-                    <BankLabel image={a.bankImage} name={a.bankShortName}>
-                      {a.bankShortName} — {a.accountNumber}
+                    <BankLabel image={a.bankImage} name={a.bankName}>
+                      {a.bankName} — {a.accountNumber}
                     </BankLabel>
                   </SelectItem>
                 ))}

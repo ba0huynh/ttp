@@ -99,7 +99,6 @@ export const companyInfo = mysqlTable('company_info', {
 export const banks = mysqlTable('banks', {
   id: int('id').primaryKey().autoincrement(),
   name: varchar('name', { length: 255 }).notNull(),
-  shortName: varchar('short_name', { length: 50 }).notNull(),
   /** Bank logo URL (e.g. VietQR CDN) */
   image: varchar('image', { length: 500 }),
   ...timestamps,

@@ -1,5 +1,5 @@
 import { db } from '../index.ts'
-import { seedBanks } from './bank.seed.ts'
+import { normalizeBankName, seedBanks } from './bank.seed.ts'
 import {
   companyBankAccounts,
   suppliers,
@@ -7,7 +7,7 @@ import {
   colors,
 } from '../schema.ts'
 
-/** Looks up an existing row by its `name`/`shortName`, throwing if a previous seed run is missing one */
+/** Looks up an existing row by its `name`, throwing if a previous seed run is missing one */
 function byName<T extends { name: string }>(rows: T[], name: string): T {
   const row = rows.find((r) => r.name === name)
   if (!row) {
@@ -18,11 +18,18 @@ function byName<T extends { name: string }>(rows: T[], name: string): T {
   return row
 }
 
-const byShortName = (rows: { shortName: string; id: number }[], n: string) => {
-  const row = rows.find((r) => r.shortName === n)
+/** Banks: matched by name ignoring case, because older rows differ from VietQR only in capitalisation */
+const bankByName = (rows: { name: string; id: number }[], n: string) => {
+  const row = rows.find(
+    (r) => normalizeBankName(r.name) === normalizeBankName(n),
+  )
   if (!row) throw new Error(`Expected bank "${n}" but found none`)
   return row
 }
+
+const BANK_VCB = 'Ngân hàng TMCP Ngoại Thương Việt Nam'
+const BANK_BIDV = 'Ngân hàng TMCP Đầu tư và Phát triển Việt Nam'
+const BANK_TCB = 'Ngân hàng TMCP Kỹ thương Việt Nam'
 
 /**
  * Seeds master catalog data:
@@ -45,9 +52,9 @@ export async function seedMasterData() {
 
     return {
       banks: {
-        vcb: byShortName(allBanks, 'Vietcombank'),
-        bidv: byShortName(allBanks, 'BIDV'),
-        tcb: byShortName(allBanks, 'Techcombank'),
+        vcb: bankByName(allBanks, BANK_VCB),
+        bidv: bankByName(allBanks, BANK_BIDV),
+        tcb: bankByName(allBanks, BANK_TCB),
       },
       companyBankAccounts: {
         vcbAccount: existingAccounts.find(
@@ -80,9 +87,9 @@ export async function seedMasterData() {
   }
 
   console.log(' -> Seeding company bank accounts...')
-  const vcb = byShortName(allBanks, 'Vietcombank')
-  const bidv = byShortName(allBanks, 'BIDV')
-  const tcb = byShortName(allBanks, 'Techcombank')
+  const vcb = bankByName(allBanks, BANK_VCB)
+  const bidv = bankByName(allBanks, BANK_BIDV)
+  const tcb = bankByName(allBanks, BANK_TCB)
 
   const insertedAccounts = await db
     .insert(companyBankAccounts)

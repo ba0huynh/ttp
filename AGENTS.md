@@ -400,8 +400,16 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Engine capacity**: `motorcycle_models.engine_capacity` was removed too (schema, form, table, seed). Migration `0004_far_reaper.sql` drops the column and its data; apply it with `npm run migration:run`.
 - **Brand**: `motorcycle_models.brand` ("Hãng Xe") was removed as well, and the model name column is now labelled "Tên Xe" (was "Tên Thương Mại"). Migration `0005_*.sql` drops the column; the sales-order detail and inventory-by-model queries no longer return `brand`.
 - **Suppliers**: `suppliers.country`, `suppliers.phone` and `suppliers.contact_person` were removed (schema, form, tables, seed, payables report and the "(country)" suffix in supplier dropdowns); the list is titled "Danh Sách Nhà Cung Cấp". Migration `0006_*.sql` drops the three columns. Supplier `email`, `tax_code`, `address` and `note` remain in the schema.
+- **Banks**: `banks.short_name` was removed; banks are identified and shown by their full `name` (`bankName` in queries, selects and chips; `bankShortName` no longer exists). Matching is case-insensitive via `normalizeBankName()` in `bank.seed.ts`, because older rows differ from VietQR only in capitalisation. Migration `0007_*.sql` drops the column.
 - **Caveat**: dropping the unique codes removes the only uniqueness guard on these tables, so duplicate names are now possible. Add a unique index on `name` if that becomes a problem.
 
 ---
 
-_(Next Agent: Append Lesson 25, 26,... above this line upon completing tasks)_
+### Lesson 25: Active Tab in the URL, Color Picker
+
+- **Tabs in the URL**: pages with tabs keep the active tab in the search string so a reload stays on it: `/master-data?tab=models|suppliers|banks|colors` and `/finance?tab=receivables|payables|receipts|payments`. Pattern: `validateSearch: z.object({ tab: z.enum([...]).catch('<default>') })` on the route, `const { tab } = Route.useSearch()`, and `<Tabs value={tab} onValueChange={(v) => navigate({ search: { tab: v }, replace: true })}>`. `replace: true` keeps the Back button from stepping through every tab. An unknown value falls back to the default tab. Use this for any new tabbed page.
+- **Color picker**: `src/components/ui/color-picker.tsx` (`ColorPicker`, `normalizeHex`) combines the browser's native color wheel (`<input type="color">`), a hex text box kept in sync, and preset swatches for common bike colors. Used in the add-color dialog on `/master-data`; the form normalises "#abc" to "#aabbcc" and refuses to save a malformed hex.
+
+---
+
+_(Next Agent: Append Lesson 26, 27,... above this line upon completing tasks)_

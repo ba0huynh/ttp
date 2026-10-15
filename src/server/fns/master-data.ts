@@ -32,7 +32,7 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
     const [b, a, s, m, c] = await Promise.all([
-      db.select().from(banks).orderBy(asc(banks.shortName)),
+      db.select().from(banks).orderBy(asc(banks.name)),
       db
         .select({
           id: companyBankAccounts.id,
@@ -41,12 +41,12 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
           accountName: companyBankAccounts.accountName,
           branch: companyBankAccounts.branch,
           isActive: companyBankAccounts.isActive,
-          bankShortName: banks.shortName,
+          bankName: banks.name,
           bankImage: banks.image,
         })
         .from(companyBankAccounts)
         .innerJoin(banks, eq(banks.id, companyBankAccounts.bankId))
-        .orderBy(asc(banks.shortName)),
+        .orderBy(asc(banks.name)),
       db.select().from(suppliers).orderBy(asc(suppliers.name)),
       db.select().from(motorcycleModels).orderBy(asc(motorcycleModels.name)),
       db.select().from(colors).orderBy(asc(colors.name)),
@@ -61,7 +61,6 @@ export const saveBankFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       name: z.string().trim().min(1),
-      shortName: z.string().trim().min(1),
     }),
   )
   .handler(({ data: { id, ...v } }) =>

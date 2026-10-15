@@ -50,6 +50,13 @@
       "when": 1792022869579,
       "tag": "0006_furry_network",
       "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "5",
+      "when": 1792023158398,
+      "tag": "0007_known_sumo",
+      "breakpoints": true
     }
   ]
 }

@@ -52,7 +52,6 @@ export const listLoansFn = createServerFn({ method: 'GET' })
         contractNumber: loanContracts.contractNumber,
         bankId: loanContracts.bankId,
         bankName: banks.name,
-        bankShortName: banks.shortName,
         bankImage: banks.image,
         principalAmount: loanContracts.principalAmount,
         interestRate: loanContracts.interestRate,
@@ -161,7 +160,7 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
         branchId: receiptVouchers.branchId,
         branchName: posBranches.name,
         accountNumber: companyBankAccounts.accountNumber,
-        bankShortName: banks.shortName,
+        bankName: banks.name,
         bankImage: banks.image,
       })
       .from(receiptVouchers)
@@ -226,7 +225,7 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
         supplierName: suppliers.name,
         batchCode: importBatches.batchCode,
         accountNumber: companyBankAccounts.accountNumber,
-        bankShortName: banks.shortName,
+        bankName: banks.name,
         bankImage: banks.image,
       })
       .from(paymentVouchers)
@@ -280,7 +279,7 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
         fileName: bankStatements.fileName,
         note: bankStatements.note,
         accountNumber: companyBankAccounts.accountNumber,
-        bankShortName: banks.shortName,
+        bankName: banks.name,
         bankImage: banks.image,
         lineCount: sql<number>`count(${bankStatementLines.id})`,
         matchedCount: sql<number>`sum(case when ${bankStatementLines.status} = 'matched' then 1 else 0 end)`,
@@ -302,7 +301,7 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
         bankStatements.fileName,
         bankStatements.note,
         companyBankAccounts.accountNumber,
-        banks.shortName,
+        banks.name,
       )
       .orderBy(desc(bankStatements.periodFrom), desc(bankStatements.id))
 
@@ -325,7 +324,7 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
         fileName: bankStatements.fileName,
         note: bankStatements.note,
         accountNumber: companyBankAccounts.accountNumber,
-        bankShortName: banks.shortName,
+        bankName: banks.name,
         bankImage: banks.image,
       })
       .from(bankStatements)

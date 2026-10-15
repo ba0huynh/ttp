@@ -334,7 +334,7 @@ export async function getReports(from: string, to: string) {
     .select({
       id: loanContracts.id,
       contractNumber: loanContracts.contractNumber,
-      bankName: banks.shortName,
+      bankName: banks.name,
       principal: loanContracts.principalAmount,
       rate: loanContracts.interestRate,
       status: loanContracts.status,

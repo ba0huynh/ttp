@@ -43,11 +43,7 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
-import {
-  currentUserQuery,
-  loansQuery,
-  masterDataQuery,
-} from '#/lib/queries.ts'
+import { currentUserQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import { saveLoanContractFn } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/loans/')({
@@ -224,8 +220,8 @@ function LoansPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="font-semibold text-slate-800">
-                        <BankLabel image={l.bankImage} name={l.bankShortName}>
-                          {l.bankShortName}
+                        <BankLabel image={l.bankImage} name={l.bankName}>
+                          {l.bankName}
                         </BankLabel>
                       </TableCell>
                       <TableCell className="text-right font-bold text-slate-900">
@@ -332,8 +328,8 @@ function LoansPage() {
                         value={String(b.id)}
                         className="text-xs"
                       >
-                        <BankLabel image={b.image} name={b.shortName}>
-                          {b.shortName} — {b.name}
+                        <BankLabel image={b.image} name={b.name}>
+                          {b.name}
                         </BankLabel>
                       </SelectItem>
                     ))}

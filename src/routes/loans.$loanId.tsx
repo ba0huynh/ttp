@@ -408,11 +408,8 @@ function LoanDetailPage() {
                           value={String(a.id)}
                           className="text-xs"
                         >
-                          <BankLabel
-                            image={a.bankImage}
-                            name={a.bankShortName}
-                          >
-                            {a.bankShortName} &bull; {a.accountNumber}
+                          <BankLabel image={a.bankImage} name={a.bankName}>
+                            {a.bankName} &bull; {a.accountNumber}
                           </BankLabel>
                         </SelectItem>
                       ))}

@@ -6,6 +6,7 @@ import {
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -66,6 +67,12 @@ import {
 } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/finance')({
+  // The active tab lives in the URL (?tab=...) so a reload stays on it
+  validateSearch: z.object({
+    tab: z
+      .enum(['receivables', 'payables', 'receipts', 'payments'])
+      .catch('receivables'),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -87,6 +94,8 @@ export const Route = createFileRoute('/finance')({
 
 function FinancePage() {
   const { user } = Route.useRouteContext()
+  const { tab } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const { data: receivables } = useSuspenseQuery(receivablesQuery())
   const { data: payables } = useSuspenseQuery(payablesQuery())
   const { data: receipts } = useSuspenseQuery(receiptsQuery())
@@ -267,7 +276,13 @@ function FinancePage() {
         </div>
 
         {/* Tabbed interface */}
-        <Tabs defaultValue="receivables" className="space-y-4">
+        <Tabs
+          value={tab}
+          onValueChange={(v) =>
+            navigate({ search: { tab: v as typeof tab }, replace: true })
+          }
+          className="space-y-4"
+        >
           <TabsList className="bg-slate-100 p-1">
             <TabsTrigger value="receivables" className="text-xs font-semibold">
               Công Nợ Phải Thu ({receivables.length})
@@ -439,11 +454,8 @@ function FinancePage() {
                         </TableCell>
                         <TableCell className="text-slate-500 font-mono text-[11px]">
                           {r.accountNumber ? (
-                            <BankLabel
-                              image={r.bankImage}
-                              name={r.bankShortName}
-                            >
-                              {r.bankShortName} ({r.accountNumber})
+                            <BankLabel image={r.bankImage} name={r.bankName}>
+                              {r.bankName} ({r.accountNumber})
                             </BankLabel>
                           ) : (
                             '—'
@@ -654,8 +666,8 @@ function FinancePage() {
                           value={String(a.id)}
                           className="text-xs"
                         >
-                          <BankLabel image={a.bankImage} name={a.bankShortName}>
-                            {a.bankShortName} ({a.accountNumber})
+                          <BankLabel image={a.bankImage} name={a.bankName}>
+                            {a.bankName} ({a.accountNumber})
                           </BankLabel>
                         </SelectItem>
                       ))}
@@ -838,11 +850,8 @@ function FinancePage() {
                             value={String(b.id)}
                             className="text-xs"
                           >
-                            <BankLabel
-                              image={b.bankImage}
-                              name={b.bankShortName}
-                            >
-                              {b.bankShortName} &bull; {b.accountNumber}
+                            <BankLabel image={b.bankImage} name={b.bankName}>
+                              {b.bankName} &bull; {b.accountNumber}
                             </BankLabel>
                           </SelectItem>
                         ))}

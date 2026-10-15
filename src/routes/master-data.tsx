@@ -6,8 +6,10 @@ import {
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Boxes, Landmark, Palette, Plus, Trash2, Truck } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
+import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -49,6 +51,10 @@ import {
 } from '#/server/fns/master-data.ts'
 
 export const Route = createFileRoute('/master-data')({
+  // The active tab lives in the URL (?tab=...) so a reload stays on it
+  validateSearch: z.object({
+    tab: z.enum(['models', 'suppliers', 'banks', 'colors']).catch('models'),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -62,6 +68,8 @@ export const Route = createFileRoute('/master-data')({
 
 function MasterDataPage() {
   const { user } = Route.useRouteContext()
+  const { tab } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const queryClient = useQueryClient()
   // Danh mục được dùng ở lô nhập, vay, thu chi... nên làm mới toàn bộ cache
@@ -89,7 +97,6 @@ function MasterDataPage() {
   // Modal Bank
   const [bankOpen, setBankOpen] = React.useState(false)
   const [bName, setBName] = React.useState('')
-  const [bShort, setBShort] = React.useState('')
 
   // Modal Color
   const [colorOpen, setColorOpen] = React.useState(false)
@@ -124,7 +131,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveBank.mutateAsync({
-        data: { name: bName, shortName: bShort },
+        data: { name: bName },
       })
       setBankOpen(false)
     } catch (err: unknown) {
@@ -134,9 +141,12 @@ function MasterDataPage() {
 
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
+    const hex = cHex.trim() ? normalizeHex(cHex) : null
+    if (cHex.trim() && !hex)
+      return alert('Mã màu hex không hợp lệ. Ví dụ: #990000')
     try {
       await saveColor.mutateAsync({
-        data: { name: cName, hex: cHex },
+        data: { name: cName, hex },
       })
       setColorOpen(false)
     } catch (err: unknown) {
@@ -166,7 +176,13 @@ function MasterDataPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="models" className="space-y-4">
+        <Tabs
+          value={tab}
+          onValueChange={(v) =>
+            navigate({ search: { tab: v as typeof tab }, replace: true })
+          }
+          className="space-y-4"
+        >
           <TabsList className="bg-slate-100 p-1">
             <TabsTrigger
               value="models"
@@ -313,7 +329,6 @@ function MasterDataPage() {
                   size="sm"
                   onClick={() => {
                     setBName('')
-                    setBShort('')
                     setBankOpen(true)
                   }}
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -327,7 +342,6 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Ngân Hàng</TableHead>
-                      <TableHead>Tên Viết Tắt</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -335,12 +349,9 @@ function MasterDataPage() {
                     {master.banks.map((b) => (
                       <TableRow key={b.id}>
                         <TableCell className="font-semibold text-slate-900">
-                          <BankLabel image={b.image} name={b.shortName}>
+                          <BankLabel image={b.image} name={b.name}>
                             {b.name}
                           </BankLabel>
-                        </TableCell>
-                        <TableCell className="font-bold text-emerald-800">
-                          {b.shortName}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -384,7 +395,6 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Màu Sắc</TableHead>
-                      <TableHead>Mã Hex</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -401,9 +411,6 @@ function MasterDataPage() {
                             )}
                             {c.name}
                           </div>
-                        </TableCell>
-                        <TableCell className="font-mono text-slate-500">
-                          {c.hex ?? '—'}
                         </TableCell>
                         <TableCell>
                           <Button
@@ -529,16 +536,6 @@ function MasterDataPage() {
                   placeholder="Ngân hàng TMCP Ngoại thương Việt Nam"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Tên Viết Tắt *</Label>
-                <Input
-                  required
-                  value={bShort}
-                  onChange={(e) => setBShort(e.target.value)}
-                  className="h-8 text-xs"
-                  placeholder="Vietcombank"
-                />
-              </div>
               <DialogFooter className="pt-2">
                 <Button
                   type="button"
@@ -583,12 +580,7 @@ function MasterDataPage() {
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Mã Màu Hex</Label>
-                <Input
-                  value={cHex}
-                  onChange={(e) => setCHex(e.target.value)}
-                  className="h-8 text-xs font-mono"
-                  placeholder="#990000"
-                />
+                <ColorPicker value={cHex} onChange={setCHex} />
               </div>
               <DialogFooter className="pt-2">
                 <Button

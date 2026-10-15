@@ -205,8 +205,8 @@ function ReconcilePage() {
                 selectedStatementId === s.id ? 'bg-slate-900 text-white' : ''
               }`}
             >
-              <BankLabel image={s.bankImage} name={s.bankShortName}>
-                {s.bankShortName} ({formatDate(s.periodFrom)} -{' '}
+              <BankLabel image={s.bankImage} name={s.bankName}>
+                {s.bankName} ({formatDate(s.periodFrom)} -{' '}
                 {formatDate(s.periodTo)})
               </BankLabel>
               <Badge
@@ -226,7 +226,7 @@ function ReconcilePage() {
               <CardTitle className="text-sm font-bold text-slate-800">
                 Giao Dịch Trong Kỳ Sao Kê:{' '}
                 <span className="font-semibold text-emerald-800">
-                  {statementDetail?.statement?.bankShortName} &bull;{' '}
+                  {statementDetail?.statement?.bankName} &bull;{' '}
                   {statementDetail?.statement?.accountNumber}
                 </span>
               </CardTitle>

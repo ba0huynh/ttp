@@ -408,7 +408,7 @@ function NewBatchPage() {
                             value={String(l.id)}
                             className="text-xs"
                           >
-                            {l.contractNumber} ({l.bankShortName}) &bull; Dư nợ:{' '}
+                            {l.contractNumber} ({l.bankName}) &bull; Dư nợ:{' '}
                             {formatVnd(l.outstanding)}
                           </SelectItem>
                         ))}

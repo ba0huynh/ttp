@@ -8,15 +8,20 @@ const VIETQR_BANKS_URL = 'https://api.vietqr.io/v2/banks'
 
 interface VietQrBank {
   name: string
-  shortName: string
   logo?: string
 }
 
 interface BankRow {
   name: string
-  shortName: string
   image: string | null
 }
+
+/**
+ * Banks are matched by name ignoring case and extra spaces: rows seeded earlier
+ * can differ from VietQR only in capitalisation ("Ngoại thương" vs "Ngoại Thương").
+ */
+export const normalizeBankName = (name: string) =>
+  name.trim().replace(/\s+/g, ' ').toLowerCase()
 
 /** Downloads the current list of Vietnamese banks supported by VietQR */
 export async function fetchVietQrBanks() {
@@ -39,26 +44,23 @@ export async function fetchVietQrBanks() {
       `Unexpected VietQR response: ${JSON.stringify(json).slice(0, 200)}`,
     )
 
-  // Keep only what the `banks` table stores; de-duplicate by short name
-  const byShortName = new Map<string, BankRow>()
+  // Keep only what the `banks` table stores; de-duplicate by name
+  const byName = new Map<string, BankRow>()
   for (const b of json.data) {
-    const shortName = b.shortName?.trim()
-    if (shortName && !byShortName.has(shortName))
-      byShortName.set(shortName, {
-        name: b.name.trim(),
-        shortName,
-        image: b.logo?.trim() || null,
-      })
+    const key = normalizeBankName(b.name ?? '')
+    if (key && !byName.has(key))
+      byName.set(key, { name: b.name.trim(), image: b.logo?.trim() || null })
   }
-  return [...byShortName.values()]
+  return [...byName.values()]
 }
 
 /**
  * Seeds the Vietnamese bank catalog straight from the VietQR API.
  *
- * Idempotent and additive: inserts only the banks (matched by short name) that are missing, so it also
- * tops up a database that already has a few banks. For banks that already exist
- * it only fills in a missing logo (`image`); every other field is left as is. The API is called on every run, so seeding needs
+ * Idempotent and additive: inserts only the banks (matched by name) that are
+ * missing, so it also tops up a database that already has a few banks. For
+ * banks that already exist it only fills in a missing logo (`image`); every
+ * other field is left as is. The API is called on every run, so seeding needs
  * internet access (a clear error is thrown when it is unreachable).
  *
  * Returns every bank in the table (existing + new).
@@ -67,13 +69,16 @@ export async function seedBanks() {
   console.log(' -> Fetching bank list from VietQR API...')
   const [catalog, existing] = await Promise.all([
     fetchVietQrBanks(),
-    db.select({ shortName: banks.shortName, image: banks.image }).from(banks),
+    db
+      .select({ id: banks.id, name: banks.name, image: banks.image })
+      .from(banks),
   ])
-  const have = new Map(existing.map((b) => [b.shortName, b]))
-  const missing = catalog.filter((b) => !have.has(b.shortName))
-  const needsLogo = catalog.filter(
-    (b) => b.image && have.has(b.shortName) && !have.get(b.shortName)!.image,
-  )
+  const have = new Map(existing.map((b) => [normalizeBankName(b.name), b]))
+  const missing = catalog.filter((b) => !have.has(normalizeBankName(b.name)))
+  const needsLogo = catalog.flatMap((b) => {
+    const row = have.get(normalizeBankName(b.name))
+    return b.image && row && !row.image ? [{ id: row.id, image: b.image }] : []
+  })
 
   if (missing.length > 0) {
     console.log(` -> Seeding ${missing.length} banks (VietQR catalog)...`)
@@ -83,10 +88,7 @@ export async function seedBanks() {
   }
 
   for (const b of needsLogo)
-    await db
-      .update(banks)
-      .set({ image: b.image })
-      .where(eq(banks.shortName, b.shortName))
+    await db.update(banks).set({ image: b.image }).where(eq(banks.id, b.id))
   if (needsLogo.length > 0)
     console.log(` -> Filled in logos for ${needsLogo.length} existing banks`)
 

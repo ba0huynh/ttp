@@ -29,7 +29,7 @@ import {
   isBelowCost,
 } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
-import type { batchDetailQuery} from '#/lib/queries.ts';
+import type { batchDetailQuery } from '#/lib/queries.ts'
 import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import {
   addBatchExpenseFn,
@@ -125,7 +125,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
               <SelectItem value="none">Vốn tự có</SelectItem>
               {loans.map((l) => (
                 <SelectItem key={l.id} value={String(l.id)}>
-                  {l.contractNumber} — {l.bankShortName}
+                  {l.contractNumber} — {l.bankName}
                 </SelectItem>
               ))}
             </SelectContent>
