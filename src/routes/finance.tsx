@@ -4,7 +4,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowDownLeft, ArrowUpRight, Plus } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -194,9 +194,6 @@ function FinancePage() {
     }
   }
 
-  const totalReceivable = receivables.reduce((s, r) => s + r.balance, 0)
-  const totalPayable = payables.reduce((s, p) => s + p.balance, 0)
-
   return (
     <AppLayout user={user}>
       <div className="space-y-6">
@@ -232,47 +229,6 @@ function FinancePage() {
               Lập Phiếu Chi
             </Button>
           </div>
-        </div>
-
-        {/* 2 Summary KPI Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-          <Card className="border-emerald-200 bg-emerald-50/40">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-semibold text-emerald-900 uppercase">
-                Tổng Công Nợ Phải Thu (Khách nợ)
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-emerald-100 text-emerald-800">
-                <ArrowDownLeft className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-black text-emerald-950">
-                {formatVnd(totalReceivable)}
-              </div>
-              <p className="text-xs text-emerald-700 mt-1">
-                Gồm {receivables.length} pháp nhân đại lý/điểm bán nhận xe
-              </p>
-            </CardContent>
-          </Card>
-
-          <Card className="border-rose-200 bg-rose-50/40">
-            <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-xs font-semibold text-rose-900 uppercase">
-                Tổng Công Nợ Phải Trả (Nợ nhà cung cấp)
-              </CardTitle>
-              <div className="p-2 rounded-lg bg-rose-100 text-rose-800">
-                <ArrowUpRight className="size-4" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-black text-rose-950">
-                {formatVnd(totalPayable)}
-              </div>
-              <p className="text-xs text-rose-700 mt-1">
-                Gồm {payables.length} nhà cung cấp xe nhập khẩu
-              </p>
-            </CardContent>
-          </Card>
         </div>
 
         {/* Tabbed interface */}

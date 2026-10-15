@@ -5,7 +5,13 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowRightLeft, Check, CheckCircle2, Upload } from 'lucide-react'
+import {
+  ArrowRightLeft,
+  Check,
+  CheckCircle2,
+  Loader2,
+  Upload,
+} from 'lucide-react'
 import * as React from 'react'
 
 import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
@@ -28,6 +34,14 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
+import { Label } from '#/components/ui/label.tsx'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '#/components/ui/select.tsx'
 import {
   Table,
   TableBody,
@@ -96,6 +110,19 @@ function ReconcilePage() {
     mutationFn: setStatementLineStatusFn,
     onSuccess: refresh,
   })
+  // The line being un-matched right now (pending also covers the data refresh)
+  const cancellingLineId = setLineStatus.isPending
+    ? setLineStatus.variables?.data.lineId
+    : undefined
+
+  const handleUnmatch = async (lineId: number) => {
+    try {
+      await setLineStatus.mutateAsync({ data: { lineId, status: 'unmatched' } })
+    } catch (err: unknown) {
+      alert((err as Error).message || 'Lỗi khi hủy khớp giao dịch')
+    }
+  }
+
   const openSuggestModal = (lineId: number) => setMatchingLineId(lineId)
 
   const handleMatch = async (matchedType: any, matchedId: number) => {
@@ -157,30 +184,38 @@ function ReconcilePage() {
           </div>
         )}
 
-        {/* Statements list bar */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1">
-          {statements.map((s) => (
-            <Button
-              key={s.id}
-              variant={selectedStatementId === s.id ? 'default' : 'outline'}
-              size="sm"
-              onClick={() => setSelectedStatementId(s.id)}
-              className={`h-9 text-xs gap-2 shrink-0 ${
-                selectedStatementId === s.id ? 'bg-slate-900 text-white' : ''
-              }`}
+        {/* Statement picker */}
+        {statements.length > 0 && (
+          <div className="max-w-2xl space-y-1.5">
+            <Label className="text-xs font-semibold">Sao kê</Label>
+            <Select
+              value={selectedStatementId ? String(selectedStatementId) : ''}
+              onValueChange={(v) => setSelectedStatementId(Number(v))}
             >
-              <BankLabel image={s.bankImage} name={s.bankName}>
-                {s.bankName} ({s.accountNumber})
-              </BankLabel>
-              <Badge
-                variant="secondary"
-                className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"
-              >
-                Khớp {s.matchedCount}/{s.lineCount}
-              </Badge>
-            </Button>
-          ))}
-        </div>
+              <SelectTrigger className="h-10 w-full bg-card text-sm">
+                <SelectValue placeholder="Chọn sao kê" />
+              </SelectTrigger>
+              <SelectContent>
+                {statements.map((s) => (
+                  <SelectItem key={s.id} value={String(s.id)}>
+                    <span className="flex items-center gap-3">
+                      <BankLabel image={s.bankImage} name={s.bankName}>
+                        {s.bankName} ({s.accountNumber})
+                      </BankLabel>
+                      <span className="text-xs text-slate-400">#{s.id}</span>
+                      <Badge
+                        variant="secondary"
+                        className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"
+                      >
+                        Khớp {s.matchedCount}/{s.lineCount}
+                      </Badge>
+                    </span>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
 
         {/* Transactions Table */}
         <Card className="border-slate-200 shadow-xs">
@@ -208,19 +243,25 @@ function ReconcilePage() {
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <Table>
+                {/* Fixed layout + explicit widths: the columns keep their size whether
+                    lines are matched (long badge, "Hủy khớp") or not ("Tìm khớp") */}
+                <Table className="table-fixed min-w-[960px]">
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50/70">
-                      <TableHead>Ngày GD</TableHead>
+                      <TableHead className="w-28">Ngày GD</TableHead>
                       <TableHead>Nội Dung Diễn Giải</TableHead>
-                      <TableHead className="text-right">
+                      <TableHead className="w-44 text-right">
                         Tiền Ra (Ghi Nợ)
                       </TableHead>
-                      <TableHead className="text-right">
+                      <TableHead className="w-44 text-right">
                         Tiền Vào (Ghi Có)
                       </TableHead>
-                      <TableHead className="text-center">Đối Chiếu</TableHead>
-                      <TableHead className="text-center">Thao tác</TableHead>
+                      <TableHead className="w-56 text-center">
+                        Đối Chiếu
+                      </TableHead>
+                      <TableHead className="w-36 text-center">
+                        Thao tác
+                      </TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -231,7 +272,10 @@ function ReconcilePage() {
                           <TableCell className="font-mono text-slate-600">
                             {formatDate(l.transactionDate)}
                           </TableCell>
-                          <TableCell className="max-w-md font-medium text-slate-900">
+                          <TableCell
+                            className="truncate font-medium text-slate-900"
+                            title={l.description}
+                          >
                             {l.description}
                           </TableCell>
                           <TableCell className="text-right font-bold text-rose-900">
@@ -273,14 +317,16 @@ function ReconcilePage() {
                               <Button
                                 variant="ghost"
                                 size="sm"
-                                className="h-7 text-xs text-slate-400 hover:text-rose-600"
-                                onClick={async () => {
-                                  await setLineStatus.mutateAsync({
-                                    data: { lineId: l.id, status: 'unmatched' },
-                                  })
-                                }}
+                                className="h-7 gap-1 text-xs text-slate-400 hover:text-rose-600"
+                                disabled={setLineStatus.isPending}
+                                onClick={() => handleUnmatch(l.id)}
                               >
-                                Hủy khớp
+                                {cancellingLineId === l.id && (
+                                  <Loader2 className="size-3 animate-spin" />
+                                )}
+                                {cancellingLineId === l.id
+                                  ? 'Đang hủy...'
+                                  : 'Hủy khớp'}
                               </Button>
                             )}
                           </TableCell>
@@ -299,7 +345,7 @@ function ReconcilePage() {
           open={matchingLineId !== null}
           onOpenChange={(open) => !open && setMatchingLineId(null)}
         >
-          <DialogContent className="max-w-xl">
+          <DialogContent className="sm:max-w-4xl">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
                 Gợi Ý Chứng Từ Khớp Với Giao Dịch Sao Kê
@@ -345,7 +391,7 @@ function ReconcilePage() {
                         </div>
                         <div className="text-xs text-slate-500">
                           Ngày chứng từ: {formatDate(s.date)} &bull; Số tiền:{' '}
-                          <strong className="text-slate-900">
+                          <strong className="whitespace-nowrap text-slate-900">
                             {formatVnd(s.amount)}
                           </strong>
                         </div>
@@ -354,9 +400,16 @@ function ReconcilePage() {
                       <Button
                         size="sm"
                         className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1"
+                        disabled={matchLine.isPending}
                         onClick={() => handleMatch(s.type, s.id)}
                       >
-                        <Check className="size-3.5" />
+                        {matchLine.isPending &&
+                        matchLine.variables?.data.matchedId === s.id &&
+                        matchLine.variables?.data.matchedType === s.type ? (
+                          <Loader2 className="size-3.5 animate-spin" />
+                        ) : (
+                          <Check className="size-3.5" />
+                        )}
                         Xác Nhận Khớp
                       </Button>
                     </div>

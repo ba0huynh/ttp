@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { FileUp, Upload } from 'lucide-react'
+import { Plus, Trash2, Upload } from 'lucide-react'
 import * as React from 'react'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
@@ -13,6 +13,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
+import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -29,17 +30,25 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { Textarea } from '#/components/ui/textarea.tsx'
-import { formatDate, formatVnd } from '#/lib/business.ts'
+import { formatVnd, todayIso } from '#/lib/business.ts'
 import { masterDataQuery } from '#/lib/queries.ts'
 import { parseStatementText } from '#/lib/statement-import.ts'
 import { importBankStatementFn } from '#/server/fns/finance.ts'
 
-const SAMPLE = `Ngày GD	Nội dung	Ghi nợ	Ghi có	Số dư
-05/03/2026	CTY MOTO SAI GON TT PBX-2603-0001		250.000.000	1.250.000.000
-08/03/2026	TT tien hang lo LOT-2602	180.000.000		1.070.000.000`
+/** One editable line of the statement. Amounts are strings so the inputs can be empty. */
+interface Row {
+  key: number
+  date: string
+  description: string
+  debit: string
+  credit: string
+}
 
-/** Module 10: import a bank statement by pasting rows from Excel or loading a CSV file */
+const amountOf = (v: string) => (v.trim() === '' ? 0 : Number(v))
+const isBlank = (r: Row) =>
+  !r.description.trim() && amountOf(r.debit) === 0 && amountOf(r.credit) === 0
+
+/** Module 10: enter a bank statement line by line in an editable table */
 export function ImportStatementDialog({
   open,
   onOpenChange,
@@ -53,22 +62,69 @@ export function ImportStatementDialog({
   const { data: master } = useQuery({ ...masterDataQuery(), enabled: open })
   const accounts = (master?.bankAccounts ?? []).filter((a) => a.isActive)
 
-  const [accountId, setAccountId] = React.useState<number | null>(null)
-  const [text, setText] = React.useState('')
-  const [fileName, setFileName] = React.useState<string | null>(null)
-  const [error, setError] = React.useState<string | null>(null)
+  const nextKey = React.useRef(1)
+  const newRow = (patch: Partial<Row> = {}): Row => ({
+    key: nextKey.current++,
+    date: todayIso(),
+    description: '',
+    debit: '',
+    credit: '',
+    ...patch,
+  })
 
-  const parsed = React.useMemo(() => parseStatementText(text), [text])
-  const totalDebit = parsed.lines.reduce((s, l) => s + l.debit, 0)
-  const totalCredit = parsed.lines.reduce((s, l) => s + l.credit, 0)
+  const [accountId, setAccountId] = React.useState<number | null>(null)
+  const [rows, setRows] = React.useState<Row[]>(() => [newRow()])
+  const [error, setError] = React.useState<string | null>(null)
 
   const effectiveAccountId = accountId ?? accounts[0]?.id ?? null
 
+  // Blank rows are ignored; the others must be complete
+  const filled = rows.filter((r) => !isBlank(r))
+  const isValid = (r: Row) => {
+    const d = amountOf(r.debit)
+    const c = amountOf(r.credit)
+    return !!r.date && d >= 0 && c >= 0 && d + c > 0 && !(d > 0 && c > 0)
+  }
+  const invalidKeys = new Set(
+    filled.filter((r) => !isValid(r)).map((r) => r.key),
+  )
+  const totalDebit = filled.reduce((s, r) => s + amountOf(r.debit), 0)
+  const totalCredit = filled.reduce((s, r) => s + amountOf(r.credit), 0)
+
   const reset = () => {
     setAccountId(null)
-    setText('')
-    setFileName(null)
+    setRows([newRow()])
     setError(null)
+  }
+
+  const update = (key: number, patch: Partial<Row>) =>
+    setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)))
+  const addRow = () =>
+    setRows((rs) => [...rs, newRow({ date: rs[rs.length - 1]?.date })])
+  const removeRow = (key: number) =>
+    setRows((rs) => {
+      const left = rs.filter((r) => r.key !== key)
+      return left.length > 0 ? left : [newRow()]
+    })
+
+  /** Pasting several rows copied from Excel fills the table instead of one cell */
+  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    const text = e.clipboardData.getData('text')
+    if (!/[\n\t]/.test(text.trim())) return
+    const { lines } = parseStatementText(text)
+    if (lines.length === 0) return
+    e.preventDefault()
+    setRows((rs) => [
+      ...rs.filter((r) => !isBlank(r)),
+      ...lines.map((l) =>
+        newRow({
+          date: l.transactionDate,
+          description: l.description ?? '',
+          debit: l.debit > 0 ? String(l.debit) : '',
+          credit: l.credit > 0 ? String(l.credit) : '',
+        }),
+      ),
+    ])
   }
 
   const importStatement = useMutation({
@@ -76,25 +132,26 @@ export function ImportStatementDialog({
     onSuccess: () => queryClient.invalidateQueries(),
   })
 
-  const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
-    setFileName(file.name)
-    setText(await file.text())
-    e.target.value = ''
-  }
-
   const handleSubmit = async () => {
     setError(null)
     if (!effectiveAccountId) return setError('Chưa chọn tài khoản ngân hàng')
-    if (parsed.lines.length === 0)
-      return setError('Không đọc được dòng giao dịch hợp lệ nào')
+    if (filled.length === 0) return setError('Chưa có dòng giao dịch nào')
+    if (invalidKeys.size > 0)
+      return setError(
+        `Có ${invalidKeys.size} dòng chưa hợp lệ: cần ngày và đúng một trong hai ô Ghi nợ / Ghi có (số tiền > 0)`,
+      )
     try {
       const res = await importStatement.mutateAsync({
         data: {
           companyBankAccountId: effectiveAccountId,
-          fileName,
-          lines: parsed.lines,
+          fileName: null,
+          lines: filled.map((r) => ({
+            transactionDate: r.date,
+            description: r.description.trim() || null,
+            debit: amountOf(r.debit),
+            credit: amountOf(r.credit),
+            balance: null,
+          })),
         },
       })
       reset()
@@ -113,17 +170,16 @@ export function ImportStatementDialog({
         onOpenChange(o)
       }}
     >
-      <DialogContent className="max-h-[90vh] overflow-x-hidden overflow-y-auto sm:max-w-5xl">
+      <DialogContent className="max-h-[92vh] overflow-x-hidden overflow-y-auto sm:max-w-5xl">
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900">
             Nhập Sao Kê Ngân Hàng
           </DialogTitle>
           <DialogDescription className="text-xs">
-            Dán các dòng copy từ Excel hoặc chọn file CSV. Thứ tự cột:{' '}
-            <strong>
-              Ngày GD | Nội dung | Ghi nợ (tiền ra) | Ghi có (tiền vào) | Số dư
-            </strong>{' '}
-            (dòng tiêu đề sẽ tự bỏ qua).
+            Nhập từng dòng giao dịch vào bảng. Mỗi dòng chỉ có{' '}
+            <strong>Ghi nợ (tiền ra)</strong> hoặc{' '}
+            <strong>Ghi có (tiền vào)</strong>. Có thể dán nhiều dòng copy từ
+            Excel vào bất kỳ ô nào.
           </DialogDescription>
         </DialogHeader>
 
@@ -158,54 +214,124 @@ export function ImportStatementDialog({
             </Select>
           </div>
 
-          <div className="space-y-1.5">
-            <div className="flex items-center justify-between">
-              <Label className="text-xs font-semibold">
-                Dữ liệu sao kê {fileName && `(${fileName})`}
-              </Label>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 text-xs"
-                  onClick={() => setText(SAMPLE)}
-                >
-                  Dán mẫu
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  className="h-7 text-xs gap-1"
-                  asChild
-                >
-                  <label className="cursor-pointer">
-                    <FileUp className="size-3.5" />
-                    Chọn file CSV
-                    <input
-                      type="file"
-                      accept=".csv,.tsv,.txt,text/csv,text/plain"
-                      className="hidden"
-                      onChange={handleFile}
-                    />
-                  </label>
-                </Button>
-              </div>
+          <div className="space-y-2">
+            <div className="max-h-[42vh] overflow-auto rounded-md border border-slate-200">
+              <Table>
+                <TableHeader className="sticky top-0 z-10">
+                  <TableRow className="text-xs">
+                    <TableHead className="w-10 text-center">#</TableHead>
+                    <TableHead className="w-44">Ngày GD</TableHead>
+                    <TableHead>Nội dung</TableHead>
+                    <TableHead className="w-44 text-right">
+                      Ghi nợ (tiền ra)
+                    </TableHead>
+                    <TableHead className="w-44 text-right">
+                      Ghi có (tiền vào)
+                    </TableHead>
+                    <TableHead className="w-10" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {rows.map((r, i) => (
+                    <TableRow
+                      key={r.key}
+                      className={invalidKeys.has(r.key) ? 'bg-rose-50' : ''}
+                    >
+                      <TableCell className="text-center text-xs text-slate-400">
+                        {i + 1}
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="date"
+                          value={r.date}
+                          onChange={(e) =>
+                            update(r.key, { date: e.target.value })
+                          }
+                          onPaste={handlePaste}
+                          className="h-8 text-xs"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          value={r.description}
+                          onChange={(e) =>
+                            update(r.key, { description: e.target.value })
+                          }
+                          onPaste={handlePaste}
+                          placeholder="Nội dung giao dịch"
+                          className="h-8 text-xs"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1000}
+                          value={r.debit}
+                          onChange={(e) =>
+                            update(r.key, {
+                              debit: e.target.value,
+                              // one side only: entering money out clears money in
+                              ...(amountOf(e.target.value) > 0
+                                ? { credit: '' }
+                                : {}),
+                            })
+                          }
+                          onPaste={handlePaste}
+                          className="h-8 text-right text-xs text-rose-900"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Input
+                          type="number"
+                          min={0}
+                          step={1000}
+                          value={r.credit}
+                          onChange={(e) =>
+                            update(r.key, {
+                              credit: e.target.value,
+                              ...(amountOf(e.target.value) > 0
+                                ? { debit: '' }
+                                : {}),
+                            })
+                          }
+                          onPaste={handlePaste}
+                          className="h-8 text-right text-xs text-emerald-900"
+                        />
+                      </TableCell>
+                      <TableCell>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon-sm"
+                          onClick={() => removeRow(r.key)}
+                          className="text-slate-400 hover:text-rose-600"
+                          aria-label="Xóa dòng"
+                          title="Xóa dòng"
+                        >
+                          <Trash2 className="size-4" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
             </div>
-            <Textarea
-              value={text}
-              onChange={(e) => setText(e.target.value)}
-              placeholder="Dán dữ liệu từ Excel vào đây..."
-              className="font-mono text-[11px] min-h-48"
-            />
-          </div>
 
-          {(parsed.lines.length > 0 || parsed.skippedRows.length > 0) && (
-            <div className="space-y-2">
+            <div className="flex flex-wrap items-center justify-between gap-3">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={addRow}
+                className="h-8 gap-1 text-xs"
+              >
+                <Plus className="size-3.5" />
+                Thêm dòng
+              </Button>
               <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
                 <span>
-                  Đọc được <strong>{parsed.lines.length}</strong> dòng
+                  Số dòng: <strong>{filled.length}</strong>
                 </span>
                 <span>
                   Tổng tiền ra:{' '}
@@ -219,44 +345,9 @@ export function ImportStatementDialog({
                     {formatVnd(totalCredit)}
                   </strong>
                 </span>
-                {parsed.skippedRows.length > 0 && (
-                  <span className="text-amber-700">
-                    Bỏ qua dòng lỗi: {parsed.skippedRows.join(', ')}
-                  </span>
-                )}
-              </div>
-              <div className="max-h-72 overflow-auto rounded-md border border-slate-200">
-                <Table>
-                  <TableHeader>
-                    <TableRow className="text-xs bg-slate-50/70">
-                      <TableHead>Ngày GD</TableHead>
-                      <TableHead>Nội dung</TableHead>
-                      <TableHead className="text-right">Ghi nợ</TableHead>
-                      <TableHead className="text-right">Ghi có</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="text-xs">
-                    {parsed.lines.map((l, i) => (
-                      <TableRow key={i}>
-                        <TableCell className="font-mono">
-                          {formatDate(l.transactionDate)}
-                        </TableCell>
-                        <TableCell className="max-w-xs truncate">
-                          {l.description}
-                        </TableCell>
-                        <TableCell className="text-right text-rose-900">
-                          {l.debit > 0 ? formatVnd(l.debit) : '—'}
-                        </TableCell>
-                        <TableCell className="text-right text-emerald-900">
-                          {l.credit > 0 ? formatVnd(l.credit) : '—'}
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         <DialogFooter>
@@ -272,14 +363,14 @@ export function ImportStatementDialog({
           <Button
             type="button"
             size="sm"
-            disabled={importStatement.isPending || parsed.lines.length === 0}
+            disabled={importStatement.isPending || filled.length === 0}
             onClick={handleSubmit}
             className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
           >
             <Upload className="size-3.5" />
             {importStatement.isPending
               ? 'Đang nhập...'
-              : `Nhập ${parsed.lines.length} dòng`}
+              : `Nhập ${filled.length} dòng`}
           </Button>
         </DialogFooter>
       </DialogContent>
