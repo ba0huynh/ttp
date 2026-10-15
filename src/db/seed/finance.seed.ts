@@ -114,10 +114,7 @@ export async function seedFinance({
     .insert(bankStatements)
     .values({
       companyBankAccountId: companyBankAccounts.vcbAccount.id,
-      periodFrom: '2026-01-01',
-      periodTo: '2026-02-28',
       fileName: 'SAOKE_VCB_0071001234567_T1_T2_2026.xlsx',
-      note: 'Sao kê ngân hàng VCB quý 1 năm 2026',
       createdBy: adminId,
     })
     .$returningId()

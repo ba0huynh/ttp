@@ -273,10 +273,7 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
     const list = await db
       .select({
         id: bankStatements.id,
-        periodFrom: bankStatements.periodFrom,
-        periodTo: bankStatements.periodTo,
         fileName: bankStatements.fileName,
-        note: bankStatements.note,
         accountNumber: companyBankAccounts.accountNumber,
         bankName: banks.name,
         bankImage: banks.image,
@@ -295,14 +292,11 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
       )
       .groupBy(
         bankStatements.id,
-        bankStatements.periodFrom,
-        bankStatements.periodTo,
         bankStatements.fileName,
-        bankStatements.note,
         companyBankAccounts.accountNumber,
         banks.name,
       )
-      .orderBy(desc(bankStatements.periodFrom), desc(bankStatements.id))
+      .orderBy(desc(bankStatements.id))
 
     return list.map((s) => ({
       ...s,
@@ -318,10 +312,7 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
     const [statement] = await db
       .select({
         id: bankStatements.id,
-        periodFrom: bankStatements.periodFrom,
-        periodTo: bankStatements.periodTo,
         fileName: bankStatements.fileName,
-        note: bankStatements.note,
         accountNumber: companyBankAccounts.accountNumber,
         bankName: banks.name,
         bankImage: banks.image,
@@ -361,10 +352,7 @@ export const importBankStatementFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       companyBankAccountId: z.number().int(),
-      periodFrom: z.string().min(10),
-      periodTo: z.string().min(10),
       fileName: z.string().trim().nullable().optional(),
-      note: z.string().trim().nullable().optional(),
       lines: z.array(
         z.object({
           transactionDate: z.string().min(10),

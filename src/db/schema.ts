@@ -526,10 +526,7 @@ export const bankStatements = mysqlTable(
   {
     id: int('id').primaryKey().autoincrement(),
     companyBankAccountId: int('company_bank_account_id').notNull(),
-    periodFrom: date('period_from', { mode: 'string' }).notNull(),
-    periodTo: date('period_to', { mode: 'string' }).notNull(),
     fileName: varchar('file_name', { length: 255 }),
-    note: text('note'),
     createdBy: int('created_by').references(() => users.id),
     ...timestamps,
   },

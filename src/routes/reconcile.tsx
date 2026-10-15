@@ -170,8 +170,7 @@ function ReconcilePage() {
               }`}
             >
               <BankLabel image={s.bankImage} name={s.bankName}>
-                {s.bankName} ({formatDate(s.periodFrom)} -{' '}
-                {formatDate(s.periodTo)})
+                {s.bankName} ({s.accountNumber})
               </BankLabel>
               <Badge
                 variant="secondary"

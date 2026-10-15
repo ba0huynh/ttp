@@ -213,10 +213,7 @@ export interface StatementLineInput {
 export async function importBankStatement(
   input: {
     companyBankAccountId: number
-    periodFrom: string
-    periodTo: string
     fileName?: string | null
-    note?: string | null
     lines: StatementLineInput[]
   },
   userId?: number,
@@ -228,10 +225,7 @@ export async function importBankStatement(
       .insert(bankStatements)
       .values({
         companyBankAccountId: input.companyBankAccountId,
-        periodFrom: input.periodFrom,
-        periodTo: input.periodTo,
         fileName: input.fileName ?? null,
-        note: input.note ?? null,
         createdBy: userId ?? null,
       })
       .$returningId()

@@ -13,7 +13,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
-import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Select,
@@ -57,29 +56,18 @@ export function ImportStatementDialog({
   const [accountId, setAccountId] = React.useState<number | null>(null)
   const [text, setText] = React.useState('')
   const [fileName, setFileName] = React.useState<string | null>(null)
-  const [periodFrom, setPeriodFrom] = React.useState('')
-  const [periodTo, setPeriodTo] = React.useState('')
-  const [note, setNote] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
 
   const parsed = React.useMemo(() => parseStatementText(text), [text])
-  const dates = parsed.lines.map((l) => l.transactionDate).sort()
-  const minDate = dates[0] ?? ''
-  const maxDate = dates[dates.length - 1] ?? ''
   const totalDebit = parsed.lines.reduce((s, l) => s + l.debit, 0)
   const totalCredit = parsed.lines.reduce((s, l) => s + l.credit, 0)
 
   const effectiveAccountId = accountId ?? accounts[0]?.id ?? null
-  const from = periodFrom || minDate
-  const to = periodTo || maxDate
 
   const reset = () => {
     setAccountId(null)
     setText('')
     setFileName(null)
-    setPeriodFrom('')
-    setPeriodTo('')
-    setNote('')
     setError(null)
   }
 
@@ -101,15 +89,11 @@ export function ImportStatementDialog({
     if (!effectiveAccountId) return setError('Chưa chọn tài khoản ngân hàng')
     if (parsed.lines.length === 0)
       return setError('Không đọc được dòng giao dịch hợp lệ nào')
-    if (!from || !to || from > to) return setError('Kỳ sao kê không hợp lệ')
     try {
       const res = await importStatement.mutateAsync({
         data: {
           companyBankAccountId: effectiveAccountId,
-          periodFrom: from,
-          periodTo: to,
           fileName,
-          note: note || null,
           lines: parsed.lines,
         },
       })
@@ -174,28 +158,6 @@ export function ImportStatementDialog({
             </Select>
           </div>
 
-          {/* From / to date: two equal halves of the row */}
-          <div className="grid grid-cols-2 gap-3">
-            <div className="min-w-0 space-y-1.5">
-              <Label className="text-xs font-semibold">Từ ngày</Label>
-              <Input
-                type="date"
-                value={from}
-                onChange={(e) => setPeriodFrom(e.target.value)}
-                className="h-8 w-full text-xs"
-              />
-            </div>
-            <div className="min-w-0 space-y-1.5">
-              <Label className="text-xs font-semibold">Đến ngày</Label>
-              <Input
-                type="date"
-                value={to}
-                onChange={(e) => setPeriodTo(e.target.value)}
-                className="h-8 w-full text-xs"
-              />
-            </div>
-          </div>
-
           <div className="space-y-1.5">
             <div className="flex items-center justify-between">
               <Label className="text-xs font-semibold">
@@ -236,15 +198,6 @@ export function ImportStatementDialog({
               onChange={(e) => setText(e.target.value)}
               placeholder="Dán dữ liệu từ Excel vào đây..."
               className="font-mono text-[11px] min-h-48"
-            />
-          </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Ghi chú</Label>
-            <Input
-              value={note}
-              onChange={(e) => setNote(e.target.value)}
-              className="h-8 text-xs"
             />
           </div>
 
