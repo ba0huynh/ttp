@@ -32,6 +32,7 @@ import {
   currentUserQuery,
 } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
+import { useUrlText } from '#/lib/use-url-text.ts'
 
 const STOCK_FILTERS = [
   'all',
@@ -70,13 +71,14 @@ function InventoryPage() {
 
   const searchParams = Route.useSearch()
   const navigate = Route.useNavigate()
-  const search = searchParams.q ?? ''
   const filterStock = searchParams.stock ?? 'all'
-  const setSearch = (q: string) =>
+  // The box filters instantly; the URL follows once typing pauses
+  const [search, setSearch] = useUrlText(searchParams.q ?? '', (q) =>
     navigate({
       search: (prev) => ({ ...prev, q: q || undefined }),
       replace: true,
-    })
+    }),
+  )
   const setFilterStock = (stock: (typeof STOCK_FILTERS)[number]) =>
     navigate({
       search: (prev) => ({
