@@ -674,7 +674,7 @@ function SettingsPage() {
                     setURoleId(Number(v))
                     clearUError('roleId')
                   }}
-                  className={`h-8 w-full text-xs ${
+                  className={`h-11 w-full rounded-lg text-sm ${
                     uErrors.roleId ? 'border-rose-500' : ''
                   }`}
                   placeholder="Chọn vai trò"
@@ -683,7 +683,7 @@ function SettingsPage() {
                     <SearchSelectItem
                       key={r.id}
                       value={String(r.id)}
-                      className="text-xs"
+                      className="text-sm"
                     >
                       {r.name}
                     </SearchSelectItem>
@@ -724,7 +724,7 @@ function SettingsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setUserModalOpen(false)}
-                  className="h-11 rounded-lg px-4 text-sm"
+                  className="h-8 text-xs"
                 >
                   Hủy
                 </Button>
