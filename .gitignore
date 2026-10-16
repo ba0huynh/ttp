@@ -13,6 +13,10 @@ dist-ssr/
 .wrangler/
 build/
 
+# Uploaded files (images); only the folder itself is tracked
+/uploads/*
+!/uploads/.gitkeep
+
 # Environment Variables & Secrets
 .env
 .env*.local

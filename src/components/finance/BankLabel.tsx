@@ -1,6 +1,8 @@
 import { Landmark } from 'lucide-react'
 import * as React from 'react'
 
+import { imageSrc } from '#/lib/image-url.ts'
+
 /** Bank logo (VietQR CDN) with a neutral icon fallback when missing or broken */
 export function BankLogo({
   src,
@@ -22,7 +24,7 @@ export function BankLogo({
     )
   return (
     <img
-      src={src}
+      src={imageSrc(src)}
       alt={name ?? ''}
       loading="lazy"
       onError={() => setFailed(true)}

@@ -4,7 +4,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Pencil, Plus, Trash2 } from 'lucide-react'
+import { Pencil, Plus, Trash2, Upload } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -218,6 +218,30 @@ function MasterDataPage() {
   const [bankOpen, setBankOpen] = React.useState(false)
   const [bName, setBName] = React.useState('')
   const [bImage, setBImage] = React.useState('')
+  const [logoUploading, setLogoUploading] = React.useState(false)
+  const logoInput = React.useRef<HTMLInputElement>(null)
+
+  // Uploads the chosen file to /api/uploads; the stored value is its key path
+  const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setLogoUploading(true)
+    try {
+      const form = new FormData()
+      form.append('file', file)
+      form.append('folder', 'banks')
+      const res = await fetch('/api/uploads', { method: 'POST', body: form })
+      const body = (await res.json()) as { key?: string; error?: string }
+      if (!res.ok || !body.key)
+        throw new Error(body.error ?? 'Không tải được ảnh')
+      setBImage(body.key)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Lỗi khi tải ảnh lên')
+    } finally {
+      setLogoUploading(false)
+    }
+  }
 
   // Modal Company Bank Account (create / edit)
   const [accountOpen, setAccountOpen] = React.useState(false)
@@ -1115,22 +1139,47 @@ function MasterDataPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">
-                  Logo (đường dẫn ảnh)
-                </Label>
-                <div className="flex items-center gap-3">
-                  <BankLogo
-                    key={bImage}
-                    src={bImage}
-                    name={bName}
-                    className="h-11 w-20"
+                <Label className="text-xs font-semibold">Logo</Label>
+                <div className="flex items-stretch gap-3">
+                  <div className="flex h-32 w-1/2 items-center justify-center rounded-lg border border-border bg-white p-2">
+                    <BankLogo
+                      key={bImage}
+                      src={bImage}
+                      name={bName}
+                      className="h-full w-full"
+                    />
+                  </div>
+                  <input
+                    ref={logoInput}
+                    type="file"
+                    accept="image/png,image/jpeg,image/webp,image/gif"
+                    className="hidden"
+                    onChange={handleLogoFile}
                   />
-                  <Input
-                    value={bImage}
-                    onChange={(e) => setBImage(e.target.value)}
-                    className="h-11 text-sm px-4 rounded-lg"
-                    placeholder="https://.../logo.png"
-                  />
+                  <div className="flex w-1/2 flex-col items-start justify-center gap-2">
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      disabled={logoUploading}
+                      onClick={() => logoInput.current?.click()}
+                      className="h-8 text-xs gap-1"
+                    >
+                      <Upload className="size-3.5" />
+                      {logoUploading ? 'Đang tải lên...' : 'Tải ảnh lên'}
+                    </Button>
+                    {bImage && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setBImage('')}
+                        className="h-8 text-xs text-slate-500"
+                      >
+                        Xóa ảnh
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
               <DialogFooter className="pt-2">

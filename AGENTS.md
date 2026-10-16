@@ -784,5 +784,15 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 70, 71,... above this line upon completing tasks)_
+### Lesson 70: Image Uploads (`uploads/` folder, `APP_URL`)
+
+- **Storage**: files go to the `uploads/` folder in the project root (`uploads/banks/<uuid>.png`); `.gitignore` ignores its content and keeps `uploads/.gitkeep`. Only PNG, JPG, WEBP and GIF up to 2 MB are accepted (no SVG, which could carry scripts). Docker / hosting: mount `uploads/` as a persistent volume, otherwise images vanish on redeploy.
+- **Routes** (TanStack Start server routes, `server.handlers`): `POST /api/uploads` (`src/routes/api.uploads.tsx`, multipart `file` + `folder`, needs the `master-data.manage` permission, reads the session cookie from the request header, returns `{ key }`) and `GET /uploads/<key>` (`uploads.$.tsx`, public, immutable cache, path traversal blocked). Logic in `src/server/services/uploads.ts`; add new folders to `UPLOAD_FOLDERS`.
+- **Stored value**: `banks.image` holds either a full https address (VietQR logos) or a key path ("banks/<uuid>.png"). `imageSrc()` (`src/lib/image-url.ts`) turns it into an address: https stays, a key becomes `<APP_URL>/uploads/<key>`. `APP_URL` in `.env` is exposed to the browser as `VITE_APP_URL` through `define` in `vite.config.ts` (restart / rebuild after changing it; empty = same origin). `BankLogo` already goes through `imageSrc`, so use it (or `imageSrc`) for any new image.
+- **UI**: the bank dialog in /master-data has "Tải ảnh lên" (hidden file input, uploads at once, preview), and "Xóa ảnh" (right half, next to the preview). Replaced or removed uploads are not deleted from disk (no clean-up job yet).
+- **Gotcha**: `getCookie()` from `@tanstack/react-start/server` returned nothing inside a server *route* handler (401 for a logged-in admin); parse `request.headers.get('cookie')` instead.
+
+---
+
+_(Next Agent: Append Lesson 71, 72,... above this line upon completing tasks)_
 

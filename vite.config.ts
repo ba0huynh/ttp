@@ -12,9 +12,14 @@ import { nitro } from 'nitro/vite'
 // `PORT` in .env sets the dev/preview server port (default 3000). The
 // production server (`npm run start`) reads the same variable via Nitro.
 const config = defineConfig(({ mode }) => {
-  const port = Number(loadEnv(mode, process.cwd(), '').PORT) || 3000
+  const env = loadEnv(mode, process.cwd(), '')
+  const port = Number(env.PORT) || 3000
 
   return {
+    // APP_URL (.env) is the public address of the app, used to build image URLs
+    define: {
+      'import.meta.env.VITE_APP_URL': JSON.stringify(env.APP_URL ?? ''),
+    },
     server: { port, strictPort: true },
     preview: { port, strictPort: true },
     resolve: { tsconfigPaths: true },

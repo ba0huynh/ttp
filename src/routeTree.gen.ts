@@ -23,6 +23,7 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ApiUploadsRouteImport } from './routes/api.uploads'
 import { Route as BatchesIndexRouteImport } from './routes/batches.index'
 import { Route as BatchesBatchIdRouteImport } from './routes/batches.$batchId'
 import { Route as BatchesNewRouteImport } from './routes/batches.new'
@@ -33,6 +34,7 @@ import { Route as LoansLoanIdRouteImport } from './routes/loans.$loanId'
 import { Route as SalesIndexRouteImport } from './routes/sales.index'
 import { Route as SalesOrderIdRouteImport } from './routes/sales.$orderId'
 import { Route as SalesNewRouteImport } from './routes/sales.new'
+import { Route as UploadsSplatRouteImport } from './routes/uploads.$'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -104,6 +106,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiUploadsRoute = ApiUploadsRouteImport.update({
+  id: '/api/uploads',
+  path: '/api/uploads',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const BatchesIndexRoute = BatchesIndexRouteImport.update({
   id: '/',
   path: '/',
@@ -154,6 +161,11 @@ const SalesNewRoute = SalesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => SalesRoute,
 } as any)
+const UploadsSplatRoute = UploadsSplatRouteImport.update({
+  id: '/uploads/$',
+  path: '/uploads/$',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -170,12 +182,14 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/api/uploads': typeof ApiUploadsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/loans/$loanId': typeof LoansLoanIdRoute
   '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
+  '/uploads/$': typeof UploadsSplatRoute
   '/batches/': typeof BatchesIndexRoute
   '/customers/': typeof CustomersIndexRoute
   '/loans/': typeof LoansIndexRoute
@@ -192,12 +206,14 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/api/uploads': typeof ApiUploadsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/loans/$loanId': typeof LoansLoanIdRoute
   '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
+  '/uploads/$': typeof UploadsSplatRoute
   '/batches': typeof BatchesIndexRoute
   '/customers': typeof CustomersIndexRoute
   '/loans': typeof LoansIndexRoute
@@ -219,12 +235,14 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/api/uploads': typeof ApiUploadsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
   '/customers/$customerId': typeof CustomersCustomerIdRoute
   '/loans/$loanId': typeof LoansLoanIdRoute
   '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
+  '/uploads/$': typeof UploadsSplatRoute
   '/batches/': typeof BatchesIndexRoute
   '/customers/': typeof CustomersIndexRoute
   '/loans/': typeof LoansIndexRoute
@@ -247,12 +265,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sales'
     | '/settings'
+    | '/api/uploads'
     | '/batches/$batchId'
     | '/batches/new'
     | '/customers/$customerId'
     | '/loans/$loanId'
     | '/sales/$orderId'
     | '/sales/new'
+    | '/uploads/$'
     | '/batches/'
     | '/customers/'
     | '/loans/'
@@ -269,12 +289,14 @@ export interface FileRouteTypes {
     | '/reports'
     | '/reset-password'
     | '/settings'
+    | '/api/uploads'
     | '/batches/$batchId'
     | '/batches/new'
     | '/customers/$customerId'
     | '/loans/$loanId'
     | '/sales/$orderId'
     | '/sales/new'
+    | '/uploads/$'
     | '/batches'
     | '/customers'
     | '/loans'
@@ -295,12 +317,14 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sales'
     | '/settings'
+    | '/api/uploads'
     | '/batches/$batchId'
     | '/batches/new'
     | '/customers/$customerId'
     | '/loans/$loanId'
     | '/sales/$orderId'
     | '/sales/new'
+    | '/uploads/$'
     | '/batches/'
     | '/customers/'
     | '/loans/'
@@ -322,6 +346,8 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SalesRoute: typeof SalesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
+  ApiUploadsRoute: typeof ApiUploadsRoute
+  UploadsSplatRoute: typeof UploadsSplatRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -424,6 +450,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SettingsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/api/uploads': {
+      id: '/api/uploads'
+      path: '/api/uploads'
+      fullPath: '/api/uploads'
+      preLoaderRoute: typeof ApiUploadsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/batches/': {
       id: '/batches/'
       path: '/'
@@ -493,6 +526,13 @@ declare module '@tanstack/react-router' {
       fullPath: '/sales/new'
       preLoaderRoute: typeof SalesNewRouteImport
       parentRoute: typeof SalesRoute
+    }
+    '/uploads/$': {
+      id: '/uploads/$'
+      path: '/uploads/$'
+      fullPath: '/uploads/$'
+      preLoaderRoute: typeof UploadsSplatRouteImport
+      parentRoute: typeof rootRouteImport
     }
   }
 }
@@ -567,6 +607,8 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SalesRoute: SalesRouteWithChildren,
   SettingsRoute: SettingsRoute,
+  ApiUploadsRoute: ApiUploadsRoute,
+  UploadsSplatRoute: UploadsSplatRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
