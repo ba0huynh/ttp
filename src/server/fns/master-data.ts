@@ -10,7 +10,10 @@ import {
   motorcycleModels,
   suppliers,
 } from '#/db/schema.ts'
-import { isDuplicateError } from '#/server/services/common.ts'
+import {
+  isDuplicateError,
+  isReferencedError,
+} from '#/server/services/common.ts'
 import { authMiddleware, requirePermission } from './middleware.ts'
 
 const opt = z.string().trim().nullable().optional()
@@ -19,10 +22,11 @@ const wrapDup = async <T>(fn: () => Promise<T>) => {
   try {
     return await fn()
   } catch (e) {
-    if (isDuplicateError(e)) throw new Error('Mã/số hiệu đã tồn tại')
-    const msg = String((e as Error).message ?? '')
-    if (msg.includes('foreign key') || msg.includes('ER_ROW_IS_REFERENCED'))
-      throw new Error('Không thể xóa vì đang được sử dụng ở chứng từ khác')
+    if (isDuplicateError(e)) throw new Error('Dữ liệu này đã tồn tại')
+    if (isReferencedError(e))
+      throw new Error(
+        'Không thể xóa vì đang được sử dụng ở lô nhập, phiếu bán hoặc chứng từ khác',
+      )
     throw e
   }
 }

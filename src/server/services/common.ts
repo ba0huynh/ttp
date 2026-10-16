@@ -41,4 +41,29 @@ export function isDuplicateError(e: unknown) {
   return err.code === 'ER_DUP_ENTRY' || err.cause?.code === 'ER_DUP_ENTRY'
 }
 
+/**
+ * Drizzle wraps driver errors as "Failed query: ..." and keeps the mysql2 error
+ * in `cause`, so look through the whole cause chain.
+ */
+function mysqlCodes(e: unknown): { code?: string; errno?: number }[] {
+  const out: { code?: string; errno?: number }[] = []
+  let cur: unknown = e
+  for (let i = 0; i < 5 && cur && typeof cur === 'object'; i++) {
+    const err = cur as { code?: string; errno?: number; cause?: unknown }
+    out.push({ code: err.code, errno: err.errno })
+    cur = err.cause
+  }
+  return out
+}
+
+/** Deleting / changing a row that other rows still point to (MySQL 1451) */
+export function isReferencedError(e: unknown) {
+  return mysqlCodes(e).some(
+    (c) =>
+      c.errno === 1451 ||
+      c.code === 'ER_ROW_IS_REFERENCED' ||
+      c.code === 'ER_ROW_IS_REFERENCED_2',
+  )
+}
+
 export const num = (v: unknown) => Number(v ?? 0)

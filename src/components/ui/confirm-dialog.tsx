@@ -73,6 +73,9 @@ export function formatErrorMessage(
   const raw = err instanceof Error ? err.message : String(err)
   if (!raw) return fallback
 
+  // Never show raw SQL ("Failed query: delete from ...") to the user
+  if (raw.startsWith('Failed query')) return fallback
+
   const trimmed = raw.trim()
   try {
     if (

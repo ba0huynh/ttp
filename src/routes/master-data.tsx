@@ -353,7 +353,7 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {modelsPg.pageItems.map((m) => (
                       <TableRow key={m.id}>
-                        <TableCell className="font-semibold text-slate-800">
+                        <TableCell className="font-medium text-slate-900">
                           {m.name}
                         </TableCell>
                         <TableCell>
@@ -411,7 +411,7 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {suppliersPg.pageItems.map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell className="font-bold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {s.name}
                         </TableCell>
                         <TableCell>
@@ -467,7 +467,7 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {banksPg.pageItems.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           <BankLabel image={b.image} name={b.name}>
                             {b.name}
                           </BankLabel>
@@ -526,18 +526,18 @@ function MasterDataPage() {
                   <TableBody className="text-xs">
                     {accountsPg.pageItems.map((a) => (
                       <TableRow key={a.id}>
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {a.accountName}
                         </TableCell>
-                        <TableCell className="text-slate-800">
+                        <TableCell className="font-medium text-slate-900">
                           <BankLabel image={a.bankImage} name={a.bankName}>
                             {a.bankName}
                           </BankLabel>
                         </TableCell>
-                        <TableCell className="font-mono font-bold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {a.accountNumber}
                         </TableCell>
-                        <TableCell className="text-slate-600">
+                        <TableCell className="font-medium text-slate-900">
                           {a.branch || '—'}
                         </TableCell>
                         <TableCell className="text-center">
@@ -622,7 +622,7 @@ function MasterDataPage() {
                     {colorsPg.pageItems.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell>
-                          <div className="flex items-center gap-2 font-semibold text-slate-800">
+                          <div className="flex items-center gap-2 font-medium text-slate-900">
                             {c.hex && (
                               <span
                                 className="size-3.5 rounded-full inline-block border border-slate-300"
