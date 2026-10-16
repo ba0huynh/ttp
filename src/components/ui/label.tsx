@@ -4,8 +4,11 @@ import * as React from 'react'
 import { cn } from 'cn'
 import { Label as LabelPrimitive } from 'radix-ui'
 
+import { markRequired } from '#/components/ui/required-mark.tsx'
+
 function Label({
   className,
+  children,
   ...props
 }: React.ComponentProps<typeof LabelPrimitive.Root>) {
   return (
@@ -16,7 +19,9 @@ function Label({
         className,
       )}
       {...props}
-    />
+    >
+      {markRequired(children)}
+    </LabelPrimitive.Root>
   )
 }
 

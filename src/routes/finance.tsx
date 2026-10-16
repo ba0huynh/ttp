@@ -466,14 +466,14 @@ function FinancePage() {
                   required
                   value={receiptDate}
                   onChange={(e) => setReceiptDate(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Khách Hàng Mẹ *</Label>
                 <SearchSelect
-                  className="h-8 w-full text-xs"
+                  className="h-11 w-full text-sm rounded-lg"
                   value={String(receiptCustomerId)}
                   onValueChange={(val) => {
                     setReceiptCustomerId(Number(val))
@@ -497,7 +497,7 @@ function FinancePage() {
                   Điểm Bán Thanh Toán (Công nợ trừ theo pháp nhân này)
                 </Label>
                 <SearchSelect
-                  className="h-8 w-full text-xs"
+                  className="h-11 w-full text-sm rounded-lg"
                   placeholder="Chọn chi nhánh/điểm bán"
                   value={receiptBranchId ? String(receiptBranchId) : 'none'}
                   onValueChange={(val) =>
@@ -527,7 +527,7 @@ function FinancePage() {
                   required
                   value={receiptAmount}
                   onValueChange={setReceiptAmount}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
@@ -537,7 +537,7 @@ function FinancePage() {
                     Tài Khoản Nhận
                   </Label>
                   <SearchSelect
-                    className="h-8 w-full text-xs"
+                    className="h-11 w-full text-sm rounded-lg"
                     value={receiptAccountId ? String(receiptAccountId) : 'none'}
                     onValueChange={(val) =>
                       setReceiptAccountId(val === 'none' ? null : Number(val))
@@ -607,7 +607,7 @@ function FinancePage() {
                   required
                   value={paymentDate}
                   onChange={(e) => setPaymentDate(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
@@ -616,7 +616,7 @@ function FinancePage() {
                   Nhà Cung Cấp Thụ Hưởng *
                 </Label>
                 <SearchSelect
-                  className="h-8 w-full text-xs"
+                  className="h-11 w-full text-sm rounded-lg"
                   value={String(paymentSupplierId)}
                   onValueChange={(val) => setPaymentSupplierId(Number(val))}
                 >
@@ -640,14 +640,14 @@ function FinancePage() {
                   required
                   value={paymentAmount}
                   onValueChange={setPaymentAmount}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tài Khoản Chi</Label>
                 <SearchSelect
-                  className="h-8 w-full text-xs"
+                  className="h-11 w-full text-sm rounded-lg"
                   value={paymentAccountId ? String(paymentAccountId) : 'none'}
                   onValueChange={(val) =>
                     setPaymentAccountId(val === 'none' ? null : Number(val))
@@ -681,7 +681,7 @@ function FinancePage() {
                   placeholder="Thanh toán đợt 1 tiền hàng..."
                   maxLength={255}
                   rows={2}
-                  className="min-h-16 text-xs"
+                  className="h-11 min-h-16 text-sm px-4 rounded-lg"
                 />
               </div>
 

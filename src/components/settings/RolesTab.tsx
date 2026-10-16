@@ -254,7 +254,7 @@ export function RolesTab({
                   required
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Ví dụ: Trưởng kho"
                 />
               </div>
@@ -265,7 +265,7 @@ export function RolesTab({
                   onChange={(e) => setDescription(e.target.value)}
                   maxLength={255}
                   rows={2}
-                  className="min-h-16 text-xs"
+                  className="h-11 min-h-16 text-sm px-4 rounded-lg"
                 />
               </div>
             </div>

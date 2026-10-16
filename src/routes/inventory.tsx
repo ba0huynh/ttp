@@ -145,7 +145,7 @@ function InventoryPage() {
                   placeholder="Tìm theo số khung, số máy, dòng xe..."
                   value={search}
                   onChange={(e) => setSearch(e.target.value)}
-                  className="pl-9 h-9 text-xs"
+                  className="pl-9 h-11 text-sm rounded-lg"
                 />
               </div>
 

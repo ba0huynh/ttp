@@ -5,11 +5,8 @@ import {
   getRequestUrl,
   setCookie,
 } from '@tanstack/react-start/server'
-import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
-import { db } from '#/db/index.ts'
-import { users } from '#/db/schema.ts'
 import {
   SESSION_COOKIE,
   authenticate,
@@ -17,15 +14,13 @@ import {
   createSession,
   deleteSession,
   getUserBySessionToken,
-  hashPassword,
   resetPasswordWithToken,
-  verifyPassword,
 } from '#/server/services/auth.ts'
 import {
   isMailConfigured,
   sendPasswordResetMail,
 } from '#/server/services/mail.ts'
-import { authMiddleware, loggingMiddleware } from './middleware.ts'
+import { loggingMiddleware } from './middleware.ts'
 
 const cookieOpts = (expires: Date) => ({
   httpOnly: true,
@@ -118,27 +113,5 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
     const ok = await resetPasswordWithToken(data.token, data.password)
     if (!ok)
       throw new Error('Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn')
-    return { ok: true }
-  })
-
-export const changePasswordFn = createServerFn({ method: 'POST' })
-  .middleware([authMiddleware])
-  .validator(
-    z.object({
-      currentPassword: z.string().min(1),
-      newPassword: z.string().min(8, 'Mật khẩu mới tối thiểu 8 ký tự'),
-    }),
-  )
-  .handler(async ({ data, context }) => {
-    const [u] = await db
-      .select()
-      .from(users)
-      .where(eq(users.id, context.user.id))
-    if (!u || !(await verifyPassword(data.currentPassword, u.passwordHash)))
-      throw new Error('Mật khẩu hiện tại không đúng')
-    await db
-      .update(users)
-      .set({ passwordHash: await hashPassword(data.newPassword) })
-      .where(eq(users.id, u.id))
     return { ok: true }
   })

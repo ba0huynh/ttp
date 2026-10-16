@@ -1,5 +1,6 @@
 import * as React from 'react'
 import { cn } from 'cn'
+import { markRequired } from '#/components/ui/required-mark.tsx'
 
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
   return (
@@ -65,7 +66,11 @@ function TableRow({ className, ...props }: React.ComponentProps<'tr'>) {
   )
 }
 
-function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
+function TableHead({
+  className,
+  children,
+  ...props
+}: React.ComponentProps<'th'>) {
   return (
     <th
       data-slot="table-head"
@@ -74,7 +79,9 @@ function TableHead({ className, ...props }: React.ComponentProps<'th'>) {
         className,
       )}
       {...props}
-    />
+    >
+      {markRequired(children)}
+    </th>
   )
 }
 

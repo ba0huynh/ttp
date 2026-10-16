@@ -122,7 +122,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
         <div className="space-y-1">
           <Label className="text-[11px]">Khế ước vay</Label>
           <SearchSelect
-            className="h-8 w-full text-xs bg-white"
+            className="h-11 w-full text-sm bg-white rounded-lg"
             value={loanId ? String(loanId) : 'none'}
             onValueChange={(v) => setLoanId(v === 'none' ? null : Number(v))}
           >
@@ -135,12 +135,12 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
           </SearchSelect>
         </div>
         <div className="space-y-1">
-          <Label className="text-[11px]">Ngày nhập</Label>
+          <Label className="text-[11px]">Ngày nhập *</Label>
           <Input
             type="date"
             value={importDate}
             onChange={(e) => setImportDate(e.target.value)}
-            className="h-8 text-xs"
+            className="h-11 text-sm px-4 rounded-lg"
           />
         </div>
       </div>
@@ -211,7 +211,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
         <div className="space-y-1">
           <Label className="text-[11px]">Gốc tính giá</Label>
           <Select value={base} onValueChange={(v) => setBase(v as PricingBase)}>
-            <SelectTrigger className="h-8 w-full text-xs bg-white">
+            <SelectTrigger className="h-11 w-full text-sm bg-white rounded-lg">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -226,7 +226,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
             value={method}
             onValueChange={(v) => setMethod(v as PricingMethod)}
           >
-            <SelectTrigger className="h-8 w-full text-xs bg-white">
+            <SelectTrigger className="h-11 w-full text-sm bg-white rounded-lg">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -244,13 +244,13 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
               maxDecimals={2}
               value={value}
               onValueChange={setValue}
-              className="h-8 text-xs"
+              className="h-11 text-sm px-4 rounded-lg"
             />
           ) : (
             <MoneyInput
               value={value}
               onValueChange={setValue}
-              className="h-8 text-xs"
+              className="h-11 text-sm px-4 rounded-lg"
             />
           )}
         </div>
@@ -371,7 +371,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
         <SearchSelect
-          className="h-8 w-full text-xs bg-white"
+          className="h-11 w-full text-sm bg-white rounded-lg"
           placeholder="Loại chi phí"
           value={typeId ? String(typeId) : ''}
           onValueChange={(v) => setTypeId(Number(v))}
@@ -386,13 +386,13 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
           placeholder="Diễn giải"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="h-8 text-xs"
+          className="h-11 text-sm px-4 rounded-lg"
         />
         <MoneyInput
           placeholder="Số tiền"
           value={amount || ''}
           onValueChange={setAmount}
-          className="h-8 text-xs"
+          className="h-11 text-sm px-4 rounded-lg"
         />
         <Button
           size="sm"
@@ -566,7 +566,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       </div>
       <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
         <SearchSelect
-          className="h-8 w-full text-xs bg-white"
+          className="h-11 w-full text-sm bg-white rounded-lg"
           placeholder="Dòng xe"
           value={effModel ? String(effModel) : ''}
           onValueChange={(v) => setModelId(Number(v))}
@@ -578,7 +578,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           ))}
         </SearchSelect>
         <SearchSelect
-          className="h-8 w-full text-xs bg-white"
+          className="h-11 w-full text-sm bg-white rounded-lg"
           placeholder="Màu xe"
           value={effColor ? String(effColor) : ''}
           onValueChange={(v) => setColorId(Number(v))}
@@ -593,19 +593,19 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           placeholder="Số khung"
           value={chassis}
           onChange={(e) => setChassis(e.target.value)}
-          className="h-8 text-xs"
+          className="h-11 text-sm px-4 rounded-lg"
         />
         <Input
           placeholder="Số máy"
           value={engine}
           onChange={(e) => setEngine(e.target.value)}
-          className="h-8 text-xs"
+          className="h-11 text-sm px-4 rounded-lg"
         />
         <MoneyInput
           placeholder="Đơn giá nhập"
           value={price || ''}
           onValueChange={setPrice}
-          className="h-8 text-xs"
+          className="h-11 text-sm px-4 rounded-lg"
         />
         <Button
           size="sm"

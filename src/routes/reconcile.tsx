@@ -200,7 +200,7 @@ function ReconcilePage() {
           <div className="max-w-2xl space-y-1.5">
             <Label className="text-xs font-semibold">Sao kê</Label>
             <SearchSelect
-              className="h-10 w-full bg-card text-sm"
+              className="h-11 w-full bg-card text-sm rounded-lg"
               placeholder="Chọn sao kê"
               value={selectedStatementId ? String(selectedStatementId) : ''}
               onValueChange={(v) => setSelectedStatementId(Number(v))}

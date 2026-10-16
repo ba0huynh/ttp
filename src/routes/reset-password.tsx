@@ -91,7 +91,7 @@ function ResetPasswordPage() {
               autoComplete="new-password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="text-sm h-9"
+              className="text-sm h-11 px-4 rounded-lg"
             />
           </div>
           <div className="space-y-1.5">
@@ -104,7 +104,7 @@ function ResetPasswordPage() {
               autoComplete="new-password"
               value={confirm}
               onChange={(e) => setConfirm(e.target.value)}
-              className="text-sm h-9"
+              className="text-sm h-11 px-4 rounded-lg"
             />
           </div>
         </CardContent>

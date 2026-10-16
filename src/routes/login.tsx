@@ -61,7 +61,7 @@ function LoginPage() {
                 value={login}
                 onChange={(e) => setLogin(e.target.value)}
                 placeholder="admin hoặc email..."
-                className="pl-9 h-10"
+                className="pl-9 h-11 rounded-lg"
               />
             </div>
           </div>
@@ -87,7 +87,7 @@ function LoginPage() {
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="pl-9 h-10"
+                className="pl-9 h-11 rounded-lg"
               />
             </div>
           </div>

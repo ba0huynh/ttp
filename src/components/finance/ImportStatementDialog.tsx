@@ -193,9 +193,11 @@ export function ImportStatementDialog({
           )}
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-semibold">Tài khoản ngân hàng</Label>
+            <Label className="text-xs font-semibold">
+              Tài khoản ngân hàng *
+            </Label>
             <SearchSelect
-              className="h-8 w-full text-xs"
+              className="h-11 w-full text-sm rounded-lg"
               placeholder="Chọn tài khoản"
               value={effectiveAccountId ? String(effectiveAccountId) : ''}
               onValueChange={(val) => setAccountId(Number(val))}
@@ -248,7 +250,7 @@ export function ImportStatementDialog({
                             update(r.key, { date: e.target.value })
                           }
                           onPaste={handlePaste}
-                          className="h-8 text-xs"
+                          className="h-11 text-sm px-4 rounded-lg"
                         />
                       </TableCell>
                       <TableCell>
@@ -259,7 +261,7 @@ export function ImportStatementDialog({
                           }
                           onPaste={handlePaste}
                           placeholder="Nội dung giao dịch"
-                          className="h-8 text-xs"
+                          className="h-11 text-sm px-4 rounded-lg"
                         />
                       </TableCell>
                       <TableCell>
@@ -274,7 +276,7 @@ export function ImportStatementDialog({
                             })
                           }
                           onPaste={handlePaste}
-                          className="h-8 text-right text-xs"
+                          className="h-11 text-right text-sm px-4 rounded-lg"
                         />
                       </TableCell>
                       <TableCell>
@@ -288,7 +290,7 @@ export function ImportStatementDialog({
                             })
                           }
                           onPaste={handlePaste}
-                          className="h-8 text-right text-xs"
+                          className="h-11 text-right text-sm px-4 rounded-lg"
                         />
                       </TableCell>
                       <TableCell>

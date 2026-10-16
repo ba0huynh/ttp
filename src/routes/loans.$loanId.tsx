@@ -322,7 +322,7 @@ function LoanDetailPage() {
                       required
                       value={repayDate}
                       onChange={(e) => setRepayDate(e.target.value)}
-                      className="h-8 text-xs"
+                      className="h-11 text-sm px-4 rounded-lg"
                     />
                   </div>
 
@@ -333,7 +333,7 @@ function LoanDetailPage() {
                     <MoneyInput
                       value={repayPrincipal}
                       onValueChange={setRepayPrincipal}
-                      className="h-8 text-xs"
+                      className="h-11 text-sm px-4 rounded-lg"
                     />
                   </div>
 
@@ -344,7 +344,7 @@ function LoanDetailPage() {
                     <MoneyInput
                       value={repayInterest}
                       onValueChange={setRepayInterest}
-                      className="h-8 text-xs"
+                      className="h-11 text-sm px-4 rounded-lg"
                     />
                   </div>
 
@@ -353,7 +353,7 @@ function LoanDetailPage() {
                       Tài Khoản Chi Tiền
                     </Label>
                     <SearchSelect
-                      className="w-full h-8 text-xs bg-white"
+                      className="w-full h-11 text-sm bg-white rounded-lg"
                       value={
                         repayBankAccountId ? String(repayBankAccountId) : 'none'
                       }

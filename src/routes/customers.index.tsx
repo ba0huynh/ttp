@@ -200,7 +200,7 @@ function CustomersPage() {
                   placeholder="CÔNG TY TNHH..."
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 

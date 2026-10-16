@@ -106,7 +106,7 @@ export function TablePagination<T>({
             value={String(p.pageSize)}
             onValueChange={(v) => p.setPageSize(Number(v))}
           >
-            <SelectTrigger className="h-7 w-[4.5rem] text-xs">
+            <SelectTrigger className="h-9 w-[4.5rem] text-sm rounded-lg">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>

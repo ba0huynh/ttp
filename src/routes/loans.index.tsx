@@ -291,7 +291,7 @@ function LoansPage() {
                   required
                   value={contractNumber}
                   onChange={(e) => setContractNumber(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
@@ -300,7 +300,7 @@ function LoansPage() {
                   Ngân Hàng Thương Mại *
                 </Label>
                 <SearchSelect
-                  className="h-8 w-full text-xs"
+                  className="h-11 w-full text-sm rounded-lg"
                   value={String(bankId)}
                   onValueChange={(val) => setBankId(Number(val))}
                 >
@@ -328,7 +328,7 @@ function LoansPage() {
                     required
                     value={principalAmount}
                     onValueChange={setPrincipalAmount}
-                    className="h-8 text-xs"
+                    className="h-11 text-sm px-4 rounded-lg"
                   />
                 </div>
 
@@ -341,7 +341,7 @@ function LoansPage() {
                     required
                     value={interestRate}
                     onValueChange={setInterestRate}
-                    className="h-8 text-xs"
+                    className="h-11 text-sm px-4 rounded-lg"
                   />
                 </div>
               </div>
@@ -356,7 +356,7 @@ function LoansPage() {
                     required
                     value={disbursementDate}
                     onChange={(e) => setDisbursementDate(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-11 text-sm px-4 rounded-lg"
                   />
                 </div>
 
@@ -365,7 +365,7 @@ function LoansPage() {
                   <SearchSelect
                     value={String(termMonths)}
                     onValueChange={(v) => setTermMonths(Number(v))}
-                    className="h-8 w-full text-xs"
+                    className="h-11 w-full text-sm rounded-lg"
                     placeholder="Chọn kỳ hạn"
                   >
                     {TERM_OPTIONS.map((n) => (

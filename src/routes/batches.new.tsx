@@ -334,7 +334,7 @@ function NewBatchPage() {
                     required
                     value={importDate}
                     onChange={(e) => setImportDate(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-11 text-sm px-4 rounded-lg"
                   />
                 </div>
 
@@ -343,7 +343,7 @@ function NewBatchPage() {
                     Nhà Cung Cấp *
                   </Label>
                   <SearchSelect
-                    className="h-8 w-full text-xs"
+                    className="h-11 w-full text-sm rounded-lg"
                     placeholder="Chọn nhà cung cấp"
                     value={String(supplierId)}
                     onValueChange={(val) => setSupplierId(Number(val))}
@@ -363,7 +363,7 @@ function NewBatchPage() {
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Khế Ước Vay</Label>
                   <SearchSelect
-                    className="h-8 w-full text-xs"
+                    className="h-11 w-full text-sm rounded-lg"
                     placeholder="Chọn khế ước vay (nếu có)"
                     value={loanContractId ? String(loanContractId) : 'none'}
                     onValueChange={(val) =>
@@ -418,10 +418,10 @@ function NewBatchPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Loại Chi Phí</TableHead>
+                      <TableHead>Loại Chi Phí *</TableHead>
                       <TableHead>Mô Tả Chi Tiết</TableHead>
                       <TableHead className="text-right w-40">
-                        Số Tiền (VNĐ)
+                        Số Tiền (VNĐ) *
                       </TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
@@ -431,7 +431,7 @@ function NewBatchPage() {
                       <TableRow key={e.id}>
                         <TableCell className="w-48">
                           <SearchSelect
-                            className="h-7 w-full text-xs"
+                            className="h-9 w-full text-sm rounded-lg"
                             placeholder="Chọn loại..."
                             value={
                               e.expenseTypeId ? String(e.expenseTypeId) : ''
@@ -462,7 +462,7 @@ function NewBatchPage() {
                               updated[idx].description = ev.target.value
                               setExpenses(updated)
                             }}
-                            className="h-7 text-xs"
+                            className="h-9 text-sm px-4 rounded-lg"
                           />
                         </TableCell>
                         <TableCell className="text-right">
@@ -473,7 +473,7 @@ function NewBatchPage() {
                               updated[idx].amount = n
                               setExpenses(updated)
                             }}
-                            className="h-7 text-xs text-right"
+                            className="h-9 text-sm text-right px-4 rounded-lg"
                           />
                         </TableCell>
                         <TableCell>
@@ -525,10 +525,10 @@ function NewBatchPage() {
                       <TableRow className="text-xs bg-slate-50">
                         <TableHead className="w-36">Số Khung *</TableHead>
                         <TableHead className="w-32">Số Máy *</TableHead>
-                        <TableHead>Dòng xe</TableHead>
-                        <TableHead className="w-28">Màu xe</TableHead>
+                        <TableHead>Dòng xe *</TableHead>
+                        <TableHead className="w-28">Màu xe *</TableHead>
                         <TableHead className="text-right w-36">
-                          Đơn Giá Nhập
+                          Đơn Giá Nhập *
                         </TableHead>
                         <TableHead className="w-10"></TableHead>
                       </TableRow>
@@ -545,7 +545,7 @@ function NewBatchPage() {
                                 updated[idx].chassisNumber = ev.target.value
                                 setVehicles(updated)
                               }}
-                              className="h-7 text-xs"
+                              className="h-9 text-sm px-4 rounded-lg"
                             />
                           </TableCell>
                           <TableCell>
@@ -557,12 +557,12 @@ function NewBatchPage() {
                                 updated[idx].engineNumber = ev.target.value
                                 setVehicles(updated)
                               }}
-                              className="h-7 text-xs"
+                              className="h-9 text-sm px-4 rounded-lg"
                             />
                           </TableCell>
                           <TableCell>
                             <SearchSelect
-                              className="h-7 w-full text-xs"
+                              className="h-9 w-full text-sm rounded-lg"
                               value={String(v.modelId)}
                               onValueChange={(val) => {
                                 const updated = [...vehicles]
@@ -583,7 +583,7 @@ function NewBatchPage() {
                           </TableCell>
                           <TableCell>
                             <SearchSelect
-                              className="h-7 w-full text-xs"
+                              className="h-9 w-full text-sm rounded-lg"
                               value={String(v.colorId)}
                               onValueChange={(val) => {
                                 const updated = [...vehicles]
@@ -611,7 +611,7 @@ function NewBatchPage() {
                                 updated[idx].importPrice = n
                                 setVehicles(updated)
                               }}
-                              className="h-7 text-xs text-right"
+                              className="h-9 text-sm text-right px-4 rounded-lg"
                             />
                           </TableCell>
                           <TableCell>
@@ -656,7 +656,7 @@ function NewBatchPage() {
                     value={pricingBase}
                     onValueChange={(val: any) => setPricingBase(val)}
                   >
-                    <SelectTrigger className="h-8 w-full text-xs">
+                    <SelectTrigger className="h-11 w-full text-sm rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -678,7 +678,7 @@ function NewBatchPage() {
                     value={pricingMethod}
                     onValueChange={(val: any) => setPricingMethod(val)}
                   >
-                    <SelectTrigger className="h-8 w-full text-xs">
+                    <SelectTrigger className="h-11 w-full text-sm rounded-lg">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
@@ -703,13 +703,13 @@ function NewBatchPage() {
                       maxDecimals={2}
                       value={pricingValue}
                       onValueChange={setPricingValue}
-                      className="h-8 text-xs"
+                      className="h-11 text-sm px-4 rounded-lg"
                     />
                   ) : (
                     <MoneyInput
                       value={pricingValue}
                       onValueChange={setPricingValue}
-                      className="h-8 text-xs"
+                      className="h-11 text-sm px-4 rounded-lg"
                     />
                   )}
                 </div>

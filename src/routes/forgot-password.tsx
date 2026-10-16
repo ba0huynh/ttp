@@ -78,7 +78,7 @@ function ForgotPasswordPage() {
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              className="text-sm h-9"
+              className="text-sm h-11 px-4 rounded-lg"
             />
           </div>
         </CardContent>

@@ -759,5 +759,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 67, 68,... above this line upon completing tasks)_
+### Lesson 67: Settings Menu Split, No Change-Password Tab, Red Asterisks, Roomier Inputs
+
+- **Sidebar**: new group "Hệ thống" with a sub menu **Người dùng & Phân quyền** (children "Quản lý người dùng" -> `/settings?tab=users`, "Vai trò & phân quyền" -> `/settings?tab=roles`) and **Cài đặt** (`/settings?tab=company`). `NavItem` has `tab` and `children`; `matches(item, path, tab)` compares the `?tab=` value (/settings without a tab counts as `company`), so items sharing one path highlight correctly. The /settings page has no tab bar any more; its title and subtitle follow the active tab (`PAGE_TITLES`).
+- **Change password removed**: the "Đổi Mật Khẩu" tab and `changePasswordFn` are gone; users who forget a password use /forgot-password (email link), admins can set a new one in the user dialog.
+- **Red asterisk (every form)**: a field gets " *" when the user must fill it (native `required` or a check in the submit handler/server validator), including table headers of editable rows (`/batches/new`). Optional fields get none. `Label` and `TableHead` run their children through `markRequired` (`src/components/ui/required-mark.tsx`): a string ending in "*" ("Tên Doanh Nghiệp *") renders the star in red. Just keep writing the star in the text.
+- **Input size (whole app)**: every form control is roomy: base `Input` / `SearchSelect` trigger / `SelectTrigger` are `h-11 rounded-lg px-4 text-sm` with a solid `bg-card` background, `Textarea` is `min-h-24 px-4 py-3`. Do not add `h-8 text-xs` to a control; the only smaller size is `h-9` for inputs inside table rows and the `SearchBox` in card headers. Buttons keep their compact sizes. When sweeping classes with a script, never run `prettier --write` on `src/db/migrations/meta` (it rewrites drizzle's snapshot JSON).
+
+---
+
+_(Next Agent: Append Lesson 68, 69,... above this line upon completing tasks)_
 

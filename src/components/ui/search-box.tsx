@@ -21,7 +21,7 @@ export function SearchBox({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="h-8 pl-8 text-xs"
+        className="h-9 pl-8 text-sm rounded-lg"
         autoComplete="off"
       />
     </div>

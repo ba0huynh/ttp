@@ -128,7 +128,7 @@ export function SearchSelect({
           disabled={disabled}
           data-placeholder={selected ? undefined : ''}
           className={cn(
-            'flex h-9 w-full max-w-full min-w-0 items-center justify-between gap-2 rounded-md border border-input bg-transparent px-3 py-2 text-left text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground dark:bg-input/30',
+            'flex h-11 w-full max-w-full min-w-0 items-center justify-between gap-2 rounded-lg border border-input bg-card px-4 py-2 text-left text-sm whitespace-nowrap shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-[3px] focus-visible:ring-ring/50 disabled:cursor-not-allowed disabled:opacity-50 data-[placeholder]:text-muted-foreground dark:bg-input/30',
             className,
           )}
         >
@@ -166,7 +166,7 @@ export function SearchSelect({
               }
             }}
             placeholder={searchPlaceholder}
-            className="h-8 text-xs"
+            className="h-11 text-sm px-4 rounded-lg"
           />
         </div>
         {/* Wheel events are stopped so scrolling works inside a modal dialog */}

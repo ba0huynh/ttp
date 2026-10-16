@@ -5,7 +5,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Building2, Lock, Plus, ShieldCheck, Trash2, Users } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -55,19 +55,13 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '#/components/ui/tabs.tsx'
+import { Tabs, TabsContent } from '#/components/ui/tabs.tsx'
 import { parseFieldErrors } from '#/lib/form-errors.ts'
 import type { FieldErrors } from '#/lib/form-errors.ts'
 import { hasPermission } from '#/lib/permissions.ts'
 import { matchesSearch } from '#/lib/text.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import { useUrlText } from '#/lib/use-url-text.ts'
-import { changePasswordFn } from '#/server/fns/auth.ts'
 import {
   companyProfileQuery,
   currentUserQuery,
@@ -84,7 +78,7 @@ import {
 export const Route = createFileRoute('/settings')({
   // The active tab lives in the URL (?tab=...) so a reload stays on it
   validateSearch: z.object({
-    tab: z.enum(['company', 'users', 'roles', 'password']).catch('company'),
+    tab: z.enum(['company', 'users', 'roles']).catch('company'),
     // search text of the users / roles list (cleared when the tab changes)
     q: z.string().optional().catch(undefined),
   }),
@@ -104,6 +98,22 @@ export const Route = createFileRoute('/settings')({
   },
   component: SettingsPage,
 })
+
+const PAGE_TITLES = {
+  company: {
+    title: 'Cài Đặt',
+    description: 'Thông tin pháp nhân Công ty Trường Thịnh Phát.',
+  },
+  users: {
+    title: 'Quản Lý Người Dùng',
+    description: 'Tạo tài khoản, gán vai trò và khóa hoặc xóa người dùng.',
+  },
+  roles: {
+    title: 'Vai Trò & Phân Quyền',
+    description:
+      'Quy định mỗi vai trò được xem và thao tác những chức năng nào.',
+  },
+} as const
 
 function SettingsPage() {
   const { user } = Route.useRouteContext()
@@ -148,7 +158,6 @@ function SettingsPage() {
         queryKey: companyProfileQuery().queryKey,
       }),
   })
-  const changePassword = useMutation({ mutationFn: changePasswordFn })
   const deleteUser = useMutation({
     mutationFn: deleteUserFn,
     onSuccess: () => queryClient.invalidateQueries(),
@@ -175,12 +184,6 @@ function SettingsPage() {
     company?.representative ?? 'Huỳnh Văn Thịnh',
   )
   const [companySuccess, setCompanySuccess] = React.useState(false)
-
-  // Change password form
-  const [currPass, setCurrPass] = React.useState('')
-  const [newPass, setNewPass] = React.useState('')
-  const [passError, setPassError] = React.useState<string | null>(null)
-  const [passSuccess, setPassSuccess] = React.useState(false)
 
   // Create/Edit User modal
   const [userModalOpen, setUserModalOpen] = React.useState(false)
@@ -235,25 +238,6 @@ function SettingsPage() {
       setCompanySuccess(true)
     } catch (err: unknown) {
       await showErrorDialog(err, 'Lỗi khi cập nhật công ty')
-    }
-  }
-
-  const handleChangePassword = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setPassError(null)
-    setPassSuccess(false)
-    try {
-      await changePassword.mutateAsync({
-        data: {
-          currentPassword: currPass,
-          newPassword: newPass,
-        },
-      })
-      setPassSuccess(true)
-      setCurrPass('')
-      setNewPass('')
-    } catch (err: unknown) {
-      setPassError((err as Error).message || 'Lỗi khi đổi mật khẩu')
     }
   }
 
@@ -350,11 +334,10 @@ function SettingsPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Cài Đặt Hệ Thống & Tài Khoản
+            {PAGE_TITLES[activeTab].title}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Thông tin pháp nhân Công ty Trường Thịnh Phát, phân quyền tài khoản
-            và mật khẩu bảo mật.
+            {PAGE_TITLES[activeTab].description}
           </p>
         </div>
 
@@ -365,41 +348,6 @@ function SettingsPage() {
           }
           className="space-y-4"
         >
-          <TabsList className="bg-slate-100 p-1">
-            <TabsTrigger
-              value="company"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Building2 className="size-3.5" />
-              Thông Tin Công Ty
-            </TabsTrigger>
-            {canUsers && (
-              <TabsTrigger
-                value="users"
-                className="text-xs font-semibold gap-1.5"
-              >
-                <Users className="size-3.5" />
-                Quản Lý Người Dùng ({usersList.length})
-              </TabsTrigger>
-            )}
-            {canRoles && (
-              <TabsTrigger
-                value="roles"
-                className="text-xs font-semibold gap-1.5"
-              >
-                <ShieldCheck className="size-3.5" />
-                Vai Trò & Phân Quyền ({rolesList.length})
-              </TabsTrigger>
-            )}
-            <TabsTrigger
-              value="password"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Lock className="size-3.5" />
-              Đổi Mật Khẩu
-            </TabsTrigger>
-          </TabsList>
-
           {/* Tab 1: Company Profile */}
           <TabsContent value="company">
             <Card className="border-slate-200 shadow-xs">
@@ -429,7 +377,7 @@ function SettingsPage() {
                       disabled={!canCompany}
                       value={cName}
                       onChange={(e) => setCName(e.target.value)}
-                      className="h-8 text-xs"
+                      className="h-11 rounded-lg px-4 text-sm"
                     />
                   </div>
 
@@ -442,7 +390,7 @@ function SettingsPage() {
                         disabled={!canCompany}
                         value={cTax}
                         onChange={(e) => setCTax(e.target.value)}
-                        className="h-8 text-xs"
+                        className="h-11 rounded-lg px-4 text-sm"
                       />
                     </div>
                     <div className="space-y-1">
@@ -453,7 +401,7 @@ function SettingsPage() {
                         disabled={!canCompany}
                         value={cRep}
                         onChange={(e) => setCRep(e.target.value)}
-                        className="h-8 text-xs"
+                        className="h-11 rounded-lg px-4 text-sm"
                       />
                     </div>
                   </div>
@@ -467,7 +415,7 @@ function SettingsPage() {
                       value={cAddress}
                       onChange={(e) => setCAddress(e.target.value)}
                       rows={2}
-                      className="min-h-16 text-xs"
+                      className="min-h-24 rounded-lg px-4 py-3 text-sm"
                     />
                   </div>
 
@@ -480,7 +428,7 @@ function SettingsPage() {
                         disabled={!canCompany}
                         value={cPhone}
                         onChange={(e) => setCPhone(e.target.value)}
-                        className="h-8 text-xs"
+                        className="h-11 rounded-lg px-4 text-sm"
                       />
                     </div>
                     <div className="space-y-1">
@@ -491,7 +439,7 @@ function SettingsPage() {
                         disabled={!canCompany}
                         value={cEmail}
                         onChange={(e) => setCEmail(e.target.value)}
-                        className="h-8 text-xs"
+                        className="h-11 rounded-lg px-4 text-sm"
                       />
                     </div>
                   </div>
@@ -650,75 +598,6 @@ function SettingsPage() {
               />
             </TabsContent>
           )}
-
-          {/* Tab 3: Change Password */}
-          <TabsContent value="password">
-            <Card className="border-slate-200 shadow-xs">
-              <CardHeader className="py-3 px-4 border-b border-slate-100">
-                <CardTitle className="text-sm font-bold text-slate-800">
-                  Đổi Mật Khẩu Cá Nhân
-                </CardTitle>
-                <CardDescription className="text-xs">
-                  Cập nhật mật khẩu định kỳ để tăng cường an toàn và bảo mật tài
-                  khoản
-                </CardDescription>
-              </CardHeader>
-              <form onSubmit={handleChangePassword}>
-                <CardContent className="p-4 space-y-3 text-xs">
-                  {passError && (
-                    <Alert variant="destructive" className="py-2 text-xs">
-                      <AlertDescription>{passError}</AlertDescription>
-                    </Alert>
-                  )}
-                  {passSuccess && (
-                    <Alert className="bg-emerald-50 text-emerald-900 border-emerald-300 py-2 text-xs">
-                      <AlertDescription>
-                        Đổi mật khẩu thành công!
-                      </AlertDescription>
-                    </Alert>
-                  )}
-
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">
-                        Mật Khẩu Hiện Tại *
-                      </Label>
-                      <PasswordInput
-                        required
-                        value={currPass}
-                        onChange={(e) => setCurrPass(e.target.value)}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-
-                    <div className="space-y-1">
-                      <Label className="text-xs font-semibold">
-                        Mật Khẩu Mới (Tối thiểu 8 ký tự) *
-                      </Label>
-                      <PasswordInput
-                        required
-                        value={newPass}
-                        onChange={(e) => setNewPass(e.target.value)}
-                        className="h-8 text-xs"
-                      />
-                    </div>
-                  </div>
-                </CardContent>
-                <CardFooter className="py-3 px-4 border-t border-slate-100 flex justify-end">
-                  <Button
-                    type="submit"
-                    disabled={changePassword.isPending}
-                    size="sm"
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
-                  >
-                    {changePassword.isPending
-                      ? 'Đang lưu...'
-                      : 'Cập Nhật Mật Khẩu'}
-                  </Button>
-                </CardFooter>
-              </form>
-            </Card>
-          </TabsContent>
         </Tabs>
 
         {/* Create/Edit User modal */}
@@ -751,7 +630,7 @@ function SettingsPage() {
                     setUUsername(e.target.value)
                     clearUError('username')
                   }}
-                  className="h-8 text-xs"
+                  className="h-11 rounded-lg px-4 text-sm"
                 />
                 {fieldError('username')}
               </div>
@@ -765,7 +644,7 @@ function SettingsPage() {
                     setUFullName(e.target.value)
                     clearUError('fullName')
                   }}
-                  className="h-8 text-xs"
+                  className="h-11 rounded-lg px-4 text-sm"
                 />
                 {fieldError('fullName')}
               </div>
@@ -780,7 +659,7 @@ function SettingsPage() {
                     setUEmail(e.target.value)
                     clearUError('email')
                   }}
-                  className="h-8 text-xs"
+                  className="h-11 rounded-lg px-4 text-sm"
                 />
                 {fieldError('email')}
               </div>
@@ -827,7 +706,7 @@ function SettingsPage() {
                     clearUError('password')
                   }}
                   placeholder={editId ? '••••••••' : 'Tối thiểu 8 ký tự'}
-                  className="h-8 text-xs"
+                  className="h-11 rounded-lg px-4 text-sm"
                 />
                 {fieldError('password')}
               </div>
@@ -845,7 +724,7 @@ function SettingsPage() {
                   variant="outline"
                   size="sm"
                   onClick={() => setUserModalOpen(false)}
-                  className="h-8 text-xs"
+                  className="h-11 rounded-lg px-4 text-sm"
                 >
                   Hủy
                 </Button>

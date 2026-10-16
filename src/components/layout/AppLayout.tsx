@@ -14,6 +14,7 @@ import {
   PieChart,
   Plus,
   Settings,
+  UserCog,
   Warehouse,
 } from 'lucide-react'
 import * as React from 'react'
@@ -33,6 +34,10 @@ import { logoutFn } from '#/server/fns/auth.ts'
 interface NavItem {
   title: string
   href: string
+  /** Tab of a tabbed page (`?tab=`) when several items share one path */
+  tab?: string
+  /** Sub menu: the item becomes a heading and its children are the links */
+  children?: NavItem[]
   icon: React.ComponentType<{ className?: string }>
   /** Hidden from the sidebar when the user lacks it (no value = everyone) */
   permission?: PermissionKey
@@ -117,15 +122,52 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
         icon: Boxes,
         permission: 'master-data.view',
       },
-      { title: 'Cài đặt công ty & User', href: '/settings', icon: Settings },
+    ],
+  },
+  {
+    group: 'Hệ thống',
+    items: [
+      {
+        title: 'Người dùng & Phân quyền',
+        href: '/settings',
+        icon: UserCog,
+        children: [
+          {
+            title: 'Quản lý người dùng',
+            href: '/settings',
+            tab: 'users',
+            icon: UserCog,
+            permission: 'users.manage',
+          },
+          {
+            title: 'Vai trò & phân quyền',
+            href: '/settings',
+            tab: 'roles',
+            icon: UserCog,
+            permission: 'roles.manage',
+          },
+        ],
+      },
+      {
+        title: 'Cài đặt',
+        href: '/settings',
+        tab: 'company',
+        icon: Settings,
+      },
     ],
   },
 ]
 
-const ALL_ITEMS = NAV_GROUPS.flatMap((g) => g.items)
+const ALL_ITEMS = NAV_GROUPS.flatMap((g) =>
+  g.items.flatMap((i) => i.children ?? [i]),
+)
 
-const matches = (href: string, path: string) =>
-  href === '/' ? path === '/' : path.startsWith(href)
+/** `tab` is the current `?tab=` value; /settings opens on its company tab */
+const matches = (item: NavItem, path: string, tab?: string) =>
+  item.href === '/'
+    ? path === '/'
+    : path.startsWith(item.href) &&
+      (!item.tab || item.tab === (tab ?? 'company'))
 
 interface AppLayoutProps {
   children: React.ReactNode
@@ -144,6 +186,12 @@ export function AppLayout({ children, user }: AppLayoutProps) {
   const currentPath =
     routerState.resolvedLocation?.pathname ?? routerState.location.pathname
   const targetPath = routerState.location.pathname
+  const tabOf = (search: unknown) =>
+    (search as { tab?: string } | undefined)?.tab
+  const currentTab = tabOf(
+    routerState.resolvedLocation?.search ?? routerState.location.search,
+  )
+  const targetTab = tabOf(routerState.location.search)
   // Only a change of PAGE shows the loading skeleton. A search-only change
   // (switching a tab: ?tab=...) stays on the same page, so the page and its
   // tab bar remain on screen instead of being swapped for the skeleton.
@@ -153,9 +201,9 @@ export function AppLayout({ children, user }: AppLayoutProps) {
   // Close the mobile drawer once navigation starts
   React.useEffect(() => setMobileOpen(false), [targetPath])
 
-  const current = ALL_ITEMS.find((i) => matches(i.href, currentPath))
+  const current = ALL_ITEMS.find((i) => matches(i, currentPath, currentTab))
   const currentGroup = NAV_GROUPS.find((g) =>
-    g.items.some((i) => i === current),
+    g.items.some((i) => i === current || i.children?.includes(current!)),
   )
 
   return (
@@ -165,6 +213,8 @@ export function AppLayout({ children, user }: AppLayoutProps) {
         <SidebarBody
           currentPath={currentPath}
           targetPath={targetPath}
+          currentTab={currentTab}
+          targetTab={targetTab}
           isLoading={isLoading}
           user={user}
         />
@@ -184,6 +234,8 @@ export function AppLayout({ children, user }: AppLayoutProps) {
           <SidebarBody
             currentPath={currentPath}
             targetPath={targetPath}
+            currentTab={currentTab}
+            targetTab={targetTab}
             isLoading={isLoading}
             user={user}
           />
@@ -268,11 +320,15 @@ export function AppLayout({ children, user }: AppLayoutProps) {
 function SidebarBody({
   currentPath,
   targetPath,
+  currentTab,
+  targetTab,
   isLoading,
   user,
 }: {
   currentPath: string
   targetPath: string
+  currentTab?: string
+  targetTab?: string
   isLoading: boolean
   user: AppLayoutProps['user']
 }) {
@@ -282,12 +338,55 @@ function SidebarBody({
   }
 
   // Only the pages the user's role may open
+  const allowed = (i: NavItem) =>
+    !i.permission || hasPermission(user, i.permission)
   const visibleGroups = NAV_GROUPS.map((g) => ({
     ...g,
-    items: g.items.filter(
-      (i) => !i.permission || hasPermission(user, i.permission),
-    ),
+    items: g.items
+      .map((i) =>
+        i.children ? { ...i, children: i.children.filter(allowed) } : i,
+      )
+      .filter((i) => (i.children ? i.children.length > 0 : allowed(i))),
   })).filter((g) => g.items.length > 0)
+
+  const renderLink = (item: NavItem, sub = false) => {
+    const Icon = item.icon
+    const isActive = matches(item, currentPath, currentTab)
+    const isPending = isLoading && matches(item, targetPath, targetTab)
+    const on = isActive || isPending
+    return (
+      <Link
+        key={item.title}
+        to={item.href}
+        search={(item.tab ? { tab: item.tab } : undefined) as never}
+        preload="intent"
+        className={`group relative flex items-center gap-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
+          sub ? 'pl-9 pr-3' : 'px-3'
+        } ${
+          on
+            ? 'bg-white/[0.08] text-white'
+            : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]'
+        }`}
+      >
+        {on && (
+          <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-brass-400" />
+        )}
+        {!sub && (
+          <Icon
+            className={`size-4 shrink-0 ${
+              on
+                ? 'text-emerald-300'
+                : 'text-slate-500 group-hover:text-slate-300'
+            }`}
+          />
+        )}
+        <span className="truncate">{item.title}</span>
+        {isPending && (
+          <Loader2 className="size-3.5 animate-spin text-emerald-300 ml-auto shrink-0" />
+        )}
+      </Link>
+    )
+  }
 
   const initials = (user?.fullName ?? 'U')
     .split(' ')
@@ -317,39 +416,19 @@ function SidebarBody({
               {grp.group}
             </div>
             <div className="space-y-0.5">
-              {grp.items.map((item) => {
-                const Icon = item.icon
-                const isActive = matches(item.href, currentPath)
-                const isPending = isLoading && matches(item.href, targetPath)
-                const on = isActive || isPending
-                return (
-                  <Link
-                    key={item.href}
-                    to={item.href}
-                    preload="intent"
-                    className={`group relative flex items-center gap-3 px-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-                      on
-                        ? 'bg-white/[0.08] text-white'
-                        : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]'
-                    }`}
-                  >
-                    {on && (
-                      <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-brass-400" />
-                    )}
-                    <Icon
-                      className={`size-4 shrink-0 ${
-                        on
-                          ? 'text-emerald-300'
-                          : 'text-slate-500 group-hover:text-slate-300'
-                      }`}
-                    />
-                    <span className="truncate">{item.title}</span>
-                    {isPending && (
-                      <Loader2 className="size-3.5 animate-spin text-emerald-300 ml-auto shrink-0" />
-                    )}
-                  </Link>
-                )
-              })}
+              {grp.items.map((item) =>
+                item.children ? (
+                  <div key={item.title} className="space-y-0.5">
+                    <div className="flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-slate-300">
+                      <item.icon className="size-4 shrink-0 text-slate-500" />
+                      <span className="truncate">{item.title}</span>
+                    </div>
+                    {item.children.map((c) => renderLink(c, true))}
+                  </div>
+                ) : (
+                  renderLink(item)
+                ),
+              )}
             </div>
           </div>
         ))}

@@ -968,7 +968,7 @@ function MasterDataPage() {
                   required
                   value={mName}
                   onChange={(e) => setMName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Honda SH 150i ABS"
                 />
               </div>
@@ -1012,7 +1012,7 @@ function MasterDataPage() {
                   required
                   value={xName}
                   onChange={(e) => setXName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Thuế nhập khẩu"
                 />
               </div>
@@ -1058,7 +1058,7 @@ function MasterDataPage() {
                   required
                   value={sName}
                   onChange={(e) => setSName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Thai Honda Co., Ltd"
                 />
               </div>
@@ -1100,7 +1100,7 @@ function MasterDataPage() {
                   required
                   value={bName}
                   onChange={(e) => setBName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Ngân hàng TMCP Ngoại thương Việt Nam"
                 />
               </div>
@@ -1142,14 +1142,14 @@ function MasterDataPage() {
                   required
                   value={accName}
                   onChange={(e) => setAccName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="CÔNG TY TNHH TM DV TRƯỜNG THỊNH PHÁT"
                 />
               </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Ngân Hàng *</Label>
                 <SearchSelect
-                  className="h-8 w-full text-xs"
+                  className="h-11 w-full text-sm rounded-lg"
                   placeholder="Chọn ngân hàng"
                   value={accBankId ? String(accBankId) : ''}
                   onValueChange={(v) => setAccBankId(Number(v))}
@@ -1174,7 +1174,7 @@ function MasterDataPage() {
                   required
                   value={accNumber}
                   onChange={(e) => setAccNumber(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="0071001234567"
                 />
               </div>
@@ -1183,7 +1183,7 @@ function MasterDataPage() {
                 <Input
                   value={accBranch}
                   onChange={(e) => setAccBranch(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Chi nhánh TP. Hồ Chí Minh"
                 />
               </div>
@@ -1229,7 +1229,7 @@ function MasterDataPage() {
                   required
                   value={cName}
                   onChange={(e) => setCName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Đỏ Đô"
                 />
               </div>

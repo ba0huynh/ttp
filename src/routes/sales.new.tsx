@@ -302,7 +302,7 @@ function NewSalesOrderPage() {
                                   updated[idx].unitPrice = n
                                   setSelectedItems(updated)
                                 }}
-                                className="h-7 text-xs text-right"
+                                className="h-9 text-sm text-right px-4 rounded-lg"
                               />
                             </TableCell>
                             <TableCell>
@@ -344,7 +344,7 @@ function NewSalesOrderPage() {
                     required
                     value={orderDate}
                     onChange={(e) => setOrderDate(e.target.value)}
-                    className="h-8 text-xs"
+                    className="h-11 text-sm px-4 rounded-lg"
                   />
                 </div>
 
@@ -353,7 +353,7 @@ function NewSalesOrderPage() {
                     Khách Hàng Mẹ * (Ghi nhận Doanh thu)
                   </Label>
                   <SearchSelect
-                    className="h-8 w-full text-xs"
+                    className="h-11 w-full text-sm rounded-lg"
                     value={String(customerId)}
                     onValueChange={(val) => {
                       setCustomerId(Number(val))
@@ -377,7 +377,7 @@ function NewSalesOrderPage() {
                     Điểm Bán Trực Thuộc Nhận Xe (Ghi nhận Công Nợ & HĐ)
                   </Label>
                   <SearchSelect
-                    className="h-8 w-full text-xs"
+                    className="h-11 w-full text-sm rounded-lg"
                     placeholder="Chọn showroom/chi nhánh"
                     value={branchId ? String(branchId) : 'none'}
                     onValueChange={(val) =>

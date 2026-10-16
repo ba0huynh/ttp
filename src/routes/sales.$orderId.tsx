@@ -377,7 +377,7 @@ function SalesOrderPage() {
                   required
                   value={deliveryDate}
                   onChange={(e) => setDeliveryDate(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
@@ -389,7 +389,7 @@ function SalesOrderPage() {
                   placeholder="Ví dụ: Anh Nam (Lái xe đại lý)"
                   value={receiverName}
                   onChange={(e) => setReceiverName(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
@@ -401,7 +401,7 @@ function SalesOrderPage() {
                   placeholder="Ví dụ: Xe lồng biển số 51C-123.45"
                   value={transportInfo}
                   onChange={(e) => setTransportInfo(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
@@ -463,7 +463,7 @@ function SalesOrderPage() {
                   required
                   value={invoiceDate}
                   onChange={(e) => setInvoiceDate(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
@@ -475,7 +475,7 @@ function SalesOrderPage() {
                   placeholder="Ví dụ: HD-260120-001"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
-                  className="h-8 text-xs"
+                  className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
 
