@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto'
-import { mkdir, readFile, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rm, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 
 /** Folder (inside the project) where uploaded images are stored; git-ignored */
@@ -54,4 +54,18 @@ export async function readImage(key: string) {
   } catch {
     return null
   }
+}
+
+/** True for a key path this module created ("banks/<uuid>.png"), not an https address */
+export const isUploadKey = (
+  image: string | null | undefined,
+): image is string =>
+  !!image && /^[a-z]+\/[\w-]+\.(png|jpg|webp|gif)$/.test(image)
+
+/** Removes a stored image from disk; https addresses and missing files are ignored */
+export async function deleteImage(image: string | null | undefined) {
+  if (!isUploadKey(image)) return
+  const full = path.resolve(UPLOAD_DIR, image)
+  if (!full.startsWith(UPLOAD_DIR + path.sep)) return
+  await rm(full, { force: true })
 }

@@ -15,6 +15,7 @@ import {
   isDuplicateError,
   isReferencedError,
 } from '#/server/services/common.ts'
+import { deleteImage, isUploadKey } from '#/server/services/uploads.ts'
 import { authMiddleware, requirePermission } from './middleware.ts'
 
 const opt = z.string().trim().nullable().optional()
@@ -76,13 +77,31 @@ export const saveBankFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       name: z.string().trim().min(1),
-      image: z.string().trim().max(500).nullable().optional(),
+      // https address or a key path made by the upload route
+      image: z
+        .string()
+        .trim()
+        .max(500)
+        .refine(
+          (v) => /^https?:\/\//i.test(v) || isUploadKey(v),
+          'Ảnh không hợp lệ',
+        )
+        .nullable()
+        .optional(),
     }),
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
-      if (id) await db.update(banks).set(v).where(eq(banks.id, id))
-      else await db.insert(banks).values(v)
+      if (id) {
+        const [old] = await db
+          .select({ image: banks.image })
+          .from(banks)
+          .where(eq(banks.id, id))
+        await db.update(banks).set(v).where(eq(banks.id, id))
+        // A replaced or removed logo no longer needs its file
+        if (old?.image && old.image !== (v.image ?? null))
+          await deleteImage(old.image)
+      } else await db.insert(banks).values(v)
       return { ok: true }
     }),
   )
@@ -221,7 +240,16 @@ export const deleteMasterDataFn = createServerFn({ method: 'POST' })
   .handler(({ data }) =>
     wrapDup(async () => {
       const t = deletable[data.entity]
+      // A deleted bank takes its uploaded logo with it
+      const [bank] =
+        data.entity === 'banks'
+          ? await db
+              .select({ image: banks.image })
+              .from(banks)
+              .where(eq(banks.id, data.id))
+          : []
       await db.delete(t).where(eq(t.id, data.id))
+      await deleteImage(bank?.image)
       return { ok: true }
     }),
   )
