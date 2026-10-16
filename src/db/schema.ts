@@ -158,8 +158,6 @@ export const motorcycleModels = mysqlTable('motorcycle_models', {
   name: varchar('name', { length: 150 }).notNull(),
   /** Đời xe (model year / generation) */
   modelYear: varchar('model_year', { length: 20 }),
-  /** Màu xe: one colour per model; another colour is another model row */
-  colorId: int('color_id').references(() => colors.id),
   description: text('description'),
   ...timestamps,
 })

@@ -110,23 +110,16 @@ export function VehicleFormDialog({
               placeholder="Chọn dòng xe"
               value={v.modelId ? String(v.modelId) : ''}
               onValueChange={(val) => {
-                const id = Number(val)
-                setV({
-                  ...v,
-                  modelId: id,
-                  // the model's colour is only a suggestion
-                  colorId:
-                    models.find((m) => m.id === id)?.colorId ?? v.colorId,
-                })
+                setV({ ...v, modelId: Number(val) })
               }}
             >
               {models.map((m) => (
                 <SearchSelectItem
                   key={m.id}
                   value={String(m.id)}
-                  keywords={`${modelLabel(m)} ${colors.find((c) => c.id === m.colorId)?.name ?? ''}`}
+                  keywords={modelLabel(m)}
                 >
-                  <ModelOption model={m} colors={colors} />
+                  <ModelOption model={m} />
                 </SearchSelectItem>
               ))}
             </SearchSelect>
