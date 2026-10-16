@@ -1,10 +1,12 @@
+import { useBusyKeys } from '#/lib/use-busy.ts'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Pencil, Plus, Trash2, Upload } from 'lucide-react'
+import { Pencil, Plus, Upload } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -218,29 +220,45 @@ function MasterDataPage() {
   const [bankOpen, setBankOpen] = React.useState(false)
   const [bName, setBName] = React.useState('')
   const [bImage, setBImage] = React.useState('')
-  const [logoUploading, setLogoUploading] = React.useState(false)
+  // A picked logo stays in the browser (preview only) until the bank is saved
+  const [bFile, setBFile] = React.useState<File | null>(null)
+  const [bPreview, setBPreview] = React.useState('')
+  const [bankSaving, setBankSaving] = React.useState(false)
   const logoInput = React.useRef<HTMLInputElement>(null)
 
-  // Uploads the chosen file to /api/uploads; the stored value is its key path
+  const clearLogoFile = () => {
+    if (bPreview) URL.revokeObjectURL(bPreview)
+    setBFile(null)
+    setBPreview('')
+  }
+
   const handleLogoFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file) return
-    setLogoUploading(true)
-    try {
-      const form = new FormData()
-      form.append('file', file)
-      form.append('folder', 'banks')
-      const res = await fetch('/api/uploads', { method: 'POST', body: form })
-      const body = (await res.json()) as { key?: string; error?: string }
-      if (!res.ok || !body.key)
-        throw new Error(body.error ?? 'Không tải được ảnh')
-      setBImage(body.key)
-    } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi tải ảnh lên')
-    } finally {
-      setLogoUploading(false)
+    if (!/^image\/(png|jpeg|webp|gif)$/.test(file.type)) {
+      await alertDialog('Chỉ nhận ảnh PNG, JPG, WEBP hoặc GIF')
+      return
     }
+    if (file.size > 2 * 1024 * 1024) {
+      await alertDialog('Ảnh tối đa 2MB')
+      return
+    }
+    clearLogoFile()
+    setBFile(file)
+    setBPreview(URL.createObjectURL(file))
+  }
+
+  // Sends the picked file to /api/uploads; returns its key path
+  const uploadLogo = async (file: File) => {
+    const form = new FormData()
+    form.append('file', file)
+    form.append('folder', 'banks')
+    const res = await fetch('/api/uploads', { method: 'POST', body: form })
+    const body = (await res.json()) as { key?: string; error?: string }
+    if (!res.ok || !body.key)
+      throw new Error(body.error ?? 'Không tải được ảnh')
+    return body.key
   }
 
   // Modal Company Bank Account (create / edit)
@@ -319,13 +337,19 @@ function MasterDataPage() {
 
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault()
+    setBankSaving(true)
     try {
+      // The file only reaches the server now, when the bank is saved
+      const image = bFile ? await uploadLogo(bFile) : bImage || null
       await saveBank.mutateAsync({
-        data: { id: bId ?? undefined, name: bName, image: bImage || null },
+        data: { id: bId ?? undefined, name: bName, image },
       })
+      clearLogoFile()
       setBankOpen(false)
     } catch (err: unknown) {
       await showErrorDialog(err, 'Lỗi khi lưu ngân hàng')
+    } finally {
+      setBankSaving(false)
     }
   }
 
@@ -369,6 +393,8 @@ function MasterDataPage() {
     }
   }
 
+  const { isBusy, setBusy } = useBusyKeys()
+
   const handleDelete = async (
     entity:
       | 'motorcycleModels'
@@ -381,6 +407,7 @@ function MasterDataPage() {
     name: string,
   ) => {
     // Used rows show what uses them; unused rows ask for confirmation
+    const key = `${entity}:${id}`
     if (
       !(await confirmDelete(
         { entity, id, name },
@@ -388,9 +415,11 @@ function MasterDataPage() {
           title: `Xóa "${name}"?`,
           description: 'Hành động này không thể hoàn tác.',
         },
+        (checking) => setBusy(key, checking),
       ))
     )
       return
+    setBusy(key, true)
     try {
       await deleteItem.mutateAsync({ data: { entity, id } })
     } catch (err: unknown) {
@@ -399,6 +428,8 @@ function MasterDataPage() {
         { entity, id, name },
         'Không thể xóa mục đang được sử dụng',
       )
+    } finally {
+      setBusy(key, false)
     }
   }
 
@@ -500,9 +531,12 @@ function MasterDataPage() {
                                 onClick={() =>
                                   handleDelete('motorcycleModels', m.id, m.name)
                                 }
+                                disabled={isBusy('motorcycleModels:' + m.id)}
                                 className="size-7 text-slate-400 hover:text-rose-600"
                               >
-                                <Trash2 className="size-3.5" />
+                                <BusyTrash
+                                  busy={isBusy('motorcycleModels:' + m.id)}
+                                />
                               </Button>
                             </Can>
                           </div>
@@ -583,9 +617,12 @@ function MasterDataPage() {
                                 onClick={() =>
                                   handleDelete('expenseTypes', m.id, m.name)
                                 }
+                                disabled={isBusy('expenseTypes:' + m.id)}
                                 className="size-7 text-slate-400 hover:text-rose-600"
                               >
-                                <Trash2 className="size-3.5" />
+                                <BusyTrash
+                                  busy={isBusy('expenseTypes:' + m.id)}
+                                />
                               </Button>
                             </Can>
                           </div>
@@ -666,9 +703,10 @@ function MasterDataPage() {
                                 onClick={() =>
                                   handleDelete('suppliers', s.id, s.name)
                                 }
+                                disabled={isBusy('suppliers:' + s.id)}
                                 className="size-7 text-slate-400 hover:text-rose-600"
                               >
-                                <Trash2 className="size-3.5" />
+                                <BusyTrash busy={isBusy('suppliers:' + s.id)} />
                               </Button>
                             </Can>
                           </div>
@@ -702,6 +740,7 @@ function MasterDataPage() {
                       setBId(null)
                       setBName('')
                       setBImage('')
+                      clearLogoFile()
                       setBankOpen(true)
                     }}
                     className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -737,6 +776,7 @@ function MasterDataPage() {
                                   setBId(b.id)
                                   setBName(b.name)
                                   setBImage(b.image ?? '')
+                                  clearLogoFile()
                                   setBankOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -753,9 +793,10 @@ function MasterDataPage() {
                                 onClick={() =>
                                   handleDelete('banks', b.id, b.name)
                                 }
+                                disabled={isBusy('banks:' + b.id)}
                                 className="size-7 text-slate-400 hover:text-rose-600"
                               >
-                                <Trash2 className="size-3.5" />
+                                <BusyTrash busy={isBusy('banks:' + b.id)} />
                               </Button>
                             </Can>
                           </div>
@@ -858,10 +899,13 @@ function MasterDataPage() {
                                     a.accountNumber,
                                   )
                                 }
+                                disabled={isBusy('companyBankAccounts:' + a.id)}
                                 className="size-7 text-slate-400 hover:text-rose-600"
                                 aria-label="Xóa"
                               >
-                                <Trash2 className="size-3.5" />
+                                <BusyTrash
+                                  busy={isBusy('companyBankAccounts:' + a.id)}
+                                />
                               </Button>
                             </Can>
                           </div>
@@ -952,9 +996,10 @@ function MasterDataPage() {
                                 onClick={() =>
                                   handleDelete('colors', c.id, c.name)
                                 }
+                                disabled={isBusy('colors:' + c.id)}
                                 className="size-7 text-slate-400 hover:text-rose-600"
                               >
-                                <Trash2 className="size-3.5" />
+                                <BusyTrash busy={isBusy('colors:' + c.id)} />
                               </Button>
                             </Can>
                           </div>
@@ -1143,8 +1188,8 @@ function MasterDataPage() {
                 <div className="flex items-stretch gap-3">
                   <div className="flex h-32 w-1/2 items-center justify-center rounded-lg border border-border bg-white p-2">
                     <BankLogo
-                      key={bImage}
-                      src={bImage}
+                      key={bPreview || bImage}
+                      src={bPreview || bImage}
                       name={bName}
                       className="h-full w-full"
                     />
@@ -1161,19 +1206,21 @@ function MasterDataPage() {
                       type="button"
                       variant="outline"
                       size="sm"
-                      disabled={logoUploading}
                       onClick={() => logoInput.current?.click()}
                       className="h-8 text-xs gap-1"
                     >
                       <Upload className="size-3.5" />
-                      {logoUploading ? 'Đang tải lên...' : 'Tải ảnh lên'}
+                      Chọn ảnh
                     </Button>
-                    {bImage && (
+                    {(bImage || bFile) && (
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        onClick={() => setBImage('')}
+                        onClick={() => {
+                          setBImage('')
+                          clearLogoFile()
+                        }}
                         className="h-8 text-xs text-slate-500"
                       >
                         Xóa ảnh
@@ -1194,11 +1241,13 @@ function MasterDataPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={saveBank.isPending}
+                  disabled={saveBank.isPending || bankSaving}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {saveBank.isPending ? 'Đang lưu...' : 'Lưu Ngân Hàng'}
+                  {saveBank.isPending || bankSaving
+                    ? 'Đang lưu...'
+                    : 'Lưu Ngân Hàng'}
                 </Button>
               </DialogFooter>
             </form>

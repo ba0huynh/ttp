@@ -1,3 +1,5 @@
+import { useBusyKeys } from '#/lib/use-busy.ts'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import {
   useMutation,
   useQuery,
@@ -5,7 +7,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -245,6 +247,8 @@ function SettingsPage() {
     rolesList.filter((r) => r.isAdmin).map((r) => r.id),
   )
 
+  const { isBusy, setBusy } = useBusyKeys()
+
   const handleDeleteUser = async (u: {
     id: number
     username: string
@@ -272,8 +276,10 @@ function SettingsPage() {
             ? 'Đây là tài khoản của bạn: bạn sẽ bị đăng xuất. Hành động này không thể hoàn tác.'
             : 'Hành động này không thể hoàn tác.',
       },
+      (checking) => setBusy(`users:${u.id}`, checking),
     )
     if (!ok) return
+    setBusy(`users:${u.id}`, true)
     try {
       await deleteUser.mutateAsync({ data: { id: u.id } })
     } catch (err: unknown) {
@@ -282,6 +288,8 @@ function SettingsPage() {
         { entity: 'users', id: u.id, name: u.username },
         'Không thể xóa tài khoản',
       )
+    } finally {
+      setBusy(`users:${u.id}`, false)
     }
   }
 
@@ -571,11 +579,12 @@ function SettingsPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() => handleDeleteUser(u)}
+                              disabled={isBusy(`users:${u.id}`)}
                               className="size-7 text-slate-400 hover:text-rose-600"
                               aria-label="Xóa tài khoản"
                               title="Xóa tài khoản"
                             >
-                              <Trash2 className="size-3.5" />
+                              <BusyTrash busy={isBusy(`users:${u.id}`)} />
                             </Button>
                           </TableCell>
                         </TableRow>

@@ -1,10 +1,12 @@
+import { useBusyKeys } from '#/lib/use-busy.ts'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Calculator, Plus, Trash2 } from 'lucide-react'
+import { Calculator, Plus } from 'lucide-react'
 import * as React from 'react'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
@@ -113,6 +115,8 @@ function LoansPage() {
   )
   const savingLoan = saveLoan.isPending
 
+  const { isBusy, setBusy } = useBusyKeys()
+
   const handleDelete = async (l: { id: number; contractNumber: string }) => {
     // Used loans show what uses them; unused ones ask for confirmation
     const ok = await confirmDelete(
@@ -121,8 +125,10 @@ function LoansPage() {
         title: `Xóa khế ước ${l.contractNumber}?`,
         description: 'Hành động này không thể hoàn tác.',
       },
+      (checking) => setBusy(`loans:${l.id}`, checking),
     )
     if (!ok) return
+    setBusy(`loans:${l.id}`, true)
     try {
       await deleteLoan.mutateAsync({ data: { id: l.id } })
     } catch (err: unknown) {
@@ -131,6 +137,8 @@ function LoansPage() {
         { entity: 'loans', id: l.id, name: l.contractNumber },
         'Không thể xóa khế ước',
       )
+    } finally {
+      setBusy(`loans:${l.id}`, false)
     }
   }
 
@@ -258,11 +266,12 @@ function LoansPage() {
                             variant="ghost"
                             size="icon"
                             onClick={() => handleDelete(l)}
+                            disabled={isBusy(`loans:${l.id}`)}
                             className="size-7 text-slate-400 hover:text-rose-600"
                             aria-label="Xóa khế ước"
                             title="Xóa khế ước"
                           >
-                            <Trash2 className="size-3.5" />
+                            <BusyTrash busy={isBusy(`loans:${l.id}`)} />
                           </Button>
                         </Can>
                       </TableCell>

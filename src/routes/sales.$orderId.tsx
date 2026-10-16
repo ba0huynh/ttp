@@ -14,7 +14,7 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { ArrowLeft, FileCheck, Truck, XCircle } from 'lucide-react'
+import { ArrowLeft, FileCheck, Loader2, Truck, XCircle } from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -262,8 +262,12 @@ function SalesOrderPage() {
                   disabled={cancelMutation.isPending}
                   onClick={handleCancelOrder}
                 >
-                  <XCircle className="size-4" />
-                  Hủy phiếu bán
+                  {cancelMutation.isPending ? (
+                    <Loader2 className="size-4 animate-spin" />
+                  ) : (
+                    <XCircle className="size-4" />
+                  )}
+                  {cancelMutation.isPending ? 'Đang hủy...' : 'Hủy phiếu bán'}
                 </Button>
               )}
             </>

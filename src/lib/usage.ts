@@ -44,7 +44,10 @@ export async function reportDeleteFailure(
 export async function confirmDelete(
   target: { entity: UsageEntity; id: number; name?: string },
   confirm: ConfirmOptions,
+  /** Called with true while the lookup runs, false once the popup can show */
+  onChecking?: (checking: boolean) => void,
 ): Promise<boolean> {
+  onChecking?.(true)
   try {
     const { groups } = await getUsageFn({
       data: { entity: target.entity, id: target.id },
@@ -58,6 +61,8 @@ export async function confirmDelete(
     }
   } catch {
     // fall through to the confirmation
+  } finally {
+    onChecking?.(false)
   }
   return confirmDialog({ confirmLabel: 'Xóa', destructive: true, ...confirm })
 }

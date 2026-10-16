@@ -1,5 +1,7 @@
+import { useBusyKeys } from '#/lib/use-busy.ts'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, ShieldCheck, Trash2 } from 'lucide-react'
+import { Pencil, Plus, ShieldCheck } from 'lucide-react'
 import * as React from 'react'
 
 import { Badge } from '#/components/ui/badge.tsx'
@@ -118,6 +120,8 @@ export function RolesTab({
     }
   }
 
+  const { isBusy, setBusy } = useBusyKeys()
+
   const handleDelete = async (r: RoleRow) => {
     const ok = await confirmDelete(
       { entity: 'roles', id: r.id, name: r.name },
@@ -125,8 +129,10 @@ export function RolesTab({
         title: `Xóa vai trò "${r.name}"?`,
         description: 'Hành động này không thể hoàn tác.',
       },
+      (checking) => setBusy(`roles:${r.id}`, checking),
     )
     if (!ok) return
+    setBusy(`roles:${r.id}`, true)
     try {
       await deleteRole.mutateAsync({ data: { id: r.id } })
     } catch (err: unknown) {
@@ -135,6 +141,8 @@ export function RolesTab({
         { entity: 'roles', id: r.id, name: r.name },
         'Không thể xóa vai trò',
       )
+    } finally {
+      setBusy(`roles:${r.id}`, false)
     }
   }
 
@@ -224,10 +232,11 @@ export function RolesTab({
                           variant="ghost"
                           size="icon"
                           onClick={() => handleDelete(r)}
+                          disabled={isBusy(`roles:${r.id}`)}
                           className="size-7 text-slate-400 hover:text-rose-600"
                           aria-label="Xóa"
                         >
-                          <Trash2 className="size-3.5" />
+                          <BusyTrash busy={isBusy(`roles:${r.id}`)} />
                         </Button>
                       </div>
                     )}

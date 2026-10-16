@@ -7,7 +7,8 @@
  */
 export function imageSrc(image: string | null | undefined): string {
   if (!image) return ''
-  if (/^https?:\/\//i.test(image)) return image
+  // https addresses, and blob: previews of a file picked but not saved yet
+  if (/^(https?:\/\/|blob:)/i.test(image)) return image
   const base = String(import.meta.env.VITE_APP_URL ?? '').replace(/\/+$/, '')
   return `${base}/uploads/${image.replace(/^\/+/, '')}`
 }

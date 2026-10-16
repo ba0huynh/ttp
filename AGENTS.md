@@ -789,11 +789,19 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Storage**: files go to the `uploads/` folder in the project root (`uploads/banks/<uuid>.png`); `.gitignore` ignores its content and keeps `uploads/.gitkeep`. Only PNG, JPG, WEBP and GIF up to 2 MB are accepted (no SVG, which could carry scripts). Docker / hosting: mount `uploads/` as a persistent volume, otherwise images vanish on redeploy.
 - **Routes** (TanStack Start server routes, `server.handlers`): `POST /api/uploads` (`src/routes/api.uploads.tsx`, multipart `file` + `folder`, needs the `master-data.manage` permission, reads the session cookie from the request header, returns `{ key }`) and `GET /uploads/<key>` (`uploads.$.tsx`, public, immutable cache, path traversal blocked). Logic in `src/server/services/uploads.ts`; add new folders to `UPLOAD_FOLDERS`.
 - **Stored value**: `banks.image` holds either a full https address (VietQR logos) or a key path ("banks/<uuid>.png"). `imageSrc()` (`src/lib/image-url.ts`) turns it into an address: https stays, a key becomes `<APP_URL>/uploads/<key>`. `APP_URL` in `.env` is exposed to the browser as `VITE_APP_URL` through `define` in `vite.config.ts` (restart / rebuild after changing it; empty = same origin). `BankLogo` already goes through `imageSrc`, so use it (or `imageSrc`) for any new image.
-- **Clean-up**: deleting a bank deletes its uploaded file, and saving a bank with a different or removed logo deletes the old file (`deleteImage` in `uploads.ts`; https addresses are never touched). `saveBankFn` only accepts an https address or a key path made by the upload route. A file uploaded in the dialog but never saved (dialog cancelled) stays on disk.
-- **UI**: the bank dialog in /master-data has "Tải ảnh lên" (hidden file input, uploads at once, preview), and "Xóa ảnh" (right half, next to the preview). 
+- **Clean-up**: deleting a bank deletes its uploaded file, and saving a bank with a different or removed logo deletes the old file (`deleteImage` in `uploads.ts`; https addresses are never touched). `saveBankFn` only accepts an https address or a key path made by the upload route. The dialog does not upload on pick: the chosen file stays in the browser (blob: preview, `imageSrc` passes `blob:` through) and is sent to `/api/uploads` only when "Lưu Ngân Hàng" is pressed, so cancelling leaves nothing on disk.
+- **UI**: the bank dialog in /master-data has "Tải ảnh lên" (hidden file input "Chọn ảnh", preview), and "Xóa ảnh" (right half, next to the preview). 
 - **Gotcha**: `getCookie()` from `@tanstack/react-start/server` returned nothing inside a server *route* handler (401 for a logged-in admin); parse `request.headers.get('cookie')` instead.
 
 ---
 
-_(Next Agent: Append Lesson 71, 72,... above this line upon completing tasks)_
+### Lesson 71: Loading Indicator on Every Delete
+
+- **Rule**: a delete button shows a spinner from the click until the row is gone, in two phases: (1) the usage lookup that runs *before* the confirmation popup (`confirmDelete` takes a third argument `onChecking(checking)`), (2) the delete itself, including the data refresh (`mutateAsync` resolves after `invalidateQueries`). The button is disabled meanwhile.
+- **Pieces**: `useBusyKeys()` (`src/lib/use-busy.ts`, `isBusy(key)` / `setBusy(key, on)`, keys like `banks:12`) and `<BusyTrash busy={...} />` (`src/components/ui/busy-trash.tsx`, trash icon that becomes a spinner). Pattern: `const ok = await confirmDelete(target, opts, (c) => setBusy(key, c)); if (!ok) return; setBusy(key, true); try { await mutateAsync(...) } catch { ... } finally { setBusy(key, false) }`.
+- **Applied to**: all six /master-data tabs, users and roles in /settings, loans, vehicles in the batch editor (also the batch expense button, which uses the mutation's `variables`), and "Hủy phiếu bán" (spinner + "Đang hủy..."). Verified: the spinner appears immediately after the click while the usage check runs. Any new delete must follow the same pattern.
+
+---
+
+_(Next Agent: Append Lesson 72, 73,... above this line upon completing tasks)_
 

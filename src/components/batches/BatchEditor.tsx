@@ -1,6 +1,8 @@
+import { useBusyKeys } from '#/lib/use-busy.ts'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { ColorLabel } from '#/components/ui/color-label.tsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Save, Trash2 } from 'lucide-react'
+import { Plus, Save } from 'lucide-react'
 import * as React from 'react'
 
 import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
@@ -369,7 +371,11 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
                   remove.mutate({ data: { expenseId: e.id } })
               }}
             >
-              <Trash2 className="size-3.5" />
+              <BusyTrash
+                busy={
+                  remove.isPending && remove.variables?.data.expenseId === e.id
+                }
+              />
             </Button>
           </div>
         ))}
@@ -417,6 +423,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
 /* ---------------------------------- Vehicles ---------------------------------- */
 
 function VehiclesEditor({ detail }: { detail: BatchDetail }) {
+  const { isBusy, setBusy } = useBusyKeys()
   const { data: master } = useQuery(masterDataQuery())
   const models = master?.models ?? []
   const colors = master?.colors ?? []
@@ -541,7 +548,9 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         variant="ghost"
                         size="sm"
                         className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
-                        disabled={remove.isPending}
+                        disabled={
+                          remove.isPending || isBusy(`vehicles:${v.id}`)
+                        }
                         onClick={async () => {
                           if (
                             await confirmDelete(
@@ -554,12 +563,20 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                                 title: `Xóa xe ${v.chassisNumber} khỏi lô?`,
                                 description: 'Chi phí lô sẽ được phân bổ lại.',
                               },
+                              (checking) =>
+                                setBusy(`vehicles:${v.id}`, checking),
                             )
                           )
                             remove.mutate({ data: { vehicleId: v.id } })
                         }}
                       >
-                        <Trash2 className="size-3.5" />
+                        <BusyTrash
+                          busy={
+                            isBusy(`vehicles:${v.id}`) ||
+                            (remove.isPending &&
+                              remove.variables?.data.vehicleId === v.id)
+                          }
+                        />
                       </Button>
                     )}
                   </TableCell>
