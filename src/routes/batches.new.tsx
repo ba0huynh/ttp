@@ -1,6 +1,7 @@
 import { Section } from '#/components/batches/BatchEditor.tsx'
 import { ExpenseFormDialog } from '#/components/batches/ExpenseFormDialog.tsx'
 import type { ExpenseFormValues } from '#/components/batches/ExpenseFormDialog.tsx'
+import { SupplierSelect } from '#/components/batches/SupplierSelect.tsx'
 import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
 import type { VehicleFormValues } from '#/components/batches/VehicleFormDialog.tsx'
 import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
@@ -293,18 +294,7 @@ function NewBatchPage() {
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="space-y-1">
               <Label className="text-[11px]">Nhà cung cấp</Label>
-              <SearchSelect
-                className="h-11 w-full text-sm bg-white rounded-lg"
-                placeholder="Chọn nhà cung cấp"
-                value={supplierId ? String(supplierId) : ''}
-                onValueChange={(val) => setSupplierId(Number(val))}
-              >
-                {master.suppliers.map((s) => (
-                  <SearchSelectItem key={s.id} value={String(s.id)}>
-                    {s.name}
-                  </SearchSelectItem>
-                ))}
-              </SearchSelect>
+              <SupplierSelect value={supplierId} onChange={setSupplierId} />
             </div>
             <div className="space-y-1">
               <Label className="text-[11px]">Khế ước vay</Label>
@@ -491,7 +481,7 @@ function NewBatchPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
-                    <TableHead>Số Khung (VIN)</TableHead>
+                    <TableHead>Số Khung</TableHead>
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>

@@ -1,6 +1,7 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 
+import { useCan } from '#/components/auth/Can.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Dialog,
@@ -9,6 +10,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
+import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import {
@@ -17,6 +19,7 @@ import {
 } from '#/components/ui/search-select.tsx'
 import { Textarea } from '#/components/ui/textarea.tsx'
 import { masterDataQuery } from '#/lib/queries.ts'
+import { saveExpenseTypeFn } from '#/server/fns/master-data.ts'
 
 export interface ExpenseFormValues {
   expenseTypeId: number
@@ -58,6 +61,34 @@ export function ExpenseFormDialog({
   const [v, setV] = React.useState<ExpenseFormValues>(initial ?? EMPTY)
   const [error, setError] = React.useState<string | null>(null)
 
+  const queryClient = useQueryClient()
+  const canManage = useCan('master-data.manage')
+
+  // Quick-create an expense type without leaving the expense form
+  const [typeOpen, setTypeOpen] = React.useState(false)
+  const [tName, setTName] = React.useState('')
+  const [tError, setTError] = React.useState<string | null>(null)
+  const [tPending, setTPending] = React.useState(false)
+
+  const handleCreateType = async (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!tName.trim()) return setTError('Vui lòng nhập tên loại chi phí')
+    setTPending(true)
+    try {
+      const res = await saveExpenseTypeFn({ data: { name: tName.trim() } })
+      await queryClient.invalidateQueries({ queryKey: ['master-data'] })
+      setV((cur) => ({ ...cur, expenseTypeId: res.id }))
+      setTypeOpen(false)
+    } catch (err: unknown) {
+      setTError(
+        err instanceof Error ? err.message : 'Không lưu được loại chi phí',
+      )
+    } finally {
+      setTPending(false)
+    }
+  }
+
   // Start from the expense being edited (or an empty form) every time it opens
   React.useEffect(() => {
     if (open) {
@@ -95,6 +126,18 @@ export function ExpenseFormDialog({
               value={v.expenseTypeId ? String(v.expenseTypeId) : ''}
               onValueChange={(val) =>
                 setV({ ...v, expenseTypeId: Number(val) })
+              }
+              createAction={
+                canManage
+                  ? {
+                      label: 'Thêm loại chi phí mới',
+                      onClick: () => {
+                        setTName('')
+                        setTError(null)
+                        setTypeOpen(true)
+                      },
+                    }
+                  : undefined
               }
             >
               {types.map((t) => (
@@ -146,6 +189,54 @@ export function ExpenseFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      <Dialog open={typeOpen} onOpenChange={setTypeOpen}>
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Thêm Loại Chi Phí Mới
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleCreateType}
+            noValidate
+            className="space-y-3 pt-2"
+          >
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">
+                Tên Loại Chi Phí *
+              </Label>
+              <Input
+                autoFocus
+                value={tName}
+                onChange={(e) => setTName(e.target.value)}
+                placeholder="Thuế nhập khẩu"
+              />
+            </div>
+            {tError && (
+              <p className="text-[11px] font-medium text-rose-600">{tError}</p>
+            )}
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setTypeOpen(false)}
+                className="h-8 text-xs"
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                disabled={tPending}
+                size="sm"
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                {tPending ? 'Đang lưu...' : 'Lưu Loại Chi Phí'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }

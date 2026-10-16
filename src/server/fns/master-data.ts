@@ -146,9 +146,12 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
-      if (id) await db.update(suppliers).set(v).where(eq(suppliers.id, id))
-      else await db.insert(suppliers).values(v)
-      return { ok: true }
+      if (id) {
+        await db.update(suppliers).set(v).where(eq(suppliers.id, id))
+        return { ok: true, id }
+      }
+      const [res] = await db.insert(suppliers).values(v)
+      return { ok: true, id: Number(res.insertId) }
     }),
   )
 
@@ -210,10 +213,12 @@ export const saveExpenseTypeFn = createServerFn({ method: 'POST' })
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
-      if (id)
+      if (id) {
         await db.update(expenseTypes).set(v).where(eq(expenseTypes.id, id))
-      else await db.insert(expenseTypes).values(v)
-      return { ok: true }
+        return { ok: true, id }
+      }
+      const [res] = await db.insert(expenseTypes).values(v)
+      return { ok: true, id: Number(res.insertId) }
     }),
   )
 

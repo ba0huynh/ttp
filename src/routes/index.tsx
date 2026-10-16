@@ -246,7 +246,7 @@ function DashboardPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
-                          {formatVnd(v.costPrice)}
+                          {formatVnd(v.importPrice)}
                         </TableCell>
                         <TableCell className="text-center">
                           <DualInventoryBadge

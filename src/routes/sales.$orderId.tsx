@@ -285,7 +285,7 @@ function SalesOrderPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Số Khung (VIN)</TableHead>
+                    <TableHead>Số Khung</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead className="text-right">Đơn Giá Bán</TableHead>
                     <TableHead className="text-center">Kho Thực Tế</TableHead>

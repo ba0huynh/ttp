@@ -204,7 +204,7 @@ function InventoryPage() {
               Danh Sách Chi Tiết Từng Chiếc Xe ({filtered.length} kết quả)
             </CardTitle>
             <div className="text-xs text-slate-500">
-              Định danh duy nhất bằng <strong>Số Khung (VIN)</strong>
+              Định danh duy nhất bằng <strong>Số Khung</strong>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -212,7 +212,7 @@ function InventoryPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead className="w-[180px]">Số Khung (VIN)</TableHead>
+                    <TableHead className="w-[180px]">Số Khung</TableHead>
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead>Lô Nhập</TableHead>
@@ -264,7 +264,7 @@ function InventoryPage() {
                           {formatVnd(v.importPrice)}
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
-                          {formatVnd(v.costPrice)}
+                          {formatVnd(v.importPrice)}
                         </TableCell>
                         <TableCell className="text-center">
                           <DualInventoryBadge

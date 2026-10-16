@@ -94,7 +94,7 @@ function NewSalesOrderPage() {
       chassisNumber: string
       modelName: string
       colorName: string
-      costPrice: number
+      importPrice: number
     }[]
   >([])
 
@@ -132,7 +132,7 @@ function NewSalesOrderPage() {
           chassisNumber: v.chassisNumber,
           modelName: v.modelName,
           colorName: v.colorName,
-          costPrice: v.costPrice,
+          importPrice: v.importPrice,
         }
       })
     setSelectedItems(chosen)
@@ -268,7 +268,7 @@ function NewSalesOrderPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="text-xs bg-slate-50">
-                          <TableHead>Số Khung (VIN)</TableHead>
+                          <TableHead>Số Khung</TableHead>
                           <TableHead>Dòng xe / Màu</TableHead>
                           <TableHead className="text-right">Giá Vốn</TableHead>
                           <TableHead className="text-right w-44">
@@ -292,7 +292,7 @@ function NewSalesOrderPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right text-slate-500 font-medium">
-                              {formatVnd(item.costPrice)}
+                              {formatVnd(item.importPrice)}
                             </TableCell>
                             <TableCell className="text-right">
                               <MoneyInput
@@ -424,7 +424,7 @@ function NewSalesOrderPage() {
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
                     <TableHead className="w-10"></TableHead>
-                    <TableHead>Số Khung (VIN)</TableHead>
+                    <TableHead>Số Khung</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead>Lô Nhập</TableHead>
                     <TableHead className="text-right">Giá Bán Lô</TableHead>

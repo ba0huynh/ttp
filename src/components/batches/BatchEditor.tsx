@@ -1,3 +1,4 @@
+import { SupplierSelect } from '#/components/batches/SupplierSelect.tsx'
 import { ExpenseFormDialog } from '#/components/batches/ExpenseFormDialog.tsx'
 import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
 import { useBusyKeys } from '#/lib/use-busy.ts'
@@ -38,7 +39,7 @@ import {
 import { formatVnd } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
-import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
+import { loansQuery } from '#/lib/queries.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import {
   addBatchExpenseFn,
@@ -116,7 +117,6 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
   const [loanId, setLoanId] = React.useState<number | null>(
     detail.batch.loanContractId,
   )
-  const { data: master } = useQuery(masterDataQuery())
   const [supplierId, setSupplierId] = React.useState(
     detail.batch.supplierId ?? 0,
   )
@@ -128,18 +128,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
         <div className="space-y-1">
           <Label className="text-[11px]">Nhà cung cấp</Label>
-          <SearchSelect
-            className="h-11 w-full text-sm bg-white rounded-lg"
-            placeholder="Chọn nhà cung cấp"
-            value={supplierId ? String(supplierId) : ''}
-            onValueChange={(v) => setSupplierId(Number(v))}
-          >
-            {(master?.suppliers ?? []).map((s) => (
-              <SearchSelectItem key={s.id} value={String(s.id)}>
-                {s.name}
-              </SearchSelectItem>
-            ))}
-          </SearchSelect>
+          <SupplierSelect value={supplierId} onChange={setSupplierId} />
         </div>
         <div className="space-y-1">
           <Label className="text-[11px]">Khế ước vay</Label>
@@ -447,7 +436,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         <Table>
           <TableHeader>
             <TableRow className="text-xs bg-slate-50">
-              <TableHead>Số Khung (VIN)</TableHead>
+              <TableHead>Số Khung</TableHead>
               <TableHead>Số Máy</TableHead>
               <TableHead>Dòng xe / Màu</TableHead>
               <TableHead className="text-right">Đơn Giá Nhập</TableHead>
