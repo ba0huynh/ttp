@@ -480,13 +480,13 @@ function SettingsPage() {
                     <TableBody className="text-xs">
                       {usersPg.pageItems.map((u: any) => (
                         <TableRow key={u.id}>
-                          <TableCell className="font-mono font-medium text-slate-800">
+                          <TableCell className="font-medium text-slate-900">
                             {u.username}
                           </TableCell>
                           <TableCell className="font-medium text-slate-900">
                             {u.fullName}
                           </TableCell>
-                          <TableCell className="text-slate-600">
+                          <TableCell className="font-medium text-slate-900">
                             {u.email}
                           </TableCell>
                           <TableCell>

@@ -18,6 +18,7 @@ import type { QueryClient } from '@tanstack/react-query'
 import { TooltipProvider } from '#/components/ui/tooltip.tsx'
 import { Toaster } from '#/components/ui/sonner.tsx'
 import { ConfirmDialogHost } from '#/components/ui/confirm-dialog.tsx'
+import { FieldValidationHost } from '#/components/ui/field-validation.tsx'
 
 interface MyRouterContext {
   queryClient: QueryClient
@@ -79,6 +80,7 @@ function RootDocument({ children }: { children: React.ReactNode }) {
           {children}
           <Toaster richColors position="top-right" />
           <ConfirmDialogHost />
+          <FieldValidationHost />
         </TooltipProvider>
         <TanStackDevtools
           config={{

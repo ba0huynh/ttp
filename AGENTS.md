@@ -614,5 +614,15 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 50, 51,... above this line upon completing tasks)_
+### Lesson 50: Browser Validation Bubbles Replaced by Inline Vietnamese Messages (all forms)
+
+- **Problem**: native HTML validation (`required`, `type="email"`, `min`, `minlength`, `pattern`) shows the browser's own bubble in the browser's language ("Please fill out this field.").
+- **Solution**: `FieldValidationHost` (`src/components/ui/field-validation.tsx`, mounted once in `src/routes/__root.tsx`) listens to the `invalid` event in the capture phase (it does not bubble), cancels the bubble, writes a Vietnamese message in a `<p data-field-error role="alert">` right after the control, sets `aria-invalid="true"` (red border from the base input styles) and focuses the first invalid field. The message disappears as soon as the user edits the field. The browser still performs the checking and blocks the submit, so **existing forms need no change**: keep using `required`, `type="email"`, `min`, `minlength`, `pattern`.
+- **Messages** (`messageFor`): empty → "Vui lòng nhập thông tin này" ("Vui lòng chọn ngày" for date fields, "Vui lòng chọn một giá trị" for select / checkbox), bad email → "Email không hợp lệ", `minlength` / `maxlength` → "Tối thiểu / Tối đa N ký tự", `min` / `max` → "Giá trị tối thiểu / tối đa là N", `pattern` → the input's `title` or "Định dạng không hợp lệ".
+- **Server-side / custom checks** still use the pattern from Lesson 48 (`parseFieldErrors`, your own `<p>` + `aria-invalid`, `noValidate`); they are not touched by this host.
+- **Gotchas**: the message is inserted as the control's next sibling, so keep a field's control and its label in the same wrapper (`div.space-y-1`). Custom components that are not real form controls (`SearchSelect` is a button) are not validated by the browser: check them in the submit handler.
+
+---
+
+_(Next Agent: Append Lesson 51, 52,... above this line upon completing tasks)_
 
