@@ -485,7 +485,7 @@ function MasterDataPage() {
                       setMColorId(null)
                       setModelOpen(true)
                     }}
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                    className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   >
                     <Plus className="size-3.5" />
                     Thêm Dòng Xe
@@ -593,7 +593,7 @@ function MasterDataPage() {
                       setXName('')
                       setExpenseTypeOpen(true)
                     }}
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                    className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   >
                     <Plus className="size-3.5" />
                     Thêm Loại Chi Phí
@@ -679,7 +679,7 @@ function MasterDataPage() {
                       setSName('')
                       setSupplierOpen(true)
                     }}
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                    className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   >
                     <Plus className="size-3.5" />
                     Thêm Nhà Cung Cấp
@@ -765,7 +765,7 @@ function MasterDataPage() {
                       clearLogoFile()
                       setBankOpen(true)
                     }}
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                    className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   >
                     <Plus className="size-3.5" />
                     Thêm Ngân Hàng
@@ -849,7 +849,7 @@ function MasterDataPage() {
                   <Button
                     size="sm"
                     onClick={openNewAccount}
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                    className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   >
                     <Plus className="size-3.5" />
                     Thêm Tài Khoản
@@ -963,7 +963,7 @@ function MasterDataPage() {
                       setCHex('#18181b')
                       setColorOpen(true)
                     }}
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                    className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
                   >
                     <Plus className="size-3.5" />
                     Thêm Màu

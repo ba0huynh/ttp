@@ -6,7 +6,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Calculator, Plus } from 'lucide-react'
+import { Calculator, Pencil, Plus } from 'lucide-react'
 import * as React from 'react'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
@@ -99,6 +99,8 @@ function LoansPage() {
 
   // New loan contract modal
   const [newLoanOpen, setNewLoanOpen] = React.useState(false)
+  // null = creating a new contract, otherwise the id being edited
+  const [editId, setEditId] = React.useState<number | null>(null)
   const [contractNumber, setContractNumber] = React.useState(
     `KU-${todayIso().slice(0, 4)}-VCB-01`,
   )
@@ -142,11 +144,34 @@ function LoansPage() {
     }
   }
 
+  const openNewLoan = () => {
+    setEditId(null)
+    setContractNumber(`KU-${todayIso().slice(0, 4)}-VCB-01`)
+    setBankId(master.banks[0]?.id ?? 1)
+    setPrincipalAmount(2_000_000_000)
+    setInterestRate(8.5)
+    setDisbursementDate(todayIso())
+    setTermMonths(12)
+    setNewLoanOpen(true)
+  }
+
+  const openEditLoan = (l: (typeof loans)[number]) => {
+    setEditId(l.id)
+    setContractNumber(l.contractNumber)
+    setBankId(l.bankId)
+    setPrincipalAmount(l.principalAmount)
+    setInterestRate(l.interestRate)
+    setDisbursementDate(l.disbursementDate)
+    setTermMonths(l.termMonths)
+    setNewLoanOpen(true)
+  }
+
   const handleCreateLoan = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       await saveLoan.mutateAsync({
         data: {
+          id: editId ?? undefined,
           contractNumber,
           bankId,
           principalAmount,
@@ -157,7 +182,7 @@ function LoansPage() {
       })
       setNewLoanOpen(false)
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi tạo khế ước vay')
+      await showErrorDialog(err, 'Lỗi khi lưu khế ước vay')
     }
   }
 
@@ -179,7 +204,7 @@ function LoansPage() {
           <Can permission="loans.manage">
             <Button
               size="sm"
-              onClick={() => setNewLoanOpen(true)}
+              onClick={openNewLoan}
               className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 shadow-xs"
             >
               <Plus className="size-4" />
@@ -265,6 +290,16 @@ function LoansPage() {
                           <Button
                             variant="ghost"
                             size="icon"
+                            onClick={() => openEditLoan(l)}
+                            className="size-7 text-slate-400 hover:text-purple-700"
+                            aria-label="Sửa khế ước"
+                            title="Sửa khế ước"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
                             onClick={() => handleDelete(l)}
                             disabled={isBusy(`loans:${l.id}`)}
                             className="size-7 text-slate-400 hover:text-rose-600"
@@ -289,7 +324,7 @@ function LoansPage() {
           <DialogContent className="max-w-md" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Tạo Khế Ước Vay Ngân Hàng Mới
+                {editId ? 'Sửa Khế Ước Vay' : 'Tạo Khế Ước Vay Ngân Hàng Mới'}
               </DialogTitle>
             </DialogHeader>
 

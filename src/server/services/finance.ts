@@ -326,3 +326,123 @@ export async function setStatementLineStatus(
     .set({ status, matchedType: null, matchedId: null })
     .where(eq(bankStatementLines.id, lineId))
 }
+
+/** A matched line is tied to a voucher / repayment: it must be un-matched first */
+async function getEditableLine(lineId: number) {
+  const [line] = await db
+    .select({ id: bankStatementLines.id, status: bankStatementLines.status })
+    .from(bankStatementLines)
+    .where(eq(bankStatementLines.id, lineId))
+  if (!line) throw new BusinessError('Không tìm thấy dòng sao kê')
+  if (line.status === 'matched')
+    throw new BusinessError('Dòng đã khớp: hãy hủy khớp trước khi sửa hoặc xóa')
+  return line
+}
+
+export async function updateStatementLine(
+  lineId: number,
+  v: {
+    transactionDate: string
+    description: string | null
+    debit: number
+    credit: number
+  },
+) {
+  await getEditableLine(lineId)
+  if (v.debit > 0 === v.credit > 0)
+    throw new BusinessError('Nhập tiền ra hoặc tiền vào (chỉ một bên)')
+  await db
+    .update(bankStatementLines)
+    .set(v)
+    .where(eq(bankStatementLines.id, lineId))
+}
+
+export async function deleteStatementLine(lineId: number) {
+  await getEditableLine(lineId)
+  await db.delete(bankStatementLines).where(eq(bankStatementLines.id, lineId))
+}
+
+/** A voucher matched to a bank statement line must be un-matched there first */
+async function assertNotMatched(type: 'receipt' | 'payment', id: number) {
+  const [m] = await db
+    .select({ id: bankStatementLines.id })
+    .from(bankStatementLines)
+    .where(
+      and(
+        eq(bankStatementLines.status, 'matched'),
+        eq(bankStatementLines.matchedType, type),
+        eq(bankStatementLines.matchedId, id),
+      ),
+    )
+    .limit(1)
+  if (m)
+    throw new BusinessError(
+      'Phiếu đã khớp với sao kê: hãy hủy khớp ở mục Đối chiếu sao kê trước',
+    )
+}
+
+export async function updateReceiptVoucher(
+  id: number,
+  input: {
+    receiptDate: string
+    customerId: number
+    branchId?: number | null
+    amount: number
+    companyBankAccountId?: number | null
+  },
+) {
+  await assertNotMatched('receipt', id)
+  if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
+  if (input.branchId) {
+    const [b] = await db
+      .select({ customerId: posBranches.customerId })
+      .from(posBranches)
+      .where(eq(posBranches.id, input.branchId))
+    if (!b || b.customerId !== input.customerId)
+      throw new BusinessError('Điểm bán không thuộc khách hàng')
+  }
+  await db
+    .update(receiptVouchers)
+    .set({
+      receiptDate: input.receiptDate,
+      customerId: input.customerId,
+      branchId: input.branchId ?? null,
+      amount: input.amount,
+      companyBankAccountId: input.companyBankAccountId ?? null,
+    })
+    .where(eq(receiptVouchers.id, id))
+}
+
+export async function deleteReceiptVoucher(id: number) {
+  await assertNotMatched('receipt', id)
+  await db.delete(receiptVouchers).where(eq(receiptVouchers.id, id))
+}
+
+export async function updatePaymentVoucher(
+  id: number,
+  input: {
+    paymentDate: string
+    supplierId: number
+    amount: number
+    companyBankAccountId?: number | null
+    description?: string | null
+  },
+) {
+  await assertNotMatched('payment', id)
+  if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
+  await db
+    .update(paymentVouchers)
+    .set({
+      paymentDate: input.paymentDate,
+      supplierId: input.supplierId,
+      amount: input.amount,
+      companyBankAccountId: input.companyBankAccountId ?? null,
+      description: input.description ?? null,
+    })
+    .where(eq(paymentVouchers.id, id))
+}
+
+export async function deletePaymentVoucher(id: number) {
+  await assertNotMatched('payment', id)
+  await db.delete(paymentVouchers).where(eq(paymentVouchers.id, id))
+}

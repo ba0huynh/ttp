@@ -296,3 +296,49 @@ export async function cancelSalesOrder(orderId: number) {
       .where(eq(salesOrders.id, orderId))
   })
 }
+
+/** Changes the header of an order (date, customer, branch) while nothing was delivered or invoiced */
+export async function updateSalesOrder(
+  orderId: number,
+  input: { orderDate: string; customerId: number; branchId?: number | null },
+) {
+  await db.transaction(async (tx) => {
+    const [order] = await tx
+      .select({ status: salesOrders.status })
+      .from(salesOrders)
+      .where(eq(salesOrders.id, orderId))
+    if (!order) throw new BusinessError('Không tìm thấy phiếu bán')
+    if (order.status === 'cancelled')
+      throw new BusinessError('Phiếu đã hủy — không thể sửa')
+    const [d] = await tx
+      .select({ id: deliveryNotes.id })
+      .from(deliveryNotes)
+      .where(eq(deliveryNotes.salesOrderId, orderId))
+      .limit(1)
+    const [i] = await tx
+      .select({ id: invoices.id })
+      .from(invoices)
+      .where(eq(invoices.salesOrderId, orderId))
+      .limit(1)
+    if (d || i)
+      throw new BusinessError(
+        'Phiếu đã có giao xe hoặc hóa đơn — không thể sửa',
+      )
+    if (input.branchId) {
+      const [b] = await tx
+        .select({ customerId: posBranches.customerId })
+        .from(posBranches)
+        .where(eq(posBranches.id, input.branchId))
+      if (!b || b.customerId !== input.customerId)
+        throw new BusinessError('Điểm bán không thuộc khách hàng')
+    }
+    await tx
+      .update(salesOrders)
+      .set({
+        orderDate: input.orderDate,
+        customerId: input.customerId,
+        branchId: input.branchId ?? null,
+      })
+      .where(eq(salesOrders.id, orderId))
+  })
+}

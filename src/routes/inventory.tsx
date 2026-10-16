@@ -155,7 +155,7 @@ function InventoryPage() {
                   size="sm"
                   variant={filterStock === 'all' ? 'default' : 'outline'}
                   onClick={() => setFilterStock('all')}
-                  className={`h-8 text-xs ${filterStock === 'all' ? 'bg-slate-900 text-white' : ''}`}
+                  className={`h-11 rounded-lg text-sm ${filterStock === 'all' ? 'bg-slate-900 text-white' : ''}`}
                 >
                   Tất cả ({vehicles.length})
                 </Button>
@@ -163,7 +163,7 @@ function InventoryPage() {
                   size="sm"
                   variant={filterStock === 'physical' ? 'default' : 'outline'}
                   onClick={() => setFilterStock('physical')}
-                  className={`h-8 text-xs ${filterStock === 'physical' ? 'bg-emerald-700 text-white' : ''}`}
+                  className={`h-11 rounded-lg text-sm ${filterStock === 'physical' ? 'bg-emerald-700 text-white' : ''}`}
                 >
                   Tồn thực tế ({summary.physical})
                 </Button>
@@ -171,7 +171,7 @@ function InventoryPage() {
                   size="sm"
                   variant={filterStock === 'invoiced' ? 'default' : 'outline'}
                   onClick={() => setFilterStock('invoiced')}
-                  className={`h-8 text-xs ${filterStock === 'invoiced' ? 'bg-blue-700 text-white' : ''}`}
+                  className={`h-11 rounded-lg text-sm ${filterStock === 'invoiced' ? 'bg-blue-700 text-white' : ''}`}
                 >
                   Tồn hóa đơn ({summary.invoiced})
                 </Button>
@@ -179,7 +179,7 @@ function InventoryPage() {
                   size="sm"
                   variant={filterStock === 'mismatch' ? 'default' : 'outline'}
                   onClick={() => setFilterStock('mismatch')}
-                  className={`h-8 text-xs ${filterStock === 'mismatch' ? 'bg-amber-600 text-white' : ''}`}
+                  className={`h-11 rounded-lg text-sm ${filterStock === 'mismatch' ? 'bg-amber-600 text-white' : ''}`}
                 >
                   Xe đang lệch 2 kho (
                   {summary.invoicedNotDelivered + summary.deliveredNotInvoiced})
@@ -188,7 +188,7 @@ function InventoryPage() {
                   size="sm"
                   variant={filterStock === 'available' ? 'default' : 'outline'}
                   onClick={() => setFilterStock('available')}
-                  className={`h-8 text-xs ${filterStock === 'available' ? 'bg-teal-700 text-white' : ''}`}
+                  className={`h-11 rounded-lg text-sm ${filterStock === 'available' ? 'bg-teal-700 text-white' : ''}`}
                 >
                   Chưa bán ({summary.unsold})
                 </Button>

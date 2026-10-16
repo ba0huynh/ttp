@@ -842,5 +842,36 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 77, 78,... above this line upon completing tasks)_
+### Lesson 77: Edit / Delete a Statement Line (`/reconcile`)
+
+- Each line of the transactions table has a pencil and a trash button next to "Tìm khớp" / "Hủy khớp" (inside `<Can permission="reconcile.manage">`; the actions column is `w-52` in the fixed-layout table). The pencil opens a dialog (date, description, money out, money in; only one side may be above 0, entering one clears the other); the trash asks `confirmDialog` and shows a spinner (`useBusyKeys`, Lesson 71).
+- **Rule**: a *matched* line cannot be edited or deleted (it is tied to a voucher / repayment): both buttons are disabled with the tooltip "Hủy khớp trước khi sửa / xóa", and the server enforces the same in `updateStatementLine` / `deleteStatementLine` (`services/finance.ts`; `updateStatementLineFn`, `deleteStatementLineFn`, permission `reconcile.manage`).
+- Not done: deleting or renaming a whole statement; only its lines can be changed.
+
+---
+
+### Lesson 78: Edit a Loan Contract
+
+- `/loans` rows have a pencil next to the trash (`<Can permission="loans.manage">`). It opens the same dialog as "Tạo Khế Ước Mới", titled "Sửa Khế Ước Vay", pre-filled (contract number, bank, principal, rate, disbursement date, term); saving sends `id` to `saveLoanContractFn`, which already updated by id. "Tạo Khế Ước Mới" now resets the form to its defaults (`openNewLoan`) so edited values never leak into a new contract.
+- **Effect**: interest, outstanding balance and the maturity estimate are derived, so changing principal, rate or date re-prices the whole schedule, repayments already recorded included (they are not rewritten). There is no guard against lowering the principal below the principal already repaid.
+
+---
+
+### Lesson 79: Edit / Delete on Sales List and Voucher History
+
+- **`/sales`**: the "Xử lý" text button is now an eye icon. A pencil and a trash ("Hủy phiếu bán") appear only for an order that is not cancelled and has nothing delivered or invoiced (`deliveredCount` and `invoicedCount` are 0), inside `<Can permission="sales.create">`. The pencil edits the order header only (date, customer, branch; `updateSalesOrderFn` / `updateSalesOrder`, refused once a delivery note or invoice exists); vehicles and prices are not editable, to change them cancel and re-create. "Hủy" is the existing soft cancel (`cancelSalesOrderFn`: items removed, status `cancelled`), not a row delete.
+- **`/finance` tabs "Lịch Sử Phiếu Thu" / "Lịch Sử Phiếu Chi"**: each row has a pencil and a trash (`finance.manage`). The create dialogs double as edit dialogs (`editReceiptId` / `editPaymentId`; the mutation calls the update fn when an id is present). Server: `updateReceiptVoucherFn`, `deleteReceiptVoucherFn`, `updatePaymentVoucherFn`, `deletePaymentVoucherFn`. A voucher matched to a bank statement line is refused ("hãy hủy khớp ở mục Đối chiếu sao kê trước", `assertNotMatched`), so reconciliation never points at a missing or changed voucher. Payments with a payee type other than supplier cannot be edited in the UI (only suppliers can be chosen). The AR / AP tabs are summaries and have no row actions.
+- **`/loans`**: edit is the pencil from Lesson 78.
+
+---
+
+### Lesson 80: Create-Batch Form Uses the Editor Layout; Buttons Match Their Inputs
+
+- **`/batches/new`** is built like the batch editor (`BatchEditor`): stacked `Section` panels (exported from `BatchEditor.tsx`) — "Thông Tin Lô" (supplier, loan, date), "Cài Giá Bán Theo Lô", "Chi Phí Lô" and "Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn". Items already added are shown on top (expense chips; a vehicle table with live allocated expense, cost and selling price, red when below cost), with a one-line add row below ("Thêm chi phí" / "Thêm xe"). The add rows validate and push into local state; **nothing is sent until "Hoàn Tất Nhập Lô"** (a plain button with `onClick`, no `<form>`, so Enter in a draft field cannot submit the batch). Picking a model pre-fills its suggested colour. At least one vehicle and a supplier are required.
+- **Button heights**: a button on the same row as inputs uses the input height: `h-11 rounded-lg text-sm` next to `h-11` inputs ("Thêm xe", "Thêm chi phí", "Lưu thông tin", "Áp dụng cho cả lô", reports "Áp Dụng", the stock filters on /inventory) and `h-9` next to the `SearchBox` (the "Thêm ..." buttons of /master-data and /settings). Check with a quick Playwright measurement when adding a new toolbar.
+- **Price base labels**: "Giá vốn thực tế" / "Đơn giá nhập" (no "Khuyên dùng" any more).
+
+---
+
+_(Next Agent: Append Lesson 81, 82,... above this line upon completing tasks)_
 

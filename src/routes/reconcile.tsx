@@ -10,6 +10,7 @@ import {
   Check,
   CheckCircle2,
   Loader2,
+  Pencil,
   Upload,
 } from 'lucide-react'
 import * as React from 'react'
@@ -18,7 +19,14 @@ import { ImportStatementDialog } from '#/components/finance/ImportStatementDialo
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
+import { Input } from '#/components/ui/input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
+import { useBusyKeys } from '#/lib/use-busy.ts'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -64,6 +72,8 @@ import {
   matchStatementLineFn,
   setStatementLineStatusFn,
   suggestMatchesFn,
+  deleteStatementLineFn,
+  updateStatementLineFn,
 } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/reconcile')({
@@ -123,6 +133,62 @@ function ReconcilePage() {
   const cancellingLineId = setLineStatus.isPending
     ? setLineStatus.variables?.data.lineId
     : undefined
+
+  // Edit / delete one line (only while it is not matched)
+  const { isBusy, setBusy } = useBusyKeys()
+  const updateLine = useMutation({
+    mutationFn: updateStatementLineFn,
+    onSuccess: refresh,
+  })
+  const deleteLine = useMutation({
+    mutationFn: deleteStatementLineFn,
+    onSuccess: refresh,
+  })
+  const [editLine, setEditLine] = React.useState<{
+    id: number
+    date: string
+    description: string
+    debit: number
+    credit: number
+  } | null>(null)
+
+  const handleSaveLine = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editLine) return
+    try {
+      await updateLine.mutateAsync({
+        data: {
+          lineId: editLine.id,
+          transactionDate: editLine.date,
+          description: editLine.description.trim() || null,
+          debit: editLine.debit,
+          credit: editLine.credit,
+        },
+      })
+      setEditLine(null)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Lỗi khi sửa dòng sao kê')
+    }
+  }
+
+  const handleDeleteLine = async (l: { id: number; description: string }) => {
+    const ok = await confirmDialog({
+      title: 'Xóa dòng sao kê này?',
+      description: l.description || undefined,
+      confirmLabel: 'Xóa',
+      destructive: true,
+    })
+    if (!ok) return
+    const key = `line:${l.id}`
+    setBusy(key, true)
+    try {
+      await deleteLine.mutateAsync({ data: { lineId: l.id } })
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xóa dòng sao kê')
+    } finally {
+      setBusy(key, false)
+    }
+  }
 
   const handleUnmatch = async (lineId: number) => {
     try {
@@ -267,7 +333,7 @@ function ReconcilePage() {
                       <TableHead className="w-56 text-center">
                         Đối Chiếu
                       </TableHead>
-                      <TableHead className="w-36 text-center">
+                      <TableHead className="w-52 text-center">
                         Thao tác
                       </TableHead>
                     </TableRow>
@@ -310,7 +376,7 @@ function ReconcilePage() {
                               </Badge>
                             )}
                           </TableCell>
-                          <TableCell className="text-center">
+                          <TableCell className="text-center whitespace-nowrap">
                             {!isMatched ? (
                               <Button
                                 variant="outline"
@@ -337,6 +403,42 @@ function ReconcilePage() {
                                   : 'Hủy khớp'}
                               </Button>
                             )}
+                            <Can permission="reconcile.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isMatched}
+                                onClick={() =>
+                                  setEditLine({
+                                    id: l.id,
+                                    date: l.transactionDate,
+                                    description: l.description ?? '',
+                                    debit: l.debit,
+                                    credit: l.credit,
+                                  })
+                                }
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title={
+                                  isMatched ? 'Hủy khớp trước khi sửa' : 'Sửa'
+                                }
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isMatched || isBusy(`line:${l.id}`)}
+                                onClick={() => handleDeleteLine(l)}
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                                aria-label="Xóa"
+                                title={
+                                  isMatched ? 'Hủy khớp trước khi xóa' : 'Xóa'
+                                }
+                              >
+                                <BusyTrash busy={isBusy(`line:${l.id}`)} />
+                              </Button>
+                            </Can>
                           </TableCell>
                         </TableRow>
                       )
@@ -441,6 +543,101 @@ function ReconcilePage() {
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit one statement line */}
+      <Dialog
+        open={editLine !== null}
+        onOpenChange={(o) => !o && setEditLine(null)}
+      >
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Sửa Dòng Sao Kê
+            </DialogTitle>
+          </DialogHeader>
+          {editLine && (
+            <form onSubmit={handleSaveLine} className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">
+                  Ngày Giao Dịch *
+                </Label>
+                <Input
+                  type="date"
+                  required
+                  value={editLine.date}
+                  onChange={(e) =>
+                    setEditLine({ ...editLine, date: e.target.value })
+                  }
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">
+                  Nội Dung Diễn Giải
+                </Label>
+                <Input
+                  value={editLine.description}
+                  onChange={(e) =>
+                    setEditLine({ ...editLine, description: e.target.value })
+                  }
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-3">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">
+                    Tiền Ra (Ghi Nợ)
+                  </Label>
+                  <MoneyInput
+                    blankZero
+                    value={editLine.debit}
+                    onValueChange={(n) =>
+                      setEditLine({
+                        ...editLine,
+                        debit: n,
+                        credit: n > 0 ? 0 : editLine.credit,
+                      })
+                    }
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">
+                    Tiền Vào (Ghi Có)
+                  </Label>
+                  <MoneyInput
+                    blankZero
+                    value={editLine.credit}
+                    onValueChange={(n) =>
+                      setEditLine({
+                        ...editLine,
+                        credit: n,
+                        debit: n > 0 ? 0 : editLine.debit,
+                      })
+                    }
+                  />
+                </div>
+              </div>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEditLine(null)}
+                  className="h-8 text-xs"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateLine.isPending}
+                  size="sm"
+                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+                >
+                  {updateLine.isPending ? 'Đang lưu...' : 'Lưu'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   )
 }

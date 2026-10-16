@@ -163,7 +163,7 @@ export function RolesTab({
             <Button
               size="sm"
               onClick={openNew}
-              className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+              className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
             >
               <Plus className="size-3.5" />
               Thêm Vai Trò

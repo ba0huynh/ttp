@@ -115,7 +115,7 @@ function ReportsPage() {
               type="submit"
               disabled={loading}
               size="sm"
-              className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              className="h-11 rounded-lg text-sm bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
             >
               {loading ? 'Đang lọc...' : 'Áp Dụng'}
             </Button>

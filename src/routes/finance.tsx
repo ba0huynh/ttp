@@ -4,14 +4,19 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
+import {
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
+import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -68,6 +73,10 @@ import { requirePagePermission } from '#/lib/route-guard.ts'
 import {
   createPaymentVoucherFn,
   createReceiptVoucherFn,
+  deletePaymentVoucherFn,
+  deleteReceiptVoucherFn,
+  updatePaymentVoucherFn,
+  updateReceiptVoucherFn,
 } from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/finance')({
@@ -112,14 +121,25 @@ function FinancePage() {
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const queryClient = useQueryClient()
   // Phiếu thu/chi đổi công nợ, sao kê và dashboard nên làm mới toàn bộ cache
+  // One mutation for both create and edit: an id means edit
   const createReceipt = useMutation({
-    mutationFn: createReceiptVoucherFn,
+    mutationFn: async (v: { id?: number } & Record<string, unknown>) => {
+      if (v.id) await updateReceiptVoucherFn({ data: v as never })
+      else await createReceiptVoucherFn({ data: v as never })
+    },
     onSuccess: () => queryClient.invalidateQueries(),
   })
   const createPayment = useMutation({
-    mutationFn: createPaymentVoucherFn,
+    mutationFn: async (v: { id?: number } & Record<string, unknown>) => {
+      if (v.id) await updatePaymentVoucherFn({ data: v as never })
+      else await createPaymentVoucherFn({ data: v as never })
+    },
     onSuccess: () => queryClient.invalidateQueries(),
   })
+
+  const { isBusy, setBusy } = useBusyKeys()
+  const [editReceiptId, setEditReceiptId] = React.useState<number | null>(null)
+  const [editPaymentId, setEditPaymentId] = React.useState<number | null>(null)
 
   // Receipt Voucher modal
   const [receiptOpen, setReceiptOpen] = React.useState(false)
@@ -150,17 +170,67 @@ function FinancePage() {
   const selectedCustomer = customers.find((c) => c.id === receiptCustomerId)
   const branchOptions = selectedCustomer?.branches ?? []
 
+  const openEditReceipt = (r: (typeof receipts)[number]) => {
+    setEditReceiptId(r.id)
+    setReceiptDate(r.receiptDate)
+    setReceiptCustomerId(r.customerId)
+    setReceiptBranchId(r.branchId)
+    setReceiptAmount(r.amount)
+    setReceiptAccountId(r.companyBankAccountId)
+    setReceiptOpen(true)
+  }
+  const openEditPayment = (p: (typeof payments)[number]) => {
+    setEditPaymentId(p.id)
+    setPaymentDate(p.paymentDate)
+    setPaymentSupplierId(p.supplierId ?? 0)
+    setPaymentAmount(p.amount)
+    setPaymentAccountId(p.companyBankAccountId)
+    setPaymentDesc(p.description ?? '')
+    setPaymentOpen(true)
+  }
+
+  const deleteReceipt = useMutation({
+    mutationFn: deleteReceiptVoucherFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const deletePayment = useMutation({
+    mutationFn: deletePaymentVoucherFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const handleDeleteVoucher = async (
+    kind: 'receipt' | 'payment',
+    id: number,
+    label: string,
+  ) => {
+    const ok = await confirmDialog({
+      title: kind === 'receipt' ? 'Xóa phiếu thu này?' : 'Xóa phiếu chi này?',
+      description: `${label}. Công nợ sẽ được tính lại.`,
+      confirmLabel: 'Xóa',
+      destructive: true,
+    })
+    if (!ok) return
+    const key = `${kind}:${id}`
+    setBusy(key, true)
+    try {
+      if (kind === 'receipt') await deleteReceipt.mutateAsync({ data: { id } })
+      else await deletePayment.mutateAsync({ data: { id } })
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xóa phiếu')
+    } finally {
+      setBusy(key, false)
+    }
+  }
+
   const handleCreateReceipt = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       await createReceipt.mutateAsync({
-        data: {
-          receiptDate,
-          customerId: receiptCustomerId,
-          branchId: receiptBranchId,
-          amount: receiptAmount,
-          companyBankAccountId: receiptAccountId,
-        },
+        id: editReceiptId ?? undefined,
+        receiptDate,
+        customerId: receiptCustomerId,
+        branchId: receiptBranchId,
+        amount: receiptAmount,
+        companyBankAccountId: receiptAccountId,
       })
       setReceiptOpen(false)
     } catch (err: unknown) {
@@ -172,14 +242,13 @@ function FinancePage() {
     e.preventDefault()
     try {
       await createPayment.mutateAsync({
-        data: {
-          paymentDate,
-          payeeType: 'supplier',
-          supplierId: paymentSupplierId,
-          amount: paymentAmount,
-          companyBankAccountId: paymentAccountId,
-          description: paymentDesc,
-        },
+        id: editPaymentId ?? undefined,
+        paymentDate,
+        payeeType: 'supplier',
+        supplierId: paymentSupplierId,
+        amount: paymentAmount,
+        companyBankAccountId: paymentAccountId,
+        description: paymentDesc,
       })
       setPaymentOpen(false)
     } catch (err: unknown) {
@@ -207,7 +276,10 @@ function FinancePage() {
             <div className="flex items-center gap-2">
               <Button
                 size="sm"
-                onClick={() => setReceiptOpen(true)}
+                onClick={() => {
+                  setEditReceiptId(null)
+                  setReceiptOpen(true)
+                }}
                 className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
               >
                 <Plus className="size-4" />
@@ -216,7 +288,10 @@ function FinancePage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setPaymentOpen(true)}
+                onClick={() => {
+                  setEditPaymentId(null)
+                  setPaymentOpen(true)
+                }}
                 className="border-slate-300 text-slate-800 gap-1.5 shadow-xs"
               >
                 <Plus className="size-4" />
@@ -368,6 +443,7 @@ function FinancePage() {
                       <TableHead>Điểm Bán Thanh Toán</TableHead>
                       <TableHead className="text-right">Số Tiền Thu</TableHead>
                       <TableHead>Tài Khoản Nhận</TableHead>
+                      <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -394,6 +470,39 @@ function FinancePage() {
                             '—'
                           )}
                         </TableCell>
+                        <TableCell>
+                          <Can permission="finance.manage">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditReceipt(r)}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isBusy(`receipt:${r.id}`)}
+                                onClick={() =>
+                                  handleDeleteVoucher(
+                                    'receipt',
+                                    r.id,
+                                    `${r.customerName} — ${formatVnd(r.amount)}`,
+                                  )
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                                aria-label="Xóa"
+                                title="Xóa"
+                              >
+                                <BusyTrash busy={isBusy(`receipt:${r.id}`)} />
+                              </Button>
+                            </div>
+                          </Can>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -419,6 +528,7 @@ function FinancePage() {
                       <TableHead>Đối Tượng Nhận</TableHead>
                       <TableHead className="text-right">Số Tiền Chi</TableHead>
                       <TableHead>Nội Dung</TableHead>
+                      <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -436,6 +546,40 @@ function FinancePage() {
                         <TableCell className="text-slate-500 text-[11px]">
                           {p.description ?? '—'}
                         </TableCell>
+                        <TableCell>
+                          <Can permission="finance.manage">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={p.payeeType !== 'supplier'}
+                                onClick={() => openEditPayment(p)}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                disabled={isBusy(`payment:${p.id}`)}
+                                onClick={() =>
+                                  handleDeleteVoucher(
+                                    'payment',
+                                    p.id,
+                                    `${p.supplierName ?? p.payeeName} — ${formatVnd(p.amount)}`,
+                                  )
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                                aria-label="Xóa"
+                                title="Xóa"
+                              >
+                                <BusyTrash busy={isBusy(`payment:${p.id}`)} />
+                              </Button>
+                            </div>
+                          </Can>
+                        </TableCell>
                       </TableRow>
                     ))}
                   </TableBody>
@@ -451,7 +595,7 @@ function FinancePage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Lập Phiếu Thu Tiền Bán Xe
+                {editReceiptId ? 'Sửa Phiếu Thu' : 'Lập Phiếu Thu Tiền Bán Xe'}
               </DialogTitle>
               <DialogDescription className="text-xs">
                 Ghi nhận khách hàng hoặc điểm bán thanh toán công nợ
@@ -592,7 +736,7 @@ function FinancePage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Lập Phiếu Chi Tiền
+                {editPaymentId ? 'Sửa Phiếu Chi' : 'Lập Phiếu Chi Tiền'}
               </DialogTitle>
               <DialogDescription className="text-xs">
                 Chi trả tiền hàng cho nhà cung cấp

@@ -19,6 +19,7 @@ import {
 import { num } from '#/server/services/common.ts'
 import {
   cancelSalesOrder,
+  updateSalesOrder,
   createSalesOrder,
   recordDelivery,
   recordInvoice,
@@ -238,5 +239,20 @@ export const cancelSalesOrderFn = createServerFn({ method: 'POST' })
   .validator(z.object({ orderId: z.number().int() }))
   .handler(async ({ data }) => {
     await cancelSalesOrder(data.orderId)
+    return { ok: true }
+  })
+
+export const updateSalesOrderFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('sales.create')])
+  .validator(
+    z.object({
+      orderId: z.number().int(),
+      orderDate: z.string().min(10),
+      customerId: z.number().int(),
+      branchId: z.number().int().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data: { orderId, ...v } }) => {
+    await updateSalesOrder(orderId, v)
     return { ok: true }
   })

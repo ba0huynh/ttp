@@ -94,7 +94,7 @@ function useBatchMutation<TVars>(
   })
 }
 
-function Section({
+export function Section({
   title,
   children,
   aside,
@@ -156,7 +156,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
         <Button
           size="sm"
           variant="outline"
-          className="h-7 text-xs gap-1"
+          className="h-11 rounded-lg text-sm gap-1.5"
           disabled={save.isPending}
           onClick={() =>
             save.mutate({
@@ -250,12 +250,16 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
           {method === 'percent' ? (
             <DecimalInput
               maxDecimals={2}
+              blankZero
+              placeholder="0"
               value={value}
               onValueChange={setValue}
               className="h-11 text-sm px-4 rounded-lg"
             />
           ) : (
             <MoneyInput
+              blankZero
+              placeholder="0"
               value={value}
               onValueChange={setValue}
               className="h-11 text-sm px-4 rounded-lg"
@@ -264,7 +268,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
         </div>
         <Button
           size="sm"
-          className="h-8 text-xs gap-1 bg-emerald-700 hover:bg-emerald-800 text-white"
+          className="h-11 rounded-lg text-sm gap-1.5 bg-emerald-700 hover:bg-emerald-800 text-white"
           disabled={!dirty || save.isPending}
           onClick={() =>
             save.mutate({
@@ -409,7 +413,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
         <Button
           size="sm"
           variant="outline"
-          className="h-8 text-xs gap-1"
+          className="h-11 rounded-lg text-sm gap-1.5"
           disabled={add.isPending}
           onClick={handleAdd}
         >
@@ -646,7 +650,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         <Button
           size="sm"
           variant="outline"
-          className="h-8 text-xs gap-1"
+          className="h-11 rounded-lg text-sm gap-1.5"
           disabled={add.isPending}
           onClick={handleAdd}
         >

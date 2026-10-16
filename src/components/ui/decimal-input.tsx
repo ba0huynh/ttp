@@ -10,6 +10,8 @@ type DecimalInputProps = Omit<
   onValueChange: (value: number) => void
   /** Digits kept after the decimal comma (default 6) */
   maxDecimals?: number
+  /** Show an empty box (and the placeholder) instead of "0" */
+  blankZero?: boolean
 }
 
 /**
@@ -37,7 +39,8 @@ function parseTyped(raw: string, maxDecimals: number) {
   }
 }
 
-function formatNumber(value: number, maxDecimals: number) {
+function formatNumber(value: number, maxDecimals: number, blankZero = false) {
+  if (blankZero && value === 0) return ''
   return parseTyped(String(value).replace('.', ','), maxDecimals).text
 }
 
@@ -50,18 +53,21 @@ function DecimalInput({
   value,
   onValueChange,
   maxDecimals = 6,
+  blankZero = false,
   ...props
 }: DecimalInputProps) {
-  const [text, setText] = React.useState(() => formatNumber(value, maxDecimals))
+  const [text, setText] = React.useState(() =>
+    formatNumber(value, maxDecimals, blankZero),
+  )
 
   // The parent changed the value from outside (reset, other field): follow it
   React.useEffect(() => {
     setText((current) =>
       parseTyped(current, maxDecimals).value === value
         ? current
-        : formatNumber(value, maxDecimals),
+        : formatNumber(value, maxDecimals, blankZero),
     )
-  }, [value, maxDecimals])
+  }, [value, maxDecimals, blankZero])
 
   return (
     <Input

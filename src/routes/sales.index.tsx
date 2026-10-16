@@ -1,6 +1,11 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { Eye, Plus } from 'lucide-react'
+import { Eye, Pencil, Plus } from 'lucide-react'
+import * as React from 'react'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -25,7 +30,31 @@ import {
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
-import { currentUserQuery, salesOrdersQuery } from '#/lib/queries.ts'
+import {
+  currentUserQuery,
+  customerOptionsQuery,
+  salesOrdersQuery,
+} from '#/lib/queries.ts'
+import { cancelSalesOrderFn, updateSalesOrderFn } from '#/server/fns/sales.ts'
+import {
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
+import { useBusyKeys } from '#/lib/use-busy.ts'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '#/components/ui/dialog.tsx'
+import { Input } from '#/components/ui/input.tsx'
+import { Label } from '#/components/ui/label.tsx'
+import {
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/sales/')({
@@ -36,7 +65,10 @@ export const Route = createFileRoute('/sales/')({
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
-    await queryClient.query(salesOrdersQuery())
+    await Promise.all([
+      queryClient.query(salesOrdersQuery()),
+      queryClient.query(customerOptionsQuery()),
+    ])
   },
   component: SalesPage,
 })
@@ -45,6 +77,66 @@ function SalesPage() {
   const { user } = Route.useRouteContext()
   const { data: orders } = useSuspenseQuery(salesOrdersQuery())
   const ordersPg = usePagination(orders)
+  const { data: customers } = useSuspenseQuery(customerOptionsQuery())
+  const queryClient = useQueryClient()
+  const { isBusy, setBusy } = useBusyKeys()
+
+  const updateOrder = useMutation({
+    mutationFn: updateSalesOrderFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const cancelOrder = useMutation({
+    mutationFn: cancelSalesOrderFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+
+  // Edit header: date, customer, branch (only while nothing was delivered / invoiced)
+  const [edit, setEdit] = React.useState<{
+    id: number
+    date: string
+    customerId: number
+    branchId: number | null
+  } | null>(null)
+  const editBranches =
+    customers.find((c) => c.id === edit?.customerId)?.branches ?? []
+
+  const handleSave = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!edit) return
+    try {
+      await updateOrder.mutateAsync({
+        data: {
+          orderId: edit.id,
+          orderDate: edit.date,
+          customerId: edit.customerId,
+          branchId: edit.branchId,
+        },
+      })
+      setEdit(null)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Lỗi khi sửa phiếu bán')
+    }
+  }
+
+  const handleCancel = async (o: { id: number; customerName: string }) => {
+    const ok = await confirmDialog({
+      title: 'Hủy phiếu bán xe này?',
+      description: `${o.customerName}. Các xe sẽ được trả lại trạng thái chưa bán.`,
+      confirmLabel: 'Hủy phiếu bán',
+      cancelLabel: 'Giữ lại',
+      destructive: true,
+    })
+    if (!ok) return
+    const key = `order:${o.id}`
+    setBusy(key, true)
+    try {
+      await cancelOrder.mutateAsync({ data: { orderId: o.id } })
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể hủy phiếu bán')
+    } finally {
+      setBusy(key, false)
+    }
+  }
   return (
     <AppLayout user={user}>
       <div className="space-y-6">
@@ -151,22 +243,59 @@ function SalesPage() {
                             : `Đã ra HĐ ${o.invoicedCount}/${o.vehicleCount}`}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center whitespace-nowrap">
                         <Button
                           asChild
                           variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-emerald-800 gap-1 font-medium"
+                          size="icon"
+                          className="size-7 text-slate-400 hover:text-emerald-700"
                         >
                           <Link
                             to="/sales/$orderId"
                             params={{ orderId: String(o.id) }}
                             preload="intent"
+                            aria-label="Xử lý phiếu bán"
+                            title="Xử lý phiếu bán"
                           >
                             <Eye className="size-3.5" />
-                            Xử lý
                           </Link>
                         </Button>
+                        <Can permission="sales.create">
+                          {o.status !== 'cancelled' &&
+                            o.deliveredCount === 0 &&
+                            o.invoicedCount === 0 && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() =>
+                                    setEdit({
+                                      id: o.id,
+                                      date: o.orderDate,
+                                      customerId: o.customerId,
+                                      branchId: o.branchId,
+                                    })
+                                  }
+                                  className="size-7 text-slate-400 hover:text-emerald-700"
+                                  aria-label="Sửa"
+                                  title="Sửa phiếu bán"
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  disabled={isBusy(`order:${o.id}`)}
+                                  onClick={() => handleCancel(o)}
+                                  className="size-7 text-slate-400 hover:text-rose-600"
+                                  aria-label="Hủy phiếu bán"
+                                  title="Hủy phiếu bán"
+                                >
+                                  <BusyTrash busy={isBusy(`order:${o.id}`)} />
+                                </Button>
+                              </>
+                            )}
+                        </Can>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -177,6 +306,94 @@ function SalesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={edit !== null} onOpenChange={(o) => !o && setEdit(null)}>
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Sửa Phiếu Bán Xe
+            </DialogTitle>
+          </DialogHeader>
+          {edit && (
+            <form onSubmit={handleSave} className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">
+                  Ngày Lập Phiếu *
+                </Label>
+                <Input
+                  type="date"
+                  required
+                  value={edit.date}
+                  onChange={(e) => setEdit({ ...edit, date: e.target.value })}
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Khách Hàng *</Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  value={String(edit.customerId)}
+                  onValueChange={(v) =>
+                    setEdit({ ...edit, customerId: Number(v), branchId: null })
+                  }
+                >
+                  {customers.map((c) => (
+                    <SearchSelectItem key={c.id} value={String(c.id)}>
+                      {c.name}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">
+                  Điểm Bán Nhận Xe
+                </Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  value={edit.branchId ? String(edit.branchId) : 'none'}
+                  onValueChange={(v) =>
+                    setEdit({
+                      ...edit,
+                      branchId: v === 'none' ? null : Number(v),
+                    })
+                  }
+                >
+                  <SearchSelectItem value="none">
+                    Trực tiếp khách hàng (không qua điểm bán)
+                  </SearchSelectItem>
+                  {editBranches.map((b) => (
+                    <SearchSelectItem key={b.id} value={String(b.id)}>
+                      {b.name}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
+              </div>
+              <p className="text-[11px] text-slate-500">
+                Danh sách xe và giá không đổi ở đây: muốn đổi xe, hãy hủy phiếu
+                và lập lại.
+              </p>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setEdit(null)}
+                  className="h-8 text-xs"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={updateOrder.isPending}
+                  size="sm"
+                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+                >
+                  {updateOrder.isPending ? 'Đang lưu...' : 'Lưu'}
+                </Button>
+              </DialogFooter>
+            </form>
+          )}
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   )
 }

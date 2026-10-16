@@ -23,12 +23,18 @@ import { isDuplicateError, num } from '#/server/services/common.ts'
 import {
   createPaymentVoucher,
   createReceiptVoucher,
+  deletePaymentVoucher,
+  deleteReceiptVoucher,
+  deleteStatementLine,
   getLoanStatus,
   importBankStatement,
   matchStatementLine,
   recordLoanRepayment,
   setStatementLineStatus,
   suggestMatches,
+  updatePaymentVoucher,
+  updateReceiptVoucher,
+  updateStatementLine,
 } from '#/server/services/finance.ts'
 import {
   getPayablesSummary,
@@ -180,6 +186,7 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
         amount: receiptVouchers.amount,
         customerId: receiptVouchers.customerId,
         customerName: customers.name,
+        companyBankAccountId: receiptVouchers.companyBankAccountId,
         branchId: receiptVouchers.branchId,
         branchName: posBranches.name,
         accountNumber: companyBankAccounts.accountNumber,
@@ -242,6 +249,7 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
         description: paymentVouchers.description,
         supplierId: paymentVouchers.supplierId,
         supplierName: suppliers.name,
+        companyBankAccountId: paymentVouchers.companyBankAccountId,
         accountNumber: companyBankAccounts.accountNumber,
         bankName: banks.name,
         bankImage: banks.image,
@@ -416,5 +424,79 @@ export const setStatementLineStatusFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await setStatementLineStatus(data.lineId, data.status)
+    return { ok: true }
+  })
+
+export const updateStatementLineFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('reconcile.manage')])
+  .validator(
+    z.object({
+      lineId: z.number().int(),
+      transactionDate: z.string().min(10),
+      description: z.string().trim().max(500).nullable(),
+      debit: z.number().min(0),
+      credit: z.number().min(0),
+    }),
+  )
+  .handler(async ({ data: { lineId, ...v } }) => {
+    await updateStatementLine(lineId, v)
+    return { ok: true }
+  })
+
+export const deleteStatementLineFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('reconcile.manage')])
+  .validator(z.object({ lineId: z.number().int() }))
+  .handler(async ({ data }) => {
+    await deleteStatementLine(data.lineId)
+    return { ok: true }
+  })
+
+export const updateReceiptVoucherFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('finance.manage')])
+  .validator(
+    z.object({
+      id: z.number().int(),
+      receiptDate: z.string().min(10),
+      customerId: z.number().int(),
+      branchId: z.number().int().nullable().optional(),
+      amount: z.number().positive('Số tiền phải > 0'),
+      companyBankAccountId: z.number().int().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data: { id, ...v } }) => {
+    await updateReceiptVoucher(id, v)
+    return { ok: true }
+  })
+
+export const deleteReceiptVoucherFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('finance.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    await deleteReceiptVoucher(data.id)
+    return { ok: true }
+  })
+
+export const updatePaymentVoucherFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('finance.manage')])
+  .validator(
+    z.object({
+      id: z.number().int(),
+      paymentDate: z.string().min(10),
+      supplierId: z.number().int(),
+      amount: z.number().positive('Số tiền chi phải > 0'),
+      companyBankAccountId: z.number().int().nullable().optional(),
+      description: z.string().trim().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data: { id, ...v } }) => {
+    await updatePaymentVoucher(id, v)
+    return { ok: true }
+  })
+
+export const deletePaymentVoucherFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('finance.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    await deletePaymentVoucher(data.id)
     return { ok: true }
   })
