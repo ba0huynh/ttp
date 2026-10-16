@@ -22,6 +22,7 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card.tsx'
+import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
@@ -707,13 +708,10 @@ function NewBatchPage() {
                       : 'Số Tiền Cộng Thêm (VNĐ)'}
                   </Label>
                   {pricingMethod === 'percent' ? (
-                    <Input
-                      type="number"
-                      step="0.5"
+                    <DecimalInput
+                      maxDecimals={2}
                       value={pricingValue}
-                      onChange={(e) =>
-                        setPricingValue(Number(e.target.value) || 0)
-                      }
+                      onValueChange={setPricingValue}
                       className="h-8 text-xs"
                     />
                   ) : (

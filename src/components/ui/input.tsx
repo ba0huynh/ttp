@@ -1,10 +1,32 @@
 import * as React from 'react'
 import { cn } from 'cn'
 
-function Input({ className, type, ...props }: React.ComponentProps<'input'>) {
+/**
+ * Number boxes keep what was typed ("0" + "9" shows "09" even though the value
+ * is 9), so a leading zero is dropped as soon as a digit follows it: typing 9
+ * over a 0 gives 9, "007" gives 7, while "0.5" is left alone.
+ */
+function dropLeadingZeros(
+  onChange: React.ChangeEventHandler<HTMLInputElement> | undefined,
+): React.ChangeEventHandler<HTMLInputElement> | undefined {
+  if (!onChange) return onChange
+  return (e) => {
+    const v = e.target.value
+    if (/^0\d/.test(v)) e.target.value = v.replace(/^0+(?=\d)/, '')
+    onChange(e)
+  }
+}
+
+function Input({
+  className,
+  type,
+  onChange,
+  ...props
+}: React.ComponentProps<'input'>) {
   return (
     <input
       type={type}
+      onChange={type === 'number' ? dropLeadingZeros(onChange) : onChange}
       data-slot="input"
       className={cn(
         'h-9 w-full min-w-0 rounded-md border border-input bg-card px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none selection:bg-primary selection:text-primary-foreground file:inline-flex file:h-7 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30',

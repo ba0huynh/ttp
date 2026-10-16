@@ -10,6 +10,7 @@ import {
   confirmDialog,
   showErrorDialog,
 } from '#/components/ui/confirm-dialog.tsx'
+import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
@@ -247,12 +248,10 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
             {method === 'percent' ? 'Tỷ lệ (%)' : 'Số tiền (VNĐ)'}
           </Label>
           {method === 'percent' ? (
-            <Input
-              type="number"
-              min={0}
-              step={0.1}
+            <DecimalInput
+              maxDecimals={2}
               value={value}
-              onChange={(e) => setValue(Number(e.target.value) || 0)}
+              onValueChange={setValue}
               className="h-8 text-xs"
             />
           ) : (

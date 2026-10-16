@@ -26,6 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
+import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
@@ -293,15 +294,11 @@ function LoansPage() {
                   <Label className="text-xs font-semibold">
                     Lãi Suất (%/năm) *
                   </Label>
-                  <Input
-                    type="number"
-                    step="0.05"
-                    min="0"
+                  <DecimalInput
+                    maxDecimals={3}
                     required
                     value={interestRate}
-                    onChange={(e) =>
-                      setInterestRate(Number(e.target.value) || 0)
-                    }
+                    onValueChange={setInterestRate}
                     className="h-8 text-xs"
                   />
                 </div>
