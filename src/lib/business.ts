@@ -185,15 +185,6 @@ export const batchLabel = (b: {
   `Lô ${formatDate(b.importDate)}${b.supplierName ? ` · ${b.supplierName}` : ''}`
 export const todayIso = () => new Date().toISOString().slice(0, 10)
 
-export const EXPENSE_TYPE_LABELS: Record<string, string> = {
-  import_tax: 'Thuế nhập khẩu',
-  vat_import: 'VAT hàng nhập',
-  shipping_international: 'Vận chuyển quốc tế',
-  shipping_domestic: 'Vận chuyển nội địa',
-  customs_fee: 'Phí hải quan',
-  other: 'Chi phí khác',
-}
-
 /**
  * Estimated interest over a loan term, assuming the principal is not repaid
  * early: simple interest on the full principal (rate / 12 per month, the same

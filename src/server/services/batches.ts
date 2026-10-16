@@ -7,11 +7,7 @@ import {
   salesOrderItems,
   vehicles,
 } from '../../db/schema.ts'
-import type {
-  ExpenseType,
-  PricingBase,
-  PricingMethod,
-} from '../../db/schema.ts'
+import type { PricingBase, PricingMethod } from '../../db/schema.ts'
 import {
   allocateBatchExpenses,
   computeSellingPrice,
@@ -28,7 +24,7 @@ export interface VehicleInput {
 }
 
 export interface ExpenseInput {
-  expenseType: ExpenseType
+  expenseTypeId: number
   description?: string | null
   amount: number
 }
@@ -156,7 +152,7 @@ export async function createBatch(input: CreateBatchInput, userId?: number) {
         await tx.insert(batchExpenses).values(
           input.expenses.map((e) => ({
             batchId,
-            expenseType: e.expenseType,
+            expenseTypeId: e.expenseTypeId,
             description: e.description ?? null,
             amount: e.amount,
           })),
@@ -214,7 +210,7 @@ export async function addBatchExpense(batchId: number, e: ExpenseInput) {
   await db.transaction(async (tx) => {
     await tx.insert(batchExpenses).values({
       batchId,
-      expenseType: e.expenseType,
+      expenseTypeId: e.expenseTypeId,
       description: e.description ?? null,
       amount: e.amount,
     })

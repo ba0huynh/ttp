@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import {
   BadgeDollarSign,
@@ -42,7 +43,7 @@ function LoginPage() {
       await loginFn({ data: { login, password } })
       window.location.href = '/'
     } catch (err: unknown) {
-      setError((err as Error).message || 'Đăng nhập không thành công')
+      setError(formatErrorMessage(err, 'Đăng nhập không thành công'))
     } finally {
       setLoading(false)
     }

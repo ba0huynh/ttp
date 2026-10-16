@@ -4,6 +4,7 @@ import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
 import {
+  batchExpenses,
   bankStatements,
   companyBankAccounts,
   customers,
@@ -31,6 +32,7 @@ export const USAGE_ENTITIES = [
   'suppliers',
   'motorcycleModels',
   'colors',
+  'expenseTypes',
   'roles',
   'vehicles',
   'loans',
@@ -223,6 +225,30 @@ async function usageOf(
           'Lô nhập có xe dùng mục này',
           rows.map((r) => ({
             label: `${batchLabel(r)} — ${r.n} xe`,
+            href: `/batches/${r.id}`,
+          })),
+        ),
+      ]
+    }
+
+    case 'expenseTypes': {
+      const rows = await db
+        .select({
+          id: importBatches.id,
+          importDate: importBatches.importDate,
+          supplierName: suppliers.name,
+          n: count(batchExpenses.id),
+        })
+        .from(batchExpenses)
+        .innerJoin(importBatches, eq(importBatches.id, batchExpenses.batchId))
+        .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+        .where(eq(batchExpenses.expenseTypeId, id))
+        .groupBy(importBatches.id, importBatches.importDate, suppliers.name)
+      return [
+        group(
+          'Lô nhập có khoản chi phí thuộc loại này',
+          rows.map((r) => ({
+            label: `${batchLabel(r)} — ${r.n} khoản`,
             href: `/batches/${r.id}`,
           })),
         ),

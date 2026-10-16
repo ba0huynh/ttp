@@ -34,12 +34,7 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import {
-  EXPENSE_TYPE_LABELS,
-  computeSellingPrice,
-  formatVnd,
-  isBelowCost,
-} from '#/lib/business.ts'
+import { computeSellingPrice, formatVnd, isBelowCost } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
 import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
@@ -56,10 +51,6 @@ import {
 type BatchDetail = Awaited<
   ReturnType<NonNullable<ReturnType<typeof batchDetailQuery>['queryFn']>>
 >
-type ExpenseType = BatchDetail['expenses'][number]['expenseType']
-
-const EXPENSE_TYPES = Object.keys(EXPENSE_TYPE_LABELS) as ExpenseType[]
-
 /**
  * Module 05: editors for one batch — financing loan, selling price setup, batch
  * expenses and vehicles. Every change is recalculated server-side (allocation +
@@ -296,7 +287,8 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
 /* -------------------------------- Batch expenses ------------------------------- */
 
 function ExpensesEditor({ detail }: { detail: BatchDetail }) {
-  const [type, setType] = React.useState<ExpenseType>('import_tax')
+  const { data: master } = useQuery(masterDataQuery())
+  const [typeId, setTypeId] = React.useState(0)
   const [description, setDescription] = React.useState('')
   const [amount, setAmount] = React.useState(0)
   const add = useBatchMutation(addBatchExpenseFn)
@@ -304,6 +296,10 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
   const total = detail.expenses.reduce((s, e) => s + e.amount, 0)
 
   const handleAdd = async () => {
+    if (!typeId) {
+      await alertDialog('Vui lòng chọn loại chi phí')
+      return
+    }
     if (amount <= 0) {
       await alertDialog('Số tiền chi phí phải lớn hơn 0')
       return
@@ -313,7 +309,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
         data: {
           batchId: detail.batch.id,
           expense: {
-            expenseType: type,
+            expenseTypeId: typeId,
             description: description || null,
             amount,
           },
@@ -340,7 +336,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
           >
             <div className="min-w-0">
               <div className="text-[11px] text-slate-500">
-                {EXPENSE_TYPE_LABELS[e.expenseType] ?? e.expenseType}
+                {e.expenseTypeName}
               </div>
               <div className="font-bold text-slate-900">
                 {formatVnd(e.amount)}
@@ -374,18 +370,18 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
         ))}
       </div>
       <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-        <Select value={type} onValueChange={(v) => setType(v as ExpenseType)}>
-          <SelectTrigger className="h-8 w-full text-xs bg-white">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {EXPENSE_TYPES.map((t) => (
-              <SelectItem key={t} value={t}>
-                {EXPENSE_TYPE_LABELS[t]}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchSelect
+          className="h-8 w-full text-xs bg-white"
+          placeholder="Loại chi phí"
+          value={typeId ? String(typeId) : ''}
+          onValueChange={(v) => setTypeId(Number(v))}
+        >
+          {(master?.expenseTypes ?? []).map((t) => (
+            <SearchSelectItem key={t.id} value={String(t.id)}>
+              {t.name}
+            </SearchSelectItem>
+          ))}
+        </SearchSelect>
         <Input
           placeholder="Diễn giải"
           value={description}

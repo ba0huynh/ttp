@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { ColorLabel } from '#/components/ui/color-label.tsx'
 import {
   useMutation,
@@ -49,7 +50,6 @@ import {
 import {
   allocateBatchExpenses,
   computeSellingPrice,
-  EXPENSE_TYPE_LABELS,
   formatVnd,
   todayIso,
 } from '#/lib/business.ts'
@@ -122,7 +122,7 @@ function NewBatchPage() {
   const [expenses, setExpenses] = React.useState<
     {
       id: number
-      expenseType: any
+      expenseTypeId: number
       description: string
       amount: number
     }[]
@@ -194,7 +194,7 @@ function NewBatchPage() {
       ...expenses,
       {
         id: nextId,
-        expenseType: 'customs_fee',
+        expenseTypeId: 0,
         description: '',
         amount: 0,
       },
@@ -211,6 +211,10 @@ function NewBatchPage() {
 
     if (!supplierId) {
       setError('Vui lòng chọn nhà cung cấp')
+      return
+    }
+    if (expenses.some((e) => !e.expenseTypeId)) {
+      setError('Vui lòng chọn loại chi phí cho từng khoản')
       return
     }
     if (vehicles.some((v) => !v.modelId || !v.colorId)) {
@@ -235,7 +239,7 @@ function NewBatchPage() {
             importPrice: v.importPrice,
           })),
           expenses: expenses.map((e) => ({
-            expenseType: e.expenseType,
+            expenseTypeId: e.expenseTypeId,
             description: e.description,
             amount: e.amount,
           })),
@@ -244,7 +248,7 @@ function NewBatchPage() {
       await queryClient.invalidateQueries()
       navigate({ to: '/batches' })
     } catch (err: unknown) {
-      setError((err as Error).message || 'Có lỗi xảy ra khi tạo lô xe')
+      setError(formatErrorMessage(err, 'Có lỗi xảy ra khi tạo lô xe'))
     }
   }
 
@@ -291,7 +295,9 @@ function NewBatchPage() {
             className="bg-rose-50 text-rose-900 border-rose-200 text-xs"
           >
             <AlertCircle className="size-4 text-rose-600" />
-            <AlertDescription>{error}</AlertDescription>
+            <AlertDescription className="whitespace-pre-line">
+              {error}
+            </AlertDescription>
           </Alert>
         )}
 
@@ -424,31 +430,28 @@ function NewBatchPage() {
                     {expenses.map((e, idx) => (
                       <TableRow key={e.id}>
                         <TableCell className="w-48">
-                          <Select
-                            value={e.expenseType}
+                          <SearchSelect
+                            className="h-7 w-full text-xs"
+                            placeholder="Chọn loại..."
+                            value={
+                              e.expenseTypeId ? String(e.expenseTypeId) : ''
+                            }
                             onValueChange={(val) => {
                               const updated = [...expenses]
-                              updated[idx].expenseType = val
+                              updated[idx].expenseTypeId = Number(val)
                               setExpenses(updated)
                             }}
                           >
-                            <SelectTrigger className="h-7 w-full text-xs">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {Object.entries(EXPENSE_TYPE_LABELS).map(
-                                ([k, label]) => (
-                                  <SelectItem
-                                    key={k}
-                                    value={k}
-                                    className="text-xs"
-                                  >
-                                    {label}
-                                  </SelectItem>
-                                ),
-                              )}
-                            </SelectContent>
-                          </Select>
+                            {master.expenseTypes.map((t) => (
+                              <SearchSelectItem
+                                key={t.id}
+                                value={String(t.id)}
+                                className="text-xs"
+                              >
+                                {t.name}
+                              </SearchSelectItem>
+                            ))}
+                          </SearchSelect>
                         </TableCell>
                         <TableCell>
                           <Input

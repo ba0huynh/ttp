@@ -4,11 +4,11 @@ import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
 import {
-  EXPENSE_TYPES,
   PRICING_BASES,
   PRICING_METHODS,
   batchExpenses,
   colors,
+  expenseTypes,
   importBatches,
   loanContracts,
   motorcycleModels,
@@ -129,8 +129,16 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
       .orderBy(vehicles.id)
 
     const expList = await db
-      .select()
+      .select({
+        id: batchExpenses.id,
+        batchId: batchExpenses.batchId,
+        expenseTypeId: batchExpenses.expenseTypeId,
+        expenseTypeName: expenseTypes.name,
+        description: batchExpenses.description,
+        amount: batchExpenses.amount,
+      })
       .from(batchExpenses)
+      .innerJoin(expenseTypes, eq(expenseTypes.id, batchExpenses.expenseTypeId))
       .where(eq(batchExpenses.batchId, data.id))
       .orderBy(batchExpenses.id)
 
@@ -176,7 +184,10 @@ export const createBatchFn = createServerFn({ method: 'POST' })
       ),
       expenses: z.array(
         z.object({
-          expenseType: z.enum(EXPENSE_TYPES),
+          expenseTypeId: z
+            .number()
+            .int()
+            .positive('Vui lòng chọn loại chi phí'),
           description: z.string().trim().nullable().optional(),
           amount: z.number().positive('Số tiền chi phí phải > 0'),
         }),
@@ -223,7 +234,7 @@ export const addBatchExpenseFn = createServerFn({ method: 'POST' })
     z.object({
       batchId: z.number().int(),
       expense: z.object({
-        expenseType: z.enum(EXPENSE_TYPES),
+        expenseTypeId: z.number().int().positive('Vui lòng chọn loại chi phí'),
         description: z.string().trim().nullable().optional(),
         amount: z.number().positive(),
       }),

@@ -1,4 +1,9 @@
 import {
+  formatErrorMessage,
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
+import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
@@ -17,10 +22,6 @@ import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import {
-  confirmDialog,
-  showErrorDialog,
-} from '#/components/ui/confirm-dialog.tsx'
 import {
   Card,
   CardContent,
@@ -171,7 +172,7 @@ function SalesOrderPage() {
       })
       setDeliveryDialogOpen(false)
     } catch (err: unknown) {
-      setActionError((err as Error).message || 'Lỗi khi ghi nhận giao xe')
+      setActionError(formatErrorMessage(err, 'Lỗi khi ghi nhận giao xe'))
     }
   }
 
@@ -190,7 +191,7 @@ function SalesOrderPage() {
       })
       setInvoiceDialogOpen(false)
     } catch (err: unknown) {
-      setActionError((err as Error).message || 'Lỗi khi lập hóa đơn')
+      setActionError(formatErrorMessage(err, 'Lỗi khi lập hóa đơn'))
     }
   }
 

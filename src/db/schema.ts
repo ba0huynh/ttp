@@ -279,15 +279,12 @@ export const importBatches = mysqlTable(
   ],
 )
 
-export const EXPENSE_TYPES = [
-  'import_tax',
-  'vat_import',
-  'shipping_international',
-  'shipping_domestic',
-  'customs_fee',
-  'other',
-] as const
-export type ExpenseType = (typeof EXPENSE_TYPES)[number]
+/** Catalogue of batch expense categories (import tax, freight, ...) */
+export const expenseTypes = mysqlTable('expense_types', {
+  id: int('id').primaryKey().autoincrement(),
+  name: varchar('name', { length: 120 }).notNull(),
+  ...timestamps,
+})
 
 export const batchExpenses = mysqlTable(
   'batch_expenses',
@@ -296,7 +293,9 @@ export const batchExpenses = mysqlTable(
     batchId: int('batch_id')
       .notNull()
       .references(() => importBatches.id, { onDelete: 'cascade' }),
-    expenseType: mysqlEnum('expense_type', EXPENSE_TYPES).notNull(),
+    expenseTypeId: int('expense_type_id')
+      .notNull()
+      .references(() => expenseTypes.id),
     description: varchar('description', { length: 255 }),
     amount: money('amount').notNull(),
     ...timestamps,

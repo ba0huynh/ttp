@@ -7,6 +7,7 @@ import {
   banks,
   colors,
   companyBankAccounts,
+  expenseTypes,
   motorcycleModels,
   suppliers,
 } from '#/db/schema.ts'
@@ -35,7 +36,7 @@ const wrapDup = async <T>(fn: () => Promise<T>) => {
 export const getMasterDataFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
-    const [b, a, s, m, c] = await Promise.all([
+    const [b, a, s, m, c, x] = await Promise.all([
       db.select().from(banks).orderBy(asc(banks.name)),
       db
         .select({
@@ -56,8 +57,16 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
       db.select().from(suppliers).orderBy(asc(suppliers.name)),
       db.select().from(motorcycleModels).orderBy(asc(motorcycleModels.name)),
       db.select().from(colors).orderBy(asc(colors.name)),
+      db.select().from(expenseTypes).orderBy(asc(expenseTypes.name)),
     ])
-    return { banks: b, bankAccounts: a, suppliers: s, models: m, colors: c }
+    return {
+      banks: b,
+      bankAccounts: a,
+      suppliers: s,
+      models: m,
+      colors: c,
+      expenseTypes: x,
+    }
   })
 
 /* ----------------------------------- Banks ---------------------------------- */
@@ -163,6 +172,24 @@ export const saveColorFn = createServerFn({ method: 'POST' })
     }),
   )
 
+/* ------------------------------- Expense Types ------------------------------- */
+export const saveExpenseTypeFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('master-data.manage')])
+  .validator(
+    z.object({
+      id: z.number().optional(),
+      name: z.string().trim().min(1),
+    }),
+  )
+  .handler(({ data: { id, ...v } }) =>
+    wrapDup(async () => {
+      if (id)
+        await db.update(expenseTypes).set(v).where(eq(expenseTypes.id, id))
+      else await db.insert(expenseTypes).values(v)
+      return { ok: true }
+    }),
+  )
+
 /* ----------------------------------- Delete ---------------------------------- */
 const deletable = {
   banks,
@@ -170,6 +197,7 @@ const deletable = {
   suppliers,
   motorcycleModels,
   colors,
+  expenseTypes,
 }
 
 export const deleteMasterDataFn = createServerFn({ method: 'POST' })
@@ -182,6 +210,7 @@ export const deleteMasterDataFn = createServerFn({ method: 'POST' })
         'suppliers',
         'motorcycleModels',
         'colors',
+        'expenseTypes',
       ]),
       id: z.number(),
     }),

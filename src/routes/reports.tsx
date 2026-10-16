@@ -24,7 +24,7 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import { EXPENSE_TYPE_LABELS, formatVnd } from '#/lib/business.ts'
+import { formatVnd } from '#/lib/business.ts'
 import {
   defaultReportRange,
   reportsQuery,
@@ -318,7 +318,7 @@ function ReportsPage() {
                     return (
                       <TableRow key={idx}>
                         <TableCell className="font-medium text-slate-900">
-                          {EXPENSE_TYPE_LABELS[e.expenseType] ?? e.expenseType}
+                          {e.expenseTypeName}
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(e.total)}

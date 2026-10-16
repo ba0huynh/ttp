@@ -729,5 +729,19 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 63, 64,... above this line upon completing tasks)_
+### Lesson 63: Expense Types Are a Master Data Table
+
+- **Change**: batch expense categories moved from the `batch_expenses.expense_type` enum into the table `expense_types` (`id`, `name`); `batch_expenses.expense_type_id` (NOT NULL, FK) replaces the enum. `EXPENSE_TYPES` / `EXPENSE_TYPE_LABELS` no longer exist. `/master-data?tab=expenseTypes` ("Loại Chi Phí") lists, adds, edits and deletes them (`saveExpenseTypeFn`, `deleteMasterDataFn('expenseTypes')`, `getMasterDataFn().expenseTypes`); the expense dropdowns in `/batches/new` and `BatchEditor` are `SearchSelect`s over that list, and server inputs take `expenseTypeId`. Batch detail expenses and the reports expense breakdown return `expenseTypeName`.
+- **Deleting**: a type used by batch expenses is refused with the usage list (`getUsageFn` entity `expenseTypes`, links to the batches).
+- **Migrations** `0025_mighty_medusa.sql` (creates the table, inserts the six default names, back-fills `expense_type_id` from the old enum, hand-appended) and `0026_polite_network.sql` (NOT NULL, drops the enum column) were generated in two steps to avoid drizzle-kit's interactive rename prompt; both applied. A fresh database gets the six defaults from the migration, not from the seed.
+
+---
+
+### Lesson 64: Server Validation Errors Never Shown Raw
+
+- Zod errors reach the client as a JSON string. Every form that shows `err.message` must pass it through `formatErrorMessage(err, fallback)` (`src/components/ui/confirm-dialog.tsx`), which turns it into Vietnamese lines such as "Xe 1 — Đơn giá nhập: Đơn giá nhập phải > 0". Row errors are located through `describePath` (`vehicles` / `expenses` + index -> "Xe 1" / "Chi phí 1"); add new field names to `FIELD_TRANSLATIONS` and new list names to `ROW_LABELS`. Banners that show the result need `whitespace-pre-line`. Applied to the batch, sale, statement import and auth forms; settings forms use `parseFieldErrors` (Lesson 48).
+
+---
+
+_(Next Agent: Append Lesson 65, 66,... above this line upon completing tasks)_
 

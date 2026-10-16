@@ -9,6 +9,7 @@ import {
   CreditCard,
   Landmark,
   Palette,
+  Receipt,
   Pencil,
   Plus,
   Trash2,
@@ -76,6 +77,7 @@ import {
   saveBankAccountFn,
   saveBankFn,
   saveColorFn,
+  saveExpenseTypeFn,
   saveModelFn,
   saveSupplierFn,
 } from '#/server/fns/master-data.ts'
@@ -84,7 +86,14 @@ export const Route = createFileRoute('/master-data')({
   // The active tab lives in the URL (?tab=...) so a reload stays on it
   validateSearch: z.object({
     tab: z
-      .enum(['models', 'suppliers', 'banks', 'accounts', 'colors'])
+      .enum([
+        'models',
+        'suppliers',
+        'banks',
+        'accounts',
+        'colors',
+        'expenseTypes',
+      ])
       .catch('models'),
     // search text of the active tab (dropped when the tab changes)
     q: z.string().optional().catch(undefined),
@@ -141,6 +150,10 @@ function MasterDataPage() {
     ),
     search,
   )
+  const expenseTypesPg = usePagination(
+    master.expenseTypes.filter((x) => matchesSearch(search, x.name)),
+    search,
+  )
   const colorsPg = usePagination(
     master.colors.filter((c) => matchesSearch(search, c.name)),
     search,
@@ -149,6 +162,10 @@ function MasterDataPage() {
   // Danh mục được dùng ở lô nhập, vay, thu chi... nên làm mới toàn bộ cache
   const refresh = () => queryClient.invalidateQueries()
   const saveModel = useMutation({ mutationFn: saveModelFn, onSuccess: refresh })
+  const saveExpenseType = useMutation({
+    mutationFn: saveExpenseTypeFn,
+    onSuccess: refresh,
+  })
   const saveSupplier = useMutation({
     mutationFn: saveSupplierFn,
     onSuccess: refresh,
@@ -166,6 +183,9 @@ function MasterDataPage() {
 
   // Modal Model
   const [mId, setMId] = React.useState<number | null>(null)
+  const [xId, setXId] = React.useState<number | null>(null)
+  const [expenseTypeOpen, setExpenseTypeOpen] = React.useState(false)
+  const [xName, setXName] = React.useState('')
   const [sId, setSId] = React.useState<number | null>(null)
   const [bId, setBId] = React.useState<number | null>(null)
   const [cId, setCId] = React.useState<number | null>(null)
@@ -222,6 +242,18 @@ function MasterDataPage() {
       setModelOpen(false)
     } catch (err: unknown) {
       await showErrorDialog(err, 'Lỗi khi lưu loại xe')
+    }
+  }
+
+  const handleSaveExpenseType = async (e: React.FormEvent) => {
+    e.preventDefault()
+    try {
+      await saveExpenseType.mutateAsync({
+        data: { id: xId ?? undefined, name: xName },
+      })
+      setExpenseTypeOpen(false)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Lỗi khi lưu loại chi phí')
     }
   }
 
@@ -295,7 +327,8 @@ function MasterDataPage() {
       | 'suppliers'
       | 'banks'
       | 'companyBankAccounts'
-      | 'colors',
+      | 'colors'
+      | 'expenseTypes',
     id: number,
     name: string,
   ) => {
@@ -376,6 +409,13 @@ function MasterDataPage() {
             >
               <Palette className="size-3.5" />
               Màu Sắc ({master.colors.length})
+            </TabsTrigger>
+            <TabsTrigger
+              value="expenseTypes"
+              className="text-xs font-semibold gap-1.5"
+            >
+              <Receipt className="size-3.5" />
+              Loại Chi Phí ({master.expenseTypes.length})
             </TabsTrigger>
           </TabsList>
 
@@ -458,6 +498,89 @@ function MasterDataPage() {
                   </TableBody>
                 </Table>
                 <TablePagination pagination={modelsPg} />
+              </CardContent>
+            </Card>
+          </TabsContent>
+
+          {/* Expense types */}
+          <TabsContent value="expenseTypes">
+            <Card className="border-slate-200 shadow-xs">
+              <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+                <CardTitle className="text-sm font-bold text-slate-800">
+                  Danh Sách Loại Chi Phí Lô Xe
+                </CardTitle>
+                <SearchBox
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Tìm loại chi phí..."
+                  className="ml-auto mr-3 w-72"
+                />
+                <Can permission="master-data.manage">
+                  <Button
+                    size="sm"
+                    onClick={() => {
+                      setXId(null)
+                      setXName('')
+                      setExpenseTypeOpen(true)
+                    }}
+                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm Loại Chi Phí
+                  </Button>
+                </Can>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="text-xs bg-slate-50">
+                      <TableHead>Tên Loại Chi Phí</TableHead>
+                      <TableHead className="w-10"></TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="text-xs">
+                    {expenseTypesPg.pageItems.map((m) => (
+                      <TableRow key={m.id}>
+                        <TableCell className="font-medium text-slate-900">
+                          {m.name}
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setXId(m.id)
+                                  setXName(m.name)
+                                  setExpenseTypeOpen(true)
+                                }}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            </Can>
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDelete('expenseTypes', m.id, m.name)
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </Can>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+                <TablePagination pagination={expenseTypesPg} />
               </CardContent>
             </Card>
           </TabsContent>
@@ -866,6 +989,52 @@ function MasterDataPage() {
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
                   {saveModel.isPending ? 'Đang lưu...' : 'Lưu Dòng Xe'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        {/* Add Expense Type Modal */}
+        <Dialog open={expenseTypeOpen} onOpenChange={setExpenseTypeOpen}>
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                {xId ? 'Sửa Loại Chi Phí' : 'Thêm Loại Chi Phí'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleSaveExpenseType} className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">
+                  Tên Loại Chi Phí *
+                </Label>
+                <Input
+                  required
+                  value={xName}
+                  onChange={(e) => setXName(e.target.value)}
+                  className="h-8 text-xs"
+                  placeholder="Thuế nhập khẩu"
+                />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setExpenseTypeOpen(false)}
+                  className="h-8 text-xs"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saveExpenseType.isPending}
+                  size="sm"
+                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+                >
+                  {saveExpenseType.isPending
+                    ? 'Đang lưu...'
+                    : 'Lưu Loại Chi Phí'}
                 </Button>
               </DialogFooter>
             </form>

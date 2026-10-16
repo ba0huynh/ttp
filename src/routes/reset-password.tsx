@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { useMutation } from '@tanstack/react-query'
 import { Link, createFileRoute } from '@tanstack/react-router'
 import { KeyRound } from 'lucide-react'
@@ -30,7 +31,7 @@ function ResetPasswordPage() {
     try {
       await reset.mutateAsync({ data: { token, password } })
     } catch (err: unknown) {
-      setError((err as Error).message || 'Không đặt lại được mật khẩu')
+      setError(formatErrorMessage(err, 'Không đặt lại được mật khẩu'))
     }
   }
 

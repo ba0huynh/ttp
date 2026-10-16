@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { useMutation } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Mail } from 'lucide-react'
@@ -30,7 +31,7 @@ function ForgotPasswordPage() {
     try {
       await forgot.mutateAsync({ data: { email } })
     } catch (err: unknown) {
-      setError((err as Error).message || 'Không gửi được yêu cầu')
+      setError(formatErrorMessage(err, 'Không gửi được yêu cầu'))
     }
   }
 

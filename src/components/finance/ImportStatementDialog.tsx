@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Trash2, Upload } from 'lucide-react'
 import * as React from 'react'
@@ -156,7 +157,7 @@ export function ImportStatementDialog({
       onImported(res.id)
       onOpenChange(false)
     } catch (err: unknown) {
-      setError((err as Error).message || 'Lỗi khi nhập sao kê')
+      setError(formatErrorMessage(err, 'Lỗi khi nhập sao kê'))
     }
   }
 

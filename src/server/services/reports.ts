@@ -4,6 +4,7 @@ import { db } from '../../db/index.ts'
 import {
   banks,
   batchExpenses,
+  expenseTypes,
   colors,
   customers,
   importBatches,
@@ -303,18 +304,20 @@ export async function getReports(from: string, to: string) {
 
   const expensesByType = db
     .select({
-      expenseType: batchExpenses.expenseType,
+      expenseTypeId: batchExpenses.expenseTypeId,
+      expenseTypeName: expenseTypes.name,
       total: sql<string>`sum(${batchExpenses.amount})`,
     })
     .from(batchExpenses)
     .innerJoin(importBatches, eq(importBatches.id, batchExpenses.batchId))
+    .innerJoin(expenseTypes, eq(expenseTypes.id, batchExpenses.expenseTypeId))
     .where(
       and(
         gte(importBatches.importDate, from),
         lte(importBatches.importDate, to),
       ),
     )
-    .groupBy(batchExpenses.expenseType)
+    .groupBy(batchExpenses.expenseTypeId, expenseTypes.name)
 
   const interestPaid = db
     .select({

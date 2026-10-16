@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import {
   useMutation,
   useQueryClient,
@@ -169,7 +170,7 @@ function NewSalesOrderPage() {
       await queryClient.invalidateQueries()
       navigate({ to: '/sales' })
     } catch (err: unknown) {
-      setError((err as Error).message || 'Lỗi khi tạo phiếu bán xe')
+      setError(formatErrorMessage(err, 'Lỗi khi tạo phiếu bán xe'))
     }
   }
 

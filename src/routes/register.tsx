@@ -1,3 +1,4 @@
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { useMutation } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { UserPlus } from 'lucide-react'
@@ -49,7 +50,7 @@ function RegisterPage() {
         },
       })
     } catch (err: unknown) {
-      setError((err as Error).message || 'Đăng ký không thành công')
+      setError(formatErrorMessage(err, 'Đăng ký không thành công'))
     }
   }
 

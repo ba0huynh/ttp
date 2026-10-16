@@ -70,6 +70,38 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
   importPrice: 'Đơn giá nhập',
   sellingPrice: 'Đơn giá bán',
   amount: 'Số tiền',
+  modelId: 'Dòng xe',
+  colorId: 'Màu xe',
+  supplierId: 'Nhà cung cấp',
+  expenseTypeId: 'Loại chi phí',
+  pricingValue: 'Giá trị định giá',
+}
+
+/** Names of list fields, used to say which row an error belongs to */
+const ROW_LABELS: Record<string, string> = {
+  vehicles: 'Xe',
+  expenses: 'Chi phí',
+}
+
+/** `['vehicles', 0, 'importPrice']` -> `Xe 1 — Đơn giá nhập` */
+function describePath(path: Array<string | number> | undefined): string {
+  if (!path || path.length === 0) return ''
+  const parts: string[] = []
+  for (let i = 0; i < path.length; i++) {
+    const key = path[i]
+    const next = path[i + 1]
+    if (
+      typeof key === 'string' &&
+      ROW_LABELS[key] &&
+      typeof next === 'number'
+    ) {
+      parts.push(`${ROW_LABELS[key]} ${next + 1}`)
+      i++
+    } else if (typeof key === 'string') {
+      parts.push(FIELD_TRANSLATIONS[key] || key)
+    }
+  }
+  return parts.join(' — ')
 }
 
 /**
@@ -96,8 +128,7 @@ export function formatErrorMessage(
       if (Array.isArray(parsed) && parsed.length > 0) {
         return parsed
           .map((item: any) => {
-            const rawField = item.path ? item.path.join('.') : ''
-            const field = FIELD_TRANSLATIONS[rawField] || rawField
+            const field = describePath(item.path)
 
             let msg = item.message || 'Dữ liệu không hợp lệ'
             if (item.code === 'too_small' && item.type === 'string') {
