@@ -811,12 +811,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-### Lesson 73: One Colour per Model (Dòng Xe Carries Its Colour)
+### Lesson 73: Model Colour Is a Suggestion (Dòng Xe Carries a Default Colour)
 
-- **Rule from the client**: a motorcycle model has exactly **one** colour (`motorcycle_models.color_id`, FK to `colors`; migration `0030_dry_queen_noir.sql`, applied). A bike in a second colour is a second model row with the same brand / line / year and another colour. This replaces the per-model colour *list* of Lesson 69 (that table was dropped in `0028`).
-- **Master data**: the model dialog has a required "Màu Xe *" select (with swatches) and the table a "Màu Xe" column; the model search also matches the colour name. `saveModelFn` requires `colorId`. Deleting a colour is refused while a model uses it (usage list "Dòng xe dùng màu này").
-- **Vehicles**: `vehicles.color_id` stays, but it is no longer picked by hand: choosing a model in `/batches/new` or in the batch editor fills the colour from the model (shown read-only), and `ModelOption` (`src/components/batches/ModelOption.tsx`) shows "Hãng Dòng Đời" plus the colour swatch in model dropdowns. A model without a colour blocks the batch with a message pointing to Dữ liệu chung.
-- **Backfill caveat**: the migration copied, for each existing model, the colour of its first vehicle; models without vehicles (e.g. "honda airblade") have no colour until someone edits them. A model that was used with several colours keeps only one; its older vehicles keep their own colours.
+- **Rule from the client**: a motorcycle model can carry **one suggested colour** (`motorcycle_models.color_id`, FK to `colors`, nullable; migration `0030_dry_queen_noir.sql`, applied). It is only a default: the vehicle's own colour is still chosen per vehicle. This replaces the per-model colour *list* of Lesson 69 (that table was dropped in `0028`). A bike in a second colour can be a second model row, but nothing forces it.
+- **Master data**: the model dialog has an optional "Màu Xe" select (swatches) and the table a "Màu Xe" column; the model search also matches the colour name. Deleting a colour is refused while a model uses it (usage list "Dòng xe dùng màu này").
+- **Vehicles**: `vehicles.color_id` is chosen with a normal colour dropdown (required, marked *) in `/batches/new` and in the batch editor's add-vehicle row. Choosing a model pre-selects the model's colour (in the editor it is used until the user picks another; picking a different model suggests again), and the user can change it. `ModelOption` (`src/components/batches/ModelOption.tsx`) shows "Hãng Dòng Đời" plus the colour swatch in model dropdowns.
+- **Backfill**: the migration copied, for each existing model, the colour of its first vehicle; models without vehicles have no suggestion until edited.
 
 ---
 
@@ -835,5 +835,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 76, 77,... above this line upon completing tasks)_
+### Lesson 76: Batch List Actions (view / edit / delete)
+
+- **`/batches` rows** have three icon buttons: eye (detail), pencil (opens `/batches/$batchId`, where batch info, pricing, expenses and vehicles are edited; there is no separate edit dialog) and trash. The last two sit in `<Can permission="batches.manage">`.
+- **Delete**: `deleteBatchFn` (`deleteBatch` in `services/batches.ts`) removes the batch; its vehicles and expenses go with it through `ON DELETE CASCADE`. It is refused when any vehicle is in a sales order or was delivered / invoiced (`BusinessError`); `getUsageFn` entity `batches` lists the sales orders (with links) that hold vehicles of the batch. The usual flow applies: usage check, confirmation, spinner (Lessons 51 and 71).
+
+---
+
+_(Next Agent: Append Lesson 77, 78,... above this line upon completing tasks)_
 

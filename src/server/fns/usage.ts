@@ -45,6 +45,7 @@ export const USAGE_ENTITIES = [
   'users',
   'customers',
   'branches',
+  'batches',
 ] as const
 
 export interface UsageItem {
@@ -409,6 +410,34 @@ async function usageOf(
           statements.map((st) => ({
             label: st.fileName ?? `Sao kê #${st.id}`,
             href: '/reconcile',
+          })),
+        ),
+      ]
+    }
+
+    case 'batches': {
+      const rows = await db
+        .select({
+          orderId: salesOrders.id,
+          date: salesOrders.orderDate,
+          customer: customers.name,
+          n: count(salesOrderItems.id),
+        })
+        .from(salesOrderItems)
+        .innerJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
+        .innerJoin(
+          salesOrders,
+          eq(salesOrders.id, salesOrderItems.salesOrderId),
+        )
+        .innerJoin(customers, eq(customers.id, salesOrders.customerId))
+        .where(eq(vehicles.batchId, id))
+        .groupBy(salesOrders.id, salesOrders.orderDate, customers.name)
+      return [
+        group(
+          'Phiếu bán có xe của lô này',
+          rows.map((r) => ({
+            label: `Phiếu bán #${r.orderId} — ${r.customer} — ${formatDate(r.date)} — ${r.n} xe`,
+            href: `/sales/${r.orderId}`,
           })),
         ),
       ]

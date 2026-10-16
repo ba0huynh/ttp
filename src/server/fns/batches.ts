@@ -20,6 +20,7 @@ import {
   addBatchExpense,
   addVehiclesToBatch,
   createBatch,
+  deleteBatch,
   removeBatchExpense,
   removeVehicle,
   updateBatchInfo,
@@ -225,6 +226,14 @@ export const removeVehicleFn = createServerFn({ method: 'POST' })
   .validator(z.object({ vehicleId: z.number().int() }))
   .handler(async ({ data }) => {
     await removeVehicle(data.vehicleId)
+    return { ok: true }
+  })
+
+export const deleteBatchFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('batches.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    await deleteBatch(data.id)
     return { ok: true }
   })
 

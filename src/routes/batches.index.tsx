@@ -1,6 +1,15 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { Eye, PackagePlus } from 'lucide-react'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
+import {
+  createFileRoute,
+  Link,
+  redirect,
+  useNavigate,
+} from '@tanstack/react-router'
+import { Eye, Pencil, PackagePlus } from 'lucide-react'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -26,6 +35,10 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import { batchesQuery, currentUserQuery } from '#/lib/queries.ts'
+import { deleteBatchFn } from '#/server/fns/batches.ts'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
+import { useBusyKeys } from '#/lib/use-busy.ts'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 
 export const Route = createFileRoute('/batches/')({
@@ -45,6 +58,40 @@ function BatchesPage() {
   const { user } = Route.useRouteContext()
   const { data: batches } = useSuspenseQuery(batchesQuery())
   const batchesPg = usePagination(batches)
+  const queryClient = useQueryClient()
+  const { isBusy, setBusy } = useBusyKeys()
+  const navigate = useNavigate()
+
+  const deleteBatch = useMutation({
+    mutationFn: deleteBatchFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const handleDelete = async (b: { id: number; importDate: string }) => {
+    const key = `batches:${b.id}`
+    const name = `Lô nhập ${formatDate(b.importDate)}`
+    const ok = await confirmDelete(
+      { entity: 'batches', id: b.id, name },
+      {
+        title: `Xóa "${name}"?`,
+        description:
+          'Toàn bộ xe và chi phí của lô cũng bị xóa. Không thể hoàn tác.',
+      },
+      (checking) => setBusy(key, checking),
+    )
+    if (!ok) return
+    setBusy(key, true)
+    try {
+      await deleteBatch.mutateAsync({ data: { id: b.id } })
+    } catch (err: unknown) {
+      await reportDeleteFailure(
+        err,
+        { entity: 'batches', id: b.id, name },
+        'Không thể xóa lô nhập',
+      )
+    } finally {
+      setBusy(key, false)
+    }
+  }
 
   return (
     <AppLayout user={user}>
@@ -149,22 +196,51 @@ function BatchesPage() {
                             : `+${formatVnd(b.pricingValue)}`}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center whitespace-nowrap">
                         <Button
                           asChild
                           variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-emerald-800 gap-1"
+                          size="icon"
+                          className="size-7 text-slate-400 hover:text-emerald-700"
                         >
                           <Link
                             to="/batches/$batchId"
                             params={{ batchId: String(b.id) }}
                             preload="intent"
+                            aria-label="Xem chi tiết"
+                            title="Xem chi tiết"
                           >
                             <Eye className="size-3.5" />
-                            Xem chi tiết
                           </Link>
                         </Button>
+                        <Can permission="batches.manage">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              navigate({
+                                to: '/batches/$batchId',
+                                params: { batchId: String(b.id) },
+                              })
+                            }
+                            className="size-7 text-slate-400 hover:text-emerald-700"
+                            aria-label="Sửa"
+                            title="Sửa lô nhập"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(b)}
+                            disabled={isBusy(`batches:${b.id}`)}
+                            className="size-7 text-slate-400 hover:text-rose-600"
+                            aria-label="Xóa"
+                            title="Xóa"
+                          >
+                            <BusyTrash busy={isBusy(`batches:${b.id}`)} />
+                          </Button>
+                        </Can>
                       </TableCell>
                     </TableRow>
                   ))}

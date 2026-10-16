@@ -206,6 +206,35 @@ export async function removeVehicle(vehicleId: number) {
   })
 }
 
+/** Deletes a batch with its vehicles and expenses; refused once any vehicle was sold, delivered or invoiced */
+export async function deleteBatch(batchId: number) {
+  await db.transaction(async (tx) => {
+    const list = await tx
+      .select({
+        id: vehicles.id,
+        isDelivered: vehicles.isDelivered,
+        isInvoiced: vehicles.isInvoiced,
+      })
+      .from(vehicles)
+      .where(eq(vehicles.batchId, batchId))
+    const ids = list.map((v) => v.id)
+    const sold =
+      ids.length > 0
+        ? await tx
+            .select({ id: salesOrderItems.id })
+            .from(salesOrderItems)
+            .where(inArray(salesOrderItems.vehicleId, ids))
+            .limit(1)
+        : []
+    if (sold.length > 0 || list.some((v) => v.isDelivered || v.isInvoiced))
+      throw new BusinessError(
+        'Lô có xe đã bán/giao/xuất hóa đơn nên không thể xóa',
+      )
+    // Vehicles and expenses are removed by their ON DELETE CASCADE
+    await tx.delete(importBatches).where(eq(importBatches.id, batchId))
+  })
+}
+
 export async function addBatchExpense(batchId: number, e: ExpenseInput) {
   await db.transaction(async (tx) => {
     await tx.insert(batchExpenses).values({

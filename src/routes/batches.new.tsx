@@ -224,9 +224,7 @@ function NewBatchPage() {
       return
     }
     if (vehicles.some((v) => !v.colorId)) {
-      setError(
-        'Dòng xe chưa có màu: hãy gán màu cho dòng xe trong Dữ liệu chung',
-      )
+      setError('Vui lòng chọn màu xe cho từng xe')
       return
     }
 
@@ -534,7 +532,7 @@ function NewBatchPage() {
                         <TableHead className="w-36">Số Khung *</TableHead>
                         <TableHead className="w-32">Số Máy *</TableHead>
                         <TableHead>Dòng xe *</TableHead>
-                        <TableHead className="w-28">Màu xe</TableHead>
+                        <TableHead className="w-28">Màu xe *</TableHead>
                         <TableHead className="text-right w-36">
                           Đơn Giá Nhập *
                         </TableHead>
@@ -575,7 +573,7 @@ function NewBatchPage() {
                               onValueChange={(val) => {
                                 const updated = [...vehicles]
                                 updated[idx].modelId = Number(val)
-                                // the colour comes with the model
+                                // the model's colour is only a suggestion; it can be changed
                                 updated[idx].colorId =
                                   master.models.find(
                                     (m) => m.id === Number(val),
@@ -598,17 +596,28 @@ function NewBatchPage() {
                               ))}
                             </SearchSelect>
                           </TableCell>
-                          <TableCell className="text-xs text-slate-500">
-                            {(() => {
-                              const c = master.colors.find(
-                                (x) => x.id === v.colorId,
-                              )
-                              return c ? (
-                                <ColorLabel name={c.name} hex={c.hex} />
-                              ) : (
-                                '—'
-                              )
-                            })()}
+                          <TableCell>
+                            <SearchSelect
+                              className="h-9 w-full text-sm rounded-lg"
+                              placeholder="Chọn màu"
+                              value={v.colorId ? String(v.colorId) : ''}
+                              onValueChange={(val) => {
+                                const updated = [...vehicles]
+                                updated[idx].colorId = Number(val)
+                                setVehicles(updated)
+                              }}
+                            >
+                              {master.colors.map((c) => (
+                                <SearchSelectItem
+                                  key={c.id}
+                                  value={String(c.id)}
+                                  className="text-xs"
+                                  keywords={c.name}
+                                >
+                                  <ColorLabel name={c.name} hex={c.hex} />
+                                </SearchSelectItem>
+                              ))}
+                            </SearchSelect>
                           </TableCell>
                           <TableCell className="text-right">
                             <MoneyInput

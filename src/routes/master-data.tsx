@@ -101,7 +101,8 @@ export const Route = createFileRoute('/master-data')({
 const TAB_TITLES = {
   models: {
     title: 'Dòng Xe',
-    description: 'Hãng xe, dòng xe, đời xe và màu xe (mỗi dòng xe một màu).',
+    description:
+      'Hãng xe, dòng xe, đời xe và màu xe gợi ý (có thể đổi khi nhập xe).',
   },
   suppliers: {
     title: 'Nhà Cung Cấp',
@@ -303,10 +304,6 @@ function MasterDataPage() {
 
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!mColorId) {
-      await alertDialog('Vui lòng chọn màu xe')
-      return
-    }
     try {
       await saveModel.mutateAsync({
         data: {
@@ -314,7 +311,7 @@ function MasterDataPage() {
           brand: mBrand || null,
           name: mName,
           modelYear: mYear || null,
-          colorId: mColorId ?? 0,
+          colorId: mColorId,
         },
       })
       setModelOpen(false)
@@ -1077,7 +1074,7 @@ function MasterDataPage() {
                 />
               </div>
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Màu Xe *</Label>
+                <Label className="text-xs font-semibold">Màu Xe</Label>
                 <SearchSelect
                   className="h-11 w-full rounded-lg text-sm"
                   placeholder="Chọn màu xe"
@@ -1095,8 +1092,8 @@ function MasterDataPage() {
                   ))}
                 </SearchSelect>
                 <p className="text-[11px] text-slate-500">
-                  Mỗi dòng xe có một màu. Xe cùng dòng nhưng khác màu thì tạo
-                  thêm một dòng xe riêng.
+                  Màu gợi ý: tự điền khi chọn dòng xe lúc nhập lô, vẫn đổi được
+                  sang màu khác.
                 </p>
               </div>
               <DialogFooter className="pt-2">
