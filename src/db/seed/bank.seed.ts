@@ -103,10 +103,17 @@ export async function seedBanks() {
       .from(banks),
   ])
   const have = new Map(existing.map((b) => [normalizeBankName(b.name), b]))
-  const missing = catalog.filter((b) => !have.has(normalizeBankName(b.name)))
+  // Banks can be renamed in the app: the VietQR code still identifies them
+  const haveByCode = new Map(
+    existing.flatMap((b) => (b.code ? [[b.code, b] as const] : [])),
+  )
+  const findExisting = (b: BankRow) =>
+    have.get(normalizeBankName(b.name)) ??
+    (b.code ? haveByCode.get(b.code) : undefined)
+  const missing = catalog.filter((b) => !findExisting(b))
   // Existing banks: fill only the columns that are still empty
   const needsFill = catalog.flatMap((b) => {
-    const row = have.get(normalizeBankName(b.name))
+    const row = findExisting(b)
     if (!row) return []
     const patch: Partial<BankRow> = {}
     if (b.image && !row.image) patch.image = b.image

@@ -11,6 +11,7 @@ import {
   banks,
   companyBankAccounts,
   customers,
+  importBatches,
   loanContracts,
   loanRepayments,
   paymentVouchers,
@@ -127,6 +128,35 @@ export const recordLoanPaymentFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await recordLoanRepayment(data)
+    return { ok: true }
+  })
+
+/**
+ * Deleting a loan contract is allowed only while nothing depends on it: no
+ * batch financed by it and no repayment recorded (a repayment would otherwise
+ * be deleted with it by the cascade and the history lost).
+ */
+export const deleteLoanContractFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('loans.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    const [[batch], [repayment]] = await Promise.all([
+      db
+        .select({ id: importBatches.id })
+        .from(importBatches)
+        .where(eq(importBatches.loanContractId, data.id))
+        .limit(1),
+      db
+        .select({ id: loanRepayments.id })
+        .from(loanRepayments)
+        .where(eq(loanRepayments.loanContractId, data.id))
+        .limit(1),
+    ])
+    if (batch || repayment)
+      throw new Error(
+        'Khế ước đã có lô nhập hoặc khoản trả nợ nên không thể xóa',
+      )
+    await db.delete(loanContracts).where(eq(loanContracts.id, data.id))
     return { ok: true }
   })
 

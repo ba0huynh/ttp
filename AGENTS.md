@@ -635,7 +635,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 ### Lesson 51: Refused Deletes Explain What Uses the Row (names + links)
 
 - **Behaviour**: when a delete is refused because other records still use the row, the user sees "Không thể xóa "<name>"" with the list of those records grouped by type (e.g. "Lô nhập có xe dùng mục này (3)"), each a link to its detail page, and "… và N mục khác" when more than 30. The dialog is the global alert dialog (`showUsageDialog` in `src/components/ui/confirm-dialog.tsx`, which accepts `groups` in `AlertOptions`); clicking a link closes it and navigates.
-- **Server**: `getUsageFn({ entity, id })` (`src/server/fns/usage.ts`) returns the groups for `banks`, `companyBankAccounts`, `suppliers`, `motorcycleModels`, `colors`, `roles` and `vehicles` (a vehicle in a sales order). Groups with no records are dropped, so an empty result means the failure had another cause. Needs `master-data.manage`, `roles.manage` or `batches.manage`.
+- **Server**: `getUsageFn({ entity, id })` (`src/server/fns/usage.ts`) returns the groups for `banks`, `companyBankAccounts`, `suppliers`, `motorcycleModels`, `colors`, `roles`, `vehicles` (a vehicle in a sales order) and `loans` (batches financed by it and recorded repayments; `deleteLoanContractFn` refuses to delete such a loan, so repayment history is never lost through the cascade; the trash button is in the `/loans` list). Groups with no records are dropped, so an empty result means the failure had another cause. Needs `master-data.manage`, `roles.manage` or `batches.manage`.
 - **Client rule (check first, then confirm)**: every delete starts with `confirmDelete({ entity, id, name }, { title, description })` from `src/lib/usage.ts`: it asks `getUsageFn` first; if something uses the row it shows the usage list and returns `false` (no confirmation is shown); if nothing uses it, it shows the normal confirmation and returns the answer. Keep `reportDeleteFailure(err, target, fallback)` in the `catch` of the actual delete as a safety net for the race where the row became used in between. Already used by master data (all 5 tabs), roles and removing a vehicle from a batch (`useBatchMutation` takes an `onFail` callback). Removing a batch expense is never blocked, so it keeps the plain `confirmDialog`. **A new deletable entity needs a `case` in `usageOf` and an entry in `USAGE_ENTITIES`.**
 - **Foreign-key detection**: `isReferencedError` (`src/server/services/common.ts`) reads MySQL errno 1451 / `ER_ROW_IS_REFERENCED*` through the whole `cause` chain, because Drizzle wraps driver errors as "Failed query: ...". `formatErrorMessage` never shows a message that starts with "Failed query".
 
@@ -686,5 +686,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 57, 58,... above this line upon completing tasks)_
+### Lesson 57: Every Master Data Tab Is Editable
+
+- **What**: each row of the five `/master-data` tabs (Dòng Xe, Nhà Cung Cấp, Ngân Hàng, Tài Khoản Ngân Hàng, Màu Sắc) has a pencil button next to the trash button. It opens the same dialog as "Thêm", titled "Sửa ...", pre-filled; saving sends the row `id` to the existing `save*Fn`, which updates instead of inserting. "Thêm" clears the edit id first. Only users with `master-data.manage` see the buttons.
+- **Banks**: only the name can be edited (logo, code and short name stay as imported). A bank renamed by hand is **not** added again by `npm run seed`: `seedBanks()` matches existing rows by name and, when a row has a VietQR `code`, by that code too.
+- **Pattern for a new catalogue tab**: keep one `xId` state (null = adding), reset it in the add button, set it with the pencil, and pass `id: xId ?? undefined` in the save handler.
+
+---
+
+_(Next Agent: Append Lesson 58, 59,... above this line upon completing tasks)_
 

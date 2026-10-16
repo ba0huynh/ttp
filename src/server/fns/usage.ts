@@ -31,6 +31,7 @@ export const USAGE_ENTITIES = [
   'colors',
   'roles',
   'vehicles',
+  'loans',
 ] as const
 
 export interface UsageItem {
@@ -236,6 +237,44 @@ async function usageOf(
           rows.map((u) => ({
             label: `${u.fullName} (${u.username})`,
             href: '/settings?tab=users',
+          })),
+        ),
+      ]
+    }
+
+    case 'loans': {
+      const [batches, repayments] = await Promise.all([
+        db
+          .select({
+            id: importBatches.id,
+            importDate: importBatches.importDate,
+            supplierName: suppliers.name,
+          })
+          .from(importBatches)
+          .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+          .where(eq(importBatches.loanContractId, id)),
+        db
+          .select({
+            date: loanRepayments.paymentDate,
+            principal: loanRepayments.principalAmount,
+            interest: loanRepayments.interestAmount,
+          })
+          .from(loanRepayments)
+          .where(eq(loanRepayments.loanContractId, id)),
+      ])
+      return [
+        group(
+          'Lô nhập được khế ước này tài trợ',
+          batches.map((b) => ({
+            label: batchLabel(b),
+            href: `/batches/${b.id}`,
+          })),
+        ),
+        group(
+          'Các khoản đã trả nợ',
+          repayments.map((r) => ({
+            label: `${formatDate(r.date)} — gốc ${formatVnd(num(r.principal))}, lãi ${formatVnd(num(r.interest))}`,
+            href: `/loans/${id}`,
           })),
         ),
       ]

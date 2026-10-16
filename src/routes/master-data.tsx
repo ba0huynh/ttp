@@ -126,6 +126,10 @@ function MasterDataPage() {
   })
 
   // Modal Model
+  const [mId, setMId] = React.useState<number | null>(null)
+  const [sId, setSId] = React.useState<number | null>(null)
+  const [bId, setBId] = React.useState<number | null>(null)
+  const [cId, setCId] = React.useState<number | null>(null)
   const [modelOpen, setModelOpen] = React.useState(false)
   const [mName, setMName] = React.useState('')
 
@@ -174,7 +178,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveModel.mutateAsync({
-        data: { name: mName },
+        data: { id: mId ?? undefined, name: mName },
       })
       setModelOpen(false)
     } catch (err: unknown) {
@@ -186,7 +190,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveSupplier.mutateAsync({
-        data: { name: sName },
+        data: { id: sId ?? undefined, name: sName },
       })
       setSupplierOpen(false)
     } catch (err: unknown) {
@@ -198,7 +202,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveBank.mutateAsync({
-        data: { name: bName },
+        data: { id: bId ?? undefined, name: bName },
       })
       setBankOpen(false)
     } catch (err: unknown) {
@@ -238,7 +242,7 @@ function MasterDataPage() {
     }
     try {
       await saveColor.mutateAsync({
-        data: { name: cName, hex },
+        data: { id: cId ?? undefined, name: cName, hex },
       })
       setColorOpen(false)
     } catch (err: unknown) {
@@ -347,6 +351,7 @@ function MasterDataPage() {
                   <Button
                     size="sm"
                     onClick={() => {
+                      setMId(null)
                       setMName('')
                       setModelOpen(true)
                     }}
@@ -372,18 +377,36 @@ function MasterDataPage() {
                           {m.name}
                         </TableCell>
                         <TableCell>
-                          <Can permission="master-data.manage">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                handleDelete('motorcycleModels', m.id, m.name)
-                              }
-                              className="size-7 text-slate-400 hover:text-rose-600"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </Can>
+                          <div className="flex justify-end gap-1">
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setMId(m.id)
+                                  setMName(m.name)
+                                  setModelOpen(true)
+                                }}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            </Can>
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDelete('motorcycleModels', m.id, m.name)
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </Can>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -405,6 +428,7 @@ function MasterDataPage() {
                   <Button
                     size="sm"
                     onClick={() => {
+                      setSId(null)
                       setSName('')
                       setSupplierOpen(true)
                     }}
@@ -430,18 +454,36 @@ function MasterDataPage() {
                           {s.name}
                         </TableCell>
                         <TableCell>
-                          <Can permission="master-data.manage">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                handleDelete('suppliers', s.id, s.name)
-                              }
-                              className="size-7 text-slate-400 hover:text-rose-600"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </Can>
+                          <div className="flex justify-end gap-1">
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setSId(s.id)
+                                  setSName(s.name)
+                                  setSupplierOpen(true)
+                                }}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            </Can>
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDelete('suppliers', s.id, s.name)
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </Can>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -463,6 +505,7 @@ function MasterDataPage() {
                   <Button
                     size="sm"
                     onClick={() => {
+                      setBId(null)
                       setBName('')
                       setBankOpen(true)
                     }}
@@ -490,18 +533,36 @@ function MasterDataPage() {
                           </BankLabel>
                         </TableCell>
                         <TableCell>
-                          <Can permission="master-data.manage">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                handleDelete('banks', b.id, b.name)
-                              }
-                              className="size-7 text-slate-400 hover:text-rose-600"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </Can>
+                          <div className="flex justify-end gap-1">
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setBId(b.id)
+                                  setBName(b.name)
+                                  setBankOpen(true)
+                                }}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            </Can>
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDelete('banks', b.id, b.name)
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </Can>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -623,7 +684,9 @@ function MasterDataPage() {
                   <Button
                     size="sm"
                     onClick={() => {
+                      setCId(null)
                       setCName('')
+                      setCHex('#18181b')
                       setColorOpen(true)
                     }}
                     className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -656,18 +719,37 @@ function MasterDataPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <Can permission="master-data.manage">
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() =>
-                                handleDelete('colors', c.id, c.name)
-                              }
-                              className="size-7 text-slate-400 hover:text-rose-600"
-                            >
-                              <Trash2 className="size-3.5" />
-                            </Button>
-                          </Can>
+                          <div className="flex justify-end gap-1">
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => {
+                                  setCId(c.id)
+                                  setCName(c.name)
+                                  setCHex(c.hex ?? '#18181b')
+                                  setColorOpen(true)
+                                }}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            </Can>
+                            <Can permission="master-data.manage">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() =>
+                                  handleDelete('colors', c.id, c.name)
+                                }
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </Can>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -684,7 +766,7 @@ function MasterDataPage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Thêm Dòng Xe Mới
+                {mId ? 'Sửa Dòng Xe' : 'Thêm Dòng Xe Mới'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveModel} className="space-y-3 pt-2">
@@ -726,7 +808,7 @@ function MasterDataPage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Thêm Nhà Cung Cấp
+                {sId ? 'Sửa Nhà Cung Cấp' : 'Thêm Nhà Cung Cấp'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveSupplier} className="space-y-3 pt-2">
@@ -770,7 +852,7 @@ function MasterDataPage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Thêm Ngân Hàng
+                {bId ? 'Sửa Ngân Hàng' : 'Thêm Ngân Hàng'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveBank} className="space-y-3 pt-2">
@@ -899,7 +981,7 @@ function MasterDataPage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Thêm Màu Sắc Chuẩn
+                {cId ? 'Sửa Màu Sắc' : 'Thêm Màu Sắc Chuẩn'}
               </DialogTitle>
             </DialogHeader>
             <form onSubmit={handleSaveColor} className="space-y-3 pt-2">

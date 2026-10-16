@@ -4,7 +4,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Calculator, Plus } from 'lucide-react'
+import { Calculator, Plus, Trash2 } from 'lucide-react'
 import * as React from 'react'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
@@ -55,7 +55,11 @@ import {
 } from '#/lib/business.ts'
 import { currentUserQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
-import { saveLoanContractFn } from '#/server/fns/finance.ts'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
+import {
+  deleteLoanContractFn,
+  saveLoanContractFn,
+} from '#/server/fns/finance.ts'
 
 /** Selectable loan terms: 1 to 200 months */
 const TERM_OPTIONS = Array.from({ length: 200 }, (_, i) => i + 1)
@@ -82,6 +86,10 @@ function LoansPage() {
   const loansPg = usePagination(loans)
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const queryClient = useQueryClient()
+  const deleteLoan = useMutation({
+    mutationFn: deleteLoanContractFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
   const saveLoan = useMutation({
     mutationFn: saveLoanContractFn,
     onSuccess: () => queryClient.invalidateQueries(),
@@ -104,6 +112,27 @@ function LoansPage() {
     termMonths,
   )
   const savingLoan = saveLoan.isPending
+
+  const handleDelete = async (l: { id: number; contractNumber: string }) => {
+    // Used loans show what uses them; unused ones ask for confirmation
+    const ok = await confirmDelete(
+      { entity: 'loans', id: l.id, name: l.contractNumber },
+      {
+        title: `Xóa khế ước ${l.contractNumber}?`,
+        description: 'Hành động này không thể hoàn tác.',
+      },
+    )
+    if (!ok) return
+    try {
+      await deleteLoan.mutateAsync({ data: { id: l.id } })
+    } catch (err: unknown) {
+      await reportDeleteFailure(
+        err,
+        { entity: 'loans', id: l.id, name: l.contractNumber },
+        'Không thể xóa khế ước',
+      )
+    }
+  }
 
   const handleCreateLoan = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -224,6 +253,18 @@ function LoansPage() {
                             Tính lãi & Trả nợ
                           </Link>
                         </Button>
+                        <Can permission="loans.manage">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(l)}
+                            className="size-7 text-slate-400 hover:text-rose-600"
+                            aria-label="Xóa khế ước"
+                            title="Xóa khế ước"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
+                        </Can>
                       </TableCell>
                     </TableRow>
                   ))}
