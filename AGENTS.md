@@ -750,5 +750,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 66, 67,... above this line upon completing tasks)_
+### Lesson 66: Login Page Cleanup, Password Eye Toggle, Forgot-Password Email (SMTP)
+
+- **Login**: no subtitle, no "Tài khoản dùng thử" shortcuts, fields start empty, required labels end with " *" (login, forgot and reset forms). Login already accepts a username **or** an email (`authenticate` matches both columns).
+- **Show / hide password**: every password box uses `PasswordInput` (`src/components/ui/password-input.tsx`, eye button on the right) on login, reset-password and the two /settings forms (own password, user dialog). Never use `<Input type="password">` directly.
+- **Forgot-password email**: `src/server/services/mail.ts` (`nodemailer`) sends the reset link through SMTP configured in `.env`: `MAIL_DRIVER=smtp`, `SMTP_HOST`, `SMTP_PORT` (587 = STARTTLS, 465 = implicit TLS), `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_TLS`, `MAIL_FROM_ADDRESS`, `MAIL_FROM_NAME`; optional `APP_URL` for the link origin (default: origin of the request). With Gmail the password must be an **app password**. The reply to the user is the same whether or not the email exists; a failed send shows "Không gửi được email". If SMTP is not configured (empty username / password), the link is only logged and, outside production, shown on the page (`devLink`). Restart the dev server after editing `.env`.
+
+---
+
+_(Next Agent: Append Lesson 67, 68,... above this line upon completing tasks)_
 

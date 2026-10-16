@@ -2,6 +2,7 @@ import { createServerFn } from '@tanstack/react-start'
 import {
   deleteCookie,
   getCookie,
+  getRequestUrl,
   setCookie,
 } from '@tanstack/react-start/server'
 import { eq } from 'drizzle-orm'
@@ -20,6 +21,10 @@ import {
   resetPasswordWithToken,
   verifyPassword,
 } from '#/server/services/auth.ts'
+import {
+  isMailConfigured,
+  sendPasswordResetMail,
+} from '#/server/services/mail.ts'
 import { authMiddleware, loggingMiddleware } from './middleware.ts'
 
 const cookieOpts = (expires: Date) => ({
@@ -68,7 +73,8 @@ export const logoutFn = createServerFn({ method: 'POST' })
   })
 
 /**
- * Quên mật khẩu. Hệ thống chưa tích hợp email:
+ * Quên mật khẩu: gửi liên kết đặt lại qua SMTP (cấu hình trong .env).
+ * Luôn trả lời giống nhau dù email có tồn tại hay không. Khi SMTP chưa cấu hình:
  *  - Link đặt lại được ghi ra log server.
  *  - Ở môi trường dev, link được trả về để hiển thị trực tiếp.
  */
@@ -77,11 +83,25 @@ export const forgotPasswordFn = createServerFn({ method: 'POST' })
   .validator(z.object({ email: z.email('Email không hợp lệ') }))
   .handler(async ({ data }) => {
     const token = await createPasswordResetToken(data.email)
-    const link = token ? `/reset-password?token=${token}` : null
-    if (link) console.info(`[password-reset] ${data.email}: ${link}`)
+    const path = token ? `/reset-password?token=${token}` : null
+    let mailed = false
+    if (path && isMailConfigured()) {
+      const origin =
+        process.env.APP_URL?.replace(/\/$/, '') ?? getRequestUrl().origin
+      try {
+        await sendPasswordResetMail(data.email, `${origin}${path}`)
+        mailed = true
+      } catch (e) {
+        console.error('[password-reset] sending mail failed:', e)
+        throw new Error('Không gửi được email, vui lòng thử lại sau')
+      }
+    } else if (path) {
+      console.info(`[password-reset] ${data.email}: ${path}`)
+    }
     return {
       ok: true,
-      devLink: process.env.NODE_ENV !== 'production' ? link : null,
+      mailed,
+      devLink: !mailed && process.env.NODE_ENV !== 'production' ? path : null,
     }
   })
 

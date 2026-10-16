@@ -45,9 +45,10 @@ function ForgotPasswordPage() {
           {error && <AuthAlert tone="error">{error}</AuthAlert>}
           {forgot.isSuccess && (
             <AuthAlert tone="success">
-              Nếu email tồn tại trong hệ thống, liên kết đặt lại mật khẩu đã
-              được tạo. Vui lòng liên hệ quản trị viên để nhận liên kết.
-              {/* Email delivery is not integrated yet; dev builds return the link directly */}
+              {forgot.data.mailed
+                ? 'Liên kết đặt lại mật khẩu đã được gửi tới email của bạn (hiệu lực 30 phút). Hãy kiểm tra cả hộp thư rác.'
+                : 'Nếu email tồn tại trong hệ thống, liên kết đặt lại mật khẩu sẽ được gửi tới email đó.'}
+              {/* Without SMTP (dev builds) the link is returned directly */}
               {forgot.data.devLink && (
                 <div className="mt-2">
                   <Link
@@ -69,7 +70,7 @@ function ForgotPasswordPage() {
           )}
           <div className="space-y-1.5">
             <Label htmlFor="email" className="text-xs font-semibold">
-              Email
+              Email *
             </Label>
             <Input
               id="email"

@@ -8,7 +8,7 @@ import { z } from 'zod'
 import { AuthAlert, AuthShell } from '#/components/layout/AuthShell.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { CardContent, CardFooter } from '#/components/ui/card.tsx'
-import { Input } from '#/components/ui/input.tsx'
+import { PasswordInput } from '#/components/ui/password-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { resetPasswordFn } from '#/server/fns/auth.ts'
 
@@ -82,11 +82,10 @@ function ResetPasswordPage() {
           {error && <AuthAlert tone="error">{error}</AuthAlert>}
           <div className="space-y-1.5">
             <Label htmlFor="password" className="text-xs font-semibold">
-              Mật khẩu mới (tối thiểu 8 ký tự)
+              Mật khẩu mới (tối thiểu 8 ký tự) *
             </Label>
-            <Input
+            <PasswordInput
               id="password"
-              type="password"
               required
               minLength={8}
               autoComplete="new-password"
@@ -97,11 +96,10 @@ function ResetPasswordPage() {
           </div>
           <div className="space-y-1.5">
             <Label htmlFor="confirm" className="text-xs font-semibold">
-              Nhập lại mật khẩu mới
+              Nhập lại mật khẩu mới *
             </Label>
-            <Input
+            <PasswordInput
               id="confirm"
-              type="password"
               required
               autoComplete="new-password"
               value={confirm}

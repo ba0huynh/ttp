@@ -35,6 +35,7 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { PasswordInput } from '#/components/ui/password-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { Textarea } from '#/components/ui/textarea.tsx'
 import {
@@ -682,8 +683,7 @@ function SettingsPage() {
                       <Label className="text-xs font-semibold">
                         Mật Khẩu Hiện Tại *
                       </Label>
-                      <Input
-                        type="password"
+                      <PasswordInput
                         required
                         value={currPass}
                         onChange={(e) => setCurrPass(e.target.value)}
@@ -695,8 +695,7 @@ function SettingsPage() {
                       <Label className="text-xs font-semibold">
                         Mật Khẩu Mới (Tối thiểu 8 ký tự) *
                       </Label>
-                      <Input
-                        type="password"
+                      <PasswordInput
                         required
                         value={newPass}
                         onChange={(e) => setNewPass(e.target.value)}
@@ -820,8 +819,7 @@ function SettingsPage() {
                     ? 'Mật Khẩu Mới (Bỏ trống nếu không đổi)'
                     : 'Mật Khẩu Khởi Tạo *'}
                 </Label>
-                <Input
-                  type="password"
+                <PasswordInput
                   value={uPassword}
                   aria-invalid={Boolean(uErrors.password)}
                   onChange={(e) => {

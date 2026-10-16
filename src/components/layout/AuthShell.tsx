@@ -37,7 +37,7 @@ export function AuthShell({
   showBackLink = true,
 }: {
   title: string
-  description: string
+  description?: string
   children: React.ReactNode
   showBackLink?: boolean
 }) {
@@ -112,9 +112,11 @@ export function AuthShell({
               <CardTitle className="text-xl font-bold text-slate-900">
                 {title}
               </CardTitle>
-              <CardDescription className="text-sm text-slate-500">
-                {description}
-              </CardDescription>
+              {description && (
+                <CardDescription className="text-sm text-slate-500">
+                  {description}
+                </CardDescription>
+              )}
             </CardHeader>
             {children}
           </Card>
