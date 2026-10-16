@@ -5,6 +5,7 @@ import {
   Bike,
   Boxes,
   Building2,
+  ChevronDown,
   CreditCard,
   FileText,
   Landmark,
@@ -419,6 +420,18 @@ function SidebarBody({
       .filter((i) => (i.children ? i.children.length > 0 : allowed(i))),
   })).filter((g) => g.items.length > 0)
 
+  // Sub menus fold: the user's choice wins, otherwise a menu is open while the
+  // current page is one of its children
+  const [folded, setFolded] = React.useState<Record<string, boolean>>({})
+
+  const isOpen = (item: NavItem) =>
+    folded[item.title] ??
+    (item.children ?? []).some(
+      (c) =>
+        matches(c, currentPath, currentTab) ||
+        (isLoading && matches(c, targetPath, targetTab)),
+    )
+
   const renderLink = (item: NavItem, sub = false) => {
     const Icon = item.icon
     const isActive = matches(item, currentPath, currentTab)
@@ -486,11 +499,38 @@ function SidebarBody({
               {grp.items.map((item) =>
                 item.children ? (
                   <div key={item.title} className="space-y-0.5">
-                    <div className="flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-slate-300">
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setFolded((f) => ({
+                          ...f,
+                          [item.title]: !isOpen(item),
+                        }))
+                      }
+                      aria-expanded={isOpen(item)}
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-300 transition-colors hover:bg-white/[0.04] hover:text-slate-100"
+                    >
                       <item.icon className="size-4 shrink-0 text-slate-500" />
                       <span className="truncate">{item.title}</span>
+                      <ChevronDown
+                        className={`ml-auto size-3.5 shrink-0 text-slate-500 transition-transform ${
+                          isOpen(item) ? '' : '-rotate-90'
+                        }`}
+                      />
+                    </button>
+                    {/* grid rows 0fr -> 1fr animates the height without measuring it */}
+                    <div
+                      className={`grid transition-[grid-template-rows,opacity] duration-200 ease-out ${
+                        isOpen(item)
+                          ? 'grid-rows-[1fr] opacity-100'
+                          : 'grid-rows-[0fr] opacity-0'
+                      }`}
+                      inert={!isOpen(item)}
+                    >
+                      <div className="min-h-0 space-y-0.5 overflow-hidden">
+                        {item.children.map((c) => renderLink(c, true))}
+                      </div>
                     </div>
-                    {item.children.map((c) => renderLink(c, true))}
                   </div>
                 ) : (
                   renderLink(item)
