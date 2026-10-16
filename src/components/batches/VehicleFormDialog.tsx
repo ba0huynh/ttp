@@ -139,7 +139,8 @@ export function VehicleFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!v.colorId) return setError('Vui lòng chọn màu xe')
+    if (!v.modelId || !v.colorId)
+      return setError('Vui lòng chọn dòng xe và màu xe')
     if (!v.chassisNumber.trim() || !v.engineNumber.trim())
       return setError('Vui lòng nhập đầy đủ số khung và số máy')
     if (v.importPrice <= 0) return setError('Đơn giá nhập phải lớn hơn 0')
@@ -165,7 +166,7 @@ export function VehicleFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} noValidate className="space-y-3 pt-2">
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">Dòng Xe</Label>
+            <Label className="text-xs font-semibold">Dòng Xe *</Label>
             <SearchSelect
               className="h-11 w-full rounded-lg text-sm"
               placeholder="Chọn dòng xe"

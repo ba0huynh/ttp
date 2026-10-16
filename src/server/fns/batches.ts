@@ -164,7 +164,7 @@ export const createBatchFn = createServerFn({ method: 'POST' })
       note: z.string().trim().nullable().optional(),
       vehicles: z.array(
         z.object({
-          modelId: z.number().int(),
+          modelId: z.number().int().positive('Chọn dòng xe'),
           colorId: z.number().int(),
           chassisNumber: z.string().trim().min(1),
           engineNumber: z.string().trim().min(1),
@@ -195,7 +195,7 @@ export const addVehiclesToBatchFn = createServerFn({ method: 'POST' })
       batchId: z.number().int(),
       vehicles: z.array(
         z.object({
-          modelId: z.number().int(),
+          modelId: z.number().int().positive('Chọn dòng xe'),
           colorId: z.number().int(),
           chassisNumber: z.string().trim().min(1),
           engineNumber: z.string().trim().min(1),
@@ -214,7 +214,7 @@ export const updateVehicleFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       vehicleId: z.number().int(),
-      modelId: z.number().int().min(0),
+      modelId: z.number().int().positive('Chọn dòng xe'),
       colorId: z.number().int().positive('Chọn màu xe'),
       chassisNumber: z.string().trim().min(1, 'Nhập số khung'),
       engineNumber: z.string().trim().min(1, 'Nhập số máy'),
