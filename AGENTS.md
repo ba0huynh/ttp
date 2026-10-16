@@ -771,7 +771,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 ### Lesson 68: Shell — Profile Menu, Collapsible Sidebar, Empty Top Bar
 
 - **Top right**: only the account menu (`ProfileMenu` in `AppLayout.tsx`: avatar with initials, name, role; dropdown with username and "Đăng xuất"). The "Tra cứu 2 kho", "Phiếu bán" and "Nhập lô mới" shortcuts were removed (those pages stay in the sidebar). The user block and logout button at the bottom of the sidebar were removed.
-- **Sidebar**: a button in the top bar (desktop, lg+) toggles between expanded (w-64) and collapsed (w-16, icons only with a `title` tooltip, group labels become thin dividers, sub menu items show their own icon). The choice is stored in `localStorage` (`sidebar-collapsed`, read after mount so SSR markup stays the same). The mobile drawer is always expanded.
+- **Sidebar**: a button in the top bar (desktop, lg+) toggles between expanded (w-64) and collapsed (w-0: hidden completely; the same top-bar button brings it back). The choice is stored in `localStorage` (`sidebar-collapsed`, read after mount so SSR markup stays the same). The mobile drawer is always expanded.
 - **Password placeholders**: "Nhập mật khẩu" / "Nhập mật khẩu mới" / "Nhập lại mật khẩu mới" / "Để trống nếu không đổi mật khẩu" instead of dots. Gotcha: `PasswordInput` wraps the input in its own `relative` box, so an icon placed *before* it in a parent (login's lock / user icon) needs `z-10`, or the input paints over it.
 
 ---
