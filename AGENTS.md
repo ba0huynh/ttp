@@ -245,6 +245,8 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ### Lesson 8: Realistic Seed Data (`npm run seed`)
 
+> **Historical**: the demo seed modules described here were removed (see Lesson 55); only company, roles + admin and banks are seeded now.
+
 - **Feature**: `src/db/seed/` covers all 4 dual-inventory edge cases, multiple loan contracts, batch allocations, customer branches, and bank statement reconciliations.
 - **Reset Pattern**: Always execute `SET FOREIGN_KEY_CHECKS = 0;` before truncating/deleting tables, and re-enable with `SET FOREIGN_KEY_CHECKS = 1;` to avoid FK constraint order errors (MySQL Error 1451).
 
@@ -274,6 +276,8 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ### Lesson 13: Modular Seed Architecture (`src/db/seed/`)
 
+> **Historical**: the demo seed modules described here were removed (see Lesson 55); only company, roles + admin and banks are seeded now.
+
 - **Structure**: The monolithic seed file (formerly `src/db/seed.ts`, ~1000 lines) was broken down into specialized, single-responsibility modules inside `src/db/seed/`:
   - `reset.seed.ts`: Resets all database tables cleanly in foreign-key safe order (`SET FOREIGN_KEY_CHECKS = 0/1`).
   - `company.seed.ts`: Seeds corporate identity (`company_info`) for Truong Thinh Phat.
@@ -301,6 +305,8 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 ---
 
 ### Lesson 15: Per-Table Idempotent Seeding (`src/db/seed/*.ts`)
+
+> **Historical**: the demo seed modules described here were removed (see Lesson 55); only company, roles + admin and banks are seeded now.
 
 - **Before**: `seed()` always called `resetDatabase()` first, then every `seed*.ts` function inserted unconditionally — running `npm run seed` twice wiped and duplicated all data every time.
 - **Convention now**: each `seed*.ts` function checks its own table(s) first (e.g. `seedCompany` checks `company_info`, `seedBatches` checks `import_batches`) and returns the **existing** rows (looked up by business code/number, not by position) instead of inserting when the table already has data. `seed()` in `src/db/seed/index.ts` no longer wipes anything by default — it just runs every step in order, and each step either inserts or returns what's already there.
@@ -662,5 +668,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 55, 56,... above this line upon completing tasks)_
+### Lesson 55: Minimal Seed (demo data removed)
+
+- **What the seed does now** (`npm run seed`, `src/db/seed/index.ts`): only the minimum for a fresh install: company profile (`company.seed.ts`), the 4 default roles and the `admin` / `Admin@123` account (`role.seed.ts`, `user.seed.ts`), and the VietQR bank catalogue (`bank.seed.ts`, needs internet). Each step is still idempotent per table, and `npm run seed -- --reset` still wipes every table first (`reset.seed.ts`).
+- **Removed on purpose**: `customer.seed.ts`, `loan.seed.ts`, `batch.seed.ts`, `sale.seed.ts`, `finance.seed.ts` and `master-data.seed.ts` (demo customers, branches, loans, batches, vehicles, sales, vouchers, statements, suppliers, models, colours, the two fake company bank accounts) plus the three demo accounts (ketoan, kinhdoanh, kho). Lessons 8, 13 and 15 describe those files and are historical. Everything beyond the minimum is entered through the app: create roles/users in `/settings`, catalogues in `/master-data`.
+- **If demo data is needed again**, restore the files from git history (`git log -- src/db/seed/`). They depend on each other through return values (`seedSales` needs `vIds` from `seedBatches`, ...), so bring back the whole chain.
+- **Not touched**: data that already exists in a database is not removed by this change; to get a clean database run `npm run seed -- --reset` (this deletes everything, including data entered by hand).
+
+---
+
+_(Next Agent: Append Lesson 56, 57,... above this line upon completing tasks)_
 
