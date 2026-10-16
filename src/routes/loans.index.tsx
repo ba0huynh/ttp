@@ -159,7 +159,7 @@ function LoansPage() {
                 <TableBody className="text-xs">
                   {loansPg.pageItems.map((l) => (
                     <TableRow key={l.id} className="hover:bg-slate-50/80">
-                      <TableCell className="font-mono font-bold text-purple-900">
+                      <TableCell className="font-medium text-purple-900">
                         <Link
                           to="/loans/$loanId"
                           params={{ loanId: String(l.id) }}
@@ -168,7 +168,7 @@ function LoansPage() {
                           {l.contractNumber}
                         </Link>
                       </TableCell>
-                      <TableCell className="font-semibold text-slate-800">
+                      <TableCell className="font-medium text-slate-900">
                         <BankLabel image={l.bankImage} name={l.bankName}>
                           {l.bankName}
                         </BankLabel>
@@ -184,7 +184,7 @@ function LoansPage() {
                       <TableCell className="text-right text-emerald-800 font-medium">
                         {formatVnd(l.principalPaid)}
                       </TableCell>
-                      <TableCell className="text-right font-bold text-purple-900">
+                      <TableCell className="text-right font-medium text-purple-900">
                         {formatVnd(l.outstanding)}
                       </TableCell>
                       <TableCell className="text-center">

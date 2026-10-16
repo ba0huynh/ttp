@@ -234,7 +234,7 @@ function DashboardPage() {
                   <TableBody className="text-xs">
                     {recentVehicles.slice(0, 6).map((v) => (
                       <TableRow key={v.id} className="hover:bg-slate-50/80">
-                        <TableCell className="font-mono font-bold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {v.chassisNumber}
                         </TableCell>
                         <TableCell>
@@ -245,7 +245,7 @@ function DashboardPage() {
                             {v.colorName}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium text-slate-700">
+                        <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(v.costPrice)}
                         </TableCell>
                         <TableCell className="text-center">
@@ -303,13 +303,13 @@ function DashboardPage() {
                         <TableCell>
                           <Link
                             to="/sales"
-                            className="font-mono font-bold text-emerald-700 hover:underline"
+                            className="font-medium text-emerald-700 hover:underline"
                           >
                             {formatDate(o.orderDate)}
                           </Link>
                         </TableCell>
                         <TableCell>
-                          <div className="font-semibold text-slate-900 truncate max-w-[180px]">
+                          <div className="font-medium text-slate-900 truncate max-w-[180px]">
                             {o.customerName}
                           </div>
                           <div className="text-[11px] text-slate-500 truncate max-w-[180px]">
@@ -318,12 +318,12 @@ function DashboardPage() {
                               : 'Khách hàng mẹ'}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-bold text-slate-900">
+                        <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(o.totalAmount)}
                         </TableCell>
                         <TableCell className="text-center">
                           <div className="flex flex-col gap-1 items-center">
-                            <span className="text-[11px] font-medium text-slate-600">
+                            <span className="text-[11px] font-medium text-slate-500">
                               Xe: {o.vehicleCount}
                             </span>
                             <div className="flex items-center gap-1 text-[10px]">

@@ -278,19 +278,19 @@ function FinancePage() {
                   <TableBody className="text-xs">
                     {receivablesPg.pageItems.map((r, idx) => (
                       <TableRow key={idx} className="hover:bg-slate-50/80">
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {r.customerName}
                         </TableCell>
                         <TableCell className="font-medium text-emerald-900">
                           {r.branchId ? r.entityName : 'Pháp nhân chính KH mẹ'}
                         </TableCell>
-                        <TableCell className="text-right font-medium text-slate-700">
+                        <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(r.sold)}
                         </TableCell>
                         <TableCell className="text-right text-emerald-800 font-medium">
                           {formatVnd(r.paid)}
                         </TableCell>
-                        <TableCell className="text-right font-black text-rose-900">
+                        <TableCell className="text-right text-rose-900">
                           {formatVnd(r.balance)}
                         </TableCell>
                       </TableRow>
@@ -330,16 +330,16 @@ function FinancePage() {
                         key={p.supplierId}
                         className="hover:bg-slate-50/80"
                       >
-                        <TableCell className="font-bold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {p.supplierName}
                         </TableCell>
-                        <TableCell className="text-right font-medium text-slate-700">
+                        <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(p.purchased)}
                         </TableCell>
                         <TableCell className="text-right text-emerald-800 font-medium">
                           {formatVnd(p.paid)}
                         </TableCell>
-                        <TableCell className="text-right font-black text-rose-900">
+                        <TableCell className="text-right text-rose-900">
                           {formatVnd(p.balance)}
                         </TableCell>
                       </TableRow>
@@ -373,19 +373,19 @@ function FinancePage() {
                   <TableBody className="text-xs">
                     {receiptsPg.pageItems.map((r) => (
                       <TableRow key={r.id} className="hover:bg-slate-50/80">
-                        <TableCell className="text-slate-600">
+                        <TableCell className="text-slate-500">
                           {formatDate(r.receiptDate)}
                         </TableCell>
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {r.customerName}
                         </TableCell>
-                        <TableCell className="text-slate-700">
+                        <TableCell className="text-slate-900">
                           {r.branchName ?? 'Trực tiếp KH mẹ'}
                         </TableCell>
-                        <TableCell className="text-right font-black text-emerald-900">
+                        <TableCell className="text-right text-emerald-900">
                           {formatVnd(r.amount)}
                         </TableCell>
-                        <TableCell className="text-slate-500 font-mono text-[11px]">
+                        <TableCell className="text-slate-500 text-[11px]">
                           {r.accountNumber ? (
                             <BankLabel image={r.bankImage} name={r.bankName}>
                               {r.bankName} ({r.accountNumber})
@@ -424,13 +424,13 @@ function FinancePage() {
                   <TableBody className="text-xs">
                     {paymentsPg.pageItems.map((p) => (
                       <TableRow key={p.id} className="hover:bg-slate-50/80">
-                        <TableCell className="text-slate-600">
+                        <TableCell className="text-slate-500">
                           {formatDate(p.paymentDate)}
                         </TableCell>
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {p.supplierName ?? p.payeeName}
                         </TableCell>
-                        <TableCell className="text-right font-black text-rose-900">
+                        <TableCell className="text-right text-rose-900">
                           {formatVnd(p.amount)}
                         </TableCell>
                         <TableCell className="text-slate-500 text-[11px]">

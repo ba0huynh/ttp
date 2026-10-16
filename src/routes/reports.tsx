@@ -218,16 +218,16 @@ function ReportsPage() {
                       key={c.customerId}
                       className="hover:bg-slate-50/80"
                     >
-                      <TableCell className="font-semibold text-slate-900">
+                      <TableCell className="font-medium text-slate-900">
                         {c.customerName}
                       </TableCell>
-                      <TableCell className="text-center font-bold">
+                      <TableCell className="text-center font-medium">
                         {c.vehicles} xe
                       </TableCell>
-                      <TableCell className="text-right font-bold text-slate-900">
+                      <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(c.revenue)}
                       </TableCell>
-                      <TableCell className="text-right font-black text-emerald-800">
+                      <TableCell className="text-right text-emerald-800">
                         {formatVnd(c.profit)}
                       </TableCell>
                     </TableRow>
@@ -261,16 +261,16 @@ function ReportsPage() {
                 <TableBody className="text-xs">
                   {modelRevenuePg.pageItems.map((m, idx) => (
                     <TableRow key={idx} className="hover:bg-slate-50/80">
-                      <TableCell className="font-semibold text-slate-900">
+                      <TableCell className="font-medium text-slate-900">
                         {m.modelName}
                       </TableCell>
-                      <TableCell className="text-center font-bold">
+                      <TableCell className="text-center font-medium">
                         {m.vehicles} xe
                       </TableCell>
-                      <TableCell className="text-right font-bold text-slate-900">
+                      <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(m.revenue)}
                       </TableCell>
-                      <TableCell className="text-right font-black text-emerald-800">
+                      <TableCell className="text-right text-emerald-800">
                         {formatVnd(m.profit)}
                       </TableCell>
                     </TableRow>
@@ -317,13 +317,13 @@ function ReportsPage() {
                         : '0'
                     return (
                       <TableRow key={idx}>
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {EXPENSE_TYPE_LABELS[e.expenseType] ?? e.expenseType}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-slate-900">
+                        <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(e.total)}
                         </TableCell>
-                        <TableCell className="text-right font-mono font-medium text-slate-600">
+                        <TableCell className="text-right font-medium text-slate-500">
                           {pct}%
                         </TableCell>
                       </TableRow>

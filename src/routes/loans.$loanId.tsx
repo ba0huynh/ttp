@@ -164,7 +164,7 @@ function LoanDetailPage() {
                   <Badge
                     key={b.id}
                     variant="outline"
-                    className="font-mono text-[11px] bg-purple-50 text-purple-700 border-purple-200"
+                    className="text-[11px] bg-purple-50 text-purple-700 border-purple-200"
                   >
                     <Link
                       to="/batches/$batchId"
@@ -206,7 +206,7 @@ function LoanDetailPage() {
                       </TableHead>
                     </TableRow>
                   </TableHeader>
-                  <TableBody className="text-xs font-mono">
+                  <TableBody className="text-xs">
                     {loanDetail.segments.map((seg: any, idx: number) => (
                       <TableRow key={idx}>
                         <TableCell>{formatDate(seg.from)}</TableCell>
@@ -214,10 +214,10 @@ function LoanDetailPage() {
                         <TableCell className="text-center">
                           {seg.days} ngày
                         </TableCell>
-                        <TableCell className="text-right font-medium text-slate-700">
+                        <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(seg.outstanding)}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-purple-900">
+                        <TableCell className="text-right font-medium text-purple-900">
                           {formatVnd(seg.interest)}
                         </TableCell>
                       </TableRow>
@@ -259,13 +259,13 @@ function LoanDetailPage() {
                           <TableCell className="font-medium">
                             {formatDate(r.paymentDate)}
                           </TableCell>
-                          <TableCell className="text-right text-emerald-800 font-bold">
+                          <TableCell className="text-right text-emerald-800 font-medium">
                             {formatVnd(r.principalAmount)}
                           </TableCell>
-                          <TableCell className="text-right text-purple-800 font-bold">
+                          <TableCell className="text-right text-purple-800 font-medium">
                             {formatVnd(r.interestAmount)}
                           </TableCell>
-                          <TableCell className="text-right font-black text-slate-900">
+                          <TableCell className="text-right text-slate-900">
                             {formatVnd(
                               Number(r.principalAmount) +
                                 Number(r.interestAmount),

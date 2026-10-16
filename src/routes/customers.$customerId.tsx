@@ -191,7 +191,7 @@ function CustomerDetailPage() {
                     <TableRow>
                       <TableCell
                         colSpan={1}
-                        className="text-center py-6 text-slate-400"
+                        className="text-center py-6 text-slate-500"
                       >
                         Chưa có điểm bán trực thuộc. Đơn hàng sẽ ghi trực tiếp
                         cho Khách hàng Mẹ.
@@ -200,7 +200,7 @@ function CustomerDetailPage() {
                   ) : (
                     branchesPg.pageItems.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-semibold text-slate-800">
+                        <TableCell className="font-medium text-slate-900">
                           {b.name}
                         </TableCell>
                       </TableRow>
@@ -236,7 +236,7 @@ function CustomerDetailPage() {
                     <TableRow>
                       <TableCell
                         colSpan={4}
-                        className="text-center py-6 text-slate-400"
+                        className="text-center py-6 text-slate-500"
                       >
                         Chưa có phát sinh công nợ mua xe.
                       </TableCell>
@@ -244,7 +244,7 @@ function CustomerDetailPage() {
                   ) : (
                     receivablesPg.pageItems.map((r, idx) => (
                       <TableRow key={idx}>
-                        <TableCell className="font-semibold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {r.entityName}
                         </TableCell>
                         <TableCell className="text-right font-medium">
@@ -253,7 +253,7 @@ function CustomerDetailPage() {
                         <TableCell className="text-right text-emerald-800 font-medium">
                           {formatVnd(r.paid)}
                         </TableCell>
-                        <TableCell className="text-right font-black text-rose-900">
+                        <TableCell className="text-right text-rose-900">
                           {formatVnd(r.balance)}
                         </TableCell>
                       </TableRow>

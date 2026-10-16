@@ -290,7 +290,7 @@ function SalesOrderPage() {
                 <TableBody className="text-xs">
                   {itemsPg.pageItems.map((i) => (
                     <TableRow key={i.id}>
-                      <TableCell className="font-mono font-bold text-slate-900">
+                      <TableCell className="font-medium text-slate-900">
                         {i.chassisNumber}
                       </TableCell>
                       <TableCell>
@@ -301,7 +301,7 @@ function SalesOrderPage() {
                           {i.colorName}
                         </div>
                       </TableCell>
-                      <TableCell className="text-right font-bold text-slate-900">
+                      <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(i.unitPrice)}
                       </TableCell>
                       <TableCell className="text-center">

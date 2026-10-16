@@ -642,5 +642,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 53, 54,... above this line upon completing tasks)_
+### Lesson 53: Table Text Uses Two Colours and Two Weights
+
+- **Rule**: text inside table bodies uses only `text-slate-900` (primary) and `text-slate-500` (secondary, e.g. engine number, colour name, dates), with normal weight, plus `font-medium` for the identifying column (name, VIN). No `font-mono`, `font-bold`, `font-semibold` or `font-black` in cells, and no `text-slate-400/600/700/800`. Reference: the inventory table (`src/routes/inventory.tsx`). Batch / lot labels are plain text, not mono badges.
+- **Kept on purpose**: semantic colours that carry meaning (emerald = paid / positive, rose = owed / loss, purple = loans, blue = invoiced), status chips (`Badge`, `DualInventoryBadge`), and the bold red "Còn Nợ" amounts on `/customers` (explicitly requested).
+- **Sweep**: 76 class lists in 16 files were normalised mechanically (every `className` on `TableCell` / `div` / `span` / `Link` inside a `<TableBody>`); new tables should follow the same rule instead of inventing a style per column.
+
+---
+
+_(Next Agent: Append Lesson 54, 55,... above this line upon completing tasks)_
 

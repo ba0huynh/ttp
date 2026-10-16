@@ -14,7 +14,6 @@ import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
-import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -280,11 +279,11 @@ function NewSalesOrderPage() {
                       <TableBody className="text-xs">
                         {selectedItems.map((item, idx) => (
                           <TableRow key={item.vehicleId}>
-                            <TableCell className="font-mono font-bold text-slate-900">
+                            <TableCell className="font-medium text-slate-900">
                               {item.chassisNumber}
                             </TableCell>
                             <TableCell>
-                              <div className="font-semibold text-slate-900">
+                              <div className="font-medium text-slate-900">
                                 {item.modelName}
                               </div>
                               <div className="text-[11px] text-slate-500">
@@ -445,26 +444,21 @@ function NewSalesOrderPage() {
                             onCheckedChange={() => toggleCheck(v.id)}
                           />
                         </TableCell>
-                        <TableCell className="font-mono font-bold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {v.chassisNumber}
                         </TableCell>
                         <TableCell>
-                          <div className="font-semibold text-slate-900">
+                          <div className="font-medium text-slate-900">
                             {v.modelName}
                           </div>
                           <div className="text-[11px] text-slate-500">
                             {v.colorName}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="font-mono text-[10px]"
-                          >
-                            {batchLabel(v)}
-                          </Badge>
+                        <TableCell className="text-slate-900">
+                          {batchLabel(v)}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-emerald-900">
+                        <TableCell className="text-right font-medium text-emerald-900">
                           {formatVnd(v.sellingPrice)}
                         </TableCell>
                       </TableRow>

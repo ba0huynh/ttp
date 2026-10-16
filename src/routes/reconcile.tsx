@@ -277,7 +277,7 @@ function ReconcilePage() {
                       const isMatched = l.status === 'matched'
                       return (
                         <TableRow key={l.id} className="hover:bg-slate-50/80">
-                          <TableCell className="font-mono text-slate-600">
+                          <TableCell className="text-slate-500">
                             {formatDate(l.transactionDate)}
                           </TableCell>
                           <TableCell
@@ -286,10 +286,10 @@ function ReconcilePage() {
                           >
                             {l.description}
                           </TableCell>
-                          <TableCell className="text-right font-bold text-rose-900">
+                          <TableCell className="text-right font-medium text-rose-900">
                             {l.debit > 0 ? formatVnd(l.debit) : '—'}
                           </TableCell>
-                          <TableCell className="text-right font-bold text-emerald-900">
+                          <TableCell className="text-right font-medium text-emerald-900">
                             {l.credit > 0 ? formatVnd(l.credit) : '—'}
                           </TableCell>
                           <TableCell className="text-center">
@@ -394,9 +394,7 @@ function ReconcilePage() {
                                 ? 'Phiếu Chi'
                                 : 'Trả Nợ Khế Ước'}
                           </Badge>
-                          <span
-                            className={`font-bold text-slate-900 text-xs ${s.type === 'loan_repayment' ? 'font-mono' : ''}`}
-                          >
+                          <span className="font-medium text-slate-900 text-xs">
                             {s.number}
                           </span>
                         </div>

@@ -100,27 +100,27 @@ function SalesPage() {
                 <TableBody className="text-xs">
                   {ordersPg.pageItems.map((o) => (
                     <TableRow key={o.id} className="hover:bg-slate-50/80">
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-slate-500">
                         {formatDate(o.orderDate)}
                       </TableCell>
-                      <TableCell className="font-semibold text-slate-900">
+                      <TableCell className="font-medium text-slate-900">
                         {o.customerName}
                       </TableCell>
                       <TableCell>
                         {o.branchName ? (
-                          <span className="text-slate-700 font-medium">
+                          <span className="text-slate-900 font-medium">
                             {o.branchName}
                           </span>
                         ) : (
-                          <span className="text-slate-400">
+                          <span className="text-slate-500">
                             Trực tiếp KH mẹ
                           </span>
                         )}
                       </TableCell>
-                      <TableCell className="text-right font-bold text-slate-900">
+                      <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(o.totalAmount)}
                       </TableCell>
-                      <TableCell className="text-center font-bold text-slate-800">
+                      <TableCell className="text-center font-medium text-slate-900">
                         {o.vehicleCount} xe
                       </TableCell>
                       <TableCell className="text-center">

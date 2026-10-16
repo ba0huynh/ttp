@@ -106,34 +106,34 @@ function BatchesPage() {
                 <TableBody className="text-xs">
                   {batchesPg.pageItems.map((b) => (
                     <TableRow key={b.id} className="hover:bg-slate-50/80">
-                      <TableCell className="text-slate-600">
+                      <TableCell className="text-slate-500">
                         {formatDate(b.importDate)}
                       </TableCell>
-                      <TableCell className="font-semibold text-slate-800">
+                      <TableCell className="font-medium text-slate-900">
                         {b.supplierName}
                       </TableCell>
                       <TableCell>
                         {b.loanContractNumber ? (
                           <Badge
                             variant="outline"
-                            className="font-mono text-[11px] bg-purple-50 text-purple-700 border-purple-200"
+                            className="text-[11px] bg-purple-50 text-purple-700 border-purple-200"
                           >
                             {b.loanContractNumber}
                           </Badge>
                         ) : (
-                          <span className="text-slate-400">Vốn tự có</span>
+                          <span className="text-slate-500">Vốn tự có</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-center font-bold text-slate-900">
+                      <TableCell className="text-center font-medium text-slate-900">
                         {b.vehicleCount} xe
                       </TableCell>
-                      <TableCell className="text-right text-slate-700">
+                      <TableCell className="text-right text-slate-900">
                         {formatVnd(b.totalImport)}
                       </TableCell>
-                      <TableCell className="text-right text-slate-600 font-medium">
+                      <TableCell className="text-right text-slate-500 font-medium">
                         +{formatVnd(b.totalExpense)}
                       </TableCell>
-                      <TableCell className="text-right font-bold text-slate-900">
+                      <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(b.totalCost)}
                       </TableCell>
                       <TableCell className="text-center">

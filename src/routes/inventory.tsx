@@ -5,7 +5,6 @@ import { z } from 'zod'
 
 import { DualInventoryBadge } from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -228,7 +227,7 @@ function InventoryPage() {
                     <TableRow>
                       <TableCell
                         colSpan={8}
-                        className="text-center py-8 text-slate-400"
+                        className="text-center py-8 text-slate-500"
                       >
                         Không tìm thấy chiếc xe nào phù hợp bộ lọc
                       </TableCell>
@@ -236,17 +235,17 @@ function InventoryPage() {
                   ) : (
                     vehiclesPg.pageItems.map((v) => (
                       <TableRow key={v.id} className="hover:bg-slate-50/80">
-                        <TableCell className="font-mono font-bold text-slate-900">
+                        <TableCell className="font-medium text-slate-900">
                           {v.chassisNumber}
                         </TableCell>
-                        <TableCell className="font-mono text-slate-600">
+                        <TableCell className="text-slate-500">
                           {v.engineNumber}
                         </TableCell>
                         <TableCell>
-                          <div className="font-semibold text-slate-900">
+                          <div className="font-medium text-slate-900">
                             {v.modelName}
                           </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                          <div className="flex items-center gap-1.5 text-slate-500">
                             {v.colorHex && (
                               <span
                                 className="size-2.5 rounded-full inline-block border border-slate-300"
@@ -256,18 +255,13 @@ function InventoryPage() {
                             {v.colorName}
                           </div>
                         </TableCell>
-                        <TableCell>
-                          <Badge
-                            variant="outline"
-                            className="font-mono text-[11px]"
-                          >
-                            {batchLabel(v)}
-                          </Badge>
+                        <TableCell className="text-slate-900">
+                          {batchLabel(v)}
                         </TableCell>
-                        <TableCell className="text-right text-slate-600">
+                        <TableCell className="text-right text-slate-900">
                           {formatVnd(v.importPrice)}
                         </TableCell>
-                        <TableCell className="text-right font-bold text-slate-900">
+                        <TableCell className="text-right text-slate-900">
                           {formatVnd(v.costPrice)}
                         </TableCell>
                         <TableCell className="text-center">
@@ -283,12 +277,12 @@ function InventoryPage() {
                             <Link
                               to="/sales/$orderId"
                               params={{ orderId: String(v.salesOrderId) }}
-                              className="font-bold text-emerald-700 hover:underline"
+                              className="font-medium text-emerald-700 hover:underline"
                             >
                               Xem phiếu bán
                             </Link>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-slate-500">—</span>
                           )}
                         </TableCell>
                       </TableRow>

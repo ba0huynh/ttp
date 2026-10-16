@@ -497,10 +497,10 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
               const locked = v.isSold || v.isDelivered || v.isInvoiced
               return (
                 <TableRow key={v.id} className={loss ? 'bg-rose-50' : ''}>
-                  <TableCell className="font-mono font-bold">
+                  <TableCell className="font-medium">
                     {v.chassisNumber}
                   </TableCell>
-                  <TableCell className="font-mono text-slate-500">
+                  <TableCell className="text-slate-500">
                     {v.engineNumber}
                   </TableCell>
                   <TableCell>
@@ -517,7 +517,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   <TableCell className="text-right text-slate-500">
                     +{formatVnd(v.allocatedExpense)}
                   </TableCell>
-                  <TableCell className="text-right font-bold text-slate-900">
+                  <TableCell className="text-right font-medium text-slate-900">
                     {formatVnd(v.costPrice)}
                   </TableCell>
                   <TableCell
@@ -525,7 +525,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   >
                     {formatVnd(v.sellingPrice)}
                     {loss && (
-                      <div className="text-[10px] font-semibold">
+                      <div className="text-[10px] font-medium">
                         Dưới giá vốn
                       </div>
                     )}

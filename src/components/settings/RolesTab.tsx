@@ -162,7 +162,7 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
                   <TableCell className="font-medium text-slate-900">
                     {r.name}
                   </TableCell>
-                  <TableCell className="text-slate-600">
+                  <TableCell className="text-slate-500">
                     {r.description || '—'}
                   </TableCell>
                   <TableCell className="text-center">

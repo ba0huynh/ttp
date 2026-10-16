@@ -232,7 +232,7 @@ export function ImportStatementDialog({
                       key={r.key}
                       className={invalidKeys.has(r.key) ? 'bg-rose-50' : ''}
                     >
-                      <TableCell className="text-center text-xs text-slate-400">
+                      <TableCell className="text-center text-xs text-slate-500">
                         {i + 1}
                       </TableCell>
                       <TableCell>
