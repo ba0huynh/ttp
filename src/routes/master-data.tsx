@@ -4,21 +4,11 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import {
-  Boxes,
-  CreditCard,
-  Landmark,
-  Palette,
-  Receipt,
-  Pencil,
-  Plus,
-  Trash2,
-  Truck,
-} from 'lucide-react'
+import { Pencil, Plus, Trash2 } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
-import { BankLabel } from '#/components/finance/BankLabel.tsx'
+import { BankLabel, BankLogo } from '#/components/finance/BankLabel.tsx'
 import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -61,12 +51,7 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from '#/components/ui/tabs.tsx'
+import { Tabs, TabsContent } from '#/components/ui/tabs.tsx'
 import { masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { matchesSearch } from '#/lib/text.ts'
@@ -110,6 +95,35 @@ export const Route = createFileRoute('/master-data')({
   component: MasterDataPage,
 })
 
+const TAB_TITLES = {
+  models: {
+    title: 'Dòng Xe',
+    description:
+      'Hãng xe, dòng xe, đời xe và các màu xe được bán của từng mẫu.',
+  },
+  suppliers: {
+    title: 'Nhà Cung Cấp',
+    description: 'Đơn vị cung cấp xe nhập khẩu.',
+  },
+  banks: {
+    title: 'Ngân Hàng',
+    description: 'Danh mục ngân hàng (tên và logo).',
+  },
+  accounts: {
+    title: 'Tài Khoản Ngân Hàng',
+    description: 'Tài khoản ngân hàng của công ty dùng cho thu chi và vay.',
+  },
+  colors: {
+    title: 'Màu Sắc',
+    description: 'Bảng màu xe chuẩn hóa toàn hệ thống.',
+  },
+  expenseTypes: {
+    title: 'Loại Chi Phí',
+    description:
+      'Các loại chi phí của lô nhập (thuế, vận chuyển, hải quan...).',
+  },
+} as const
+
 function MasterDataPage() {
   const { user } = Route.useRouteContext()
   const { tab, q } = Route.useSearch()
@@ -123,7 +137,9 @@ function MasterDataPage() {
     }),
   )
   const modelsPg = usePagination(
-    master.models.filter((m) => matchesSearch(search, m.name)),
+    master.models.filter((m) =>
+      matchesSearch(search, m.brand, m.name, m.modelYear),
+    ),
     search,
   )
   const suppliersPg = usePagination(
@@ -183,6 +199,8 @@ function MasterDataPage() {
 
   // Modal Model
   const [mId, setMId] = React.useState<number | null>(null)
+  const [mBrand, setMBrand] = React.useState('')
+  const [mYear, setMYear] = React.useState('')
   const [xId, setXId] = React.useState<number | null>(null)
   const [expenseTypeOpen, setExpenseTypeOpen] = React.useState(false)
   const [xName, setXName] = React.useState('')
@@ -199,6 +217,7 @@ function MasterDataPage() {
   // Modal Bank
   const [bankOpen, setBankOpen] = React.useState(false)
   const [bName, setBName] = React.useState('')
+  const [bImage, setBImage] = React.useState('')
 
   // Modal Company Bank Account (create / edit)
   const [accountOpen, setAccountOpen] = React.useState(false)
@@ -237,7 +256,12 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveModel.mutateAsync({
-        data: { id: mId ?? undefined, name: mName },
+        data: {
+          id: mId ?? undefined,
+          brand: mBrand || null,
+          name: mName,
+          modelYear: mYear || null,
+        },
       })
       setModelOpen(false)
     } catch (err: unknown) {
@@ -273,7 +297,7 @@ function MasterDataPage() {
     e.preventDefault()
     try {
       await saveBank.mutateAsync({
-        data: { id: bId ?? undefined, name: bName },
+        data: { id: bId ?? undefined, name: bName, image: bImage || null },
       })
       setBankOpen(false)
     } catch (err: unknown) {
@@ -359,11 +383,10 @@ function MasterDataPage() {
       <div className="space-y-6">
         <div>
           <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-            Danh Mục Dữ Liệu Cốt Lõi (Master Data)
+            {TAB_TITLES[tab].title}
           </h1>
           <p className="text-xs text-slate-500 mt-1">
-            Quản lý Dòng xe, Nhà cung cấp nhập khẩu, Ngân hàng, Tài khoản ngân
-            hàng của công ty và Bảng màu chuẩn hóa toàn hệ thống.
+            {TAB_TITLES[tab].description}
           </p>
         </div>
 
@@ -374,51 +397,6 @@ function MasterDataPage() {
           }
           className="space-y-4"
         >
-          <TabsList className="bg-slate-100 p-1">
-            <TabsTrigger
-              value="models"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Boxes className="size-3.5" />
-              Dòng Xe ({master.models.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="suppliers"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Truck className="size-3.5" />
-              Nhà Cung Cấp ({master.suppliers.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="banks"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Landmark className="size-3.5" />
-              Ngân Hàng ({master.banks.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="accounts"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <CreditCard className="size-3.5" />
-              Tài Khoản Ngân Hàng ({master.bankAccounts.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="colors"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Palette className="size-3.5" />
-              Màu Sắc ({master.colors.length})
-            </TabsTrigger>
-            <TabsTrigger
-              value="expenseTypes"
-              className="text-xs font-semibold gap-1.5"
-            >
-              <Receipt className="size-3.5" />
-              Loại Chi Phí ({master.expenseTypes.length})
-            </TabsTrigger>
-          </TabsList>
-
           {/* Motorcycle models */}
           <TabsContent value="models">
             <Card className="border-slate-200 shadow-xs">
@@ -438,6 +416,8 @@ function MasterDataPage() {
                     onClick={() => {
                       setMId(null)
                       setMName('')
+                      setMBrand('')
+                      setMYear('')
                       setModelOpen(true)
                     }}
                     className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -451,15 +431,23 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Tên Xe</TableHead>
+                      <TableHead>Hãng Xe</TableHead>
+                      <TableHead>Dòng Xe</TableHead>
+                      <TableHead>Đời Xe</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {modelsPg.pageItems.map((m) => (
                       <TableRow key={m.id}>
+                        <TableCell className="text-slate-500">
+                          {m.brand}
+                        </TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {m.name}
+                        </TableCell>
+                        <TableCell className="text-slate-500">
+                          {m.modelYear}
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -470,6 +458,8 @@ function MasterDataPage() {
                                 onClick={() => {
                                   setMId(m.id)
                                   setMName(m.name)
+                                  setMBrand(m.brand ?? '')
+                                  setMYear(m.modelYear ?? '')
                                   setModelOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -687,6 +677,7 @@ function MasterDataPage() {
                     onClick={() => {
                       setBId(null)
                       setBName('')
+                      setBImage('')
                       setBankOpen(true)
                     }}
                     className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -721,6 +712,7 @@ function MasterDataPage() {
                                 onClick={() => {
                                   setBId(b.id)
                                   setBName(b.name)
+                                  setBImage(b.image ?? '')
                                   setBankOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -963,13 +955,31 @@ function MasterDataPage() {
             </DialogHeader>
             <form onSubmit={handleSaveModel} className="space-y-3 pt-2">
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Tên Xe *</Label>
+                <Label className="text-xs font-semibold">Hãng Xe</Label>
+                <Input
+                  value={mBrand}
+                  onChange={(e) => setMBrand(e.target.value)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                  placeholder="Honda"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Dòng Xe *</Label>
                 <Input
                   required
                   value={mName}
                   onChange={(e) => setMName(e.target.value)}
                   className="h-11 text-sm px-4 rounded-lg"
-                  placeholder="Honda SH 150i ABS"
+                  placeholder="SH 150i ABS"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Đời Xe</Label>
+                <Input
+                  value={mYear}
+                  onChange={(e) => setMYear(e.target.value)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                  placeholder="2025"
                 />
               </div>
               <DialogFooter className="pt-2">
@@ -1103,6 +1113,25 @@ function MasterDataPage() {
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Ngân hàng TMCP Ngoại thương Việt Nam"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">
+                  Logo (đường dẫn ảnh)
+                </Label>
+                <div className="flex items-center gap-3">
+                  <BankLogo
+                    key={bImage}
+                    src={bImage}
+                    name={bName}
+                    className="h-11 w-20"
+                  />
+                  <Input
+                    value={bImage}
+                    onChange={(e) => setBImage(e.target.value)}
+                    className="h-11 text-sm px-4 rounded-lg"
+                    placeholder="https://.../logo.png"
+                  />
+                </div>
               </div>
               <DialogFooter className="pt-2">
                 <Button

@@ -776,5 +776,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 69, 70,... above this line upon completing tasks)_
+### Lesson 69: "Dữ liệu chung" Menu, Model Attributes, Bank Logo Field
+
+- **Menu**: "Danh mục hệ thống" is now the main menu **Dữ liệu chung** with six sub menus (Dòng xe, Nhà cung cấp, Ngân hàng, Tài khoản ngân hàng, Màu sắc, Loại chi phí) = `/master-data?tab=...`. `DEFAULT_TABS` in `AppLayout.tsx` says which tab a path shows without `?tab=`. The /master-data page has no tab bar; its title and subtitle follow the tab (`TAB_TITLES`). The chat asked for 5 sub menus; there are 6 tabs because Loại chi phí (Lesson 63) was added since.
+- **Motorcycle model** has **Hãng xe** (`motorcycle_models.brand`), **Dòng xe** (`name`) and **Đời xe** (`model_year`, free text; migration `0027`). A per-model colour list (**Màu xe**, table `motorcycle_model_colors`) was added and then removed again on request (migration `0028_lucky_spitfire.sql` drops the table); colours are chosen per vehicle from the whole `/master-data` colour list. `modelLabel(m)` = "Honda SH 150i 2025" is shown in the model dropdowns of `/batches/new` and the batch editor; other screens show only `name`. Lesson 24 had removed brand; this supersedes it.
+- **Bank form** has a logo URL field with a live preview (`saveBankFn` takes `image`); `BankLogo` keeps its "failed" state per `src`, so give the preview `key={image}`. Code and short name stay out of the UI (Lesson 56).
+
+---
+
+_(Next Agent: Append Lesson 70, 71,... above this line upon completing tasks)_
 

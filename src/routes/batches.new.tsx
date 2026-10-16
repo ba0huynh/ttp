@@ -51,6 +51,7 @@ import {
   allocateBatchExpenses,
   computeSellingPrice,
   formatVnd,
+  modelLabel,
   todayIso,
 } from '#/lib/business.ts'
 import { createBatchFn } from '#/server/fns/batches.ts'
@@ -576,7 +577,7 @@ function NewBatchPage() {
                                   value={String(m.id)}
                                   className="text-xs"
                                 >
-                                  {m.name}
+                                  {modelLabel(m)}
                                 </SearchSelectItem>
                               ))}
                             </SearchSelect>

@@ -1,0 +1,1 @@
+DROP TABLE `motorcycle_model_colors`;

@@ -2,21 +2,26 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import {
   ArrowRightLeft,
   Banknote,
+  Bike,
   Boxes,
   Building2,
+  CreditCard,
   FileText,
   Landmark,
   LayoutDashboard,
   Loader2,
   LogOut,
   Menu,
+  Palette,
   PanelLeftClose,
   PanelLeftOpen,
   PackagePlus,
   PieChart,
+  Receipt,
   Settings,
   ShieldCheck,
   UserCog,
+  Truck,
   Users,
   Warehouse,
 } from 'lucide-react'
@@ -128,10 +133,53 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
         permission: 'customers.view',
       },
       {
-        title: 'Danh mục hệ thống',
+        title: 'Dữ liệu chung',
         href: '/master-data',
         icon: Boxes,
-        permission: 'master-data.view',
+        children: [
+          {
+            title: 'Dòng xe',
+            href: '/master-data',
+            tab: 'models',
+            icon: Bike,
+            permission: 'master-data.view',
+          },
+          {
+            title: 'Nhà cung cấp',
+            href: '/master-data',
+            tab: 'suppliers',
+            icon: Truck,
+            permission: 'master-data.view',
+          },
+          {
+            title: 'Ngân hàng',
+            href: '/master-data',
+            tab: 'banks',
+            icon: Landmark,
+            permission: 'master-data.view',
+          },
+          {
+            title: 'Tài khoản ngân hàng',
+            href: '/master-data',
+            tab: 'accounts',
+            icon: CreditCard,
+            permission: 'master-data.view',
+          },
+          {
+            title: 'Màu sắc',
+            href: '/master-data',
+            tab: 'colors',
+            icon: Palette,
+            permission: 'master-data.view',
+          },
+          {
+            title: 'Loại chi phí',
+            href: '/master-data',
+            tab: 'expenseTypes',
+            icon: Receipt,
+            permission: 'master-data.view',
+          },
+        ],
       },
     ],
   },
@@ -173,12 +221,18 @@ const ALL_ITEMS = NAV_GROUPS.flatMap((g) =>
   g.items.flatMap((i) => i.children ?? [i]),
 )
 
-/** `tab` is the current `?tab=` value; /settings opens on its company tab */
+/** Tab a tabbed page shows when the URL has no `?tab=` */
+const DEFAULT_TABS: Record<string, string> = {
+  '/settings': 'company',
+  '/master-data': 'models',
+}
+
+/** `tab` is the current `?tab=` value */
 const matches = (item: NavItem, path: string, tab?: string) =>
   item.href === '/'
     ? path === '/'
     : path.startsWith(item.href) &&
-      (!item.tab || item.tab === (tab ?? 'company'))
+      (!item.tab || item.tab === (tab ?? DEFAULT_TABS[item.href]))
 
 interface AppLayoutProps {
   children: React.ReactNode

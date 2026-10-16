@@ -76,6 +76,7 @@ export const saveBankFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       name: z.string().trim().min(1),
+      image: z.string().trim().max(500).nullable().optional(),
     }),
   )
   .handler(({ data: { id, ...v } }) =>
@@ -138,7 +139,9 @@ export const saveModelFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
+      brand: opt,
       name: z.string().trim().min(1),
+      modelYear: opt,
       description: opt,
     }),
   )

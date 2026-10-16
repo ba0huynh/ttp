@@ -190,6 +190,20 @@
       "when": 1792131451516,
       "tag": "0026_polite_network",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "5",
+      "when": 1792135444318,
+      "tag": "0027_numerous_ben_grimm",
+      "breakpoints": true
+    },
+    {
+      "idx": 28,
+      "version": "5",
+      "when": 1792135876575,
+      "tag": "0028_lucky_spitfire",
+      "breakpoints": true
     }
   ]
 }

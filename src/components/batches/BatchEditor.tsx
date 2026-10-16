@@ -34,7 +34,12 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { computeSellingPrice, formatVnd, isBelowCost } from '#/lib/business.ts'
+import {
+  computeSellingPrice,
+  formatVnd,
+  isBelowCost,
+  modelLabel,
+} from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
 import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
@@ -573,7 +578,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         >
           {models.map((m) => (
             <SearchSelectItem key={m.id} value={String(m.id)}>
-              {m.name}
+              {modelLabel(m)}
             </SearchSelectItem>
           ))}
         </SearchSelect>
