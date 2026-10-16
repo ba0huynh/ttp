@@ -1,3 +1,4 @@
+import { ColorLabel } from '#/components/ui/color-label.tsx'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import {
@@ -101,7 +102,7 @@ const TAB_TITLES = {
   models: {
     title: 'Dòng Xe',
     description:
-      'Hãng xe, dòng xe, đời xe và các màu xe được bán của từng mẫu.',
+      'Hãng xe, dòng xe, đời xe và màu xe (mỗi dòng xe một màu).',
   },
   suppliers: {
     title: 'Nhà Cung Cấp',
@@ -140,7 +141,13 @@ function MasterDataPage() {
   )
   const modelsPg = usePagination(
     master.models.filter((m) =>
-      matchesSearch(search, m.brand, m.name, m.modelYear),
+      matchesSearch(
+        search,
+        m.brand,
+        m.name,
+        m.modelYear,
+        master.colors.find((c) => c.id === m.colorId)?.name,
+      ),
     ),
     search,
   )
@@ -203,6 +210,7 @@ function MasterDataPage() {
   const [mId, setMId] = React.useState<number | null>(null)
   const [mBrand, setMBrand] = React.useState('')
   const [mYear, setMYear] = React.useState('')
+  const [mColorId, setMColorId] = React.useState<number | null>(null)
   const [xId, setXId] = React.useState<number | null>(null)
   const [expenseTypeOpen, setExpenseTypeOpen] = React.useState(false)
   const [xName, setXName] = React.useState('')
@@ -296,6 +304,10 @@ function MasterDataPage() {
 
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!mColorId) {
+      await alertDialog('Vui lòng chọn màu xe')
+      return
+    }
     try {
       await saveModel.mutateAsync({
         data: {
@@ -303,6 +315,7 @@ function MasterDataPage() {
           brand: mBrand || null,
           name: mName,
           modelYear: mYear || null,
+          colorId: mColorId ?? 0,
         },
       })
       setModelOpen(false)
@@ -473,6 +486,7 @@ function MasterDataPage() {
                       setMName('')
                       setMBrand('')
                       setMYear('')
+                      setMColorId(null)
                       setModelOpen(true)
                     }}
                     className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -489,6 +503,7 @@ function MasterDataPage() {
                       <TableHead>Hãng Xe</TableHead>
                       <TableHead>Dòng Xe</TableHead>
                       <TableHead>Đời Xe</TableHead>
+                      <TableHead>Màu Xe</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -505,6 +520,16 @@ function MasterDataPage() {
                           {m.modelYear}
                         </TableCell>
                         <TableCell>
+                          {(() => {
+                            const c = master.colors.find(
+                              (x) => x.id === m.colorId,
+                            )
+                            return c ? (
+                              <ColorLabel name={c.name} hex={c.hex} />
+                            ) : null
+                          })()}
+                        </TableCell>
+                        <TableCell>
                           <div className="flex justify-end gap-1">
                             <Can permission="master-data.manage">
                               <Button
@@ -515,6 +540,7 @@ function MasterDataPage() {
                                   setMName(m.name)
                                   setMBrand(m.brand ?? '')
                                   setMYear(m.modelYear ?? '')
+                                  setMColorId(m.colorId)
                                   setModelOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -1050,6 +1076,29 @@ function MasterDataPage() {
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="2025"
                 />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Màu Xe *</Label>
+                <SearchSelect
+                  className="h-11 w-full rounded-lg text-sm"
+                  placeholder="Chọn màu xe"
+                  value={mColorId ? String(mColorId) : ''}
+                  onValueChange={(v) => setMColorId(Number(v))}
+                >
+                  {master.colors.map((c) => (
+                    <SearchSelectItem
+                      key={c.id}
+                      value={String(c.id)}
+                      keywords={c.name}
+                    >
+                      <ColorLabel name={c.name} hex={c.hex} />
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
+                <p className="text-[11px] text-slate-500">
+                  Mỗi dòng xe có một màu. Xe cùng dòng nhưng khác màu thì tạo
+                  thêm một dòng xe riêng.
+                </p>
               </div>
               <DialogFooter className="pt-2">
                 <Button

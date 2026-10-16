@@ -211,6 +211,13 @@
       "when": 1792137825977,
       "tag": "0029_strong_blue_blade",
       "breakpoints": true
+    },
+    {
+      "idx": 30,
+      "version": "5",
+      "when": 1792139365500,
+      "tag": "0030_dry_queen_noir",
+      "breakpoints": true
     }
   ]
 }

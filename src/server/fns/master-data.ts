@@ -161,6 +161,7 @@ export const saveModelFn = createServerFn({ method: 'POST' })
       brand: opt,
       name: z.string().trim().min(1),
       modelYear: opt,
+      colorId: z.number().int().positive('Chọn màu xe'),
       description: opt,
     }),
   )

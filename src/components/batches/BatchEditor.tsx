@@ -1,6 +1,6 @@
+import { ModelOption } from '#/components/batches/ModelOption.tsx'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
-import { ColorLabel } from '#/components/ui/color-label.tsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Save } from 'lucide-react'
 import * as React from 'react'
@@ -428,7 +428,6 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
   const models = master?.models ?? []
   const colors = master?.colors ?? []
   const [modelId, setModelId] = React.useState<number | null>(null)
-  const [colorId, setColorId] = React.useState<number | null>(null)
   const [chassis, setChassis] = React.useState('')
   const [engine, setEngine] = React.useState('')
   const [price, setPrice] = React.useState(0)
@@ -442,7 +441,8 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
   })
 
   const effModel = modelId ?? models[0]?.id ?? null
-  const effColor = colorId ?? colors[0]?.id ?? null
+  // The colour belongs to the model
+  const effColor = models.find((m) => m.id === effModel)?.colorId ?? null
 
   const handleAdd = async () => {
     if (!effModel || !effColor) {
@@ -594,20 +594,12 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           onValueChange={(v) => setModelId(Number(v))}
         >
           {models.map((m) => (
-            <SearchSelectItem key={m.id} value={String(m.id)}>
-              {modelLabel(m)}
-            </SearchSelectItem>
-          ))}
-        </SearchSelect>
-        <SearchSelect
-          className="h-11 w-full text-sm bg-white rounded-lg"
-          placeholder="Màu xe"
-          value={effColor ? String(effColor) : ''}
-          onValueChange={(v) => setColorId(Number(v))}
-        >
-          {colors.map((c) => (
-            <SearchSelectItem key={c.id} value={String(c.id)} keywords={c.name}>
-              <ColorLabel name={c.name} hex={c.hex} />
+            <SearchSelectItem
+              key={m.id}
+              value={String(m.id)}
+              keywords={modelLabel(m)}
+            >
+              <ModelOption model={m} colors={colors} />
             </SearchSelectItem>
           ))}
         </SearchSelect>

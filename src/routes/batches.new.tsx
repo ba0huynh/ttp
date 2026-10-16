@@ -1,3 +1,4 @@
+import { ModelOption } from '#/components/batches/ModelOption.tsx'
 import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { ColorLabel } from '#/components/ui/color-label.tsx'
 import {
@@ -218,8 +219,14 @@ function NewBatchPage() {
       setError('Vui lòng chọn loại chi phí cho từng khoản')
       return
     }
-    if (vehicles.some((v) => !v.modelId || !v.colorId)) {
-      setError('Vui lòng chọn dòng xe và màu xe cho từng xe')
+    if (vehicles.some((v) => !v.modelId)) {
+      setError('Vui lòng chọn dòng xe cho từng xe')
+      return
+    }
+    if (vehicles.some((v) => !v.colorId)) {
+      setError(
+        'Dòng xe chưa có màu: hãy gán màu cho dòng xe trong Dữ liệu chung',
+      )
       return
     }
 
@@ -527,7 +534,7 @@ function NewBatchPage() {
                         <TableHead className="w-36">Số Khung *</TableHead>
                         <TableHead className="w-32">Số Máy *</TableHead>
                         <TableHead>Dòng xe *</TableHead>
-                        <TableHead className="w-28">Màu xe *</TableHead>
+                        <TableHead className="w-28">Màu xe</TableHead>
                         <TableHead className="text-right w-36">
                           Đơn Giá Nhập *
                         </TableHead>
@@ -568,6 +575,11 @@ function NewBatchPage() {
                               onValueChange={(val) => {
                                 const updated = [...vehicles]
                                 updated[idx].modelId = Number(val)
+                                // the colour comes with the model
+                                updated[idx].colorId =
+                                  master.models.find(
+                                    (m) => m.id === Number(val),
+                                  )?.colorId ?? 0
                                 setVehicles(updated)
                               }}
                             >
@@ -576,33 +588,27 @@ function NewBatchPage() {
                                   key={m.id}
                                   value={String(m.id)}
                                   className="text-xs"
+                                  keywords={`${modelLabel(m)} ${master.colors.find((c) => c.id === m.colorId)?.name ?? ''}`}
                                 >
-                                  {modelLabel(m)}
+                                  <ModelOption
+                                    model={m}
+                                    colors={master.colors}
+                                  />
                                 </SearchSelectItem>
                               ))}
                             </SearchSelect>
                           </TableCell>
-                          <TableCell>
-                            <SearchSelect
-                              className="h-9 w-full text-sm rounded-lg"
-                              value={String(v.colorId)}
-                              onValueChange={(val) => {
-                                const updated = [...vehicles]
-                                updated[idx].colorId = Number(val)
-                                setVehicles(updated)
-                              }}
-                            >
-                              {master.colors.map((c) => (
-                                <SearchSelectItem
-                                  key={c.id}
-                                  value={String(c.id)}
-                                  className="text-xs"
-                                  keywords={c.name}
-                                >
-                                  <ColorLabel name={c.name} hex={c.hex} />
-                                </SearchSelectItem>
-                              ))}
-                            </SearchSelect>
+                          <TableCell className="text-xs text-slate-500">
+                            {(() => {
+                              const c = master.colors.find(
+                                (x) => x.id === v.colorId,
+                              )
+                              return c ? (
+                                <ColorLabel name={c.name} hex={c.hex} />
+                              ) : (
+                                '—'
+                              )
+                            })()}
                           </TableCell>
                           <TableCell className="text-right">
                             <MoneyInput

@@ -810,5 +810,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 73, 74,... above this line upon completing tasks)_
+### Lesson 73: One Colour per Model (Dòng Xe Carries Its Colour)
+
+- **Rule from the client**: a motorcycle model has exactly **one** colour (`motorcycle_models.color_id`, FK to `colors`; migration `0030_dry_queen_noir.sql`, applied). A bike in a second colour is a second model row with the same brand / line / year and another colour. This replaces the per-model colour *list* of Lesson 69 (that table was dropped in `0028`).
+- **Master data**: the model dialog has a required "Màu Xe *" select (with swatches) and the table a "Màu Xe" column; the model search also matches the colour name. `saveModelFn` requires `colorId`. Deleting a colour is refused while a model uses it (usage list "Dòng xe dùng màu này").
+- **Vehicles**: `vehicles.color_id` stays, but it is no longer picked by hand: choosing a model in `/batches/new` or in the batch editor fills the colour from the model (shown read-only), and `ModelOption` (`src/components/batches/ModelOption.tsx`) shows "Hãng Dòng Đời" plus the colour swatch in model dropdowns. A model without a colour blocks the batch with a message pointing to Dữ liệu chung.
+- **Backfill caveat**: the migration copied, for each existing model, the colour of its first vehicle; models without vehicles (e.g. "honda airblade") have no colour until someone edits them. A model that was used with several colours keeps only one; its older vehicles keep their own colours.
+
+---
+
+_(Next Agent: Append Lesson 74, 75,... above this line upon completing tasks)_
 

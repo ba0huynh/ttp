@@ -13,6 +13,7 @@ import {
   invoices,
   loanContracts,
   loanRepayments,
+  motorcycleModels,
   paymentVouchers,
   receiptVouchers,
   salesOrderItems,
@@ -21,7 +22,12 @@ import {
   users,
   vehicles,
 } from '#/db/schema.ts'
-import { batchLabel, formatDate, formatVnd } from '#/lib/business.ts'
+import {
+  batchLabel,
+  formatDate,
+  formatVnd,
+  modelLabel,
+} from '#/lib/business.ts'
 import { num } from '#/server/services/common.ts'
 import { requirePermission } from './middleware.ts'
 
@@ -220,7 +226,26 @@ async function usageOf(
         .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
         .where(eq(column, id))
         .groupBy(importBatches.id, importBatches.importDate, suppliers.name)
+      // A colour is also part of every model that uses it
+      const models =
+        entity === 'colors'
+          ? await db
+              .select({
+                brand: motorcycleModels.brand,
+                name: motorcycleModels.name,
+                modelYear: motorcycleModels.modelYear,
+              })
+              .from(motorcycleModels)
+              .where(eq(motorcycleModels.colorId, id))
+          : []
       return [
+        group(
+          'Dòng xe dùng màu này',
+          models.map((m) => ({
+            label: modelLabel(m),
+            href: '/master-data?tab=models',
+          })),
+        ),
         group(
           'Lô nhập có xe dùng mục này',
           rows.map((r) => ({
