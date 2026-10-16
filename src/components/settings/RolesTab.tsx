@@ -34,6 +34,7 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { ALL_PERMISSIONS, PERMISSION_GROUPS } from '#/lib/permissions.ts'
+import { reportDeleteFailure } from '#/lib/usage.ts'
 import { deleteRoleFn, saveRoleFn } from '#/server/fns/system.ts'
 
 export interface RoleRow {
@@ -122,7 +123,11 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
     try {
       await deleteRole.mutateAsync({ data: { id: r.id } })
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Không thể xóa vai trò')
+      await reportDeleteFailure(
+        err,
+        { entity: 'roles', id: r.id, name: r.name },
+        'Không thể xóa vai trò',
+      )
     }
   }
 

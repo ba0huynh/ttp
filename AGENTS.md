@@ -624,5 +624,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 51, 52,... above this line upon completing tasks)_
+### Lesson 51: Refused Deletes Explain What Uses the Row (names + links)
+
+- **Behaviour**: when a delete is refused because other records still use the row, the user sees "Không thể xóa "<name>"" with the list of those records grouped by type (e.g. "Lô nhập có xe dùng mục này (3)"), each a link to its detail page, and "… và N mục khác" when more than 30. The dialog is the global alert dialog (`showUsageDialog` in `src/components/ui/confirm-dialog.tsx`, which accepts `groups` in `AlertOptions`); clicking a link closes it and navigates.
+- **Server**: `getUsageFn({ entity, id })` (`src/server/fns/usage.ts`) returns the groups for `banks`, `companyBankAccounts`, `suppliers`, `motorcycleModels`, `colors`, `roles` and `vehicles` (a vehicle in a sales order). Groups with no records are dropped, so an empty result means the failure had another cause. Needs `master-data.manage`, `roles.manage` or `batches.manage`.
+- **Client rule**: in the `catch` of every delete call `reportDeleteFailure(err, { entity, id, name }, fallback)` from `src/lib/usage.ts` instead of `showErrorDialog`; it shows the usage list, or the normal error dialog when nothing uses the row. Already used by master data (all 5 tabs), roles and removing a vehicle from a batch (`useBatchMutation` takes an `onFail` callback). **A new deletable entity needs a `case` in `usageOf` and an entry in `USAGE_ENTITIES`.**
+- **Foreign-key detection**: `isReferencedError` (`src/server/services/common.ts`) reads MySQL errno 1451 / `ER_ROW_IS_REFERENCED*` through the whole `cause` chain, because Drizzle wraps driver errors as "Failed query: ...". `formatErrorMessage` never shows a message that starts with "Failed query".
+
+---
+
+_(Next Agent: Append Lesson 52, 53,... above this line upon completing tasks)_
 

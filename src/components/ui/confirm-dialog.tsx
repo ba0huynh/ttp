@@ -1,3 +1,4 @@
+import { Link } from '@tanstack/react-router'
 import { AlertCircle, Info } from 'lucide-react'
 import * as React from 'react'
 
@@ -21,11 +22,20 @@ export interface ConfirmOptions {
   destructive?: boolean
 }
 
+/** Records that use something which cannot be deleted, shown as links */
+export interface UsageGroupView {
+  title: string
+  total: number
+  items: { label: string; href: string }[]
+}
+
 export interface AlertOptions {
   title?: string
   description?: string
   buttonLabel?: string
   destructive?: boolean
+  /** Optional list of related records, each a link to its page */
+  groups?: UsageGroupView[]
 }
 
 interface PendingConfirm extends ConfirmOptions {
@@ -150,6 +160,24 @@ export function alertDialog(
 }
 
 /**
+ * "Cannot delete: it is still used by ..." with the names of the records using
+ * it, each linking to its detail page (see `reportDeleteFailure` in lib/usage.ts).
+ */
+export function showUsageDialog(
+  title: string,
+  groups: UsageGroupView[],
+): Promise<void> {
+  return alertDialog({
+    title,
+    description:
+      'Mục này đang được sử dụng nên chưa thể xóa. Hãy đổi hoặc xóa các mục bên dưới trước, bấm vào tên để mở chi tiết.',
+    groups,
+    destructive: true,
+    buttonLabel: 'Đã hiểu',
+  })
+}
+
+/**
  * Helper to show an error dialog with automated Zod/API error formatting.
  */
 export function showErrorDialog(
@@ -192,7 +220,7 @@ export function ConfirmDialogHost() {
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent className="max-w-md">
+      <AlertDialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
         <AlertDialogHeader>
           <div className="flex items-center gap-2.5">
             {current?.destructive ? (
@@ -213,6 +241,46 @@ export function ConfirmDialogHost() {
             <AlertDialogDescription className="text-xs text-slate-600 whitespace-pre-line text-left pl-10.5 leading-relaxed">
               {current.description}
             </AlertDialogDescription>
+          )}
+          {current?.type === 'alert' && current.groups && (
+            <div className="space-y-3 pl-10.5 text-left">
+              {current.groups.map((g) => (
+                <div key={g.title} className="space-y-1">
+                  <div className="text-xs font-semibold text-slate-800">
+                    {g.title} ({g.total})
+                  </div>
+                  <ul className="space-y-0.5 text-xs">
+                    {g.items.map((item, i) => {
+                      const [path, query = ''] = item.href.split('?')
+                      return (
+                        <li key={i}>
+                          <Link
+                            to={path as '/'}
+                            search={
+                              Object.fromEntries(
+                                new URLSearchParams(query),
+                              ) as never
+                            }
+                            onClick={() => {
+                              current.resolve()
+                              setOpen(false)
+                            }}
+                            className="text-emerald-700 hover:underline"
+                          >
+                            {item.label}
+                          </Link>
+                        </li>
+                      )
+                    })}
+                    {g.total > g.items.length && (
+                      <li className="text-slate-500">
+                        … và {g.total - g.items.length} mục khác
+                      </li>
+                    )}
+                  </ul>
+                </div>
+              ))}
+            </div>
           )}
         </AlertDialogHeader>
         <AlertDialogFooter className="pt-2">

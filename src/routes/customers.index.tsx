@@ -140,7 +140,9 @@ function CustomersPage() {
                   {customersPg.pageItems.map((c) => (
                     <TableRow key={c.id} className="hover:bg-slate-50/80">
                       <TableCell>
-                        <div className="font-bold text-slate-900">{c.name}</div>
+                        <div className="font-medium text-slate-900">
+                          {c.name}
+                        </div>
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -150,7 +152,7 @@ function CustomersPage() {
                           {c.branchCount} điểm bán
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-right font-black text-rose-900">
+                      <TableCell className="text-right font-bold text-rose-900">
                         {formatVnd(c.balance)}
                       </TableCell>
                       <TableCell className="text-center">

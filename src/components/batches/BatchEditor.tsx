@@ -41,6 +41,7 @@ import {
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
 import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
+import { reportDeleteFailure } from '#/lib/usage.ts'
 import {
   addBatchExpenseFn,
   addVehiclesToBatchFn,
@@ -75,14 +76,19 @@ export function BatchEditor({ detail }: { detail: BatchDetail }) {
 
 export type { BatchDetail }
 
-function useBatchMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
+function useBatchMutation<TVars>(
+  fn: (vars: TVars) => Promise<unknown>,
+  /** Replaces the default error dialog (e.g. to explain a refused delete) */
+  onFail?: (err: Error, vars: TVars) => void,
+) {
   const queryClient = useQueryClient()
   // Batch edits change cost/selling prices, inventory value and reports
   return useMutation({
     mutationFn: fn,
     onSuccess: () => queryClient.invalidateQueries(),
-    onError: (err: Error) => {
-      void showErrorDialog(err, 'Có lỗi xảy ra')
+    onError: (err: Error, vars: TVars) => {
+      if (onFail) onFail(err, vars)
+      else void showErrorDialog(err, 'Có lỗi xảy ra')
     },
   })
 }
@@ -419,7 +425,13 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
   const [engine, setEngine] = React.useState('')
   const [price, setPrice] = React.useState(0)
   const add = useBatchMutation(addVehiclesToBatchFn)
-  const remove = useBatchMutation(removeVehicleFn)
+  const remove = useBatchMutation(removeVehicleFn, (err, vars) => {
+    void reportDeleteFailure(
+      err,
+      { entity: 'vehicles', id: vars.data.vehicleId },
+      'Không thể xóa xe khỏi lô',
+    )
+  })
 
   const effModel = modelId ?? models[0]?.id ?? null
   const effColor = colorId ?? colors[0]?.id ?? null

@@ -68,6 +68,7 @@ import {
 } from '#/components/ui/tabs.tsx'
 import { masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
+import { reportDeleteFailure } from '#/lib/usage.ts'
 import {
   deleteMasterDataFn,
   saveBankAccountFn,
@@ -246,7 +247,16 @@ function MasterDataPage() {
     }
   }
 
-  const handleDelete = async (entity: any, id: number) => {
+  const handleDelete = async (
+    entity:
+      | 'motorcycleModels'
+      | 'suppliers'
+      | 'banks'
+      | 'companyBankAccounts'
+      | 'colors',
+    id: number,
+    name: string,
+  ) => {
     if (
       !(await confirmDialog({
         title: 'Xóa mục danh mục này?',
@@ -259,7 +269,11 @@ function MasterDataPage() {
     try {
       await deleteItem.mutateAsync({ data: { entity, id } })
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Không thể xóa mục đang được sử dụng')
+      await reportDeleteFailure(
+        err,
+        { entity, id, name },
+        'Không thể xóa mục đang được sử dụng',
+      )
     }
   }
 
@@ -362,7 +376,7 @@ function MasterDataPage() {
                               variant="ghost"
                               size="icon"
                               onClick={() =>
-                                handleDelete('motorcycleModels', m.id)
+                                handleDelete('motorcycleModels', m.id, m.name)
                               }
                               className="size-7 text-slate-400 hover:text-rose-600"
                             >
@@ -419,7 +433,9 @@ function MasterDataPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete('suppliers', s.id)}
+                              onClick={() =>
+                                handleDelete('suppliers', s.id, s.name)
+                              }
                               className="size-7 text-slate-400 hover:text-rose-600"
                             >
                               <Trash2 className="size-3.5" />
@@ -477,7 +493,9 @@ function MasterDataPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete('banks', b.id)}
+                              onClick={() =>
+                                handleDelete('banks', b.id, b.name)
+                              }
                               className="size-7 text-slate-400 hover:text-rose-600"
                             >
                               <Trash2 className="size-3.5" />
@@ -570,7 +588,11 @@ function MasterDataPage() {
                                 variant="ghost"
                                 size="icon"
                                 onClick={() =>
-                                  handleDelete('companyBankAccounts', a.id)
+                                  handleDelete(
+                                    'companyBankAccounts',
+                                    a.id,
+                                    a.accountNumber,
+                                  )
                                 }
                                 className="size-7 text-slate-400 hover:text-rose-600"
                                 aria-label="Xóa"
@@ -637,7 +659,9 @@ function MasterDataPage() {
                             <Button
                               variant="ghost"
                               size="icon"
-                              onClick={() => handleDelete('colors', c.id)}
+                              onClick={() =>
+                                handleDelete('colors', c.id, c.name)
+                              }
                               className="size-7 text-slate-400 hover:text-rose-600"
                             >
                               <Trash2 className="size-3.5" />
