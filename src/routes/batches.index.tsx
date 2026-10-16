@@ -3,13 +3,8 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import {
-  createFileRoute,
-  Link,
-  redirect,
-  useNavigate,
-} from '@tanstack/react-router'
-import { Eye, Pencil, PackagePlus } from 'lucide-react'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
+import { Eye, PackagePlus } from 'lucide-react'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -60,7 +55,6 @@ function BatchesPage() {
   const batchesPg = usePagination(batches)
   const queryClient = useQueryClient()
   const { isBusy, setBusy } = useBusyKeys()
-  const navigate = useNavigate()
 
   const deleteBatch = useMutation({
     mutationFn: deleteBatchFn,
@@ -214,21 +208,6 @@ function BatchesPage() {
                           </Link>
                         </Button>
                         <Can permission="batches.manage">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            onClick={() =>
-                              navigate({
-                                to: '/batches/$batchId',
-                                params: { batchId: String(b.id) },
-                              })
-                            }
-                            className="size-7 text-slate-400 hover:text-emerald-700"
-                            aria-label="Sửa"
-                            title="Sửa lô nhập"
-                          >
-                            <Pencil className="size-3.5" />
-                          </Button>
                           <Button
                             variant="ghost"
                             size="icon"

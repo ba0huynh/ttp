@@ -837,7 +837,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ### Lesson 76: Batch List Actions (view / edit / delete)
 
-- **`/batches` rows** have three icon buttons: eye (detail), pencil (opens `/batches/$batchId`, where batch info, pricing, expenses and vehicles are edited; there is no separate edit dialog) and trash. The last two sit in `<Can permission="batches.manage">`.
+- **`/batches` rows** have two icon buttons: eye (opens `/batches/$batchId`, which is also where batch info, pricing, expenses and vehicles are edited; the pencil that pointed to the same page was removed) and trash (`<Can permission="batches.manage">`).
 - **Delete**: `deleteBatchFn` (`deleteBatch` in `services/batches.ts`) removes the batch; its vehicles and expenses go with it through `ON DELETE CASCADE`. It is refused when any vehicle is in a sales order or was delivered / invoiced (`BusinessError`); `getUsageFn` entity `batches` lists the sales orders (with links) that hold vehicles of the batch. The usual flow applies: usage check, confirmation, spinner (Lessons 51 and 71).
 
 ---
@@ -873,5 +873,35 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 81, 82,... above this line upon completing tasks)_
+### Lesson 81: Selling Price Always Starts From the Import Price
+
+- **Client decision**: the "Gốc tính giá" dropdown was removed from `/batches/new` and from the batch editor. Every batch is priced as **đơn giá nhập + margin** (percent or fixed amount); batch expenses are not part of the selling-price base. The pages send `pricingBase: 'import_price'`; the `pricing_base` column and `cost_price` option still exist in the schema / `computeSellingPrice` so old batches keep working, and an old batch switches to the import-price base the next time "Áp dụng cho cả lô" is pressed.
+- **Consequence to remember**: the cost price still includes the allocated expenses, so the selling price can fall below cost when the expenses are large. The red below-cost warning (Lesson 5, `CostWarningAlert`, the "Dưới giá vốn" row marker) stays and is the only guard.
+
+---
+
+### Lesson 82: No Below-Cost Warning; Supplier Editable on a Batch
+
+- **Client decision**: the below-cost warning was removed from the batch screens: no `CostWarningAlert` and no "n/m xe bán dưới giá vốn" badge in the batch editor, no red banner on `/batches/new`, no red row or "Dưới giá vốn" marker in either vehicle table. This supersedes the "mandatory warning" of Lesson 5 / the business rule at the top of this file; `isBelowCost` and `CostWarningAlert.tsx` are still in the code base (unused by the batch screens) if the rule is ever wanted back. With the import-price base (Lesson 81) the selling price can sit under the cost price without any hint.
+- **Supplier**: the batch editor's "Thông Tin Lô" section now has a "Nhà cung cấp *" select next to the loan and the date; `updateBatchInfoFn` / `updateBatchInfo` take `supplierId`. The pencil that duplicated the eye on the `/batches` rows was removed (Lesson 76).
+
+---
+
+### Lesson 83: Vehicles and Expenses Are Lists With Popup Forms
+
+- **Rule**: a batch's vehicles and expenses are shown as **tables** (pencil + trash per row), and are added or edited through a **popup form** opened by the "Thêm xe" / "Thêm chi phí" button in the section header. This replaces the one-line add rows and the expense cards of Lesson 80. Components: `VehicleFormDialog` and `ExpenseFormDialog` (`src/components/batches/`, props `open`, `initial`, `onSubmit`; `onSubmit` may throw to keep the dialog open with its message; picking a model suggests its colour).
+- **Columns**: the vehicle tables show VIN, engine, model / colour, import price and selling price only; the "CP Phân Bổ" and "Giá Vốn Xe" columns were removed (the allocation is still computed and stored).
+- **`/batches/new`**: the dialogs only change the page state (`saveVehicle` / `saveExpense`, duplicate VIN in the list refused); nothing is sent until "Hoàn Tất Nhập Lô". **Batch editor** (`/batches/$batchId`): the same dialogs call the server at once (`addVehiclesToBatchFn` / `updateVehicleFn`, `addBatchExpenseFn` / `updateBatchExpenseFn`, each followed by `recalculateBatch`). A vehicle that is sold, delivered or invoiced cannot be edited or removed (`updateVehicle` refuses it, VIN stays unique).
+
+---
+
+### Lesson 84: Selling Price Never Includes Batch Expenses (enforced in the formula)
+
+- `computeSellingPrice` (`src/lib/business.ts`) now always starts from the vehicle's **import price**; the `pricingBase` field of its argument is ignored (the column and type stay only for old data). Every recalculation (`recalculateBatch`, the create-page preview) therefore gives import price + percent / fixed amount, whatever a batch has stored.
+- Existing batches were fixed by migration `0031_import_price_selling_base.sql` (custom SQL, applied): it re-prices `vehicles.selling_price` with the same formula and sets `import_batches.pricing_base = 'import_price'`. Sales order items keep the price they were sold at (Lesson 17). The "Cách định giá bán" column on `/batches` now reads "Trên Giá Nhập +x%" for every batch.
+- Custom data migrations: `npx drizzle-kit generate --custom --name=<name>` creates the empty file and the journal entry, then write the SQL by hand (use `--> statement-breakpoint` between statements).
+
+---
+
+_(Next Agent: Append Lesson 85, 86,... above this line upon completing tasks)_
 

@@ -1,16 +1,14 @@
-import { ColorLabel } from '#/components/ui/color-label.tsx'
-import { ModelOption } from '#/components/batches/ModelOption.tsx'
+import { ExpenseFormDialog } from '#/components/batches/ExpenseFormDialog.tsx'
+import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Plus, Save } from 'lucide-react'
+import { Pencil, Plus, Save } from 'lucide-react'
 import * as React from 'react'
 
-import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
-  alertDialog,
   confirmDialog,
   showErrorDialog,
 } from '#/components/ui/confirm-dialog.tsx'
@@ -37,12 +35,7 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import {
-  computeSellingPrice,
-  formatVnd,
-  isBelowCost,
-  modelLabel,
-} from '#/lib/business.ts'
+import { formatVnd } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
 import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
@@ -51,7 +44,9 @@ import {
   addBatchExpenseFn,
   addVehiclesToBatchFn,
   removeBatchExpenseFn,
+  updateBatchExpenseFn,
   removeVehicleFn,
+  updateVehicleFn,
   updateBatchInfoFn,
   updateBatchPricingFn,
 } from '#/server/fns/batches.ts'
@@ -121,12 +116,29 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
   const [loanId, setLoanId] = React.useState<number | null>(
     detail.batch.loanContractId,
   )
+  const { data: master } = useQuery(masterDataQuery())
+  const [supplierId, setSupplierId] = React.useState(detail.batch.supplierId)
   const [importDate, setImportDate] = React.useState(detail.batch.importDate)
   const save = useBatchMutation(updateBatchInfoFn)
 
   return (
     <Section title="Thông Tin Lô">
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+        <div className="space-y-1">
+          <Label className="text-[11px]">Nhà cung cấp *</Label>
+          <SearchSelect
+            className="h-11 w-full text-sm bg-white rounded-lg"
+            placeholder="Chọn nhà cung cấp"
+            value={supplierId ? String(supplierId) : ''}
+            onValueChange={(v) => setSupplierId(Number(v))}
+          >
+            {(master?.suppliers ?? []).map((s) => (
+              <SearchSelectItem key={s.id} value={String(s.id)}>
+                {s.name}
+              </SearchSelectItem>
+            ))}
+          </SearchSelect>
+        </div>
         <div className="space-y-1">
           <Label className="text-[11px]">Khế ước vay</Label>
           <SearchSelect
@@ -162,6 +174,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
             save.mutate({
               data: {
                 batchId: detail.batch.id,
+                supplierId,
                 loanContractId: loanId,
                 importDate,
               },
@@ -179,55 +192,22 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
 /* ------------------------------- Selling price ------------------------------- */
 
 function PricingEditor({ detail }: { detail: BatchDetail }) {
-  const [base, setBase] = React.useState<PricingBase>(detail.batch.pricingBase)
+  // The selling price always starts from the import price (no batch expenses)
+  const base: PricingBase = 'import_price'
   const [method, setMethod] = React.useState<PricingMethod>(
     detail.batch.pricingMethod,
   )
   const [value, setValue] = React.useState(detail.batch.pricingValue)
   const save = useBatchMutation(updateBatchPricingFn)
 
-  // Live preview with the same formula the server applies
-  const preview = detail.vehicles.map((v) => ({
-    ...v,
-    newPrice: computeSellingPrice(v, {
-      pricingBase: base,
-      pricingMethod: method,
-      pricingValue: value,
-    }),
-  }))
-  const losses = preview.filter((v) => isBelowCost(v.newPrice, v.costPrice))
-  const worst = [...preview].sort(
-    (a, b) => a.newPrice - a.costPrice - (b.newPrice - b.costPrice),
-  )[0]
   const dirty =
     base !== detail.batch.pricingBase ||
     method !== detail.batch.pricingMethod ||
     value !== detail.batch.pricingValue
 
   return (
-    <Section
-      title="Cài Giá Bán Theo Lô"
-      aside={
-        losses.length > 0 && (
-          <Badge className="bg-rose-600 text-white text-[11px]">
-            {losses.length}/{preview.length} xe bán dưới giá vốn
-          </Badge>
-        )
-      }
-    >
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-        <div className="space-y-1">
-          <Label className="text-[11px]">Gốc tính giá</Label>
-          <Select value={base} onValueChange={(v) => setBase(v as PricingBase)}>
-            <SelectTrigger className="h-11 w-full text-sm bg-white rounded-lg">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="import_price">Đơn giá nhập</SelectItem>
-              <SelectItem value="cost_price">Giá vốn thực tế</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
+    <Section title="Cài Giá Bán Theo Lô">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
         <div className="space-y-1">
           <Label className="text-[11px]">Cách cộng thêm</Label>
           <Select
@@ -285,13 +265,6 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
           {save.isPending ? 'Đang áp dụng...' : 'Áp dụng cho cả lô'}
         </Button>
       </div>
-      {worst && isBelowCost(worst.newPrice, worst.costPrice) && (
-        <CostWarningAlert
-          sellingPrice={worst.newPrice}
-          costPrice={worst.costPrice}
-          importPrice={worst.importPrice}
-        />
-      )}
     </Section>
   )
 }
@@ -299,128 +272,136 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
 /* -------------------------------- Batch expenses ------------------------------- */
 
 function ExpensesEditor({ detail }: { detail: BatchDetail }) {
-  const { data: master } = useQuery(masterDataQuery())
-  const [typeId, setTypeId] = React.useState(0)
-  const [description, setDescription] = React.useState('')
-  const [amount, setAmount] = React.useState(0)
+  // Popup form: id of the expense being edited (null = adding)
+  const [open, setOpen] = React.useState(false)
+  const [editId, setEditId] = React.useState<number | null>(null)
   const add = useBatchMutation(addBatchExpenseFn)
+  const update = useBatchMutation(updateBatchExpenseFn)
   const remove = useBatchMutation(removeBatchExpenseFn)
   const total = detail.expenses.reduce((s, e) => s + e.amount, 0)
-
-  const handleAdd = async () => {
-    if (!typeId) {
-      await alertDialog('Vui lòng chọn loại chi phí')
-      return
-    }
-    if (amount <= 0) {
-      await alertDialog('Số tiền chi phí phải lớn hơn 0')
-      return
-    }
-    add.mutate(
-      {
-        data: {
-          batchId: detail.batch.id,
-          expense: {
-            expenseTypeId: typeId,
-            description: description || null,
-            amount,
-          },
-        },
-      },
-      {
-        onSuccess: () => {
-          setDescription('')
-          setAmount(0)
-        },
-      },
-    )
-  }
 
   return (
     <Section
       title={`Chi Phí Lô (${detail.expenses.length} khoản — ${formatVnd(total)})`}
-    >
-      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-        {detail.expenses.map((e) => (
-          <div
-            key={e.id}
-            className="p-2 bg-white rounded border border-slate-200 flex items-start justify-between gap-2"
-          >
-            <div className="min-w-0">
-              <div className="text-[11px] text-slate-500">
-                {e.expenseTypeName}
-              </div>
-              <div className="font-bold text-slate-900">
-                {formatVnd(e.amount)}
-              </div>
-              {e.description && (
-                <div className="text-[10px] text-slate-400 truncate">
-                  {e.description}
-                </div>
-              )}
-            </div>
-            <Button
-              variant="ghost"
-              size="sm"
-              className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
-              disabled={remove.isPending}
-              onClick={async () => {
-                if (
-                  await confirmDialog({
-                    title: 'Xóa khoản chi phí này?',
-                    description: 'Giá vốn cả lô sẽ được tính lại.',
-                    confirmLabel: 'Xóa',
-                    destructive: true,
-                  })
-                )
-                  remove.mutate({ data: { expenseId: e.id } })
-              }}
-            >
-              <BusyTrash
-                busy={
-                  remove.isPending && remove.variables?.data.expenseId === e.id
-                }
-              />
-            </Button>
-          </div>
-        ))}
-      </div>
-      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-        <SearchSelect
-          className="h-11 w-full text-sm bg-white rounded-lg"
-          placeholder="Loại chi phí"
-          value={typeId ? String(typeId) : ''}
-          onValueChange={(v) => setTypeId(Number(v))}
-        >
-          {(master?.expenseTypes ?? []).map((t) => (
-            <SearchSelectItem key={t.id} value={String(t.id)}>
-              {t.name}
-            </SearchSelectItem>
-          ))}
-        </SearchSelect>
-        <Input
-          placeholder="Diễn giải"
-          value={description}
-          onChange={(e) => setDescription(e.target.value)}
-          className="h-11 text-sm px-4 rounded-lg"
-        />
-        <MoneyInput
-          placeholder="Số tiền"
-          value={amount || ''}
-          onValueChange={setAmount}
-          className="h-11 text-sm px-4 rounded-lg"
-        />
+      aside={
         <Button
           size="sm"
           variant="outline"
-          className="h-11 rounded-lg text-sm gap-1.5"
-          disabled={add.isPending}
-          onClick={handleAdd}
+          className="h-9 gap-1.5 rounded-lg bg-white text-sm"
+          onClick={() => {
+            setEditId(null)
+            setOpen(true)
+          }}
         >
           <Plus className="size-3.5" />
           Thêm chi phí
         </Button>
-      </div>
+      }
+    >
+      {detail.expenses.length > 0 && (
+        <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
+          <Table>
+            <TableHeader>
+              <TableRow className="text-xs bg-slate-50">
+                <TableHead>Loại Chi Phí</TableHead>
+                <TableHead>Diễn Giải</TableHead>
+                <TableHead className="text-right">Số Tiền</TableHead>
+                <TableHead className="w-20" />
+              </TableRow>
+            </TableHeader>
+            <TableBody className="text-xs">
+              {detail.expenses.map((e) => (
+                <TableRow key={e.id}>
+                  <TableCell className="font-medium text-slate-900">
+                    {e.expenseTypeName}
+                  </TableCell>
+                  <TableCell className="text-slate-500">
+                    {e.description}
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-slate-900">
+                    {formatVnd(e.amount)}
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-slate-400 hover:text-emerald-700"
+                      onClick={() => {
+                        setEditId(e.id)
+                        setOpen(true)
+                      }}
+                      aria-label="Sửa chi phí"
+                      title="Sửa chi phí"
+                    >
+                      <Pencil className="size-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
+                      disabled={remove.isPending}
+                      onClick={async () => {
+                        if (
+                          await confirmDialog({
+                            title: 'Xóa khoản chi phí này?',
+                            description: 'Giá vốn cả lô sẽ được tính lại.',
+                            confirmLabel: 'Xóa',
+                            destructive: true,
+                          })
+                        )
+                          remove.mutate({ data: { expenseId: e.id } })
+                      }}
+                      aria-label="Xóa chi phí"
+                      title="Xóa chi phí"
+                    >
+                      <BusyTrash
+                        busy={
+                          remove.isPending &&
+                          remove.variables?.data.expenseId === e.id
+                        }
+                      />
+                    </Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
+      <ExpenseFormDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={editId ? 'Sửa Chi Phí' : 'Thêm Chi Phí Của Lô'}
+        submitLabel={editId ? 'Lưu' : 'Thêm Chi Phí'}
+        pending={add.isPending || update.isPending}
+        initial={
+          editId
+            ? (() => {
+                const e = detail.expenses.find((x) => x.id === editId)
+                return e
+                  ? {
+                      expenseTypeId: e.expenseTypeId,
+                      description: e.description ?? '',
+                      amount: e.amount,
+                    }
+                  : null
+              })()
+            : null
+        }
+        onSubmit={async (v) => {
+          const expense = {
+            expenseTypeId: v.expenseTypeId,
+            description: v.description || null,
+            amount: v.amount,
+          }
+          if (editId)
+            await update.mutateAsync({ data: { expenseId: editId, expense } })
+          else
+            await add.mutateAsync({
+              data: { batchId: detail.batch.id, expense },
+            })
+        }}
+      />
     </Section>
   )
 }
@@ -429,15 +410,11 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
 
 function VehiclesEditor({ detail }: { detail: BatchDetail }) {
   const { isBusy, setBusy } = useBusyKeys()
-  const { data: master } = useQuery(masterDataQuery())
-  const models = master?.models ?? []
-  const colors = master?.colors ?? []
-  const [modelId, setModelId] = React.useState<number | null>(null)
-  const [colorId, setColorId] = React.useState<number | null>(null)
-  const [chassis, setChassis] = React.useState('')
-  const [engine, setEngine] = React.useState('')
-  const [price, setPrice] = React.useState(0)
+  // Popup form: id of the vehicle being edited (null = adding)
+  const [open, setOpen] = React.useState(false)
+  const [editId, setEditId] = React.useState<number | null>(null)
   const add = useBatchMutation(addVehiclesToBatchFn)
+  const update = useBatchMutation(updateVehicleFn)
   const remove = useBatchMutation(removeVehicleFn, (err, vars) => {
     void reportDeleteFailure(
       err,
@@ -446,54 +423,23 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     )
   })
 
-  const effModel = modelId ?? models[0]?.id ?? null
-  // The model's colour is only the suggested one; the user can pick another
-  const effColor =
-    colorId ??
-    models.find((m) => m.id === effModel)?.colorId ??
-    colors[0]?.id ??
-    null
-
-  const handleAdd = async () => {
-    if (!effModel || !effColor) {
-      await alertDialog('Chưa có dòng xe / màu xe')
-      return
-    }
-    if (!chassis.trim() || !engine.trim()) {
-      await alertDialog('Vui lòng nhập đầy đủ số khung và số máy')
-      return
-    }
-    if (price <= 0) {
-      await alertDialog('Đơn giá nhập phải lớn hơn 0')
-      return
-    }
-    add.mutate(
-      {
-        data: {
-          batchId: detail.batch.id,
-          vehicles: [
-            {
-              modelId: effModel,
-              colorId: effColor,
-              chassisNumber: chassis,
-              engineNumber: engine,
-              importPrice: price,
-            },
-          ],
-        },
-      },
-      {
-        onSuccess: () => {
-          setChassis('')
-          setEngine('')
-        },
-      },
-    )
-  }
-
   return (
     <Section
       title={`Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (${detail.vehicles.length} chiếc)`}
+      aside={
+        <Button
+          size="sm"
+          variant="outline"
+          className="h-9 gap-1.5 rounded-lg bg-white text-sm"
+          onClick={() => {
+            setEditId(null)
+            setOpen(true)
+          }}
+        >
+          <Plus className="size-3.5" />
+          Thêm xe
+        </Button>
+      }
     >
       <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
         <Table>
@@ -503,18 +449,15 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
               <TableHead>Số Máy</TableHead>
               <TableHead>Dòng xe / Màu</TableHead>
               <TableHead className="text-right">Đơn Giá Nhập</TableHead>
-              <TableHead className="text-right">CP Phân Bổ</TableHead>
-              <TableHead className="text-right">Giá Vốn Xe</TableHead>
               <TableHead className="text-right">Giá Bán Áp Dụng</TableHead>
               <TableHead />
             </TableRow>
           </TableHeader>
           <TableBody className="text-xs">
             {detail.vehicles.map((v) => {
-              const loss = isBelowCost(v.sellingPrice, v.costPrice)
               const locked = v.isSold || v.isDelivered || v.isInvoiced
               return (
-                <TableRow key={v.id} className={loss ? 'bg-rose-50' : ''}>
+                <TableRow key={v.id}>
                   <TableCell className="font-medium">
                     {v.chassisNumber}
                   </TableCell>
@@ -532,21 +475,8 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   <TableCell className="text-right">
                     {formatVnd(v.importPrice)}
                   </TableCell>
-                  <TableCell className="text-right text-slate-500">
-                    +{formatVnd(v.allocatedExpense)}
-                  </TableCell>
-                  <TableCell className="text-right font-medium text-slate-900">
-                    {formatVnd(v.costPrice)}
-                  </TableCell>
-                  <TableCell
-                    className={`text-right font-bold ${loss ? 'text-rose-700' : 'text-emerald-800'}`}
-                  >
+                  <TableCell className="text-right font-bold text-emerald-800">
                     {formatVnd(v.sellingPrice)}
-                    {loss && (
-                      <div className="text-[10px] font-medium">
-                        Dưới giá vốn
-                      </div>
-                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     {locked ? (
@@ -554,40 +484,56 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         Đã bán
                       </Badge>
                     ) : (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
-                        disabled={
-                          remove.isPending || isBusy(`vehicles:${v.id}`)
-                        }
-                        onClick={async () => {
-                          if (
-                            await confirmDelete(
-                              {
-                                entity: 'vehicles',
-                                id: v.id,
-                                name: v.chassisNumber,
-                              },
-                              {
-                                title: `Xóa xe ${v.chassisNumber} khỏi lô?`,
-                                description: 'Chi phí lô sẽ được phân bổ lại.',
-                              },
-                              (checking) =>
-                                setBusy(`vehicles:${v.id}`, checking),
-                            )
-                          )
-                            remove.mutate({ data: { vehicleId: v.id } })
-                        }}
-                      >
-                        <BusyTrash
-                          busy={
-                            isBusy(`vehicles:${v.id}`) ||
-                            (remove.isPending &&
-                              remove.variables?.data.vehicleId === v.id)
+                      <>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-emerald-700"
+                          onClick={() => {
+                            setEditId(v.id)
+                            setOpen(true)
+                          }}
+                          aria-label="Sửa xe"
+                          title="Sửa xe"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
+                          disabled={
+                            remove.isPending || isBusy(`vehicles:${v.id}`)
                           }
-                        />
-                      </Button>
+                          onClick={async () => {
+                            if (
+                              await confirmDelete(
+                                {
+                                  entity: 'vehicles',
+                                  id: v.id,
+                                  name: v.chassisNumber,
+                                },
+                                {
+                                  title: `Xóa xe ${v.chassisNumber} khỏi lô?`,
+                                  description:
+                                    'Chi phí lô sẽ được phân bổ lại.',
+                                },
+                                (checking) =>
+                                  setBusy(`vehicles:${v.id}`, checking),
+                              )
+                            )
+                              remove.mutate({ data: { vehicleId: v.id } })
+                          }}
+                        >
+                          <BusyTrash
+                            busy={
+                              isBusy(`vehicles:${v.id}`) ||
+                              (remove.isPending &&
+                                remove.variables?.data.vehicleId === v.id)
+                            }
+                          />
+                        </Button>
+                      </>
                     )}
                   </TableCell>
                 </TableRow>
@@ -596,68 +542,37 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           </TableBody>
         </Table>
       </div>
-      <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
-        <SearchSelect
-          className="h-11 w-full text-sm bg-white rounded-lg"
-          placeholder="Dòng xe"
-          value={effModel ? String(effModel) : ''}
-          onValueChange={(v) => {
-            setModelId(Number(v))
-            // suggest the model's colour again
-            setColorId(null)
-          }}
-        >
-          {models.map((m) => (
-            <SearchSelectItem
-              key={m.id}
-              value={String(m.id)}
-              keywords={modelLabel(m)}
-            >
-              <ModelOption model={m} colors={colors} />
-            </SearchSelectItem>
-          ))}
-        </SearchSelect>
-        <SearchSelect
-          className="h-11 w-full text-sm bg-white rounded-lg"
-          placeholder="Màu xe"
-          value={effColor ? String(effColor) : ''}
-          onValueChange={(v) => setColorId(Number(v))}
-        >
-          {colors.map((c) => (
-            <SearchSelectItem key={c.id} value={String(c.id)} keywords={c.name}>
-              <ColorLabel name={c.name} hex={c.hex} />
-            </SearchSelectItem>
-          ))}
-        </SearchSelect>
-        <Input
-          placeholder="Số khung"
-          value={chassis}
-          onChange={(e) => setChassis(e.target.value)}
-          className="h-11 text-sm px-4 rounded-lg"
-        />
-        <Input
-          placeholder="Số máy"
-          value={engine}
-          onChange={(e) => setEngine(e.target.value)}
-          className="h-11 text-sm px-4 rounded-lg"
-        />
-        <MoneyInput
-          placeholder="Đơn giá nhập"
-          value={price || ''}
-          onValueChange={setPrice}
-          className="h-11 text-sm px-4 rounded-lg"
-        />
-        <Button
-          size="sm"
-          variant="outline"
-          className="h-11 rounded-lg text-sm gap-1.5"
-          disabled={add.isPending}
-          onClick={handleAdd}
-        >
-          <Plus className="size-3.5" />
-          Thêm xe
-        </Button>
-      </div>
+      <VehicleFormDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={editId ? 'Sửa Xe' : 'Thêm Xe Vào Lô'}
+        submitLabel={editId ? 'Lưu' : 'Thêm Xe'}
+        pending={add.isPending || update.isPending}
+        initial={
+          editId
+            ? (() => {
+                const v = detail.vehicles.find((x) => x.id === editId)
+                return v
+                  ? {
+                      modelId: v.modelId,
+                      colorId: v.colorId,
+                      chassisNumber: v.chassisNumber,
+                      engineNumber: v.engineNumber,
+                      importPrice: v.importPrice,
+                    }
+                  : null
+              })()
+            : null
+        }
+        onSubmit={async (v) => {
+          if (editId)
+            await update.mutateAsync({ data: { vehicleId: editId, ...v } })
+          else
+            await add.mutateAsync({
+              data: { batchId: detail.batch.id, vehicles: [v] },
+            })
+        }}
+      />
     </Section>
   )
 }

@@ -1,4 +1,4 @@
-import { and, eq, inArray, sql } from 'drizzle-orm'
+import { and, eq, inArray, ne, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
@@ -188,6 +188,43 @@ export async function addVehiclesToBatch(
   }
 }
 
+/** Edits one vehicle of a batch; refused once it was sold, delivered or invoiced */
+export async function updateVehicle(vehicleId: number, input: VehicleInput) {
+  try {
+    await db.transaction(async (tx) => {
+      const [v] = await tx
+        .select()
+        .from(vehicles)
+        .where(eq(vehicles.id, vehicleId))
+      if (!v) throw new BusinessError('Không tìm thấy xe')
+      const [sold] = await tx
+        .select({ id: salesOrderItems.id })
+        .from(salesOrderItems)
+        .where(eq(salesOrderItems.vehicleId, vehicleId))
+      if (sold || v.isDelivered || v.isInvoiced)
+        throw new BusinessError('Xe đã bán/giao/xuất hóa đơn — không thể sửa')
+      const row = normalizeVehicle(v.batchId, input)
+      const [dup] = await tx
+        .select({ id: vehicles.id })
+        .from(vehicles)
+        .where(
+          and(
+            eq(vehicles.chassisNumber, row.chassisNumber),
+            ne(vehicles.id, vehicleId),
+          ),
+        )
+        .limit(1)
+      if (dup) throw new BusinessError('Số khung đã tồn tại trong hệ thống')
+      await tx.update(vehicles).set(row).where(eq(vehicles.id, vehicleId))
+      await recalculateBatch(tx, v.batchId)
+    })
+  } catch (e) {
+    if (isDuplicateError(e))
+      throw new BusinessError('Số khung hoặc số máy đã tồn tại')
+    throw e
+  }
+}
+
 export async function removeVehicle(vehicleId: number) {
   await db.transaction(async (tx) => {
     const [v] = await tx
@@ -247,6 +284,25 @@ export async function addBatchExpense(batchId: number, e: ExpenseInput) {
   })
 }
 
+export async function updateBatchExpense(expenseId: number, e: ExpenseInput) {
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({ batchId: batchExpenses.batchId })
+      .from(batchExpenses)
+      .where(eq(batchExpenses.id, expenseId))
+    if (!row) throw new BusinessError('Không tìm thấy chi phí')
+    await tx
+      .update(batchExpenses)
+      .set({
+        expenseTypeId: e.expenseTypeId,
+        description: e.description ?? null,
+        amount: e.amount,
+      })
+      .where(eq(batchExpenses.id, expenseId))
+    await recalculateBatch(tx, row.batchId)
+  })
+}
+
 export async function removeBatchExpense(expenseId: number) {
   await db.transaction(async (tx) => {
     const [e] = await tx
@@ -276,6 +332,7 @@ export async function updateBatchPricing(
 export async function updateBatchInfo(
   batchId: number,
   p: {
+    supplierId: number
     loanContractId: number | null
     importDate: string
   },

@@ -20,7 +20,7 @@ const HIGHLIGHTS = [
   {
     icon: FileCheck2,
     title: 'Giá vốn chính xác',
-    text: 'Chi phí lô phân bổ theo tỉ trọng đơn giá, cảnh báo khi bán dưới giá vốn.',
+    text: 'Chi phí lô phân bổ theo tỉ trọng đơn giá vào giá vốn từng xe.',
   },
   {
     icon: Landmark,

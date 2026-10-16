@@ -1,6 +1,8 @@
 import { Section } from '#/components/batches/BatchEditor.tsx'
-import { ModelOption } from '#/components/batches/ModelOption.tsx'
-import { ColorLabel } from '#/components/ui/color-label.tsx'
+import { ExpenseFormDialog } from '#/components/batches/ExpenseFormDialog.tsx'
+import type { ExpenseFormValues } from '#/components/batches/ExpenseFormDialog.tsx'
+import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
+import type { VehicleFormValues } from '#/components/batches/VehicleFormDialog.tsx'
 import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import {
   useMutation,
@@ -13,7 +15,14 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { AlertCircle, ArrowLeft, Check, Plus, Trash2 } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Pencil,
+  Plus,
+  Trash2,
+} from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -46,7 +55,6 @@ import {
   allocateBatchExpenses,
   computeSellingPrice,
   formatVnd,
-  isBelowCost,
   modelLabel,
   todayIso,
 } from '#/lib/business.ts'
@@ -107,9 +115,8 @@ function NewBatchPage() {
   const [importDate, setImportDate] = React.useState(todayIso())
 
   // Selling price configuration
-  const [pricingBase, setPricingBase] = React.useState<
-    'cost_price' | 'import_price'
-  >('cost_price')
+  // The selling price always starts from the import price (no batch expenses)
+  const pricingBase = 'import_price' as const
   const [pricingMethod, setPricingMethod] = React.useState<
     'percent' | 'fixed_amount'
   >('percent')
@@ -120,18 +127,14 @@ function NewBatchPage() {
   const [expenses, setExpenses] = React.useState<ExpenseRow[]>([])
 
   // "Add" rows (drafts)
-  const [expTypeId, setExpTypeId] = React.useState(0)
-  const [expDesc, setExpDesc] = React.useState('')
-  const [expAmount, setExpAmount] = React.useState(0)
-  const [vModelId, setVModelId] = React.useState(0)
-  const [vColorId, setVColorId] = React.useState(0)
-  const [vChassis, setVChassis] = React.useState('')
-  const [vEngine, setVEngine] = React.useState('')
-  const [vPrice, setVPrice] = React.useState(0)
+  const [expenseOpen, setExpenseOpen] = React.useState(false)
+  const [editExpenseId, setEditExpenseId] = React.useState<number | null>(null)
+  // Vehicle popup: id of the row being edited (null = adding)
+  const [vehicleOpen, setVehicleOpen] = React.useState(false)
+  const [editVehicleId, setEditVehicleId] = React.useState<number | null>(null)
 
   const submitting = createBatch.isPending
   const [error, setError] = React.useState<string | null>(null)
-  const [rowError, setRowError] = React.useState<string | null>(null)
 
   // REAL-TIME COST & SELLING PRICE ALLOCATION (LIVE PREVIEW)
   const totalExpense = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
@@ -162,61 +165,35 @@ function NewBatchPage() {
       sellingPrice: selling,
     }
   })
-  const hasLossWarning = previewVehicles.some((v) =>
-    isBelowCost(v.sellingPrice, v.costPrice),
-  )
 
-  const pickModel = (id: number) => {
-    setVModelId(id)
-    // the model's colour is only a suggestion; it can be changed
-    setVColorId(master.models.find((m) => m.id === id)?.colorId ?? 0)
-  }
-
-  const handleAddExpense = () => {
-    setRowError(null)
-    if (!expTypeId) return setRowError('Vui lòng chọn loại chi phí')
-    if (expAmount <= 0) return setRowError('Số tiền chi phí phải lớn hơn 0')
-    const nextId = Math.max(0, ...expenses.map((e) => e.id)) + 1
-    setExpenses([
-      ...expenses,
-      {
-        id: nextId,
-        expenseTypeId: expTypeId,
-        description: expDesc,
-        amount: expAmount,
-      },
-    ])
-    setExpDesc('')
-    setExpAmount(0)
-  }
-
-  const handleAddVehicle = () => {
-    setRowError(null)
-    if (!vModelId || !vColorId)
-      return setRowError('Vui lòng chọn dòng xe và màu xe')
-    if (!vChassis.trim() || !vEngine.trim())
-      return setRowError('Vui lòng nhập đầy đủ số khung và số máy')
-    if (vPrice <= 0) return setRowError('Đơn giá nhập phải lớn hơn 0')
-    if (
-      vehicles.some(
-        (v) => v.chassisNumber.toLowerCase() === vChassis.trim().toLowerCase(),
+  // Add or update an expense of the list (kept here until the batch is saved)
+  const saveExpense = (v: ExpenseFormValues) => {
+    if (editExpenseId) {
+      setExpenses(
+        expenses.map((x) => (x.id === editExpenseId ? { ...x, ...v } : x)),
       )
+    } else {
+      const nextId = Math.max(0, ...expenses.map((x) => x.id)) + 1
+      setExpenses([...expenses, { id: nextId, ...v }])
+    }
+  }
+
+  // Add or update a vehicle of the list (kept here until the batch is saved)
+  const saveVehicle = (v: VehicleFormValues) => {
+    const dup = vehicles.some(
+      (x) =>
+        x.id !== editVehicleId &&
+        x.chassisNumber.toLowerCase() === v.chassisNumber.toLowerCase(),
     )
-      return setRowError('Số khung này đã có trong lô')
-    const nextId = Math.max(0, ...vehicles.map((v) => v.id)) + 1
-    setVehicles([
-      ...vehicles,
-      {
-        id: nextId,
-        modelId: vModelId,
-        colorId: vColorId,
-        chassisNumber: vChassis.trim(),
-        engineNumber: vEngine.trim(),
-        importPrice: vPrice,
-      },
-    ])
-    setVChassis('')
-    setVEngine('')
+    if (dup) throw new Error('Số khung này đã có trong lô')
+    if (editVehicleId) {
+      setVehicles(
+        vehicles.map((x) => (x.id === editVehicleId ? { ...x, ...v } : x)),
+      )
+    } else {
+      const nextId = Math.max(0, ...vehicles.map((x) => x.id)) + 1
+      setVehicles([...vehicles, { id: nextId, ...v }])
+    }
   }
 
   const handleSubmit = async () => {
@@ -315,21 +292,6 @@ function NewBatchPage() {
           </Alert>
         )}
 
-        {/* GLOBAL BELOW-COST WARNING ALERT */}
-        {hasLossWarning && (
-          <Alert
-            variant="destructive"
-            className="bg-rose-50 border-rose-300 text-rose-900"
-          >
-            <AlertCircle className="size-5 text-rose-600" />
-            <AlertDescription className="text-xs font-semibold">
-              CẢNH BÁO BÁN LỖ: Có xe trong lô đang có Giá bán thấp hơn Giá vốn
-              sau khi cộng chi phí! Hãy xem xét lại mức % hoặc số tiền cộng thêm
-              trong phần cấu hình giá bán.
-            </AlertDescription>
-          </Alert>
-        )}
-
         {/* 1. Batch information */}
         <Section title="Thông Tin Lô">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
@@ -384,24 +346,7 @@ function NewBatchPage() {
 
         {/* 2. Pricing */}
         <Section title="Cài Giá Bán Theo Lô">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            <div className="space-y-1">
-              <Label className="text-[11px]">Gốc tính giá</Label>
-              <Select
-                value={pricingBase}
-                onValueChange={(val) =>
-                  setPricingBase(val as 'cost_price' | 'import_price')
-                }
-              >
-                <SelectTrigger className="h-11 w-full text-sm bg-white rounded-lg">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="cost_price">Giá vốn thực tế</SelectItem>
-                  <SelectItem value="import_price">Đơn giá nhập</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-[11px]">Cách cộng thêm</Label>
               <Select
@@ -447,97 +392,103 @@ function NewBatchPage() {
           </div>
         </Section>
 
-        {rowError && (
-          <Alert
-            variant="destructive"
-            className="bg-rose-50 text-rose-900 border-rose-200 text-xs"
-          >
-            <AlertCircle className="size-4 text-rose-600" />
-            <AlertDescription>{rowError}</AlertDescription>
-          </Alert>
-        )}
-
         {/* 3. Expenses */}
         <Section
           title={`Chi Phí Lô (${expenses.length} khoản — ${formatVnd(totalExpense)})`}
-        >
-          {expenses.length > 0 && (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
-              {expenses.map((e) => (
-                <div
-                  key={e.id}
-                  className="p-2 bg-white rounded border border-slate-200 flex items-start justify-between gap-2"
-                >
-                  <div className="min-w-0">
-                    <div className="text-[11px] text-slate-500">
-                      {expenseTypeName(e.expenseTypeId)}
-                    </div>
-                    <div className="font-bold text-slate-900">
-                      {formatVnd(e.amount)}
-                    </div>
-                    {e.description && (
-                      <div className="text-[10px] text-slate-400 truncate">
-                        {e.description}
-                      </div>
-                    )}
-                  </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
-                    onClick={() =>
-                      setExpenses(expenses.filter((x) => x.id !== e.id))
-                    }
-                    aria-label="Xóa khoản chi phí"
-                  >
-                    <Trash2 className="size-3.5" />
-                  </Button>
-                </div>
-              ))}
-            </div>
-          )}
-          <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
-            <SearchSelect
-              className="h-11 w-full text-sm bg-white rounded-lg"
-              placeholder="Loại chi phí"
-              value={expTypeId ? String(expTypeId) : ''}
-              onValueChange={(v) => setExpTypeId(Number(v))}
-            >
-              {master.expenseTypes.map((t) => (
-                <SearchSelectItem key={t.id} value={String(t.id)}>
-                  {t.name}
-                </SearchSelectItem>
-              ))}
-            </SearchSelect>
-            <Input
-              placeholder="Diễn giải"
-              value={expDesc}
-              onChange={(e) => setExpDesc(e.target.value)}
-              className="h-11 text-sm px-4 rounded-lg"
-            />
-            <MoneyInput
-              placeholder="Số tiền"
-              value={expAmount || ''}
-              onValueChange={setExpAmount}
-              className="h-11 text-sm px-4 rounded-lg"
-            />
+          aside={
             <Button
               type="button"
               size="sm"
               variant="outline"
-              className="h-11 rounded-lg text-sm gap-1.5"
-              onClick={handleAddExpense}
+              className="h-9 gap-1.5 rounded-lg bg-white text-sm"
+              onClick={() => {
+                setEditExpenseId(null)
+                setExpenseOpen(true)
+              }}
             >
               <Plus className="size-3.5" />
               Thêm chi phí
             </Button>
-          </div>
+          }
+        >
+          {expenses.length > 0 && (
+            <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
+              <Table>
+                <TableHeader>
+                  <TableRow className="text-xs bg-slate-50">
+                    <TableHead>Loại Chi Phí</TableHead>
+                    <TableHead>Diễn Giải</TableHead>
+                    <TableHead className="text-right">Số Tiền</TableHead>
+                    <TableHead className="w-20" />
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="text-xs">
+                  {expenses.map((e) => (
+                    <TableRow key={e.id}>
+                      <TableCell className="font-medium text-slate-900">
+                        {expenseTypeName(e.expenseTypeId)}
+                      </TableCell>
+                      <TableCell className="text-slate-500">
+                        {e.description}
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-slate-900">
+                        {formatVnd(e.amount)}
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-emerald-700"
+                          onClick={() => {
+                            setEditExpenseId(e.id)
+                            setExpenseOpen(true)
+                          }}
+                          aria-label="Sửa chi phí"
+                          title="Sửa chi phí"
+                        >
+                          <Pencil className="size-3.5" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="sm"
+                          className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
+                          onClick={() =>
+                            setExpenses(expenses.filter((x) => x.id !== e.id))
+                          }
+                          aria-label="Xóa chi phí"
+                          title="Xóa chi phí"
+                        >
+                          <Trash2 className="size-3.5" />
+                        </Button>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </Section>
 
         {/* 4. Vehicles */}
         <Section
           title={`Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (${vehicles.length} chiếc — Tiền hàng ${formatVnd(totalImport)})`}
+          aside={
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              className="h-9 gap-1.5 rounded-lg bg-white text-sm"
+              onClick={() => {
+                setEditVehicleId(null)
+                setVehicleOpen(true)
+              }}
+            >
+              <Plus className="size-3.5" />
+              Thêm xe
+            </Button>
+          }
         >
           {vehicles.length > 0 && (
             <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
@@ -548,8 +499,6 @@ function NewBatchPage() {
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>
-                    <TableHead className="text-right">CP Phân Bổ</TableHead>
-                    <TableHead className="text-right">Giá Vốn Xe</TableHead>
                     <TableHead className="text-right">
                       Giá Bán Áp Dụng
                     </TableHead>
@@ -558,10 +507,9 @@ function NewBatchPage() {
                 </TableHeader>
                 <TableBody className="text-xs">
                   {previewVehicles.map((v) => {
-                    const loss = isBelowCost(v.sellingPrice, v.costPrice)
                     const model = modelOf(v.modelId)
                     return (
-                      <TableRow key={v.id} className={loss ? 'bg-rose-50' : ''}>
+                      <TableRow key={v.id}>
                         <TableCell className="font-medium">
                           {v.chassisNumber}
                         </TableCell>
@@ -579,23 +527,24 @@ function NewBatchPage() {
                         <TableCell className="text-right">
                           {formatVnd(v.importPrice)}
                         </TableCell>
-                        <TableCell className="text-right text-slate-500">
-                          +{formatVnd(v.allocatedExpense)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-slate-900">
-                          {formatVnd(v.costPrice)}
-                        </TableCell>
-                        <TableCell
-                          className={`text-right font-bold ${loss ? 'text-rose-700' : 'text-emerald-800'}`}
-                        >
+                        <TableCell className="text-right font-bold text-emerald-800">
                           {formatVnd(v.sellingPrice)}
-                          {loss && (
-                            <div className="text-[10px] font-medium">
-                              Dưới giá vốn
-                            </div>
-                          )}
                         </TableCell>
-                        <TableCell className="text-right">
+                        <TableCell className="text-right whitespace-nowrap">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 w-6 p-0 text-slate-400 hover:text-emerald-700"
+                            onClick={() => {
+                              setEditVehicleId(v.id)
+                              setVehicleOpen(true)
+                            }}
+                            aria-label="Sửa xe"
+                            title="Sửa xe"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
                           <Button
                             type="button"
                             variant="ghost"
@@ -616,70 +565,32 @@ function NewBatchPage() {
               </Table>
             </div>
           )}
-          <div className="grid grid-cols-2 sm:grid-cols-6 gap-2 items-end">
-            <SearchSelect
-              className="h-11 w-full text-sm bg-white rounded-lg"
-              placeholder="Dòng xe"
-              value={vModelId ? String(vModelId) : ''}
-              onValueChange={(v) => pickModel(Number(v))}
-            >
-              {master.models.map((m) => (
-                <SearchSelectItem
-                  key={m.id}
-                  value={String(m.id)}
-                  keywords={`${modelLabel(m)} ${colorOf(m.colorId ?? 0)?.name ?? ''}`}
-                >
-                  <ModelOption model={m} colors={master.colors} />
-                </SearchSelectItem>
-              ))}
-            </SearchSelect>
-            <SearchSelect
-              className="h-11 w-full text-sm bg-white rounded-lg"
-              placeholder="Màu xe"
-              value={vColorId ? String(vColorId) : ''}
-              onValueChange={(v) => setVColorId(Number(v))}
-            >
-              {master.colors.map((c) => (
-                <SearchSelectItem
-                  key={c.id}
-                  value={String(c.id)}
-                  keywords={c.name}
-                >
-                  <ColorLabel name={c.name} hex={c.hex} />
-                </SearchSelectItem>
-              ))}
-            </SearchSelect>
-            <Input
-              placeholder="Số khung"
-              value={vChassis}
-              onChange={(e) => setVChassis(e.target.value)}
-              className="h-11 text-sm px-4 rounded-lg"
-            />
-            <Input
-              placeholder="Số máy"
-              value={vEngine}
-              onChange={(e) => setVEngine(e.target.value)}
-              className="h-11 text-sm px-4 rounded-lg"
-            />
-            <MoneyInput
-              placeholder="Đơn giá nhập"
-              value={vPrice || ''}
-              onValueChange={setVPrice}
-              className="h-11 text-sm px-4 rounded-lg"
-            />
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-11 rounded-lg text-sm gap-1.5"
-              onClick={handleAddVehicle}
-            >
-              <Plus className="size-3.5" />
-              Thêm xe
-            </Button>
-          </div>
         </Section>
       </div>
+      <ExpenseFormDialog
+        open={expenseOpen}
+        onOpenChange={setExpenseOpen}
+        title={editExpenseId ? 'Sửa Chi Phí' : 'Thêm Chi Phí Của Lô'}
+        submitLabel={editExpenseId ? 'Lưu' : 'Thêm Chi Phí'}
+        initial={
+          editExpenseId
+            ? (expenses.find((x) => x.id === editExpenseId) ?? null)
+            : null
+        }
+        onSubmit={saveExpense}
+      />
+      <VehicleFormDialog
+        open={vehicleOpen}
+        onOpenChange={setVehicleOpen}
+        title={editVehicleId ? 'Sửa Xe' : 'Thêm Xe Vào Lô'}
+        submitLabel={editVehicleId ? 'Lưu' : 'Thêm Xe'}
+        initial={
+          editVehicleId
+            ? (vehicles.find((x) => x.id === editVehicleId) ?? null)
+            : null
+        }
+        onSubmit={saveVehicle}
+      />
     </AppLayout>
   )
 }

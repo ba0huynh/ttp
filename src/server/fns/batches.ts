@@ -23,7 +23,9 @@ import {
   deleteBatch,
   removeBatchExpense,
   removeVehicle,
+  updateVehicle,
   updateBatchInfo,
+  updateBatchExpense,
   updateBatchPricing,
 } from '#/server/services/batches.ts'
 import { num } from '#/server/services/common.ts'
@@ -221,6 +223,23 @@ export const addVehiclesToBatchFn = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
+export const updateVehicleFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('batches.manage')])
+  .validator(
+    z.object({
+      vehicleId: z.number().int(),
+      modelId: z.number().int().positive('Chọn dòng xe'),
+      colorId: z.number().int().positive('Chọn màu xe'),
+      chassisNumber: z.string().trim().min(1, 'Nhập số khung'),
+      engineNumber: z.string().trim().min(1, 'Nhập số máy'),
+      importPrice: z.number().positive('Đơn giá nhập phải > 0'),
+    }),
+  )
+  .handler(async ({ data: { vehicleId, ...v } }) => {
+    await updateVehicle(vehicleId, v)
+    return { ok: true }
+  })
+
 export const removeVehicleFn = createServerFn({ method: 'POST' })
   .middleware([requirePermission('batches.manage')])
   .validator(z.object({ vehicleId: z.number().int() }))
@@ -251,6 +270,23 @@ export const addBatchExpenseFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await addBatchExpense(data.batchId, data.expense)
+    return { ok: true }
+  })
+
+export const updateBatchExpenseFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('batches.manage')])
+  .validator(
+    z.object({
+      expenseId: z.number().int(),
+      expense: z.object({
+        expenseTypeId: z.number().int().positive('Vui lòng chọn loại chi phí'),
+        description: z.string().trim().nullable().optional(),
+        amount: z.number().positive('Số tiền chi phí phải > 0'),
+      }),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await updateBatchExpense(data.expenseId, data.expense)
     return { ok: true }
   })
 
@@ -287,6 +323,7 @@ export const updateBatchInfoFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       batchId: z.number().int(),
+      supplierId: z.number().int().positive('Chọn nhà cung cấp'),
       loanContractId: z.number().int().nullable(),
       importDate: z.string().min(10),
     }),

@@ -218,6 +218,13 @@
       "when": 1792139365500,
       "tag": "0030_dry_queen_noir",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "5",
+      "when": 1792146014842,
+      "tag": "0031_import_price_selling_base",
+      "breakpoints": true
     }
   ]
 }
