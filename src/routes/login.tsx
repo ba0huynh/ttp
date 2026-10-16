@@ -52,7 +52,7 @@ function LoginPage() {
               Tên đăng nhập hoặc email *
             </Label>
             <div className="relative" data-field-wrap>
-              <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <User className="absolute z-10 left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
               <Input
                 id="login"
                 type="text"
@@ -79,14 +79,14 @@ function LoginPage() {
               </Link>
             </div>
             <div className="relative" data-field-wrap>
-              <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
+              <Lock className="absolute z-10 left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
               <PasswordInput
                 id="password"
                 required
                 autoComplete="current-password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="••••••••"
+                placeholder="Nhập mật khẩu"
                 className="pl-9 h-11 rounded-lg"
               />
             </div>

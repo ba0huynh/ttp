@@ -705,7 +705,11 @@ function SettingsPage() {
                     setUPassword(e.target.value)
                     clearUError('password')
                   }}
-                  placeholder={editId ? '••••••••' : 'Tối thiểu 8 ký tự'}
+                  placeholder={
+                    editId
+                      ? 'Để trống nếu không đổi mật khẩu'
+                      : 'Tối thiểu 8 ký tự'
+                  }
                   className="h-11 rounded-lg px-4 text-sm"
                 />
                 {fieldError('password')}

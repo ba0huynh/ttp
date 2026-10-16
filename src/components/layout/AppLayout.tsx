@@ -10,17 +10,28 @@ import {
   Loader2,
   LogOut,
   Menu,
+  PanelLeftClose,
+  PanelLeftOpen,
   PackagePlus,
   PieChart,
-  Plus,
   Settings,
+  ShieldCheck,
   UserCog,
+  Users,
   Warehouse,
 } from 'lucide-react'
 import * as React from 'react'
 
 import { BrandMark } from '#/components/layout/BrandMark.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '#/components/ui/dropdown-menu.tsx'
 import {
   Sheet,
   SheetContent,
@@ -136,14 +147,14 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
             title: 'Quản lý người dùng',
             href: '/settings',
             tab: 'users',
-            icon: UserCog,
+            icon: Users,
             permission: 'users.manage',
           },
           {
             title: 'Vai trò & phân quyền',
             href: '/settings',
             tab: 'roles',
-            icon: UserCog,
+            icon: ShieldCheck,
             permission: 'roles.manage',
           },
         ],
@@ -197,6 +208,24 @@ export function AppLayout({ children, user }: AppLayoutProps) {
   // tab bar remain on screen instead of being swapped for the skeleton.
   const isLoading = routerState.isLoading && currentPath !== targetPath
   const [mobileOpen, setMobileOpen] = React.useState(false)
+  // Desktop sidebar: expanded (labels) or collapsed (icons only); remembered per browser
+  const [collapsed, setCollapsed] = React.useState(false)
+  React.useEffect(() => {
+    try {
+      setCollapsed(localStorage.getItem('sidebar-collapsed') === '1')
+    } catch {
+      /* storage unavailable: stay expanded */
+    }
+  }, [])
+  const toggleCollapsed = () =>
+    setCollapsed((c) => {
+      try {
+        localStorage.setItem('sidebar-collapsed', c ? '0' : '1')
+      } catch {
+        /* ignore */
+      }
+      return !c
+    })
 
   // Close the mobile drawer once navigation starts
   React.useEffect(() => setMobileOpen(false), [targetPath])
@@ -209,7 +238,11 @@ export function AppLayout({ children, user }: AppLayoutProps) {
   return (
     <div className="min-h-screen bg-background">
       {/* Desktop sidebar */}
-      <aside className="hidden lg:flex w-64 fixed inset-y-0 left-0 z-30">
+      <aside
+        className={`hidden lg:flex fixed inset-y-0 left-0 z-30 transition-[width] duration-200 ${
+          collapsed ? 'w-16' : 'w-64'
+        }`}
+      >
         <SidebarBody
           currentPath={currentPath}
           targetPath={targetPath}
@@ -217,6 +250,7 @@ export function AppLayout({ children, user }: AppLayoutProps) {
           targetTab={targetTab}
           isLoading={isLoading}
           user={user}
+          collapsed={collapsed}
         />
       </aside>
 
@@ -242,7 +276,11 @@ export function AppLayout({ children, user }: AppLayoutProps) {
         </SheetContent>
       </Sheet>
 
-      <div className="lg:pl-64 flex flex-col min-w-0 min-h-screen">
+      <div
+        className={`flex flex-col min-w-0 min-h-screen transition-[padding] duration-200 ${
+          collapsed ? 'lg:pl-16' : 'lg:pl-64'
+        }`}
+      >
         {/* Top bar */}
         <header className="h-14 sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-3">
           {isLoading && (
@@ -261,6 +299,20 @@ export function AppLayout({ children, user }: AppLayoutProps) {
             >
               <Menu className="size-5" />
             </Button>
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              className="hidden lg:inline-flex -ml-1 text-slate-600"
+              onClick={toggleCollapsed}
+              aria-label={collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+              title={collapsed ? 'Mở rộng menu' : 'Thu gọn menu'}
+            >
+              {collapsed ? (
+                <PanelLeftOpen className="size-5" />
+              ) : (
+                <PanelLeftClose className="size-5" />
+              )}
+            </Button>
             <nav className="flex items-center gap-1.5 text-sm min-w-0">
               <span className="text-slate-400 hidden sm:inline truncate">
                 {currentGroup?.group ?? 'Trường Thịnh Phát'}
@@ -276,37 +328,7 @@ export function AppLayout({ children, user }: AppLayoutProps) {
             </nav>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
-            {hasPermission(user, 'inventory.view') && (
-              <Button
-                asChild
-                variant="outline"
-                size="sm"
-                className="hidden md:inline-flex text-xs"
-              >
-                <Link to="/inventory" preload="intent">
-                  <Warehouse className="size-3.5 text-emerald-700" />
-                  Tra cứu 2 kho
-                </Link>
-              </Button>
-            )}
-            {hasPermission(user, 'sales.create') && (
-              <Button asChild variant="outline" size="sm" className="text-xs">
-                <Link to="/sales/new" preload="intent">
-                  <Plus className="size-3.5 text-emerald-700" />
-                  <span className="hidden sm:inline">Phiếu bán</span>
-                </Link>
-              </Button>
-            )}
-            {hasPermission(user, 'batches.manage') && (
-              <Button asChild size="sm" className="text-xs">
-                <Link to="/batches/new" preload="intent">
-                  <PackagePlus className="size-3.5" />
-                  <span className="hidden sm:inline">Nhập lô mới</span>
-                </Link>
-              </Button>
-            )}
-          </div>
+          <ProfileMenu user={user} />
         </header>
 
         <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 max-w-[1400px] w-full mx-auto">
@@ -324,7 +346,9 @@ function SidebarBody({
   targetTab,
   isLoading,
   user,
+  collapsed = false,
 }: {
+  collapsed?: boolean
   currentPath: string
   targetPath: string
   currentTab?: string
@@ -332,11 +356,6 @@ function SidebarBody({
   isLoading: boolean
   user: AppLayoutProps['user']
 }) {
-  const handleLogout = async () => {
-    await logoutFn()
-    window.location.href = '/login'
-  }
-
   // Only the pages the user's role may open
   const allowed = (i: NavItem) =>
     !i.permission || hasPermission(user, i.permission)
@@ -360,8 +379,9 @@ function SidebarBody({
         to={item.href}
         search={(item.tab ? { tab: item.tab } : undefined) as never}
         preload="intent"
+        title={collapsed ? item.title : undefined}
         className={`group relative flex items-center gap-3 py-2 rounded-lg text-[13px] font-medium transition-colors ${
-          sub ? 'pl-9 pr-3' : 'px-3'
+          collapsed ? 'justify-center px-0' : sub ? 'pl-9 pr-3' : 'px-3'
         } ${
           on
             ? 'bg-white/[0.08] text-white'
@@ -371,7 +391,7 @@ function SidebarBody({
         {on && (
           <span className="absolute left-0 top-1.5 bottom-1.5 w-[3px] rounded-r-full bg-brass-400" />
         )}
-        {!sub && (
+        {(!sub || collapsed) && (
           <Icon
             className={`size-4 shrink-0 ${
               on
@@ -380,26 +400,25 @@ function SidebarBody({
             }`}
           />
         )}
-        <span className="truncate">{item.title}</span>
-        {isPending && (
+        {!collapsed && <span className="truncate">{item.title}</span>}
+        {isPending && !collapsed && (
           <Loader2 className="size-3.5 animate-spin text-emerald-300 ml-auto shrink-0" />
         )}
       </Link>
     )
   }
 
-  const initials = (user?.fullName ?? 'U')
-    .split(' ')
-    .filter(Boolean)
-    .slice(-2)
-    .map((w) => w[0]?.toUpperCase())
-    .join('')
-
   return (
     <div className="flex flex-col w-full h-full bg-ink-900 text-slate-300">
-      <div className="h-14 flex items-center gap-3 px-4 border-b border-white/[0.06]">
+      <div
+        className={`h-14 flex items-center gap-3 border-b border-white/[0.06] ${
+          collapsed ? 'justify-center px-0' : 'px-4'
+        }`}
+      >
         <BrandMark className="size-8" />
-        <div className="flex flex-col min-w-0 leading-tight">
+        <div
+          className={`flex flex-col min-w-0 leading-tight ${collapsed ? 'hidden' : ''}`}
+        >
           <span className="font-bold text-[13px] tracking-wide text-white truncate">
             TRƯỜNG THỊNH PHÁT
           </span>
@@ -409,20 +428,30 @@ function SidebarBody({
         </div>
       </div>
 
-      <nav className="sidebar-scroll flex-1 overflow-y-auto px-3 py-4 space-y-5">
+      <nav
+        className={`sidebar-scroll flex-1 overflow-y-auto py-4 space-y-5 ${
+          collapsed ? 'px-2' : 'px-3'
+        }`}
+      >
         {visibleGroups.map((grp) => (
           <div key={grp.group}>
-            <div className="px-3 pb-1.5 text-[10.5px] font-semibold text-slate-500 uppercase tracking-[0.12em]">
-              {grp.group}
-            </div>
+            {collapsed ? (
+              <div className="mx-3 mb-2 border-t border-white/[0.08]" />
+            ) : (
+              <div className="px-3 pb-1.5 text-[10.5px] font-semibold text-slate-500 uppercase tracking-[0.12em]">
+                {grp.group}
+              </div>
+            )}
             <div className="space-y-0.5">
               {grp.items.map((item) =>
                 item.children ? (
                   <div key={item.title} className="space-y-0.5">
-                    <div className="flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-slate-300">
-                      <item.icon className="size-4 shrink-0 text-slate-500" />
-                      <span className="truncate">{item.title}</span>
-                    </div>
+                    {!collapsed && (
+                      <div className="flex items-center gap-3 px-3 py-2 text-[13px] font-medium text-slate-300">
+                        <item.icon className="size-4 shrink-0 text-slate-500" />
+                        <span className="truncate">{item.title}</span>
+                      </div>
+                    )}
                     {item.children.map((c) => renderLink(c, true))}
                   </div>
                 ) : (
@@ -433,34 +462,62 @@ function SidebarBody({
           </div>
         ))}
       </nav>
-
-      <div className="p-3 border-t border-white/[0.06]">
-        <div className="flex items-center gap-3 rounded-lg px-2 py-2 bg-white/[0.03]">
-          <div className="size-8 shrink-0 rounded-full bg-emerald-800 ring-1 ring-emerald-500/40 flex items-center justify-center text-[11px] font-bold text-emerald-100">
-            {initials}
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="text-xs font-semibold text-slate-100 truncate">
-              {user?.fullName ?? 'Người dùng'}
-            </div>
-            <div className="text-[11px] text-slate-500 truncate flex items-center gap-1.5">
-              <span className="inline-block size-1.5 rounded-full bg-emerald-400" />
-              {user?.roleName ?? '—'}
-            </div>
-          </div>
-          <Button
-            variant="ghost"
-            size="icon-sm"
-            className="text-slate-500 hover:text-rose-300 hover:bg-white/[0.06]"
-            onClick={handleLogout}
-            title="Đăng xuất"
-            aria-label="Đăng xuất"
-          >
-            <LogOut className="size-4" />
-          </Button>
-        </div>
-      </div>
     </div>
+  )
+}
+
+/** Top-right account menu: who is signed in, and logout */
+function ProfileMenu({ user }: { user: AppLayoutProps['user'] }) {
+  const handleLogout = async () => {
+    await logoutFn()
+    window.location.href = '/login'
+  }
+  const initials = (user?.fullName ?? 'U')
+    .split(' ')
+    .filter(Boolean)
+    .slice(-2)
+    .map((w) => w[0]?.toUpperCase())
+    .join('')
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <button
+          type="button"
+          className="flex shrink-0 items-center gap-2.5 rounded-lg py-1 pl-1 pr-2 text-left transition-colors hover:bg-slate-100 focus-visible:ring-2 focus-visible:ring-ring/50 outline-none"
+          aria-label="Tài khoản"
+        >
+          <span className="flex size-8 items-center justify-center rounded-full bg-emerald-800 text-[11px] font-bold text-emerald-100 ring-1 ring-emerald-500/40">
+            {initials}
+          </span>
+          <span className="hidden min-w-0 flex-col leading-tight sm:flex">
+            <span className="max-w-40 truncate text-xs font-semibold text-slate-800">
+              {user?.fullName ?? 'Người dùng'}
+            </span>
+            <span className="max-w-40 truncate text-[11px] text-slate-500">
+              {user?.roleName ?? '—'}
+            </span>
+          </span>
+        </button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuLabel className="space-y-0.5">
+          <div className="truncate text-sm font-semibold text-slate-900">
+            {user?.fullName ?? 'Người dùng'}
+          </div>
+          <div className="truncate text-xs font-normal text-slate-500">
+            {user?.username} · {user?.roleName}
+          </div>
+        </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          onClick={handleLogout}
+          className="text-rose-600 focus:text-rose-700"
+        >
+          <LogOut className="size-4" />
+          Đăng xuất
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
   )
 }
 

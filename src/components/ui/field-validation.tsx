@@ -36,7 +36,12 @@ function messageFor(el: Control): string {
  * message does not stretch that box and push the icons down.
  */
 function anchorOf(el: Control): Element {
-  return el.closest('[data-field-wrap]') ?? el
+  // Nested wrappers (an icon box around a PasswordInput): use the outermost one
+  const sel = '[data-field-wrap]'
+  let wrap = el.closest(sel)
+  while (wrap?.parentElement?.closest(sel))
+    wrap = wrap.parentElement.closest(sel)
+  return wrap ?? el
 }
 
 function errorNodeOf(el: Control): HTMLElement | null {

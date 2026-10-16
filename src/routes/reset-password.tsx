@@ -86,6 +86,7 @@ function ResetPasswordPage() {
             </Label>
             <PasswordInput
               id="password"
+              placeholder="Nhập mật khẩu mới"
               required
               minLength={8}
               autoComplete="new-password"
@@ -100,6 +101,7 @@ function ResetPasswordPage() {
             </Label>
             <PasswordInput
               id="confirm"
+              placeholder="Nhập lại mật khẩu mới"
               required
               autoComplete="new-password"
               value={confirm}
