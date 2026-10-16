@@ -633,5 +633,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 52, 53,... above this line upon completing tasks)_
+### Lesson 52: List Filters and Search Live in the URL
+
+- **Pattern** (same idea as the tabs in Lesson 25): a page's filter and search box are search params, not `useState`, so a reload, the Back button or a shared link keeps them. `/inventory?stock=all|physical|invoiced|mismatch|available&q=<text>`: `validateSearch: z.object({ stock: z.enum([...]).optional().catch(undefined), q: z.string().optional().catch(undefined) })`, read with `Route.useSearch()` (`stock ?? 'all'`, `q ?? ''`), written with `navigate({ search: (prev) => ({ ...prev, q: q || undefined }), replace: true })`.
+- **Defaults are left out of the URL**: "all" and an empty search are stored as `undefined`, so `/inventory` stays clean. `replace: true` keeps Back from stepping through every keystroke. An unknown value falls back to the default (`.catch`).
+- **Pagination**: pass the filter values as the `resetKey` of `usePagination` (already done) so changing a filter returns to page 1.
+- **Apply to other lists** (`/sales`, `/batches`, `/customers`, `/loans`, `/finance` sub-filters) the same way when they get filters; only `/inventory` has been converted so far.
+
+---
+
+_(Next Agent: Append Lesson 53, 54,... above this line upon completing tasks)_
 

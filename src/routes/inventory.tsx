@@ -1,7 +1,7 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Search } from 'lucide-react'
-import * as React from 'react'
+import { z } from 'zod'
 
 import { DualInventoryBadge } from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -34,7 +34,21 @@ import {
 } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 
+const STOCK_FILTERS = [
+  'all',
+  'physical',
+  'invoiced',
+  'mismatch',
+  'available',
+] as const
+
 export const Route = createFileRoute('/inventory')({
+  // Filter and search live in the URL (?stock=mismatch&q=...) so a reload or a
+  // shared link keeps them; defaults ("all", empty search) are left out
+  validateSearch: z.object({
+    stock: z.enum(STOCK_FILTERS).optional().catch(undefined),
+    q: z.string().optional().catch(undefined),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -55,10 +69,23 @@ function InventoryPage() {
   const { data: summary } = useSuspenseQuery(inventorySummaryQuery())
   const { data: vehicles } = useSuspenseQuery(vehiclesQuery())
 
-  const [search, setSearch] = React.useState('')
-  const [filterStock, setFilterStock] = React.useState<
-    'all' | 'physical' | 'invoiced' | 'mismatch' | 'available'
-  >('all')
+  const searchParams = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const search = searchParams.q ?? ''
+  const filterStock = searchParams.stock ?? 'all'
+  const setSearch = (q: string) =>
+    navigate({
+      search: (prev) => ({ ...prev, q: q || undefined }),
+      replace: true,
+    })
+  const setFilterStock = (stock: (typeof STOCK_FILTERS)[number]) =>
+    navigate({
+      search: (prev) => ({
+        ...prev,
+        stock: stock === 'all' ? undefined : stock,
+      }),
+      replace: true,
+    })
 
   const filtered = vehicles.filter((v) => {
     const q = search.trim().toLowerCase()
