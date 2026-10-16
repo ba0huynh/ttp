@@ -25,7 +25,6 @@ import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   alertDialog,
-  confirmDialog,
   showErrorDialog,
 } from '#/components/ui/confirm-dialog.tsx'
 import {
@@ -68,7 +67,7 @@ import {
 } from '#/components/ui/tabs.tsx'
 import { masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
-import { reportDeleteFailure } from '#/lib/usage.ts'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import {
   deleteMasterDataFn,
   saveBankAccountFn,
@@ -257,13 +256,15 @@ function MasterDataPage() {
     id: number,
     name: string,
   ) => {
+    // Used rows show what uses them; unused rows ask for confirmation
     if (
-      !(await confirmDialog({
-        title: 'Xóa mục danh mục này?',
-        description: 'Không thể xóa nếu mục đang được dùng ở chứng từ khác.',
-        confirmLabel: 'Xóa',
-        destructive: true,
-      }))
+      !(await confirmDelete(
+        { entity, id, name },
+        {
+          title: `Xóa "${name}"?`,
+          description: 'Hành động này không thể hoàn tác.',
+        },
+      ))
     )
       return
     try {

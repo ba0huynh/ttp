@@ -11,10 +11,7 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
-import {
-  confirmDialog,
-  showErrorDialog,
-} from '#/components/ui/confirm-dialog.tsx'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import {
   Dialog,
   DialogContent,
@@ -34,7 +31,7 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { ALL_PERMISSIONS, PERMISSION_GROUPS } from '#/lib/permissions.ts'
-import { reportDeleteFailure } from '#/lib/usage.ts'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import { deleteRoleFn, saveRoleFn } from '#/server/fns/system.ts'
 
 export interface RoleRow {
@@ -113,12 +110,13 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
   }
 
   const handleDelete = async (r: RoleRow) => {
-    const ok = await confirmDialog({
-      title: `Xóa vai trò "${r.name}"?`,
-      description: 'Chỉ xóa được khi chưa có người dùng nào giữ vai trò này.',
-      confirmLabel: 'Xóa',
-      destructive: true,
-    })
+    const ok = await confirmDelete(
+      { entity: 'roles', id: r.id, name: r.name },
+      {
+        title: `Xóa vai trò "${r.name}"?`,
+        description: 'Hành động này không thể hoàn tác.',
+      },
+    )
     if (!ok) return
     try {
       await deleteRole.mutateAsync({ data: { id: r.id } })

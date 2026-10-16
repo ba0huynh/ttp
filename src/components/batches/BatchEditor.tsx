@@ -41,7 +41,7 @@ import {
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
 import { loansQuery, masterDataQuery } from '#/lib/queries.ts'
-import { reportDeleteFailure } from '#/lib/usage.ts'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import {
   addBatchExpenseFn,
   addVehiclesToBatchFn,
@@ -543,12 +543,17 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         disabled={remove.isPending}
                         onClick={async () => {
                           if (
-                            await confirmDialog({
-                              title: `Xóa xe ${v.chassisNumber} khỏi lô?`,
-                              description: 'Chi phí lô sẽ được phân bổ lại.',
-                              confirmLabel: 'Xóa',
-                              destructive: true,
-                            })
+                            await confirmDelete(
+                              {
+                                entity: 'vehicles',
+                                id: v.id,
+                                name: v.chassisNumber,
+                              },
+                              {
+                                title: `Xóa xe ${v.chassisNumber} khỏi lô?`,
+                                description: 'Chi phí lô sẽ được phân bổ lại.',
+                              },
+                            )
                           )
                             remove.mutate({ data: { vehicleId: v.id } })
                         }}
