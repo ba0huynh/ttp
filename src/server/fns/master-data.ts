@@ -121,13 +121,15 @@ export const saveBankAccountFn = createServerFn({ method: 'POST' })
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
-      if (id)
+      if (id) {
         await db
           .update(companyBankAccounts)
           .set(v)
           .where(eq(companyBankAccounts.id, id))
-      else await db.insert(companyBankAccounts).values(v)
-      return { ok: true }
+        return { ok: true, id }
+      }
+      const [res] = await db.insert(companyBankAccounts).values(v)
+      return { ok: true, id: Number(res.insertId) }
     }),
   )
 

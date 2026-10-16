@@ -5,7 +5,6 @@ import {
   bankStatementLines,
   bankStatements,
   customers,
-  importBatches,
   loanContracts,
   loanRepayments,
   paymentVouchers,
@@ -32,17 +31,6 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
     .from(loanRepayments)
     .where(eq(loanRepayments.loanContractId, loanId))
     .orderBy(loanRepayments.paymentDate, loanRepayments.id)
-  const batches = await db
-    .select({
-      id: importBatches.id,
-      importDate: importBatches.importDate,
-      supplierName: suppliers.name,
-    })
-    .from(importBatches)
-    .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
-    .where(eq(importBatches.loanContractId, loanId))
-    .orderBy(importBatches.importDate)
-
   const interest = calculateLoanInterest({
     principal: num(loan.principalAmount),
     annualRatePercent: num(loan.interestRate),
@@ -66,7 +54,6 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
       status: outstanding <= 0.5 ? ('settled' as const) : ('active' as const),
     },
     repayments,
-    batches,
     asOf,
     principalPaid,
     interestPaid,

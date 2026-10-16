@@ -3,7 +3,7 @@ import { ExpenseFormDialog } from '#/components/batches/ExpenseFormDialog.tsx'
 import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQueryClient } from '@tanstack/react-query'
 import { Pencil, Plus, Save } from 'lucide-react'
 import * as React from 'react'
 
@@ -25,10 +25,6 @@ import {
   SelectValue,
 } from '#/components/ui/select.tsx'
 import {
-  SearchSelect,
-  SearchSelectItem,
-} from '#/components/ui/search-select.tsx'
-import {
   Table,
   TableBody,
   TableCell,
@@ -39,7 +35,6 @@ import {
 import { formatVnd } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
-import { loansQuery } from '#/lib/queries.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import {
   addBatchExpenseFn,
@@ -110,13 +105,9 @@ export function Section({
   )
 }
 
-/* ------------------------------ Batch info / loan ----------------------------- */
+/* -------------------------------- Batch info ---------------------------------- */
 
 function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
-  const { data: loans = [] } = useQuery(loansQuery())
-  const [loanId, setLoanId] = React.useState<number | null>(
-    detail.batch.loanContractId,
-  )
   const [supplierId, setSupplierId] = React.useState(
     detail.batch.supplierId ?? 0,
   )
@@ -125,25 +116,10 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
 
   return (
     <Section title="Thông Tin Lô">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
         <div className="space-y-1">
           <Label className="text-[11px]">Nhà cung cấp</Label>
           <SupplierSelect value={supplierId} onChange={setSupplierId} />
-        </div>
-        <div className="space-y-1">
-          <Label className="text-[11px]">Khế ước vay</Label>
-          <SearchSelect
-            className="h-11 w-full text-sm bg-white rounded-lg"
-            value={loanId ? String(loanId) : 'none'}
-            onValueChange={(v) => setLoanId(v === 'none' ? null : Number(v))}
-          >
-            <SearchSelectItem value="none">Vốn tự có</SearchSelectItem>
-            {loans.map((l) => (
-              <SearchSelectItem key={l.id} value={String(l.id)}>
-                {l.contractNumber} — {l.bankName}
-              </SearchSelectItem>
-            ))}
-          </SearchSelect>
         </div>
         <div className="space-y-1">
           <Label className="text-[11px]">Ngày nhập *</Label>
@@ -166,7 +142,6 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
               data: {
                 batchId: detail.batch.id,
                 supplierId,
-                loanContractId: loanId,
                 importDate,
               },
             })

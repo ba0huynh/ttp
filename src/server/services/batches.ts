@@ -31,7 +31,6 @@ export interface ExpenseInput {
 
 export interface CreateBatchInput {
   supplierId: number
-  loanContractId?: number | null
   importDate: string
   pricingBase: PricingBase
   pricingMethod: PricingMethod
@@ -137,7 +136,6 @@ export async function createBatch(input: CreateBatchInput, userId?: number) {
         .values({
           // 0 = no supplier chosen
           supplierId: input.supplierId || null,
-          loanContractId: input.loanContractId ?? null,
           importDate: input.importDate,
           pricingBase: input.pricingBase,
           pricingMethod: input.pricingMethod,
@@ -335,7 +333,6 @@ export async function updateBatchInfo(
   batchId: number,
   p: {
     supplierId: number
-    loanContractId: number | null
     importDate: string
   },
 ) {

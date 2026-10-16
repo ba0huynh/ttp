@@ -264,7 +264,7 @@ function InventoryPage() {
                           {formatVnd(v.importPrice)}
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
-                          {formatVnd(v.importPrice)}
+                          {formatVnd(v.costPrice)}
                         </TableCell>
                         <TableCell className="text-center">
                           <DualInventoryBadge

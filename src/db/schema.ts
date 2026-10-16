@@ -261,10 +261,6 @@ export const importBatches = mysqlTable(
     id: int('id').primaryKey().autoincrement(),
     /** Optional: a batch may be entered before its supplier is known */
     supplierId: int('supplier_id').references(() => suppliers.id),
-    /** Linked loan credit contract financing batch (null if self-funded) */
-    loanContractId: int('loan_contract_id').references(() => loanContracts.id, {
-      onDelete: 'set null',
-    }),
     importDate: date('import_date', { mode: 'string' }).notNull(),
     /** Batch-wide wholesale pricing configuration */
     pricingBase: mysqlEnum('pricing_base', PRICING_BASES)
@@ -278,10 +274,7 @@ export const importBatches = mysqlTable(
     createdBy: int('created_by').references(() => users.id),
     ...timestamps,
   },
-  (t) => [
-    index('import_batches_supplier_idx').on(t.supplierId),
-    index('import_batches_loan_idx').on(t.loanContractId),
-  ],
+  (t) => [index('import_batches_supplier_idx').on(t.supplierId)],
 )
 
 /** Catalogue of batch expense categories (import tax, freight, ...) */
@@ -653,10 +646,6 @@ export const importBatchesRelations = relations(
     supplier: one(suppliers, {
       fields: [importBatches.supplierId],
       references: [suppliers.id],
-    }),
-    loan: one(loanContracts, {
-      fields: [importBatches.loanContractId],
-      references: [loanContracts.id],
     }),
     expenses: many(batchExpenses),
     vehicles: many(vehicles),

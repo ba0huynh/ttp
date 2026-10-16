@@ -458,16 +458,7 @@ async function usageOf(
     }
 
     case 'loans': {
-      const [batches, repayments] = await Promise.all([
-        db
-          .select({
-            id: importBatches.id,
-            importDate: importBatches.importDate,
-            supplierName: suppliers.name,
-          })
-          .from(importBatches)
-          .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
-          .where(eq(importBatches.loanContractId, id)),
+      const [repayments] = await Promise.all([
         db
           .select({
             date: loanRepayments.paymentDate,
@@ -478,13 +469,6 @@ async function usageOf(
           .where(eq(loanRepayments.loanContractId, id)),
       ])
       return [
-        group(
-          'Lô nhập được khế ước này tài trợ',
-          batches.map((b) => ({
-            label: batchLabel(b),
-            href: `/batches/${b.id}`,
-          })),
-        ),
         group(
           'Các khoản đã trả nợ',
           repayments.map((r) => ({

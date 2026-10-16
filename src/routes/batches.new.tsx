@@ -34,10 +34,6 @@ import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import {
-  SearchSelect,
-  SearchSelectItem,
-} from '#/components/ui/search-select.tsx'
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -59,7 +55,7 @@ import {
   modelLabel,
   todayIso,
 } from '#/lib/business.ts'
-import { currentUserQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
+import { currentUserQuery, masterDataQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { createBatchFn } from '#/server/fns/batches.ts'
 
@@ -71,10 +67,7 @@ export const Route = createFileRoute('/batches/new')({
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
-    await Promise.all([
-      queryClient.query(masterDataQuery()),
-      queryClient.query(loansQuery()),
-    ])
+    await queryClient.query(masterDataQuery())
   },
   component: NewBatchPage,
 })
@@ -103,16 +96,12 @@ interface ExpenseRow {
 function NewBatchPage() {
   const { user } = Route.useRouteContext()
   const { data: master } = useSuspenseQuery(masterDataQuery())
-  const { data: loans } = useSuspenseQuery(loansQuery())
   const queryClient = useQueryClient()
   const createBatch = useMutation({ mutationFn: createBatchFn })
   const navigate = useNavigate()
 
   // General batch information
   const [supplierId, setSupplierId] = React.useState<number>(0)
-  const [loanContractId, setLoanContractId] = React.useState<number | null>(
-    null,
-  )
   const [importDate, setImportDate] = React.useState(todayIso())
 
   // Selling price configuration
@@ -208,7 +197,6 @@ function NewBatchPage() {
       await createBatch.mutateAsync({
         data: {
           supplierId,
-          loanContractId,
           importDate,
           pricingBase,
           pricingMethod,
@@ -291,32 +279,10 @@ function NewBatchPage() {
 
         {/* 1. Batch information */}
         <Section title="Thông Tin Lô">
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
             <div className="space-y-1">
               <Label className="text-[11px]">Nhà cung cấp</Label>
               <SupplierSelect value={supplierId} onChange={setSupplierId} />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-[11px]">Khế ước vay</Label>
-              <SearchSelect
-                className="h-11 w-full text-sm bg-white rounded-lg"
-                value={loanContractId ? String(loanContractId) : 'none'}
-                onValueChange={(val) =>
-                  setLoanContractId(val === 'none' ? null : Number(val))
-                }
-              >
-                <SearchSelectItem value="none">
-                  Vốn tự có (Không vay ngân hàng)
-                </SearchSelectItem>
-                {loans
-                  .filter((l) => l.status === 'active')
-                  .map((l) => (
-                    <SearchSelectItem key={l.id} value={String(l.id)}>
-                      {l.contractNumber} ({l.bankName}) &bull; Dư nợ:{' '}
-                      {formatVnd(l.outstanding)}
-                    </SearchSelectItem>
-                  ))}
-              </SearchSelect>
             </div>
             <div className="space-y-1">
               <Label className="text-[11px]">Ngày nhập *</Label>

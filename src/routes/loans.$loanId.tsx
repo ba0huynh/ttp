@@ -7,20 +7,15 @@ import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { ArrowLeft, CreditCard } from 'lucide-react'
 import * as React from 'react'
 
-import { BankLabel } from '#/components/finance/BankLabel.tsx'
+import { BankAccountSelect } from '#/components/finance/BankAccountSelect.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
-import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Card, CardContent } from '#/components/ui/card.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
-import {
-  SearchSelect,
-  SearchSelectItem,
-} from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -35,7 +30,6 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import {
   addMonthsIso,
-  batchLabel,
   estimateLoanTermInterest,
   formatDate,
   formatVnd,
@@ -168,36 +162,6 @@ function LoanDetailPage() {
         />
 
         <div className="space-y-5">
-          {/* 0. Import batches financed by this loan contract */}
-          <div className="text-xs">
-            <span className="font-bold text-slate-800">
-              Lô xe được tài trợ:{' '}
-            </span>
-            {loanDetail.batches.length === 0 ? (
-              <span className="text-slate-400">
-                Chưa gắn lô nào (gắn tại trang Lô Xe → Xem chi tiết)
-              </span>
-            ) : (
-              <span className="inline-flex flex-wrap gap-1.5 align-middle">
-                {loanDetail.batches.map((b) => (
-                  <Badge
-                    key={b.id}
-                    variant="outline"
-                    className="text-[11px] bg-purple-50 text-purple-700 border-purple-200"
-                  >
-                    <Link
-                      to="/batches/$batchId"
-                      params={{ batchId: String(b.id) }}
-                      className="hover:underline"
-                    >
-                      {batchLabel(b)}
-                    </Link>
-                  </Badge>
-                ))}
-              </span>
-            )}
-          </div>
-
           {/* 1. 365-day declining balance interest schedule */}
           <Card className="border-slate-200 shadow-xs">
             <CardContent className="p-4">
@@ -352,32 +316,11 @@ function LoanDetailPage() {
                     <Label className="text-xs font-semibold">
                       Tài Khoản Chi Tiền
                     </Label>
-                    <SearchSelect
+                    <BankAccountSelect
                       className="w-full h-11 text-sm bg-white rounded-lg"
-                      value={
-                        repayBankAccountId ? String(repayBankAccountId) : 'none'
-                      }
-                      onValueChange={(val) =>
-                        setRepayBankAccountId(
-                          val === 'none' ? null : Number(val),
-                        )
-                      }
-                    >
-                      {master.bankAccounts
-                        .filter((a) => a.isActive)
-                        .map((a) => (
-                          <SearchSelectItem
-                            key={a.id}
-                            value={String(a.id)}
-                            keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
-                            className="text-xs"
-                          >
-                            <BankLabel image={a.bankImage} name={a.bankName}>
-                              {a.bankName} &bull; {a.accountNumber}
-                            </BankLabel>
-                          </SearchSelectItem>
-                        ))}
-                    </SearchSelect>
+                      value={repayBankAccountId}
+                      onChange={setRepayBankAccountId}
+                    />
                   </div>
                 </div>
 

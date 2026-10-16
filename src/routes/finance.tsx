@@ -14,6 +14,7 @@ import {
   showErrorDialog,
 } from '#/components/ui/confirm-dialog.tsx'
 import { useBusyKeys } from '#/lib/use-busy.ts'
+import { BankAccountSelect } from '#/components/finance/BankAccountSelect.tsx'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -680,31 +681,11 @@ function FinancePage() {
                   <Label className="text-xs font-semibold">
                     Tài Khoản Nhận
                   </Label>
-                  <SearchSelect
-                    className="h-11 w-full text-sm rounded-lg"
-                    value={receiptAccountId ? String(receiptAccountId) : 'none'}
-                    onValueChange={(val) =>
-                      setReceiptAccountId(val === 'none' ? null : Number(val))
-                    }
-                  >
-                    <SearchSelectItem value="none" className="text-xs">
-                      Không chọn (tiền mặt)
-                    </SearchSelectItem>
-                    {master.bankAccounts
-                      .filter((a) => a.isActive)
-                      .map((a) => (
-                        <SearchSelectItem
-                          key={a.id}
-                          value={String(a.id)}
-                          keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
-                          className="text-xs"
-                        >
-                          <BankLabel image={a.bankImage} name={a.bankName}>
-                            {a.bankName} ({a.accountNumber})
-                          </BankLabel>
-                        </SearchSelectItem>
-                      ))}
-                  </SearchSelect>
+                  <BankAccountSelect
+                    value={receiptAccountId}
+                    onChange={setReceiptAccountId}
+                    noneLabel="Không chọn (tiền mặt)"
+                  />
                 </div>
               </div>
 
@@ -790,31 +771,11 @@ function FinancePage() {
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tài Khoản Chi</Label>
-                <SearchSelect
-                  className="h-11 w-full text-sm rounded-lg"
-                  value={paymentAccountId ? String(paymentAccountId) : 'none'}
-                  onValueChange={(val) =>
-                    setPaymentAccountId(val === 'none' ? null : Number(val))
-                  }
-                >
-                  <SearchSelectItem value="none" className="text-xs">
-                    Không chọn (tiền mặt)
-                  </SearchSelectItem>
-                  {master.bankAccounts
-                    .filter((a) => a.isActive)
-                    .map((b) => (
-                      <SearchSelectItem
-                        key={b.id}
-                        value={String(b.id)}
-                        keywords={`${b.bankCode ?? ''} ${b.bankShortName ?? ''}`}
-                        className="text-xs"
-                      >
-                        <BankLabel image={b.bankImage} name={b.bankName}>
-                          {b.bankName} &bull; {b.accountNumber}
-                        </BankLabel>
-                      </SearchSelectItem>
-                    ))}
-                </SearchSelect>
+                <BankAccountSelect
+                  value={paymentAccountId}
+                  onChange={setPaymentAccountId}
+                  noneLabel="Không chọn (tiền mặt)"
+                />
               </div>
 
               <div className="space-y-1">

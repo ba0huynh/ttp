@@ -131,7 +131,6 @@ function BatchesPage() {
                   <TableRow className="text-xs bg-slate-50/70">
                     <TableHead>Ngày Nhập</TableHead>
                     <TableHead>Nhà Cung Cấp</TableHead>
-                    <TableHead>Khế Ước Vay</TableHead>
                     <TableHead className="text-center">Số Xe</TableHead>
                     <TableHead className="text-right">Tiền Hàng</TableHead>
                     <TableHead className="text-right">Chi Phí Lô</TableHead>
@@ -152,18 +151,6 @@ function BatchesPage() {
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
                         {b.supplierName}
-                      </TableCell>
-                      <TableCell>
-                        {b.loanContractNumber ? (
-                          <Badge
-                            variant="outline"
-                            className="text-[11px] bg-purple-50 text-purple-700 border-purple-200"
-                          >
-                            {b.loanContractNumber}
-                          </Badge>
-                        ) : (
-                          <span className="text-slate-500">Vốn tự có</span>
-                        )}
                       </TableCell>
                       <TableCell className="text-center font-medium text-slate-900">
                         {b.vehicleCount} xe

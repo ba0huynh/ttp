@@ -94,7 +94,7 @@ function NewSalesOrderPage() {
       chassisNumber: string
       modelName: string
       colorName: string
-      importPrice: number
+      costPrice: number
     }[]
   >([])
 
@@ -132,7 +132,7 @@ function NewSalesOrderPage() {
           chassisNumber: v.chassisNumber,
           modelName: v.modelName,
           colorName: v.colorName,
-          importPrice: v.importPrice,
+          costPrice: v.costPrice,
         }
       })
     setSelectedItems(chosen)
@@ -292,7 +292,7 @@ function NewSalesOrderPage() {
                               </div>
                             </TableCell>
                             <TableCell className="text-right text-slate-500 font-medium">
-                              {formatVnd(item.importPrice)}
+                              {formatVnd(item.costPrice)}
                             </TableCell>
                             <TableCell className="text-right">
                               <MoneyInput

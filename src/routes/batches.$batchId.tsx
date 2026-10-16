@@ -67,9 +67,6 @@ function BatchDetailPage() {
             <>
               Nhà cung cấp: <strong>{data.batch.supplierName}</strong> · Ngày
               nhập: {formatDate(data.batch.importDate)}
-              {data.batch.loanContractNumber && (
-                <> · Khế ước: {data.batch.loanContractNumber}</>
-              )}
             </>
           }
         />
