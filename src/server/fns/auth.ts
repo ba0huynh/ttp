@@ -74,7 +74,7 @@ export const logoutFn = createServerFn({ method: 'POST' })
 
 /**
  * Quên mật khẩu: gửi liên kết đặt lại qua SMTP (cấu hình trong .env).
- * Luôn trả lời giống nhau dù email có tồn tại hay không. Khi SMTP chưa cấu hình:
+ * Email không tồn tại thì báo lỗi ngay (không gửi). Khi SMTP chưa cấu hình:
  *  - Link đặt lại được ghi ra log server.
  *  - Ở môi trường dev, link được trả về để hiển thị trực tiếp.
  */
@@ -83,9 +83,10 @@ export const forgotPasswordFn = createServerFn({ method: 'POST' })
   .validator(z.object({ email: z.email('Email không hợp lệ') }))
   .handler(async ({ data }) => {
     const token = await createPasswordResetToken(data.email)
-    const path = token ? `/reset-password?token=${token}` : null
+    if (!token) throw new Error('Email này chưa được đăng ký trong hệ thống')
+    const path = `/reset-password?token=${token}`
     let mailed = false
-    if (path && isMailConfigured()) {
+    if (isMailConfigured()) {
       const origin =
         process.env.APP_URL?.replace(/\/$/, '') ?? getRequestUrl().origin
       try {
@@ -95,7 +96,7 @@ export const forgotPasswordFn = createServerFn({ method: 'POST' })
         console.error('[password-reset] sending mail failed:', e)
         throw new Error('Không gửi được email, vui lòng thử lại sau')
       }
-    } else if (path) {
+    } else {
       console.info(`[password-reset] ${data.email}: ${path}`)
     }
     return {

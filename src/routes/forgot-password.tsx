@@ -47,7 +47,7 @@ function ForgotPasswordPage() {
             <AuthAlert tone="success">
               {forgot.data.mailed
                 ? 'Liên kết đặt lại mật khẩu đã được gửi tới email của bạn (hiệu lực 30 phút). Hãy kiểm tra cả hộp thư rác.'
-                : 'Nếu email tồn tại trong hệ thống, liên kết đặt lại mật khẩu sẽ được gửi tới email đó.'}
+                : 'Liên kết đặt lại mật khẩu đã được tạo. Máy chủ email chưa được cấu hình nên liên kết chưa được gửi đi.'}
               {/* Without SMTP (dev builds) the link is returned directly */}
               {forgot.data.devLink && (
                 <div className="mt-2">
