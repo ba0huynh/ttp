@@ -47,6 +47,8 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
           isActive: companyBankAccounts.isActive,
           bankName: banks.name,
           bankImage: banks.image,
+          bankCode: banks.code,
+          bankShortName: banks.shortName,
         })
         .from(companyBankAccounts)
         .innerJoin(banks, eq(banks.id, companyBankAccounts.bankId))

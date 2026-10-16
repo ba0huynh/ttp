@@ -369,6 +369,7 @@ function LoanDetailPage() {
                           <SearchSelectItem
                             key={a.id}
                             value={String(a.id)}
+                            keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
                             className="text-xs"
                           >
                             <BankLabel image={a.bankImage} name={a.bankName}>

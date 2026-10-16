@@ -200,7 +200,11 @@ export function ImportStatementDialog({
               onValueChange={(val) => setAccountId(Number(val))}
             >
               {accounts.map((a) => (
-                <SearchSelectItem key={a.id} value={String(a.id)}>
+                <SearchSelectItem
+                  key={a.id}
+                  value={String(a.id)}
+                  keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
+                >
                   <BankLabel image={a.bankImage} name={a.bankName}>
                     {a.bankName} — {a.accountNumber}
                   </BankLabel>

@@ -9,11 +9,15 @@ const VIETQR_BANKS_URL = 'https://api.vietqr.io/v2/banks'
 interface VietQrBank {
   name: string
   logo?: string
+  code?: string
+  shortName?: string
 }
 
 interface BankRow {
   name: string
   image: string | null
+  code: string | null
+  shortName: string | null
 }
 
 /**
@@ -63,7 +67,12 @@ export async function fetchVietQrBanks() {
   for (const b of json.data) {
     const key = normalizeBankName(b.name ?? '')
     if (key && !byName.has(key))
-      byName.set(key, { name: b.name.trim(), image: b.logo?.trim() || null })
+      byName.set(key, {
+        name: b.name.trim(),
+        image: b.logo?.trim() || null,
+        code: b.code?.trim() || null,
+        shortName: b.shortName?.trim() || null,
+      })
   }
   return [...byName.values()]
 }
@@ -73,8 +82,8 @@ export async function fetchVietQrBanks() {
  *
  * Idempotent and additive: inserts only the banks (matched by name) that are
  * missing, so it also tops up a database that already has a few banks. For
- * banks that already exist it only fills in a missing logo (`image`); every
- * other field is left as is. The API is called on every run, so seeding needs
+ * banks that already exist it only fills in what is missing (logo `image`,
+ * search-only `code` and `shortName`); every other field is left as is. The API is called on every run, so seeding needs
  * internet access (a clear error is thrown when it is unreachable).
  *
  * Returns every bank in the table (existing + new).
@@ -84,14 +93,26 @@ export async function seedBanks() {
   const [catalog, existing] = await Promise.all([
     fetchVietQrBanks(),
     db
-      .select({ id: banks.id, name: banks.name, image: banks.image })
+      .select({
+        id: banks.id,
+        name: banks.name,
+        image: banks.image,
+        code: banks.code,
+        shortName: banks.shortName,
+      })
       .from(banks),
   ])
   const have = new Map(existing.map((b) => [normalizeBankName(b.name), b]))
   const missing = catalog.filter((b) => !have.has(normalizeBankName(b.name)))
-  const needsLogo = catalog.flatMap((b) => {
+  // Existing banks: fill only the columns that are still empty
+  const needsFill = catalog.flatMap((b) => {
     const row = have.get(normalizeBankName(b.name))
-    return b.image && row && !row.image ? [{ id: row.id, image: b.image }] : []
+    if (!row) return []
+    const patch: Partial<BankRow> = {}
+    if (b.image && !row.image) patch.image = b.image
+    if (b.code && !row.code) patch.code = b.code
+    if (b.shortName && !row.shortName) patch.shortName = b.shortName
+    return Object.keys(patch).length > 0 ? [{ id: row.id, patch }] : []
   })
 
   if (missing.length > 0) {
@@ -101,10 +122,12 @@ export async function seedBanks() {
     console.log(' -> Bank catalog already complete, skipping...')
   }
 
-  for (const b of needsLogo)
-    await db.update(banks).set({ image: b.image }).where(eq(banks.id, b.id))
-  if (needsLogo.length > 0)
-    console.log(` -> Filled in logos for ${needsLogo.length} existing banks`)
+  for (const b of needsFill)
+    await db.update(banks).set(b.patch).where(eq(banks.id, b.id))
+  if (needsFill.length > 0)
+    console.log(
+      ` -> Filled in logo / code / short name for ${needsFill.length} existing banks`,
+    )
 
   return db.select().from(banks)
 }

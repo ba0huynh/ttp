@@ -677,5 +677,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 56, 57,... above this line upon completing tasks)_
+### Lesson 56: Bank Code and Short Name (search only)
+
+- **Data**: `banks.code` ("VCB") and `banks.short_name` ("Vietcombank") from VietQR, both nullable (migration `0024_damp_lady_vermin.sql`, applied). They are **never displayed**; they only make a bank easy to find in dropdowns. This re-adds columns that Lesson 24 had removed from the UI and schema, with a different purpose (search, not identification).
+- **Seed**: `seedBanks()` (`src/db/seed/bank.seed.ts`) stores `code` / `shortName` for new banks and, for banks that already exist, fills in only the columns that are still empty (logo, code, short name), matching by normalised name. Re-run `npm run seed` after a migration like this to backfill (it fetched VietQR and filled all 76 banks).
+- **Search**: `SearchSelectItem` accepts `keywords` (`src/components/ui/search-select.tsx`): extra text added to the option's search haystack but not rendered. Bank options pass `keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}` (loan form, bank-account dialog in master data); bank-account options pass `bankCode` / `bankShortName` (receipt and payment dialogs, loan repayment, statement import), which `getMasterDataFn` now returns. Typing "VCB", "vietcombank" or "TCB" finds the bank; short codes can also match other banks that contain them ("vcb" is inside PVCB).
+- **Rule for new bank dropdowns**: pass the same `keywords`; never print `code` / `shortName` in a table or label.
+
+---
+
+_(Next Agent: Append Lesson 57, 58,... above this line upon completing tasks)_
 

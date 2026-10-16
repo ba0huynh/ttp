@@ -122,6 +122,9 @@ export const banks = mysqlTable('banks', {
   name: varchar('name', { length: 255 }).notNull(),
   /** Bank logo URL (e.g. VietQR CDN) */
   image: varchar('image', { length: 500 }),
+  /** VietQR code ("VCB") and short name ("Vietcombank"): only used to find the bank when searching, never shown */
+  code: varchar('code', { length: 20 }),
+  shortName: varchar('short_name', { length: 100 }),
   ...timestamps,
 })
 

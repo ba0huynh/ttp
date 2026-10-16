@@ -838,6 +838,7 @@ function MasterDataPage() {
                     <SearchSelectItem
                       key={b.id}
                       value={String(b.id)}
+                      keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
                       className="text-xs"
                     >
                       <BankLabel image={b.image} name={b.name}>

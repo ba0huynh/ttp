@@ -169,6 +169,13 @@
       "when": 1792123714409,
       "tag": "0023_nervous_sasquatch",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "5",
+      "when": 1792126473138,
+      "tag": "0024_damp_lady_vermin",
+      "breakpoints": true
     }
   ]
 }

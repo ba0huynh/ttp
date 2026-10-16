@@ -552,6 +552,7 @@ function FinancePage() {
                         <SearchSelectItem
                           key={a.id}
                           value={String(a.id)}
+                          keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
                           className="text-xs"
                         >
                           <BankLabel image={a.bankImage} name={a.bankName}>
@@ -661,6 +662,7 @@ function FinancePage() {
                       <SearchSelectItem
                         key={b.id}
                         value={String(b.id)}
+                        keywords={`${b.bankCode ?? ''} ${b.bankShortName ?? ''}`}
                         className="text-xs"
                       >
                         <BankLabel image={b.bankImage} name={b.bankName}>

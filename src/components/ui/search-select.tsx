@@ -15,6 +15,8 @@ const PAGE_SIZE = 10
 interface SearchSelectItemProps {
   value: string
   className?: string
+  /** Extra words that find the option but are never shown (e.g. a bank code) */
+  keywords?: string
   children?: React.ReactNode
 }
 
@@ -89,7 +91,7 @@ export function SearchSelect({
       value: props.value,
       className: props.className,
       node: props.children,
-      haystack: fold(nodeText(props.children)),
+      haystack: fold(`${nodeText(props.children)} ${props.keywords ?? ''}`),
     })
   }
 
