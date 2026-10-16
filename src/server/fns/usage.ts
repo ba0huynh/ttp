@@ -43,6 +43,8 @@ export const USAGE_ENTITIES = [
   'vehicles',
   'loans',
   'users',
+  'customers',
+  'branches',
 ] as const
 
 export interface UsageItem {
@@ -412,6 +414,45 @@ async function usageOf(
       ]
     }
 
+    case 'customers':
+    case 'branches': {
+      const orderCol =
+        entity === 'customers' ? salesOrders.customerId : salesOrders.branchId
+      const receiptCol =
+        entity === 'customers'
+          ? receiptVouchers.customerId
+          : receiptVouchers.branchId
+      const [orders, receipts] = await Promise.all([
+        db
+          .select({ id: salesOrders.id, date: salesOrders.orderDate })
+          .from(salesOrders)
+          .where(eq(orderCol, id)),
+        db
+          .select({
+            date: receiptVouchers.receiptDate,
+            amount: receiptVouchers.amount,
+          })
+          .from(receiptVouchers)
+          .where(eq(receiptCol, id)),
+      ])
+      return [
+        group(
+          'Phiếu bán',
+          orders.map((o) => ({
+            label: `Phiếu bán #${o.id} — ${formatDate(o.date)}`,
+            href: `/sales/${o.id}`,
+          })),
+        ),
+        group(
+          'Phiếu thu',
+          receipts.map((r) => ({
+            label: `${formatDate(r.date)} — ${formatVnd(num(r.amount))}`,
+            href: '/finance?tab=receipts',
+          })),
+        ),
+      ]
+    }
+
     case 'loans': {
       const [batches, repayments] = await Promise.all([
         db
@@ -490,6 +531,7 @@ export const getUsageFn = createServerFn({ method: 'GET' })
       'batches.manage',
       'loans.manage',
       'users.manage',
+      'customers.manage',
     ),
   ])
   .validator(z.object({ entity: z.enum(USAGE_ENTITIES), id: z.number().int() }))

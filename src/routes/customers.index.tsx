@@ -1,10 +1,13 @@
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
+import { useBusyKeys } from '#/lib/use-busy.ts'
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Eye, Plus } from 'lucide-react'
+import { Eye, Pencil, Plus } from 'lucide-react'
 import * as React from 'react'
 
 import { Can } from '#/components/auth/Can.tsx'
@@ -42,7 +45,7 @@ import {
 import { formatVnd } from '#/lib/business.ts'
 import { customersQuery, currentUserQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
-import { saveCustomerFn } from '#/server/fns/customers.ts'
+import { deleteCustomerFn, saveCustomerFn } from '#/server/fns/customers.ts'
 
 export const Route = createFileRoute('/customers/')({
   beforeLoad: async ({ context: { queryClient } }) => {
@@ -66,23 +69,56 @@ function CustomersPage() {
   // Create Parent Customer Modal
   const [newCustOpen, setNewCustOpen] = React.useState(false)
   const [name, setName] = React.useState('')
+  const [editId, setEditId] = React.useState<number | null>(null)
+  const { isBusy, setBusy } = useBusyKeys()
 
   // Mọi thay đổi khách hàng/điểm bán ảnh hưởng danh sách, chi tiết và công nợ
   const saveCustomer = useMutation({
     mutationFn: saveCustomerFn,
     onSuccess: () => queryClient.invalidateQueries(),
   })
+  const deleteCustomer = useMutation({
+    mutationFn: deleteCustomerFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const handleDelete = async (c: { id: number; name: string }) => {
+    const key = `customers:${c.id}`
+    const ok = await confirmDelete(
+      { entity: 'customers', id: c.id, name: c.name },
+      {
+        title: `Xóa khách hàng "${c.name}"?`,
+        description:
+          'Các điểm bán của khách hàng cũng bị xóa. Không thể hoàn tác.',
+      },
+      (checking) => setBusy(key, checking),
+    )
+    if (!ok) return
+    setBusy(key, true)
+    try {
+      await deleteCustomer.mutateAsync({ data: { id: c.id } })
+    } catch (err: unknown) {
+      await reportDeleteFailure(
+        err,
+        { entity: 'customers', id: c.id, name: c.name },
+        'Không thể xóa khách hàng',
+      )
+    } finally {
+      setBusy(key, false)
+    }
+  }
+
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault()
     try {
       await saveCustomer.mutateAsync({
         data: {
+          id: editId ?? undefined,
           name,
         },
       })
       setNewCustOpen(false)
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi tạo khách hàng')
+      await showErrorDialog(err, 'Lỗi khi lưu khách hàng')
     }
   }
 
@@ -104,6 +140,7 @@ function CustomersPage() {
             <Button
               size="sm"
               onClick={() => {
+                setEditId(null)
                 setName('')
                 setNewCustOpen(true)
               }}
@@ -152,22 +189,50 @@ function CustomersPage() {
                       <TableCell className="text-right font-bold text-rose-900">
                         {formatVnd(c.balance)}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="text-center whitespace-nowrap">
                         <Button
                           asChild
                           variant="ghost"
-                          size="sm"
-                          className="h-7 text-xs text-emerald-800 gap-1 font-medium"
+                          size="icon"
+                          className="size-7 text-slate-400 hover:text-emerald-700"
                         >
                           <Link
                             to="/customers/$customerId"
                             params={{ customerId: String(c.id) }}
                             preload="intent"
+                            aria-label="Xem chi tiết"
+                            title="Xem chi tiết"
                           >
                             <Eye className="size-3.5" />
-                            Chi tiết
                           </Link>
                         </Button>
+                        <Can permission="customers.manage">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => {
+                              setEditId(c.id)
+                              setName(c.name)
+                              setNewCustOpen(true)
+                            }}
+                            className="size-7 text-slate-400 hover:text-emerald-700"
+                            aria-label="Sửa"
+                            title="Sửa"
+                          >
+                            <Pencil className="size-3.5" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(c)}
+                            disabled={isBusy(`customers:${c.id}`)}
+                            className="size-7 text-slate-400 hover:text-rose-600"
+                            aria-label="Xóa"
+                            title="Xóa"
+                          >
+                            <BusyTrash busy={isBusy(`customers:${c.id}`)} />
+                          </Button>
+                        </Can>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -183,7 +248,7 @@ function CustomersPage() {
           <DialogContent className="max-w-md" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Thêm Khách Hàng Mới
+                {editId ? 'Sửa Khách Hàng' : 'Thêm Khách Hàng Mới'}
               </DialogTitle>
             </DialogHeader>
 

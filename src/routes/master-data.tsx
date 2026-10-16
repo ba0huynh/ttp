@@ -101,8 +101,7 @@ export const Route = createFileRoute('/master-data')({
 const TAB_TITLES = {
   models: {
     title: 'Dòng Xe',
-    description:
-      'Hãng xe, dòng xe, đời xe và màu xe (mỗi dòng xe một màu).',
+    description: 'Hãng xe, dòng xe, đời xe và màu xe (mỗi dòng xe một màu).',
   },
   suppliers: {
     title: 'Nhà Cung Cấp',

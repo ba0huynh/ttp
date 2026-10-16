@@ -4,7 +4,10 @@ import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
 import { customers, posBranches } from '#/db/schema.ts'
-import { isDuplicateError } from '#/server/services/common.ts'
+import {
+  isDuplicateError,
+  isReferencedError,
+} from '#/server/services/common.ts'
 import {
   getCustomerStatement,
   getReceivablesSummary,
@@ -120,6 +123,35 @@ export const saveBranchFn = createServerFn({ method: 'POST' })
       return { ok: true }
     } catch (e) {
       if (isDuplicateError(e)) throw new Error('Mã điểm bán đã tồn tại')
+      throw e
+    }
+  })
+
+const IN_USE = 'Đang được dùng ở phiếu bán hoặc phiếu thu nên không thể xóa'
+
+/** Deletes a customer and its branches; refused while sales or receipts use them */
+export const deleteCustomerFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('customers.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    try {
+      await db.delete(customers).where(eq(customers.id, data.id))
+      return { ok: true }
+    } catch (e) {
+      if (isReferencedError(e)) throw new Error(IN_USE)
+      throw e
+    }
+  })
+
+export const deleteBranchFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('customers.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    try {
+      await db.delete(posBranches).where(eq(posBranches.id, data.id))
+      return { ok: true }
+    } catch (e) {
+      if (isReferencedError(e)) throw new Error(IN_USE)
       throw e
     }
   })

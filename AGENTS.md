@@ -342,6 +342,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - **Palette lives in the Tailwind scales.** Pages hardcode `emerald-*` / `slate-*` / `teal-*` hundreds of times, so `@theme` in `src/styles.css` **remaps those scales** instead of rewriting pages: `emerald` = brand jade (primary actions, positive money), `teal` = bluer jade, `slate` = ink-tinted neutrals, plus new `brass-*` (prosperity accent: brand mark, active-nav marker; use sparingly) and `ink-*` (sidebar / auth brand panel). `rose` stays reserved for losses / below-cost / errors; `amber` = warnings; `blue`/`sky` = invoiced stock; `violet`/`purple` = loans. Keep using these semantic families; don't introduce new raw hex colors.
 - **Type**: `Inter` for body text and dense tables (narrow, full Vietnamese support); `Be Vietnam Pro` (`--font-display`) is applied automatically to `h1–h3`, card titles and dialog titles; VIN / engine numbers use the system monospace. Tables use `tabular-nums` globally so VND columns line up. Be Vietnam Pro as body text made tables overflow at 1440px; don't switch the body font back.
+- **Table edge padding**: first and last cell of every table row have 20px (`first:pl-5 last:pr-5` in `table.tsx`) so text lines up with the card title instead of touching the card edge.
 - **Primitives changed**: `Card` has no built-in `py-6 gap-6`; spacing comes from `CardHeader` (`px-5 pt-5 pb-3`, a header with `border-b` becomes a `py-3.5` toolbar) and `CardContent` (`p-5`, with no top padding right after a header). Page-level `p-0` / `py-3 px-4` overrides still win. `AlertDescription` is a block, not a grid, because a grid split inline `<strong>` text onto separate lines. `TableHead` = 11px uppercase muted header on a `bg-muted/60` row. Outline buttons use `bg-card`, not `bg-background`, because the canvas is now off-white.
 - **Shell**: `AppLayout.tsx` has a dark ink sidebar on desktop (`lg+`) and a `Sheet` drawer on mobile (hamburger in the top bar). The top bar shows a group / page breadcrumb plus global quick actions (2-kho lookup, new sales order, new batch). `BrandMark.tsx` = TTP monogram; its SVG gradient id comes from `useId`, because duplicate ids inside the hidden desktop sidebar break the gradient on mobile.
 - **Reusable**: `src/components/layout/StatCard.tsx` exports `StatCard` (neutral KPI tile, colour only in the icon chip) and `PageHeader`. Use them for new pages. Auth pages share `AuthShell.tsx` (split layout with ink brand panel; `showBackLink={false}` on `/login`).
@@ -819,5 +820,20 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 74, 75,... above this line upon completing tasks)_
+### Lesson 74: Edit and Delete for Customers and Branches
+
+- **Customers list** (`/customers`): each row has a pencil (opens the same dialog as "Thêm Khách Hàng", titled "Sửa Khách Hàng", `saveCustomerFn` with `id`) and a trash button; **customer detail** (`/customers/$customerId`): each branch row has a pencil (reopens the inline branch form pre-filled, `saveBranchFn` with `id`, name + address) and a trash button. Both are wrapped in `<Can permission="customers.manage">`.
+- **Server**: `deleteCustomerFn` (also deletes its branches by `ON DELETE CASCADE`) and `deleteBranchFn`; a row used by sales orders or receipts is refused by the foreign keys ("Đang được dùng ở phiếu bán hoặc phiếu thu nên không thể xóa"). `getUsageFn` has entities `customers` and `branches` listing those sales orders and receipts with links, so the delete flow is the usual one (Lesson 51: usage check first, then confirmation, spinner on the button, Lesson 71).
+- **Gotcha**: the branch count on the list is correct after a refetch; a screenshot taken right after adding branches can show the cached count (30 s `staleTime`).
+
+---
+
+### Lesson 75: Branch Form Is a Dialog; 404 Page
+
+- **Branch dialog**: adding and editing a branch on `/customers/$customerId` both use one `Dialog` ("Thêm Điểm Bán Mới" / "Sửa Điểm Bán", fields name + address) instead of the inline form. Prefer a dialog for every create/edit form (see /master-data, /customers).
+- **404**: `src/components/layout/NotFound.tsx` is registered as `defaultNotFoundComponent` in `src/router.tsx` (big "404", "Không tìm thấy trang", buttons "Quay lại" and "Về trang chủ"; HTTP status stays 404). It renders without the app shell, so it also works for logged-out visitors. Pages with their own not-found state (loan / customer / batch detail with an unknown id) keep it.
+
+---
+
+_(Next Agent: Append Lesson 76, 77,... above this line upon completing tasks)_
 

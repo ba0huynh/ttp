@@ -1,5 +1,6 @@
 import { createRouter as createTanStackRouter } from '@tanstack/react-router'
 import { routeTree } from './routeTree.gen'
+import { NotFound } from '#/components/layout/NotFound.tsx'
 
 import { setupRouterSsrQueryIntegration } from '@tanstack/react-router-ssr-query'
 import { getContext } from './integrations/tanstack-query/root-provider'
@@ -11,6 +12,7 @@ export function getRouter() {
     routeTree,
     context,
     scrollRestoration: true,
+    defaultNotFoundComponent: NotFound,
     defaultPreload: 'intent',
     defaultPreloadStaleTime: 30_000,
     defaultPendingMs: 100,

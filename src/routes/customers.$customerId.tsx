@@ -1,10 +1,14 @@
+import { Can } from '#/components/auth/Can.tsx'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
+import { useBusyKeys } from '#/lib/use-busy.ts'
 import {
   useMutation,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowLeft, Plus, Store } from 'lucide-react'
+import { ArrowLeft, Pencil, Plus, Store } from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -17,6 +21,13 @@ import {
   CardHeader,
   CardTitle,
 } from '#/components/ui/card.tsx'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Textarea } from '#/components/ui/textarea.tsx'
 import { Label } from '#/components/ui/label.tsx'
@@ -35,7 +46,7 @@ import {
 import { formatVnd } from '#/lib/business.ts'
 import { currentUserQuery, customerDetailQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
-import { saveBranchFn } from '#/server/fns/customers.ts'
+import { deleteBranchFn, saveBranchFn } from '#/server/fns/customers.ts'
 
 export const Route = createFileRoute('/customers/$customerId')({
   beforeLoad: async ({ context: { queryClient } }) => {
@@ -88,11 +99,54 @@ function CustomerDetailPage() {
   const [newBranchOpen, setNewBranchOpen] = React.useState(false)
   const [branchName, setBranchName] = React.useState('')
   const [branchAddress, setBranchAddress] = React.useState('')
+  const [branchId, setBranchId] = React.useState<number | null>(null)
+  const { isBusy, setBusy } = useBusyKeys()
 
   const openNewBranch = () => {
+    setBranchId(null)
     setBranchName('')
     setBranchAddress('')
     setNewBranchOpen(true)
+  }
+
+  const openEditBranch = (b: {
+    id: number
+    name: string
+    address: string | null
+  }) => {
+    setBranchId(b.id)
+    setBranchName(b.name)
+    setBranchAddress(b.address ?? '')
+    setNewBranchOpen(true)
+  }
+
+  const deleteBranch = useMutation({
+    mutationFn: deleteBranchFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const handleDeleteBranch = async (b: { id: number; name: string }) => {
+    const key = `branches:${b.id}`
+    const ok = await confirmDelete(
+      { entity: 'branches', id: b.id, name: b.name },
+      {
+        title: `Xóa điểm bán "${b.name}"?`,
+        description: 'Hành động này không thể hoàn tác.',
+      },
+      (checking) => setBusy(key, checking),
+    )
+    if (!ok) return
+    setBusy(key, true)
+    try {
+      await deleteBranch.mutateAsync({ data: { id: b.id } })
+    } catch (err: unknown) {
+      await reportDeleteFailure(
+        err,
+        { entity: 'branches', id: b.id, name: b.name },
+        'Không thể xóa điểm bán',
+      )
+    } finally {
+      setBusy(key, false)
+    }
   }
 
   const handleCreateBranch = async (e: React.FormEvent) => {
@@ -100,6 +154,7 @@ function CustomerDetailPage() {
     try {
       await saveBranch.mutateAsync({
         data: {
+          id: branchId ?? undefined,
           customerId: customer.id,
           name: branchName,
           address: branchAddress.trim() || null,
@@ -108,7 +163,7 @@ function CustomerDetailPage() {
       })
       setNewBranchOpen(false)
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi tạo điểm bán')
+      await showErrorDialog(err, 'Lỗi khi lưu điểm bán')
     }
   }
 
@@ -141,71 +196,20 @@ function CustomerDetailPage() {
             </Button>
           </CardHeader>
           <CardContent className="p-0">
-            {newBranchOpen && (
-              <form
-                onSubmit={handleCreateBranch}
-                className="m-4 p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg space-y-2"
-              >
-                <div className="text-xs font-bold text-emerald-950">
-                  Thông Tin Điểm Bán Mới
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Tên Điểm Bán *
-                  </Label>
-                  <Input
-                    required
-                    placeholder="Showroom..."
-                    value={branchName}
-                    onChange={(e) => setBranchName(e.target.value)}
-                    className="h-11 text-sm px-4 rounded-lg"
-                  />
-                </div>
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">Địa Chỉ</Label>
-                  <Textarea
-                    placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
-                    value={branchAddress}
-                    onChange={(e) => setBranchAddress(e.target.value)}
-                    rows={2}
-                    className="min-h-24 rounded-lg px-4 py-3 text-sm"
-                  />
-                </div>
-                <div className="flex justify-end gap-2 pt-1">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => setNewBranchOpen(false)}
-                    className="h-7 text-xs"
-                  >
-                    Hủy
-                  </Button>
-                  <Button
-                    type="submit"
-                    disabled={saveBranch.isPending}
-                    size="sm"
-                    className="h-7 text-xs font-semibold"
-                  >
-                    {saveBranch.isPending ? 'Đang lưu...' : 'Lưu Điểm Bán'}
-                  </Button>
-                </div>
-              </form>
-            )}
-
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tên Điểm Bán</TableHead>
                     <TableHead>Địa Chỉ</TableHead>
+                    <TableHead className="w-24"></TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
                   {branches.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={2}
+                        colSpan={3}
                         className="text-center py-6 text-slate-500"
                       >
                         Chưa có điểm bán. Đơn hàng sẽ ghi trực tiếp cho khách
@@ -220,6 +224,33 @@ function CustomerDetailPage() {
                         </TableCell>
                         <TableCell className="text-slate-500">
                           {b.address}
+                        </TableCell>
+                        <TableCell>
+                          <Can permission="customers.manage">
+                            <div className="flex justify-end gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => openEditBranch(b)}
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Sửa"
+                                title="Sửa"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteBranch(b)}
+                                disabled={isBusy(`branches:${b.id}`)}
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                                aria-label="Xóa"
+                                title="Xóa"
+                              >
+                                <BusyTrash busy={isBusy(`branches:${b.id}`)} />
+                              </Button>
+                            </div>
+                          </Can>
                         </TableCell>
                       </TableRow>
                     ))
@@ -283,6 +314,58 @@ function CustomerDetailPage() {
             <TablePagination pagination={receivablesPg} />
           </CardContent>
         </Card>
+
+        {/* Add / edit branch */}
+        <Dialog open={newBranchOpen} onOpenChange={setNewBranchOpen}>
+          <DialogContent className="max-w-md" aria-describedby={undefined}>
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                {branchId ? 'Sửa Điểm Bán' : 'Thêm Điểm Bán Mới'}
+              </DialogTitle>
+            </DialogHeader>
+            <form onSubmit={handleCreateBranch} className="space-y-3 pt-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Tên Điểm Bán *</Label>
+                <Input
+                  required
+                  placeholder="Showroom..."
+                  value={branchName}
+                  onChange={(e) => setBranchName(e.target.value)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Địa Chỉ</Label>
+                <Textarea
+                  placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+                  value={branchAddress}
+                  onChange={(e) => setBranchAddress(e.target.value)}
+                  rows={2}
+                  className="min-h-24 rounded-lg px-4 py-3 text-sm"
+                />
+              </div>
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setNewBranchOpen(false)}
+                  className="h-8 text-xs"
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={saveBranch.isPending}
+                  size="sm"
+                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+                >
+                  {saveBranch.isPending ? 'Đang lưu...' : 'Lưu Điểm Bán'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
       </div>
     </AppLayout>
   )
