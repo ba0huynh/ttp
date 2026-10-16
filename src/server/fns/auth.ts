@@ -4,7 +4,7 @@ import {
   getCookie,
   setCookie,
 } from '@tanstack/react-start/server'
-import { eq, sql } from 'drizzle-orm'
+import { eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -14,7 +14,6 @@ import {
   authenticate,
   createPasswordResetToken,
   createSession,
-  defaultRoleId,
   deleteSession,
   getUserBySessionToken,
   hashPassword,
@@ -66,45 +65,6 @@ export const logoutFn = createServerFn({ method: 'POST' })
     if (token) await deleteSession(token)
     deleteCookie(SESSION_COOKIE, { path: '/' })
     return { ok: true }
-  })
-
-/**
- * Đăng ký: người đầu tiên trở thành admin & được kích hoạt ngay.
- * Các tài khoản sau ở trạng thái CHỜ DUYỆT (is_active = false) cho tới khi admin kích hoạt.
- */
-export const registerFn = createServerFn({ method: 'POST' })
-  .middleware([loggingMiddleware])
-  .validator(
-    z.object({
-      username: z
-        .string()
-        .trim()
-        .min(3, 'Tên đăng nhập tối thiểu 3 ký tự')
-        .regex(/^[a-zA-Z0-9_.]+$/, 'Chỉ dùng chữ, số, dấu _ và .'),
-      email: z.email('Email không hợp lệ'),
-      fullName: z.string().trim().min(2, 'Nhập họ tên'),
-      password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
-    }),
-  )
-  .handler(async ({ data }) => {
-    const [cnt] = await db.select({ n: sql<number>`count(*)` }).from(users)
-    const isFirst = Number(cnt?.n ?? 0) === 0
-    const [dup] = await db
-      .select({ id: users.id })
-      .from(users)
-      .where(
-        sql`${users.username} = ${data.username} OR ${users.email} = ${data.email}`,
-      )
-    if (dup) throw new Error('Tên đăng nhập hoặc email đã được sử dụng')
-    await db.insert(users).values({
-      username: data.username,
-      email: data.email,
-      fullName: data.fullName,
-      passwordHash: await hashPassword(data.password),
-      roleId: await defaultRoleId(isFirst),
-      isActive: isFirst,
-    })
-    return { pendingApproval: !isFirst }
   })
 
 /**

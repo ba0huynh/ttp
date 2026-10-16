@@ -155,21 +155,3 @@ export async function resetPasswordWithToken(token: string, password: string) {
   })
   return true
 }
-
-/**
- * Role of a self-registered account: an admin role for the very first user,
- * otherwise the non-admin role with the fewest permissions (an admin can
- * change it when approving the account).
- */
-export async function defaultRoleId(isFirst: boolean) {
-  const [row] = await db
-    .select({ id: roles.id })
-    .from(roles)
-    .leftJoin(rolePermissions, eq(rolePermissions.roleId, roles.id))
-    .where(eq(roles.isAdmin, isFirst))
-    .groupBy(roles.id)
-    .orderBy(sql`count(${rolePermissions.permission})`, roles.id)
-    .limit(1)
-  if (!row) throw new Error('Chưa có vai trò nào trong hệ thống')
-  return row.id
-}

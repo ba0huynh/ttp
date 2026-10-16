@@ -29,7 +29,7 @@ const HIGHLIGHTS = [
   },
 ]
 
-/** Branded split frame for every public auth page (login / register / forgot / reset) */
+/** Branded split frame for every public auth page (login / forgot / reset) */
 export function AuthShell({
   title,
   description,

@@ -123,16 +123,6 @@ function LoginPage() {
             )}
             {loading ? 'Đang đăng nhập...' : 'Đăng nhập'}
           </Button>
-
-          <p className="text-center text-sm text-slate-500">
-            Chưa có tài khoản?{' '}
-            <Link
-              to="/register"
-              className="font-semibold text-emerald-700 hover:underline"
-            >
-              Đăng ký
-            </Link>
-          </p>
         </CardContent>
 
         {/* Demo accounts picker */}

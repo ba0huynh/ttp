@@ -19,7 +19,6 @@ import { Route as LoansRouteImport } from './routes/loans'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as MasterDataRouteImport } from './routes/master-data'
 import { Route as ReconcileRouteImport } from './routes/reconcile'
-import { Route as RegisterRouteImport } from './routes/register'
 import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SalesRouteImport } from './routes/sales'
@@ -83,11 +82,6 @@ const MasterDataRoute = MasterDataRouteImport.update({
 const ReconcileRoute = ReconcileRouteImport.update({
   id: '/reconcile',
   path: '/reconcile',
-  getParentRoute: () => rootRouteImport,
-} as any)
-const RegisterRoute = RegisterRouteImport.update({
-  id: '/register',
-  path: '/register',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ReportsRoute = ReportsRouteImport.update({
@@ -172,7 +166,6 @@ export interface FileRoutesByFullPath {
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
-  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
@@ -196,7 +189,6 @@ export interface FileRoutesByTo {
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
-  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
@@ -223,7 +215,6 @@ export interface FileRoutesById {
   '/login': typeof LoginRoute
   '/master-data': typeof MasterDataRoute
   '/reconcile': typeof ReconcileRoute
-  '/register': typeof RegisterRoute
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
@@ -252,7 +243,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/master-data'
     | '/reconcile'
-    | '/register'
     | '/reports'
     | '/reset-password'
     | '/sales'
@@ -276,7 +266,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/master-data'
     | '/reconcile'
-    | '/register'
     | '/reports'
     | '/reset-password'
     | '/settings'
@@ -302,7 +291,6 @@ export interface FileRouteTypes {
     | '/login'
     | '/master-data'
     | '/reconcile'
-    | '/register'
     | '/reports'
     | '/reset-password'
     | '/sales'
@@ -330,7 +318,6 @@ export interface RootRouteChildren {
   LoginRoute: typeof LoginRoute
   MasterDataRoute: typeof MasterDataRoute
   ReconcileRoute: typeof ReconcileRoute
-  RegisterRoute: typeof RegisterRoute
   ReportsRoute: typeof ReportsRoute
   ResetPasswordRoute: typeof ResetPasswordRoute
   SalesRoute: typeof SalesRouteWithChildren
@@ -407,13 +394,6 @@ declare module '@tanstack/react-router' {
       path: '/reconcile'
       fullPath: '/reconcile'
       preLoaderRoute: typeof ReconcileRouteImport
-      parentRoute: typeof rootRouteImport
-    }
-    '/register': {
-      id: '/register'
-      path: '/register'
-      fullPath: '/register'
-      preLoaderRoute: typeof RegisterRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/reports': {
@@ -583,7 +563,6 @@ const rootRouteChildren: RootRouteChildren = {
   LoginRoute: LoginRoute,
   MasterDataRoute: MasterDataRoute,
   ReconcileRoute: ReconcileRoute,
-  RegisterRoute: RegisterRoute,
   ReportsRoute: ReportsRoute,
   ResetPasswordRoute: ResetPasswordRoute,
   SalesRoute: SalesRouteWithChildren,

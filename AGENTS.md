@@ -743,5 +743,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 65, 66,... above this line upon completing tasks)_
+### Lesson 65: No Self-Registration (admins create accounts)
+
+- The public `/register` page, `registerFn` and `defaultRoleId` were removed, and the login page no longer links to sign-up. Accounts are created only by a user with `users.manage` in **/settings → Quản Lý Người Dùng**. A fresh database gets its first admin from `npm run seed` (`admin` / `Admin@123`), so nothing depends on "the first registered user becomes admin" any more. This supersedes the registration notes in Lessons 17 and 46. `/forgot-password` and `/reset-password` remain.
+- **Not changed**: the "Tài khoản dùng thử" shortcuts on `/login` still list the old demo roles (only `admin` exists after Lesson 55).
+
+---
+
+_(Next Agent: Append Lesson 66, 67,... above this line upon completing tasks)_
 
