@@ -7,7 +7,9 @@ import {
   bankStatements,
   companyBankAccounts,
   customers,
+  deliveryNotes,
   importBatches,
+  invoices,
   loanContracts,
   loanRepayments,
   paymentVouchers,
@@ -32,6 +34,7 @@ export const USAGE_ENTITIES = [
   'roles',
   'vehicles',
   'loans',
+  'users',
 ] as const
 
 export interface UsageItem {
@@ -242,6 +245,122 @@ async function usageOf(
       ]
     }
 
+    case 'users': {
+      const [
+        batches,
+        orders,
+        deliveries,
+        invoiceRows,
+        receipts,
+        payments,
+        statements,
+      ] = await Promise.all([
+        db
+          .select({
+            id: importBatches.id,
+            importDate: importBatches.importDate,
+          })
+          .from(importBatches)
+          .where(eq(importBatches.createdBy, id)),
+        db
+          .select({
+            id: salesOrders.id,
+            date: salesOrders.orderDate,
+            customer: customers.name,
+          })
+          .from(salesOrders)
+          .innerJoin(customers, eq(customers.id, salesOrders.customerId))
+          .where(eq(salesOrders.createdBy, id)),
+        db
+          .select({
+            orderId: deliveryNotes.salesOrderId,
+            number: deliveryNotes.noteNumber,
+            date: deliveryNotes.deliveryDate,
+          })
+          .from(deliveryNotes)
+          .where(eq(deliveryNotes.createdBy, id)),
+        db
+          .select({
+            orderId: invoices.salesOrderId,
+            number: invoices.invoiceNumber,
+            date: invoices.invoiceDate,
+          })
+          .from(invoices)
+          .where(eq(invoices.createdBy, id)),
+        db
+          .select({
+            date: receiptVouchers.receiptDate,
+            amount: receiptVouchers.amount,
+            customer: customers.name,
+          })
+          .from(receiptVouchers)
+          .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+          .where(eq(receiptVouchers.createdBy, id)),
+        db
+          .select({
+            date: paymentVouchers.paymentDate,
+            amount: paymentVouchers.amount,
+          })
+          .from(paymentVouchers)
+          .where(eq(paymentVouchers.createdBy, id)),
+        db
+          .select({ id: bankStatements.id, fileName: bankStatements.fileName })
+          .from(bankStatements)
+          .where(eq(bankStatements.createdBy, id)),
+      ])
+      return [
+        group(
+          'Lô nhập do tài khoản này tạo',
+          batches.map((b) => ({
+            label: batchLabel(b),
+            href: `/batches/${b.id}`,
+          })),
+        ),
+        group(
+          'Phiếu bán do tài khoản này lập',
+          orders.map((o) => ({
+            label: `Phiếu bán #${o.id} — ${o.customer} — ${formatDate(o.date)}`,
+            href: `/sales/${o.id}`,
+          })),
+        ),
+        group(
+          'Phiếu giao xe do tài khoản này lập',
+          deliveries.map((d) => ({
+            label: `${d.number} — ${formatDate(d.date)}`,
+            href: `/sales/${d.orderId}`,
+          })),
+        ),
+        group(
+          'Hóa đơn do tài khoản này xuất',
+          invoiceRows.map((i) => ({
+            label: `${i.number} — ${formatDate(i.date)}`,
+            href: `/sales/${i.orderId}`,
+          })),
+        ),
+        group(
+          'Phiếu thu do tài khoản này lập',
+          receipts.map((r) => ({
+            label: `${formatDate(r.date)} — ${r.customer} — ${formatVnd(num(r.amount))}`,
+            href: '/finance?tab=receipts',
+          })),
+        ),
+        group(
+          'Phiếu chi do tài khoản này lập',
+          payments.map((p) => ({
+            label: `${formatDate(p.date)} — ${formatVnd(num(p.amount))}`,
+            href: '/finance?tab=payments',
+          })),
+        ),
+        group(
+          'Sao kê do tài khoản này nhập',
+          statements.map((st) => ({
+            label: st.fileName ?? `Sao kê #${st.id}`,
+            href: '/reconcile',
+          })),
+        ),
+      ]
+    }
+
     case 'loans': {
       const [batches, repayments] = await Promise.all([
         db
@@ -314,7 +433,13 @@ async function usageOf(
  */
 export const getUsageFn = createServerFn({ method: 'GET' })
   .middleware([
-    requirePermission('master-data.manage', 'roles.manage', 'batches.manage'),
+    requirePermission(
+      'master-data.manage',
+      'roles.manage',
+      'batches.manage',
+      'loans.manage',
+      'users.manage',
+    ),
   ])
   .validator(z.object({ entity: z.enum(USAGE_ENTITIES), id: z.number().int() }))
   .handler(async ({ data }) => {

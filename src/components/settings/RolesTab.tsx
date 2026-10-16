@@ -20,6 +20,7 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { SearchBox } from '#/components/ui/search-box.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { Textarea } from '#/components/ui/textarea.tsx'
 import {
@@ -44,7 +45,15 @@ export interface RoleRow {
 }
 
 /** Settings tab: create roles and choose which permissions each role holds */
-export function RolesTab({ roles }: { roles: RoleRow[] }) {
+export function RolesTab({
+  roles,
+  search,
+  onSearchChange,
+}: {
+  roles: RoleRow[]
+  search: string
+  onSearchChange: (value: string) => void
+}) {
   const queryClient = useQueryClient()
   // Roles change what users may do, and user lists show role names
   const refresh = () => queryClient.invalidateQueries()
@@ -136,14 +145,22 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
           <CardTitle className="text-sm font-bold text-slate-800">
             Danh Sách Vai Trò ({roles.length})
           </CardTitle>
-          <Button
-            size="sm"
-            onClick={openNew}
-            className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
-          >
-            <Plus className="size-3.5" />
-            Thêm Vai Trò
-          </Button>
+          <div className="flex items-center gap-2">
+            <SearchBox
+              value={search}
+              onChange={onSearchChange}
+              placeholder="Tìm tên hoặc mô tả vai trò..."
+              className="w-72"
+            />
+            <Button
+              size="sm"
+              onClick={openNew}
+              className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+            >
+              <Plus className="size-3.5" />
+              Thêm Vai Trò
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="p-0">
           <Table>
@@ -157,6 +174,16 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
               </TableRow>
             </TableHeader>
             <TableBody className="text-xs">
+              {roles.length === 0 && (
+                <TableRow>
+                  <TableCell
+                    colSpan={5}
+                    className="py-8 text-center text-slate-500"
+                  >
+                    Không tìm thấy vai trò nào
+                  </TableCell>
+                </TableRow>
+              )}
               {roles.map((r) => (
                 <TableRow key={r.id}>
                   <TableCell className="font-medium text-slate-900">

@@ -41,6 +41,7 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { SearchBox } from '#/components/ui/search-box.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   SearchSelect,
@@ -67,6 +68,8 @@ import {
 } from '#/components/ui/tabs.tsx'
 import { masterDataQuery, currentUserQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
+import { matchesSearch } from '#/lib/text.ts'
+import { useUrlText } from '#/lib/use-url-text.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import {
   deleteMasterDataFn,
@@ -83,6 +86,8 @@ export const Route = createFileRoute('/master-data')({
     tab: z
       .enum(['models', 'suppliers', 'banks', 'accounts', 'colors'])
       .catch('models'),
+    // search text of the active tab (dropped when the tab changes)
+    q: z.string().optional().catch(undefined),
   }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
@@ -98,14 +103,48 @@ export const Route = createFileRoute('/master-data')({
 
 function MasterDataPage() {
   const { user } = Route.useRouteContext()
-  const { tab } = Route.useSearch()
+  const { tab, q } = Route.useSearch()
   const navigate = Route.useNavigate()
   const { data: master } = useSuspenseQuery(masterDataQuery())
-  const modelsPg = usePagination(master.models)
-  const suppliersPg = usePagination(master.suppliers)
-  const banksPg = usePagination(master.banks)
-  const accountsPg = usePagination(master.bankAccounts)
-  const colorsPg = usePagination(master.colors)
+  // Typing filters at once; the URL (?q=) follows when typing pauses
+  const [search, setSearch] = useUrlText(q ?? '', (v) =>
+    navigate({
+      search: (prev) => ({ ...prev, q: v || undefined }),
+      replace: true,
+    }),
+  )
+  const modelsPg = usePagination(
+    master.models.filter((m) => matchesSearch(search, m.name)),
+    search,
+  )
+  const suppliersPg = usePagination(
+    master.suppliers.filter((x) => matchesSearch(search, x.name)),
+    search,
+  )
+  const banksPg = usePagination(
+    master.banks.filter((b) =>
+      matchesSearch(search, b.name, b.code, b.shortName),
+    ),
+    search,
+  )
+  const accountsPg = usePagination(
+    master.bankAccounts.filter((a) =>
+      matchesSearch(
+        search,
+        a.accountName,
+        a.accountNumber,
+        a.bankName,
+        a.bankCode,
+        a.bankShortName,
+        a.branch,
+      ),
+    ),
+    search,
+  )
+  const colorsPg = usePagination(
+    master.colors.filter((c) => matchesSearch(search, c.name)),
+    search,
+  )
   const queryClient = useQueryClient()
   // Danh mục được dùng ở lô nhập, vay, thu chi... nên làm mới toàn bộ cache
   const refresh = () => queryClient.invalidateQueries()
@@ -347,6 +386,12 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Dòng Xe Máy Nhập Khẩu
                 </CardTitle>
+                <SearchBox
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Tìm dòng xe..."
+                  className="ml-auto mr-3 w-72"
+                />
                 <Can permission="master-data.manage">
                   <Button
                     size="sm"
@@ -424,6 +469,12 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Nhà Cung Cấp
                 </CardTitle>
+                <SearchBox
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Tìm nhà cung cấp..."
+                  className="ml-auto mr-3 w-72"
+                />
                 <Can permission="master-data.manage">
                   <Button
                     size="sm"
@@ -501,6 +552,12 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Ngân Hàng Cho Vay & Tài Khoản Công Ty
                 </CardTitle>
+                <SearchBox
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Tìm tên, mã hoặc tên viết tắt ngân hàng..."
+                  className="ml-auto mr-3 w-72"
+                />
                 <Can permission="master-data.manage">
                   <Button
                     size="sm"
@@ -580,6 +637,12 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Danh Sách Tài Khoản Ngân Hàng Của Công Ty
                 </CardTitle>
+                <SearchBox
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Tìm tên tài khoản, số tài khoản, ngân hàng..."
+                  className="ml-auto mr-3 w-72"
+                />
                 <Can permission="master-data.manage">
                   <Button
                     size="sm"
@@ -680,6 +743,12 @@ function MasterDataPage() {
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Bảng Màu Sắc Xe Chuẩn Hóa
                 </CardTitle>
+                <SearchBox
+                  value={search}
+                  onChange={setSearch}
+                  placeholder="Tìm màu sắc..."
+                  className="ml-auto mr-3 w-72"
+                />
                 <Can permission="master-data.manage">
                   <Button
                     size="sm"

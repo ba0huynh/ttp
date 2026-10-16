@@ -694,5 +694,28 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 58, 59,... above this line upon completing tasks)_
+### Lesson 58: Deleting User Accounts (never the last admin)
+
+- **UI**: each row of the users table in `/settings` has a trash button (next to "Chỉnh sửa"). Flow: (1) if the account is the only active user whose role is an admin role, an error dialog says "Phải có ít nhất 1 tài khoản có vai trò Quản trị…" and nothing is deleted or confirmed; (2) otherwise `confirmDelete` looks up what the account created (`getUsageFn` entity `users`: batches, sales orders, delivery notes, invoices, receipts, payments, statements) and lists them with links if any; (3) if it created nothing, the normal confirmation is shown. Deleting your own account (allowed when another active admin exists) warns that you will be logged out.
+- **Server**: `deleteUserFn` (`users.manage`, `src/server/fns/system.ts`) re-checks the last-admin rule (`LAST_ADMIN_MESSAGE`) and turns a foreign-key refusal (`isReferencedError`) into "Tài khoản đã tạo dữ liệu nên không thể xóa, hãy khóa tài khoản thay vì xóa". Sessions and password-reset tokens are removed by their `ON DELETE CASCADE`.
+- **Why a user with history cannot be deleted**: `created_by` columns reference `users.id` without cascade, so the records keep their author. Use the "Trạng Thái Kích Hoạt" switch (lock) for accounts that did real work.
+
+---
+
+### Lesson 59: Search Box on List Cards (`SearchBox`, `matchesSearch`)
+
+- **Pattern**: a list card gets a `SearchBox` (`src/components/ui/search-box.tsx`) in its header next to the add button. The text lives in the URL as `?q=` through `useUrlText` (Lesson 52: the list filters on every keystroke, the URL follows when typing pauses), the list is filtered with `matchesSearch(query, ...fields)` from `src/lib/text.ts`, and the filtered array goes into `usePagination(filtered, search)` so the table returns to page 1. Show a "Không tìm thấy ..." row when nothing matches.
+- **Matching**: every typed word must appear in one of the fields, ignoring case and Vietnamese diacritics ("ke toan" finds "Kế toán", "nguyen hung" finds "Nguyễn Văn Hùng"). `foldText` is the shared normaliser.
+- **Done**: `/settings` users tab (full name, username, email) and roles tab (name, description). `?q=` belongs to the active tab and is dropped when the tab changes, because the tab handler replaces the whole search object. `/inventory` has its own search (Lesson 52). Add the same to other long lists (customers, batches, sales, loans, master data) when they need it.
+
+---
+
+### Lesson 60: Search on Every Master Data Tab
+
+- **What**: each of the five `/master-data` tabs has a `SearchBox` in its card header (Lesson 59 pattern: `?q=` via `useUrlText`, `matchesSearch`, filtered array into `usePagination(filtered, search)`). Searched fields: models / suppliers / colors by name; banks by **name, code and shortName** (the search-only columns from Lesson 56); company bank accounts by account name, account number, bank name, bank code, bank short name and branch.
+- **Behaviour**: one shared `search` value; switching tabs replaces the whole search object, so `q` is cleared and every tab starts unfiltered.
+
+---
+
+_(Next Agent: Append Lesson 61, 62,... above this line upon completing tasks)_
 

@@ -533,7 +533,7 @@ function NewBatchPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="text-xs bg-slate-50">
-                        <TableHead className="w-36">Số Khung (VIN) *</TableHead>
+                        <TableHead className="w-36">Số Khung *</TableHead>
                         <TableHead className="w-32">Số Máy *</TableHead>
                         <TableHead>Dòng xe</TableHead>
                         <TableHead className="w-28">Màu xe</TableHead>

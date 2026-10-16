@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, eq, sql } from 'drizzle-orm'
+import { and, asc, eq, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -13,7 +13,10 @@ import {
 import { ALL_PERMISSIONS } from '#/lib/permissions.ts'
 import type { PermissionKey } from '#/lib/permissions.ts'
 import { hashPassword } from '#/server/services/auth.ts'
-import { isDuplicateError } from '#/server/services/common.ts'
+import {
+  isDuplicateError,
+  isReferencedError,
+} from '#/server/services/common.ts'
 import { authMiddleware, requirePermission } from './middleware.ts'
 
 /* ------------------------------ Company Profile ------------------------------ */
@@ -212,5 +215,50 @@ export const deleteRoleFn = createServerFn({ method: 'POST' })
     if (Number(role.userCount) > 0)
       throw new Error('Vai trò đang được gán cho người dùng, không thể xóa')
     await db.delete(roles).where(eq(roles.id, data.id))
+    return { ok: true }
+  })
+
+/** Error shown when deleting the last administrator is attempted */
+export const LAST_ADMIN_MESSAGE =
+  'Phải có ít nhất 1 tài khoản có vai trò Quản trị. Hãy gán vai trò Quản trị cho người khác trước khi xóa tài khoản này.'
+
+/**
+ * Deletes a user account. The last active administrator can never be deleted,
+ * and an account that created records (batches, orders, vouchers, ...) is
+ * refused by the database foreign keys; the UI then lists those records.
+ */
+export const deleteUserFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('users.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    const [target] = await db
+      .select({ isAdmin: roles.isAdmin })
+      .from(users)
+      .innerJoin(roles, eq(roles.id, users.roleId))
+      .where(eq(users.id, data.id))
+    if (!target) throw new Error('Không tìm thấy tài khoản')
+    if (target.isAdmin) {
+      const [others] = await db
+        .select({ n: sql<number>`count(*)` })
+        .from(users)
+        .innerJoin(roles, eq(roles.id, users.roleId))
+        .where(
+          and(
+            eq(roles.isAdmin, true),
+            eq(users.isActive, true),
+            ne(users.id, data.id),
+          ),
+        )
+      if (Number(others?.n ?? 0) === 0) throw new Error(LAST_ADMIN_MESSAGE)
+    }
+    try {
+      await db.delete(users).where(eq(users.id, data.id))
+    } catch (e) {
+      if (isReferencedError(e))
+        throw new Error(
+          'Tài khoản đã tạo dữ liệu nên không thể xóa, hãy khóa tài khoản thay vì xóa',
+        )
+      throw e
+    }
     return { ok: true }
   })

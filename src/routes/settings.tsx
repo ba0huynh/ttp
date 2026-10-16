@@ -5,14 +5,18 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Building2, Lock, Plus, ShieldCheck, Users } from 'lucide-react'
+import { Building2, Lock, Plus, ShieldCheck, Trash2, Users } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { RolesTab } from '#/components/settings/RolesTab.tsx'
+import { SearchBox } from '#/components/ui/search-box.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
-import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  alertDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -59,6 +63,9 @@ import {
 import { parseFieldErrors } from '#/lib/form-errors.ts'
 import type { FieldErrors } from '#/lib/form-errors.ts'
 import { hasPermission } from '#/lib/permissions.ts'
+import { matchesSearch } from '#/lib/text.ts'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
+import { useUrlText } from '#/lib/use-url-text.ts'
 import { changePasswordFn } from '#/server/fns/auth.ts'
 import {
   companyProfileQuery,
@@ -66,12 +73,19 @@ import {
   rolesQuery,
   usersQuery,
 } from '#/lib/queries.ts'
-import { saveUserFn, updateCompanyProfileFn } from '#/server/fns/system.ts'
+import {
+  LAST_ADMIN_MESSAGE,
+  deleteUserFn,
+  saveUserFn,
+  updateCompanyProfileFn,
+} from '#/server/fns/system.ts'
 
 export const Route = createFileRoute('/settings')({
   // The active tab lives in the URL (?tab=...) so a reload stays on it
   validateSearch: z.object({
     tab: z.enum(['company', 'users', 'roles', 'password']).catch('company'),
+    // search text of the users / roles list (cleared when the tab changes)
+    q: z.string().optional().catch(undefined),
   }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
@@ -92,7 +106,7 @@ export const Route = createFileRoute('/settings')({
 
 function SettingsPage() {
   const { user } = Route.useRouteContext()
-  const { tab } = Route.useSearch()
+  const { tab, q } = Route.useSearch()
   const navigate = Route.useNavigate()
   const { data: company } = useSuspenseQuery(companyProfileQuery())
   const canCompany = hasPermission(user, 'company.manage')
@@ -111,7 +125,20 @@ function SettingsPage() {
     ...rolesQuery(),
     enabled: canUsers || canRoles,
   })
-  const usersPg = usePagination(usersList)
+  // Typing filters at once; the URL (?q=) follows when typing pauses
+  const [search, setSearch] = useUrlText(q ?? '', (v) =>
+    navigate({
+      search: (prev) => ({ ...prev, q: v || undefined }),
+      replace: true,
+    }),
+  )
+  const filteredUsers = usersList.filter((u) =>
+    matchesSearch(search, u.fullName, u.username, u.email),
+  )
+  const filteredRoles = rolesList.filter((r) =>
+    matchesSearch(search, r.name, r.description),
+  )
+  const usersPg = usePagination(filteredUsers, search)
   const queryClient = useQueryClient()
   const updateCompany = useMutation({
     mutationFn: updateCompanyProfileFn,
@@ -121,6 +148,10 @@ function SettingsPage() {
       }),
   })
   const changePassword = useMutation({ mutationFn: changePasswordFn })
+  const deleteUser = useMutation({
+    mutationFn: deleteUserFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
   const saveUser = useMutation({
     mutationFn: saveUserFn,
     onSuccess: () =>
@@ -222,6 +253,50 @@ function SettingsPage() {
       setNewPass('')
     } catch (err: unknown) {
       setPassError((err as Error).message || 'Lỗi khi đổi mật khẩu')
+    }
+  }
+
+  const adminRoleIds = new Set(
+    rolesList.filter((r) => r.isAdmin).map((r) => r.id),
+  )
+
+  const handleDeleteUser = async (u: {
+    id: number
+    username: string
+    roleId: number
+  }) => {
+    // The last active administrator is never deleted: say so before asking
+    const otherAdmins = usersList.filter(
+      (x) => x.id !== u.id && x.isActive && adminRoleIds.has(x.roleId),
+    )
+    if (adminRoleIds.has(u.roleId) && otherAdmins.length === 0) {
+      await alertDialog({
+        title: 'Không thể xóa tài khoản',
+        description: LAST_ADMIN_MESSAGE,
+        destructive: true,
+        buttonLabel: 'Đã hiểu',
+      })
+      return
+    }
+    const ok = await confirmDelete(
+      { entity: 'users', id: u.id, name: u.username },
+      {
+        title: `Xóa tài khoản "${u.username}"?`,
+        description:
+          u.id === user.id
+            ? 'Đây là tài khoản của bạn: bạn sẽ bị đăng xuất. Hành động này không thể hoàn tác.'
+            : 'Hành động này không thể hoàn tác.',
+      },
+    )
+    if (!ok) return
+    try {
+      await deleteUser.mutateAsync({ data: { id: u.id } })
+    } catch (err: unknown) {
+      await reportDeleteFailure(
+        err,
+        { entity: 'users', id: u.id, name: u.username },
+        'Không thể xóa tài khoản',
+      )
     }
   }
 
@@ -444,24 +519,32 @@ function SettingsPage() {
                   <CardTitle className="text-sm font-bold text-slate-800">
                     Danh Sách Tài Khoản Nhân Viên Nội Bộ
                   </CardTitle>
-                  <Button
-                    size="sm"
-                    onClick={() => {
-                      setEditId(undefined)
-                      setUUsername('')
-                      setUEmail('')
-                      setUFullName('')
-                      setUPhone('')
-                      setURoleId(rolesList[0]?.id ?? null)
-                      setUActive(true)
-                      setUPassword('')
-                      setUserModalOpen(true)
-                    }}
-                    className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
-                  >
-                    <Plus className="size-3.5" />
-                    Thêm Người Dùng
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <SearchBox
+                      value={search}
+                      onChange={setSearch}
+                      placeholder="Tìm tên, tên đăng nhập, email..."
+                      className="w-72"
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        setEditId(undefined)
+                        setUUsername('')
+                        setUEmail('')
+                        setUFullName('')
+                        setUPhone('')
+                        setURoleId(rolesList[0]?.id ?? null)
+                        setUActive(true)
+                        setUPassword('')
+                        setUserModalOpen(true)
+                      }}
+                      className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
+                    >
+                      <Plus className="size-3.5" />
+                      Thêm Người Dùng
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="p-0">
                   <Table>
@@ -478,6 +561,16 @@ function SettingsPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="text-xs">
+                      {usersPg.total === 0 && (
+                        <TableRow>
+                          <TableCell
+                            colSpan={6}
+                            className="py-8 text-center text-slate-500"
+                          >
+                            Không tìm thấy người dùng nào
+                          </TableCell>
+                        </TableRow>
+                      )}
                       {usersPg.pageItems.map((u: any) => (
                         <TableRow key={u.id}>
                           <TableCell className="font-medium text-slate-900">
@@ -525,6 +618,16 @@ function SettingsPage() {
                             >
                               Chỉnh sửa
                             </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDeleteUser(u)}
+                              className="size-7 text-slate-400 hover:text-rose-600"
+                              aria-label="Xóa tài khoản"
+                              title="Xóa tài khoản"
+                            >
+                              <Trash2 className="size-3.5" />
+                            </Button>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -539,7 +642,11 @@ function SettingsPage() {
           {/* Roles & permissions */}
           {canRoles && (
             <TabsContent value="roles">
-              <RolesTab roles={rolesList} />
+              <RolesTab
+                roles={filteredRoles}
+                search={search}
+                onSearchChange={setSearch}
+              />
             </TabsContent>
           )}
 
