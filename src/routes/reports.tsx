@@ -91,8 +91,8 @@ function ReportsPage() {
               Báo Cáo & Phân Tích Kinh Doanh
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Doanh thu quy về <strong>Khách hàng Mẹ</strong> &bull; Lợi nhuận
-              tính trên Giá vốn đã phân bổ chi phí đầy đủ.
+              Doanh thu quy về <strong>khách hàng</strong> &bull; Lợi nhuận tính
+              trên Giá vốn đã phân bổ chi phí đầy đủ.
             </p>
           </div>
 
@@ -195,7 +195,7 @@ function ReportsPage() {
           <Card className="border-slate-200 shadow-xs">
             <CardHeader className="py-3 px-4 border-b border-slate-100">
               <CardTitle className="text-sm font-bold text-slate-800">
-                1. Doanh Thu Quy Về Khách Hàng Mẹ
+                1. Doanh Thu Quy Về Khách Hàng
               </CardTitle>
               <CardDescription className="text-xs">
                 Quy tắc nghiệp vụ: Tổng hợp toàn bộ điểm bán con về Pháp nhân
@@ -206,7 +206,7 @@ function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
-                    <TableHead>Khách Hàng Mẹ</TableHead>
+                    <TableHead>Khách Hàng</TableHead>
                     <TableHead className="text-center">Số Xe</TableHead>
                     <TableHead className="text-right">Doanh Thu</TableHead>
                     <TableHead className="text-right">Lợi Nhuận</TableHead>

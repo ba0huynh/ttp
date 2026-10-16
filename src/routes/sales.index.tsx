@@ -88,7 +88,7 @@ function SalesPage() {
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
                     <TableHead>Ngày Bán</TableHead>
-                    <TableHead>Khách Hàng Mẹ</TableHead>
+                    <TableHead>Khách Hàng</TableHead>
                     <TableHead>Điểm Bán Nhận Xe</TableHead>
                     <TableHead className="text-right">Tổng Tiền</TableHead>
                     <TableHead className="text-center">Số Xe</TableHead>

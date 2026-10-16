@@ -108,6 +108,7 @@ export const saveBranchFn = createServerFn({ method: 'POST' })
       id: z.number().optional(),
       customerId: z.number(),
       name: z.string().trim().min(1, 'Nhập tên điểm bán'),
+      address: opt,
       contactPerson: opt,
       isActive: z.boolean(),
     }),

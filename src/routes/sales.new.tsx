@@ -350,7 +350,7 @@ function NewSalesOrderPage() {
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">
-                    Khách Hàng Mẹ * (Ghi nhận Doanh thu)
+                    Khách Hàng * (Ghi nhận Doanh thu)
                   </Label>
                   <SearchSelect
                     className="h-11 w-full text-sm rounded-lg"
@@ -374,7 +374,7 @@ function NewSalesOrderPage() {
 
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">
-                    Điểm Bán Trực Thuộc Nhận Xe (Ghi nhận Công Nợ & HĐ)
+                    Điểm Bán Nhận Xe (Ghi nhận Công Nợ & HĐ)
                   </Label>
                   <SearchSelect
                     className="h-11 w-full text-sm rounded-lg"
@@ -385,7 +385,7 @@ function NewSalesOrderPage() {
                     }
                   >
                     <SearchSelectItem value="none" className="text-xs">
-                      Trực tiếp Pháp nhân Khách hàng Mẹ
+                      Trực tiếp khách hàng (không qua điểm bán)
                     </SearchSelectItem>
                     {branches.map((b) => (
                       <SearchSelectItem

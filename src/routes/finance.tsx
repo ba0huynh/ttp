@@ -257,14 +257,14 @@ function FinancePage() {
                   Công Nợ Phải Thu Theo Pháp Nhân Nhận Xe
                 </CardTitle>
                 <CardDescription className="text-xs">
-                  Ghi nhận nợ gắn liền với từng Showroom/Điểm bán trực thuộc
+                  Ghi nhận nợ gắn liền với từng điểm bán
                 </CardDescription>
               </CardHeader>
               <CardContent className="p-0">
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Khách Hàng Mẹ</TableHead>
+                      <TableHead>Khách Hàng</TableHead>
                       <TableHead>Pháp Nhân Điểm Bán Chịu Nợ</TableHead>
                       <TableHead className="text-right">Tổng Mua Xe</TableHead>
                       <TableHead className="text-right">
@@ -471,7 +471,7 @@ function FinancePage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Khách Hàng Mẹ *</Label>
+                <Label className="text-xs font-semibold">Khách Hàng *</Label>
                 <SearchSelect
                   className="h-11 w-full text-sm rounded-lg"
                   value={String(receiptCustomerId)}

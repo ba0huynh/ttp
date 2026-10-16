@@ -93,12 +93,11 @@ function CustomersPage() {
         <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
           <div>
             <h1 className="text-2xl font-bold tracking-tight text-slate-900">
-              Khách Hàng Mẹ & Điểm Bán Trực Thuộc
+              Khách Hàng & Điểm Bán
             </h1>
             <p className="text-xs text-slate-500 mt-1">
-              Doanh thu hợp nhất quy về <strong>Khách hàng Mẹ</strong> &bull;
-              Hóa đơn và Công nợ ghi theo <strong>Pháp nhân Điểm bán</strong>{' '}
-              nhận xe.
+              Doanh thu tính theo <strong>khách hàng</strong> &bull; Hóa đơn và
+              công nợ ghi theo <strong>điểm bán</strong> nhận xe.
             </p>
           </div>
           <Can permission="customers.manage">
@@ -111,7 +110,7 @@ function CustomersPage() {
               className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
             >
               <Plus className="size-4" />
-              Thêm Khách Hàng Mẹ
+              Thêm Khách Hàng
             </Button>
           </Can>
         </div>
@@ -120,7 +119,7 @@ function CustomersPage() {
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold text-slate-800">
-              Danh Sách Khách Hàng Đối Tác ({customers.length})
+              Danh Sách Khách Hàng ({customers.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -128,10 +127,8 @@ function CustomersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead>Tên Doanh Nghiệp (Khách Mẹ)</TableHead>
-                    <TableHead className="text-center">
-                      Số Điểm Bán Con
-                    </TableHead>
+                    <TableHead>Tên Khách Hàng</TableHead>
+                    <TableHead className="text-center">Số Điểm Bán</TableHead>
                     <TableHead className="text-right">Còn Nợ</TableHead>
                     <TableHead className="text-center">Thao tác</TableHead>
                   </TableRow>
@@ -186,14 +183,14 @@ function CustomersPage() {
           <DialogContent className="max-w-md" aria-describedby={undefined}>
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                Thêm Khách Hàng Mẹ Mới
+                Thêm Khách Hàng Mới
               </DialogTitle>
             </DialogHeader>
 
             <form onSubmit={handleCreateCustomer} className="space-y-3 pt-2">
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
-                  Tên Doanh Nghiệp (Khách Mẹ) *
+                  Tên Khách Hàng *
                 </Label>
                 <Input
                   required

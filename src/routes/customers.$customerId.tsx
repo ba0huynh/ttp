@@ -18,6 +18,7 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   Table,
@@ -86,9 +87,11 @@ function CustomerDetailPage() {
 
   const [newBranchOpen, setNewBranchOpen] = React.useState(false)
   const [branchName, setBranchName] = React.useState('')
+  const [branchAddress, setBranchAddress] = React.useState('')
 
   const openNewBranch = () => {
     setBranchName('')
+    setBranchAddress('')
     setNewBranchOpen(true)
   }
 
@@ -99,6 +102,7 @@ function CustomerDetailPage() {
         data: {
           customerId: customer.id,
           name: branchName,
+          address: branchAddress.trim() || null,
           isActive: true,
         },
       })
@@ -129,11 +133,11 @@ function CustomerDetailPage() {
           <CardHeader className="flex flex-row items-center justify-between border-b">
             <CardTitle className="text-sm font-bold text-slate-800 flex items-center gap-1.5">
               <Store className="size-4 text-emerald-700" />
-              Các Điểm Bán / Showroom Trực Thuộc ({branches.length})
+              Danh Sách Điểm Bán ({branches.length})
             </CardTitle>
             <Button size="sm" onClick={openNewBranch} className="h-8 text-xs">
               <Plus className="size-3.5" />
-              Thêm điểm bán mới
+              Thêm Điểm Bán
             </Button>
           </CardHeader>
           <CardContent className="p-0">
@@ -143,7 +147,7 @@ function CustomerDetailPage() {
                 className="m-4 p-3 bg-emerald-50/70 border border-emerald-200 rounded-lg space-y-2"
               >
                 <div className="text-xs font-bold text-emerald-950">
-                  Nhập Thông Tin Điểm Bán Trực Thuộc Mới:
+                  Thông Tin Điểm Bán Mới
                 </div>
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">
@@ -155,6 +159,16 @@ function CustomerDetailPage() {
                     value={branchName}
                     onChange={(e) => setBranchName(e.target.value)}
                     className="h-11 text-sm px-4 rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Địa Chỉ</Label>
+                  <Textarea
+                    placeholder="Số nhà, đường, phường/xã, quận/huyện, tỉnh/thành phố"
+                    value={branchAddress}
+                    onChange={(e) => setBranchAddress(e.target.value)}
+                    rows={2}
+                    className="min-h-24 rounded-lg px-4 py-3 text-sm"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">
@@ -184,17 +198,18 @@ function CustomerDetailPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Tên Điểm Bán</TableHead>
+                    <TableHead>Địa Chỉ</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
                   {branches.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={1}
+                        colSpan={2}
                         className="text-center py-6 text-slate-500"
                       >
-                        Chưa có điểm bán trực thuộc. Đơn hàng sẽ ghi trực tiếp
-                        cho Khách hàng Mẹ.
+                        Chưa có điểm bán. Đơn hàng sẽ ghi trực tiếp cho khách
+                        hàng.
                       </TableCell>
                     </TableRow>
                   ) : (
@@ -202,6 +217,9 @@ function CustomerDetailPage() {
                       <TableRow key={b.id}>
                         <TableCell className="font-medium text-slate-900">
                           {b.name}
+                        </TableCell>
+                        <TableCell className="text-slate-500">
+                          {b.address}
                         </TableCell>
                       </TableRow>
                     ))
@@ -217,7 +235,7 @@ function CustomerDetailPage() {
         <Card>
           <CardHeader className="border-b">
             <CardTitle className="text-sm font-bold text-slate-800">
-              Công Nợ Ghi Nhận Theo Từng Pháp Nhân Điểm Bán
+              Công Nợ Theo Điểm Bán
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -225,7 +243,7 @@ function CustomerDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
-                    <TableHead>Pháp Nhân Điểm Bán</TableHead>
+                    <TableHead>Điểm Bán</TableHead>
                     <TableHead className="text-right">Tổng Mua Xe</TableHead>
                     <TableHead className="text-right">Đã Thanh Toán</TableHead>
                     <TableHead className="text-right">Còn Nợ</TableHead>

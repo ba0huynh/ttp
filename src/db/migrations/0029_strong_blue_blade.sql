@@ -1,0 +1,1 @@
+ALTER TABLE `pos_branches` ADD `address` varchar(500);

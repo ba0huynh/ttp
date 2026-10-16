@@ -803,5 +803,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 72, 73,... above this line upon completing tasks)_
+### Lesson 72: Customer Wording, Branch Address
+
+- **Wording** (UI only, tables/columns unchanged): "Khách Hàng Mẹ" is now **Khách Hàng** and "Điểm Bán Trực Thuộc" is **Điểm Bán** on /customers, /finance, /reports, /sales and the new-sale form; the customer detail page has "Danh Sách Điểm Bán" and "Công Nợ Theo Điểm Bán". Use these names in new screens. The glossary at the top of this file still uses the old English terms (parent customer / branch) for the data model.
+- **Branch address**: `pos_branches.address` (varchar 500, nullable; migration `0029_strong_blue_blade.sql`, applied) re-adds the field Lesson 27 had removed. The add-branch form on /customers/$customerId has a "Địa Chỉ" textarea and the branch table shows the column. `saveBranchFn` accepts `address`; there is still no edit-branch screen.
+
+---
+
+_(Next Agent: Append Lesson 73, 74,... above this line upon completing tasks)_
 

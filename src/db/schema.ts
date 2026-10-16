@@ -191,6 +191,7 @@ export const posBranches = mysqlTable(
       .notNull()
       .references(() => customers.id, { onDelete: 'cascade' }),
     name: varchar('name', { length: 255 }).notNull(),
+    address: varchar('address', { length: 500 }),
     contactPerson: varchar('contact_person', { length: 150 }),
     isActive: boolean('is_active').default(true).notNull(),
     ...timestamps,

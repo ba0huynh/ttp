@@ -204,6 +204,13 @@
       "when": 1792135876575,
       "tag": "0028_lucky_spitfire",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "5",
+      "when": 1792137825977,
+      "tag": "0029_strong_blue_blade",
+      "breakpoints": true
     }
   ]
 }
