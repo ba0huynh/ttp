@@ -30,8 +30,17 @@ function messageFor(el: Control): string {
   return el.validationMessage || 'Giá trị không hợp lệ'
 }
 
+/**
+ * The element the message goes after: the control itself, or its
+ * `data-field-wrap` wrapper (a relative box holding an icon / eye button), so the
+ * message does not stretch that box and push the icons down.
+ */
+function anchorOf(el: Control): Element {
+  return el.closest('[data-field-wrap]') ?? el
+}
+
 function errorNodeOf(el: Control): HTMLElement | null {
-  const next = el.nextElementSibling
+  const next = anchorOf(el).nextElementSibling
   return next instanceof HTMLElement && next.hasAttribute(ERROR_ATTR)
     ? next
     : null
@@ -44,7 +53,7 @@ function showError(el: Control, message: string) {
     node.setAttribute(ERROR_ATTR, '')
     node.setAttribute('role', 'alert')
     node.className = ERROR_CLASS
-    el.insertAdjacentElement('afterend', node)
+    anchorOf(el).insertAdjacentElement('afterend', node)
   }
   node.textContent = message
   el.setAttribute('aria-invalid', 'true')

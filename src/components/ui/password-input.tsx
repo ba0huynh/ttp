@@ -11,7 +11,7 @@ export function PasswordInput({
 }: Omit<React.ComponentProps<typeof Input>, 'type'>) {
   const [visible, setVisible] = React.useState(false)
   return (
-    <div className="relative">
+    <div className="relative" data-field-wrap>
       <Input
         {...props}
         type={visible ? 'text' : 'password'}

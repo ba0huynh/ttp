@@ -51,7 +51,7 @@ function LoginPage() {
             <Label htmlFor="login" className="text-xs font-semibold">
               Tên đăng nhập hoặc email *
             </Label>
-            <div className="relative">
+            <div className="relative" data-field-wrap>
               <User className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
               <Input
                 id="login"
@@ -78,7 +78,7 @@ function LoginPage() {
                 Quên mật khẩu?
               </Link>
             </div>
-            <div className="relative">
+            <div className="relative" data-field-wrap>
               <Lock className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-slate-400" />
               <PasswordInput
                 id="password"
