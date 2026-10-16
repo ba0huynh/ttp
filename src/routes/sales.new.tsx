@@ -302,7 +302,7 @@ function NewSalesOrderPage() {
                                   updated[idx].unitPrice = n
                                   setSelectedItems(updated)
                                 }}
-                                className="h-7 text-xs text-right font-bold text-emerald-900"
+                                className="h-7 text-xs text-right"
                               />
                             </TableCell>
                             <TableCell>

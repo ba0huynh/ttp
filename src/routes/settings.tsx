@@ -7,11 +7,12 @@ import {
 import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Building2, Lock, Plus, ShieldCheck, Users } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { RolesTab } from '#/components/settings/RolesTab.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
-import { alertDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -55,6 +56,8 @@ import {
   TabsList,
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
+import { parseFieldErrors } from '#/lib/form-errors.ts'
+import type { FieldErrors } from '#/lib/form-errors.ts'
 import { hasPermission } from '#/lib/permissions.ts'
 import { changePasswordFn } from '#/server/fns/auth.ts'
 import {
@@ -66,6 +69,10 @@ import {
 import { saveUserFn, updateCompanyProfileFn } from '#/server/fns/system.ts'
 
 export const Route = createFileRoute('/settings')({
+  // The active tab lives in the URL (?tab=...) so a reload stays on it
+  validateSearch: z.object({
+    tab: z.enum(['company', 'users', 'roles', 'password']).catch('company'),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -85,10 +92,17 @@ export const Route = createFileRoute('/settings')({
 
 function SettingsPage() {
   const { user } = Route.useRouteContext()
+  const { tab } = Route.useSearch()
+  const navigate = Route.useNavigate()
   const { data: company } = useSuspenseQuery(companyProfileQuery())
   const canCompany = hasPermission(user, 'company.manage')
   const canUsers = hasPermission(user, 'users.manage')
   const canRoles = hasPermission(user, 'roles.manage')
+  // A tab the role cannot see (e.g. a stale ?tab=users) falls back to company
+  const activeTab =
+    (tab === 'users' && !canUsers) || (tab === 'roles' && !canRoles)
+      ? 'company'
+      : tab
   const { data: usersList = [] } = useQuery({
     ...usersQuery(),
     enabled: canUsers,
@@ -146,6 +160,30 @@ function SettingsPage() {
   const [uRoleId, setURoleId] = React.useState<number | null>(null)
   const [uActive, setUActive] = React.useState(true)
   const [uPassword, setUPassword] = React.useState('')
+  // Inline validation: per-field messages plus a banner for other server errors
+  const [uErrors, setUErrors] = React.useState<FieldErrors>({})
+  const [uFormError, setUFormError] = React.useState<string | null>(null)
+
+  // Start every open of the modal with a clean slate
+  React.useEffect(() => {
+    if (userModalOpen) {
+      setUErrors({})
+      setUFormError(null)
+    }
+  }, [userModalOpen])
+
+  const clearUError = (field: string) =>
+    setUErrors((prev) => {
+      if (!(field in prev)) return prev
+      const next = { ...prev }
+      delete next[field]
+      return next
+    })
+
+  const fieldError = (field: string) =>
+    uErrors[field] ? (
+      <p className="text-[11px] font-medium text-rose-600">{uErrors[field]}</p>
+    ) : null
 
   const handleUpdateCompany = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -189,10 +227,23 @@ function SettingsPage() {
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!uRoleId) {
-      await alertDialog('Chưa chọn vai trò cho tài khoản')
-      return
-    }
+    setUFormError(null)
+
+    // Client-side checks so the user sees the problem right under the input
+    const errors: FieldErrors = {}
+    if (!uUsername.trim()) errors.username = 'Vui lòng nhập tên đăng nhập'
+    if (!uFullName.trim()) errors.fullName = 'Vui lòng nhập họ và tên'
+    if (!uEmail.trim()) errors.email = 'Vui lòng nhập email'
+    else if (!/^\S+@\S+\.\S+$/.test(uEmail.trim()))
+      errors.email = 'Email không hợp lệ'
+    if (!uRoleId) errors.roleId = 'Vui lòng chọn vai trò phân quyền'
+    if (!editId && !uPassword)
+      errors.password = 'Vui lòng nhập mật khẩu khởi tạo'
+    else if (uPassword && uPassword.length < 8)
+      errors.password = 'Mật khẩu phải có tối thiểu 8 ký tự'
+    setUErrors(errors)
+    if (Object.keys(errors).length > 0 || !uRoleId) return
+
     try {
       await saveUser.mutateAsync({
         data: {
@@ -208,7 +259,13 @@ function SettingsPage() {
       })
       setUserModalOpen(false)
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi lưu người dùng')
+      // Validation errors map to fields; anything else goes in the banner
+      const fieldErrors = parseFieldErrors(err)
+      if (Object.keys(fieldErrors).length > 0) {
+        setUErrors(fieldErrors)
+      } else {
+        setUFormError((err as Error).message || 'Lỗi khi lưu người dùng')
+      }
     }
   }
 
@@ -225,7 +282,13 @@ function SettingsPage() {
           </p>
         </div>
 
-        <Tabs defaultValue="company" className="space-y-4">
+        <Tabs
+          value={activeTab}
+          onValueChange={(v) =>
+            navigate({ search: { tab: v as typeof tab }, replace: true })
+          }
+          className="space-y-4"
+        >
           <TabsList className="bg-slate-100 p-1">
             <TabsTrigger
               value="company"
@@ -303,7 +366,7 @@ function SettingsPage() {
                         disabled={!canCompany}
                         value={cTax}
                         onChange={(e) => setCTax(e.target.value)}
-                        className="h-8 text-xs font-mono"
+                        className="h-8 text-xs"
                       />
                     </div>
                     <div className="space-y-1">
@@ -427,10 +490,7 @@ function SettingsPage() {
                             {u.email}
                           </TableCell>
                           <TableCell>
-                            <Badge
-                              variant="outline"
-                              className="text-[11px]"
-                            >
+                            <Badge variant="outline" className="text-[11px]">
                               {u.roleName}
                             </Badge>
                           </TableCell>
@@ -485,11 +545,15 @@ function SettingsPage() {
 
           {/* Tab 3: Change Password */}
           <TabsContent value="password">
-            <Card className="border-slate-200 shadow-xs max-w-md">
+            <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Đổi Mật Khẩu Cá Nhân
                 </CardTitle>
+                <CardDescription className="text-xs">
+                  Cập nhật mật khẩu định kỳ để tăng cường an toàn và bảo mật tài
+                  khoản
+                </CardDescription>
               </CardHeader>
               <form onSubmit={handleChangePassword}>
                 <CardContent className="p-4 space-y-3 text-xs">
@@ -506,30 +570,32 @@ function SettingsPage() {
                     </Alert>
                   )}
 
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Mật Khẩu Hiện Tại *
-                    </Label>
-                    <Input
-                      type="password"
-                      required
-                      value={currPass}
-                      onChange={(e) => setCurrPass(e.target.value)}
-                      className="h-8 text-xs"
-                    />
-                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">
+                        Mật Khẩu Hiện Tại *
+                      </Label>
+                      <Input
+                        type="password"
+                        required
+                        value={currPass}
+                        onChange={(e) => setCurrPass(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Mật Khẩu Mới (Tối thiểu 8 ký tự) *
-                    </Label>
-                    <Input
-                      type="password"
-                      required
-                      value={newPass}
-                      onChange={(e) => setNewPass(e.target.value)}
-                      className="h-8 text-xs"
-                    />
+                    <div className="space-y-1">
+                      <Label className="text-xs font-semibold">
+                        Mật Khẩu Mới (Tối thiểu 8 ký tự) *
+                      </Label>
+                      <Input
+                        type="password"
+                        required
+                        value={newPass}
+                        onChange={(e) => setNewPass(e.target.value)}
+                        className="h-8 text-xs"
+                      />
+                    </div>
                   </div>
                 </CardContent>
                 <CardFooter className="py-3 px-4 border-t border-slate-100 flex justify-end">
@@ -558,37 +624,59 @@ function SettingsPage() {
               </DialogTitle>
             </DialogHeader>
 
-            <form onSubmit={handleSaveUser} className="space-y-3 pt-2">
+            <form
+              onSubmit={handleSaveUser}
+              noValidate
+              className="space-y-3 pt-2"
+            >
+              {uFormError && (
+                <Alert variant="destructive" className="py-2 text-xs">
+                  <AlertDescription>{uFormError}</AlertDescription>
+                </Alert>
+              )}
+
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tên Đăng Nhập *</Label>
                 <Input
-                  required
                   disabled={Boolean(editId)}
                   value={uUsername}
-                  onChange={(e) => setUUsername(e.target.value)}
-                  className="h-8 text-xs font-mono"
+                  aria-invalid={Boolean(uErrors.username)}
+                  onChange={(e) => {
+                    setUUsername(e.target.value)
+                    clearUError('username')
+                  }}
+                  className="h-8 text-xs"
                 />
+                {fieldError('username')}
               </div>
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Họ Và Tên *</Label>
                 <Input
-                  required
                   value={uFullName}
-                  onChange={(e) => setUFullName(e.target.value)}
+                  aria-invalid={Boolean(uErrors.fullName)}
+                  onChange={(e) => {
+                    setUFullName(e.target.value)
+                    clearUError('fullName')
+                  }}
                   className="h-8 text-xs"
                 />
+                {fieldError('fullName')}
               </div>
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Email *</Label>
                 <Input
                   type="email"
-                  required
                   value={uEmail}
-                  onChange={(e) => setUEmail(e.target.value)}
+                  aria-invalid={Boolean(uErrors.email)}
+                  onChange={(e) => {
+                    setUEmail(e.target.value)
+                    clearUError('email')
+                  }}
                   className="h-8 text-xs"
                 />
+                {fieldError('email')}
               </div>
 
               <div className="space-y-1">
@@ -597,8 +685,13 @@ function SettingsPage() {
                 </Label>
                 <SearchSelect
                   value={uRoleId ? String(uRoleId) : ''}
-                  onValueChange={(v) => setURoleId(Number(v))}
-                  className="h-8 w-full text-xs"
+                  onValueChange={(v) => {
+                    setURoleId(Number(v))
+                    clearUError('roleId')
+                  }}
+                  className={`h-8 w-full text-xs ${
+                    uErrors.roleId ? 'border-rose-500' : ''
+                  }`}
                   placeholder="Chọn vai trò"
                 >
                   {rolesList.map((r) => (
@@ -611,6 +704,7 @@ function SettingsPage() {
                     </SearchSelectItem>
                   ))}
                 </SearchSelect>
+                {fieldError('roleId')}
               </div>
 
               <div className="space-y-1">
@@ -621,12 +715,16 @@ function SettingsPage() {
                 </Label>
                 <Input
                   type="password"
-                  required={!editId}
                   value={uPassword}
-                  onChange={(e) => setUPassword(e.target.value)}
+                  aria-invalid={Boolean(uErrors.password)}
+                  onChange={(e) => {
+                    setUPassword(e.target.value)
+                    clearUError('password')
+                  }}
                   placeholder={editId ? '••••••••' : 'Tối thiểu 8 ký tự'}
                   className="h-8 text-xs"
                 />
+                {fieldError('password')}
               </div>
 
               <div className="flex items-center justify-between pt-1">

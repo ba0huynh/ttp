@@ -102,14 +102,14 @@ function ReportsPage() {
               type="date"
               value={from}
               onChange={(e) => setFrom(e.target.value)}
-              className="h-8 text-xs w-36 bg-white"
+              className="h-8 text-xs w-36"
             />
             <span className="text-xs text-slate-400">&rarr;</span>
             <Input
               type="date"
               value={to}
               onChange={(e) => setTo(e.target.value)}
-              className="h-8 text-xs w-36 bg-white"
+              className="h-8 text-xs w-36"
             />
             <Button
               type="submit"

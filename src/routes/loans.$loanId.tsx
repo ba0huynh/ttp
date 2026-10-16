@@ -303,7 +303,7 @@ function LoanDetailPage() {
                       required
                       value={repayDate}
                       onChange={(e) => setRepayDate(e.target.value)}
-                      className="h-8 text-xs bg-white"
+                      className="h-8 text-xs"
                     />
                   </div>
 
@@ -314,7 +314,7 @@ function LoanDetailPage() {
                     <MoneyInput
                       value={repayPrincipal}
                       onValueChange={setRepayPrincipal}
-                      className="h-8 text-xs bg-white font-bold text-emerald-900"
+                      className="h-8 text-xs"
                     />
                   </div>
 
@@ -325,7 +325,7 @@ function LoanDetailPage() {
                     <MoneyInput
                       value={repayInterest}
                       onValueChange={setRepayInterest}
-                      className="h-8 text-xs bg-white font-bold text-purple-900"
+                      className="h-8 text-xs"
                     />
                   </div>
 

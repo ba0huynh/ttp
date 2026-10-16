@@ -527,7 +527,7 @@ function FinancePage() {
                   required
                   value={receiptAmount}
                   onValueChange={setReceiptAmount}
-                  className="h-8 text-xs font-bold text-emerald-900"
+                  className="h-8 text-xs"
                 />
               </div>
 
@@ -639,7 +639,7 @@ function FinancePage() {
                   required
                   value={paymentAmount}
                   onValueChange={setPaymentAmount}
-                  className="h-8 text-xs font-bold text-rose-900"
+                  className="h-8 text-xs"
                 />
               </div>
 

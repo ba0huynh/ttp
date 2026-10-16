@@ -17,7 +17,10 @@ import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { confirmDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
 import {
   Card,
   CardContent,
@@ -471,7 +474,7 @@ function SalesOrderPage() {
                   placeholder="Ví dụ: HD-260120-001"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
-                  className="h-8 text-xs font-mono"
+                  className="h-8 text-xs"
                 />
               </div>
 

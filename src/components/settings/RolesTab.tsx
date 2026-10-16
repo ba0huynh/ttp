@@ -11,7 +11,10 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
-import { confirmDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
 import {
   Dialog,
   DialogContent,

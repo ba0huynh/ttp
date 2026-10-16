@@ -154,7 +154,7 @@ function CustomerDetailPage() {
                     placeholder="Showroom..."
                     value={branchName}
                     onChange={(e) => setBranchName(e.target.value)}
-                    className="h-8 text-xs bg-white font-semibold"
+                    className="h-8 text-xs"
                   />
                 </div>
                 <div className="flex justify-end gap-2 pt-1">

@@ -713,7 +713,7 @@ function MasterDataPage() {
                   required
                   value={sName}
                   onChange={(e) => setSName(e.target.value)}
-                  className="h-8 text-xs font-semibold"
+                  className="h-8 text-xs"
                   placeholder="Thai Honda Co., Ltd"
                 />
               </div>
@@ -828,7 +828,7 @@ function MasterDataPage() {
                   required
                   value={accNumber}
                   onChange={(e) => setAccNumber(e.target.value)}
-                  className="h-8 text-xs font-mono"
+                  className="h-8 text-xs"
                   placeholder="0071001234567"
                 />
               </div>

@@ -482,7 +482,7 @@ function NewBatchPage() {
                               updated[idx].amount = n
                               setExpenses(updated)
                             }}
-                            className="h-7 text-xs text-right font-medium"
+                            className="h-7 text-xs text-right"
                           />
                         </TableCell>
                         <TableCell>
@@ -554,7 +554,7 @@ function NewBatchPage() {
                                 updated[idx].chassisNumber = ev.target.value
                                 setVehicles(updated)
                               }}
-                              className="h-7 text-xs font-mono font-bold"
+                              className="h-7 text-xs"
                             />
                           </TableCell>
                           <TableCell>
@@ -566,7 +566,7 @@ function NewBatchPage() {
                                 updated[idx].engineNumber = ev.target.value
                                 setVehicles(updated)
                               }}
-                              className="h-7 text-xs font-mono"
+                              className="h-7 text-xs"
                             />
                           </TableCell>
                           <TableCell>
@@ -619,7 +619,7 @@ function NewBatchPage() {
                                 updated[idx].importPrice = n
                                 setVehicles(updated)
                               }}
-                              className="h-7 text-xs text-right font-medium"
+                              className="h-7 text-xs text-right"
                             />
                           </TableCell>
                           <TableCell>
@@ -714,13 +714,13 @@ function NewBatchPage() {
                       onChange={(e) =>
                         setPricingValue(Number(e.target.value) || 0)
                       }
-                      className="h-8 text-xs font-bold"
+                      className="h-8 text-xs"
                     />
                   ) : (
                     <MoneyInput
                       value={pricingValue}
                       onValueChange={setPricingValue}
-                      className="h-8 text-xs font-bold"
+                      className="h-8 text-xs"
                     />
                   )}
                 </div>

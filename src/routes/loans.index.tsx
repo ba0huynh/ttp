@@ -228,7 +228,7 @@ function LoansPage() {
                   required
                   value={contractNumber}
                   onChange={(e) => setContractNumber(e.target.value)}
-                  className="h-8 text-xs font-mono"
+                  className="h-8 text-xs"
                 />
               </div>
 
@@ -264,7 +264,7 @@ function LoansPage() {
                     required
                     value={principalAmount}
                     onValueChange={setPrincipalAmount}
-                    className="h-8 text-xs font-bold"
+                    className="h-8 text-xs"
                   />
                 </div>
 

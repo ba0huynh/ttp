@@ -141,7 +141,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
             type="date"
             value={importDate}
             onChange={(e) => setImportDate(e.target.value)}
-            className="h-8 text-xs bg-white"
+            className="h-8 text-xs"
           />
         </div>
       </div>
@@ -247,13 +247,13 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
               step={0.1}
               value={value}
               onChange={(e) => setValue(Number(e.target.value) || 0)}
-              className="h-8 text-xs bg-white"
+              className="h-8 text-xs"
             />
           ) : (
             <MoneyInput
               value={value}
               onValueChange={setValue}
-              className="h-8 text-xs bg-white"
+              className="h-8 text-xs"
             />
           )}
         </div>
@@ -384,13 +384,13 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
           placeholder="Diễn giải"
           value={description}
           onChange={(e) => setDescription(e.target.value)}
-          className="h-8 text-xs bg-white"
+          className="h-8 text-xs"
         />
         <MoneyInput
           placeholder="Số tiền"
           value={amount || ''}
           onValueChange={setAmount}
-          className="h-8 text-xs bg-white"
+          className="h-8 text-xs"
         />
         <Button
           size="sm"
@@ -580,19 +580,19 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           placeholder="Số khung"
           value={chassis}
           onChange={(e) => setChassis(e.target.value)}
-          className="h-8 text-xs bg-white font-mono"
+          className="h-8 text-xs"
         />
         <Input
           placeholder="Số máy"
           value={engine}
           onChange={(e) => setEngine(e.target.value)}
-          className="h-8 text-xs bg-white font-mono"
+          className="h-8 text-xs"
         />
         <MoneyInput
           placeholder="Đơn giá nhập"
           value={price || ''}
           onValueChange={setPrice}
-          className="h-8 text-xs bg-white"
+          className="h-8 text-xs"
         />
         <Button
           size="sm"

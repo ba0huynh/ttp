@@ -269,7 +269,7 @@ export function ImportStatementDialog({
                             })
                           }
                           onPaste={handlePaste}
-                          className="h-8 text-right text-xs text-rose-900"
+                          className="h-8 text-right text-xs"
                         />
                       </TableCell>
                       <TableCell>
@@ -283,7 +283,7 @@ export function ImportStatementDialog({
                             })
                           }
                           onPaste={handlePaste}
-                          className="h-8 text-right text-xs text-emerald-900"
+                          className="h-8 text-right text-xs"
                         />
                       </TableCell>
                       <TableCell>

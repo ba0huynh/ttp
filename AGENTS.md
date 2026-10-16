@@ -598,7 +598,21 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Zod / API Error Formatting**: `showErrorDialog` automatically parses stringified Zod issues/JSON errors (e.g., `[{"code":"too_small","minimum":8,"path":["password"]}]`), maps field keys to friendly Vietnamese labels (`Mật khẩu: Tối thiểu 8 ký tự`), and presents them in a clean, styled Shadcn `AlertDialog` with a single "Đóng" / "Đã hiểu" button.
 - **Global Mounting**: `<ConfirmDialogHost />` is mounted at root in `src/routes/__root.tsx`, guaranteeing availability across all routes including auth pages and modals without duplicate hosts.
 
+### Lesson 48: Inline Field Errors Instead of Popups in Forms
+
+- **Rule**: for form validation, show the message directly under the offending input, not in a popup. `src/lib/form-errors.ts` exports `parseFieldErrors(err)` which turns stringified Zod v4 issues into `{ field: 'Vietnamese message' }` (returns `{}` for non-validation errors, which should go in an `<Alert variant="destructive">` banner inside the form).
+- **Pattern** (see the user dialog in `src/routes/settings.tsx`): `noValidate` on the `<form>`, client-side checks first, `aria-invalid` on the input (shadcn styles it red), a `<p className="text-[11px] font-medium text-rose-600">` below it, and clear that field's error in `onChange`. Reset errors when the modal opens.
+- **Scope**: only the user dialog is converted so far; other forms still use `showErrorDialog`.
+
 ---
 
-_(Next Agent: Append Lesson 48, 49,... above this line upon completing tasks)_
+### Lesson 49: One Style for Every Text Input
+
+- **Rule**: inputs (`Input`, `MoneyInput`, `Textarea`) carry no per-field look. Do not add `font-mono`, `font-bold` / `font-semibold`, a text colour (`text-emerald-900`, ...) or `bg-white` to them; the only class overrides allowed are sizing and alignment (`h-8 text-xs`, `h-7` in table cells, `text-right`, `w-*`). The base `Input` (`src/components/ui/input.tsx`) now has a solid `bg-card` background, so a field looks the same on the page canvas, in a card, in a dialog or on a tinted panel (it used to be transparent, which is why some pages added `bg-white`).
+- **Why**: the "Tên Đăng Nhập" field was monospace while the other fields of the same dialog were not (and amounts / codes were bold or coloured in other forms), which looked inconsistent.
+- **Not affected**: monospace is still fine for read-only display of identifiers (VIN, engine number, account number in tables and badges), just not inside inputs.
+
+---
+
+_(Next Agent: Append Lesson 50, 51,... above this line upon completing tasks)_
 
