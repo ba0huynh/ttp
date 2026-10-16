@@ -193,3 +193,29 @@ export const EXPENSE_TYPE_LABELS: Record<string, string> = {
   customs_fee: 'Phí hải quan',
   other: 'Chi phí khác',
 }
+
+/**
+ * Estimated interest over a loan term, assuming the principal is not repaid
+ * early: simple interest on the full principal (rate / 12 per month, the same
+ * as the 365-day convention averaged over a year). The real, day-exact figure
+ * comes from `calculateLoanInterest`.
+ */
+export function estimateLoanTermInterest(
+  principal: number,
+  annualRatePercent: number,
+  termMonths: number,
+) {
+  const monthly = (principal * annualRatePercent) / 100 / 12
+  return { monthly, total: monthly * termMonths }
+}
+
+/** yyyy-mm-dd + N months, clamped to the end of a shorter month (31 Jan + 1 = 28/29 Feb) */
+export function addMonthsIso(date: string, months: number): string {
+  const [y, m, d] = date.split('-').map(Number)
+  const target = new Date(Date.UTC(y, m - 1 + months, 1))
+  const lastDay = new Date(
+    Date.UTC(target.getUTCFullYear(), target.getUTCMonth() + 1, 0),
+  ).getUTCDate()
+  target.setUTCDate(Math.min(d, lastDay))
+  return target.toISOString().slice(0, 10)
+}

@@ -45,10 +45,19 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import { formatVnd, todayIso } from '#/lib/business.ts'
+import {
+  addMonthsIso,
+  estimateLoanTermInterest,
+  formatDate,
+  formatVnd,
+  todayIso,
+} from '#/lib/business.ts'
 import { currentUserQuery, loansQuery, masterDataQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { saveLoanContractFn } from '#/server/fns/finance.ts'
+
+/** Selectable loan terms: 1 to 200 months */
+const TERM_OPTIONS = Array.from({ length: 200 }, (_, i) => i + 1)
 
 export const Route = createFileRoute('/loans/')({
   beforeLoad: async ({ context: { queryClient } }) => {
@@ -86,6 +95,13 @@ function LoansPage() {
   const [principalAmount, setPrincipalAmount] = React.useState(2_000_000_000)
   const [interestRate, setInterestRate] = React.useState(8.5)
   const [disbursementDate, setDisbursementDate] = React.useState(todayIso())
+  const [termMonths, setTermMonths] = React.useState(12)
+  // What the user typed so far, shown live under the form
+  const estimate = estimateLoanTermInterest(
+    principalAmount,
+    interestRate,
+    termMonths,
+  )
   const savingLoan = saveLoan.isPending
 
   const handleCreateLoan = async (e: React.FormEvent) => {
@@ -98,6 +114,7 @@ function LoansPage() {
           principalAmount,
           interestRate,
           disbursementDate,
+          termMonths,
         },
       })
       setNewLoanOpen(false)
@@ -151,6 +168,7 @@ function LoansPage() {
                     <TableHead>Số Khế Ước</TableHead>
                     <TableHead>Ngân Hàng</TableHead>
                     <TableHead className="text-center">Lãi Suất</TableHead>
+                    <TableHead className="text-center">Kỳ Hạn</TableHead>
                     <TableHead className="text-right">Gốc Đã Trả</TableHead>
                     <TableHead className="text-right">Dư Nợ Còn Lại</TableHead>
                     <TableHead className="text-center">Thao tác</TableHead>
@@ -180,6 +198,9 @@ function LoansPage() {
                         >
                           {l.interestRate}%/năm
                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-center text-slate-900">
+                        {l.termMonths} tháng
                       </TableCell>
                       <TableCell className="text-right text-emerald-800 font-medium">
                         {formatVnd(l.principalPaid)}
@@ -299,6 +320,53 @@ function LoansPage() {
                     className="h-8 text-xs"
                   />
                 </div>
+
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Kỳ Hạn Vay *</Label>
+                  <SearchSelect
+                    value={String(termMonths)}
+                    onValueChange={(v) => setTermMonths(Number(v))}
+                    className="h-8 w-full text-xs"
+                    placeholder="Chọn kỳ hạn"
+                  >
+                    {TERM_OPTIONS.map((n) => (
+                      <SearchSelectItem
+                        key={n}
+                        value={String(n)}
+                        className="text-xs"
+                      >
+                        {n} tháng
+                      </SearchSelectItem>
+                    ))}
+                  </SearchSelect>
+                </div>
+              </div>
+
+              <div className="space-y-1 rounded-md border border-purple-200 bg-purple-50/60 p-3 text-xs">
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Lãi ước tính mỗi tháng</span>
+                  <span className="font-medium text-purple-900">
+                    {formatVnd(estimate.monthly)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">
+                    Tổng lãi cả kỳ hạn ({termMonths} tháng)
+                  </span>
+                  <span className="font-medium text-purple-900">
+                    {formatVnd(estimate.total)}
+                  </span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-slate-500">Đáo hạn dự kiến</span>
+                  <span className="font-medium text-slate-900">
+                    {formatDate(addMonthsIso(disbursementDate, termMonths))}
+                  </span>
+                </div>
+                <p className="pt-1 text-[11px] text-slate-500">
+                  Ước tính theo lãi đơn trên toàn bộ gốc. Lãi thực tế tính theo
+                  dư nợ giảm dần ở trang chi tiết khế ước.
+                </p>
               </div>
 
               <DialogFooter className="pt-2">

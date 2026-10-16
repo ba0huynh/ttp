@@ -54,6 +54,7 @@ export const listLoansFn = createServerFn({ method: 'GET' })
         principalAmount: loanContracts.principalAmount,
         interestRate: loanContracts.interestRate,
         disbursementDate: loanContracts.disbursementDate,
+        termMonths: loanContracts.termMonths,
         principalPaid: sql<string>`coalesce((select sum(r.principal_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
         interestPaid: sql<string>`coalesce((select sum(r.interest_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
       })
@@ -94,6 +95,7 @@ export const saveLoanContractFn = createServerFn({ method: 'POST' })
       principalAmount: z.number().positive('Số tiền vay phải > 0'),
       interestRate: z.number().min(0, 'Lãi suất %/năm'),
       disbursementDate: z.string().min(10),
+      termMonths: z.number().int().min(1).max(200),
     }),
   )
   .handler(async ({ data }) => {

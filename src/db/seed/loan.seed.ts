@@ -45,6 +45,7 @@ export async function seedLoans({
         principalAmount: 2_000_000_000,
         interestRate: 8.5,
         disbursementDate: '2026-01-10',
+        termMonths: 6,
       },
       {
         contractNumber: 'KU-2026-BIDV-02',
@@ -52,6 +53,7 @@ export async function seedLoans({
         principalAmount: 1_500_000_000,
         interestRate: 8.8,
         disbursementDate: '2026-02-15',
+        termMonths: 6,
       },
     ])
     .$returningId()

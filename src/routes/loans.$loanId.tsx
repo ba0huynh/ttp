@@ -33,7 +33,14 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import { formatDate, formatVnd, todayIso, batchLabel } from '#/lib/business.ts'
+import {
+  addMonthsIso,
+  batchLabel,
+  estimateLoanTermInterest,
+  formatDate,
+  formatVnd,
+  todayIso,
+} from '#/lib/business.ts'
 import {
   currentUserQuery,
   loanDetailQuery,
@@ -125,6 +132,11 @@ function LoanDetailPage() {
   }
 
   const { loan } = loanDetail
+  const termEstimate = estimateLoanTermInterest(
+    loan.principalAmount,
+    loan.interestRate,
+    loan.termMonths,
+  )
 
   return (
     <AppLayout user={user}>
@@ -143,7 +155,14 @@ function LoanDetailPage() {
           description={
             <>
               Lãi suất: <strong>{loan.interestRate}%/năm</strong> · Giải ngân:{' '}
-              {formatDate(loan.disbursementDate)}
+              {formatDate(loan.disbursementDate)} · Kỳ hạn:{' '}
+              <strong>{loan.termMonths} tháng</strong> (đáo hạn dự kiến{' '}
+              {formatDate(addMonthsIso(loan.disbursementDate, loan.termMonths))}
+              )
+              <br />
+              Lãi ước tính: <strong>{formatVnd(termEstimate.monthly)}</strong>
+              /tháng · <strong>{formatVnd(termEstimate.total)}</strong> cả kỳ
+              hạn
             </>
           }
         />

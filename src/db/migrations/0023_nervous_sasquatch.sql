@@ -1,0 +1,1 @@
+ALTER TABLE `loan_contracts` ADD `term_months` int DEFAULT 12 NOT NULL;

@@ -208,6 +208,8 @@ export const loanContracts = mysqlTable('loan_contracts', {
     mode: 'number',
   }).notNull(),
   disbursementDate: date('disbursement_date', { mode: 'string' }).notNull(),
+  /** Loan term (kỳ hạn) in months, 1-200 */
+  termMonths: int('term_months').default(12).notNull(),
   ...timestamps,
 })
 

@@ -651,5 +651,14 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 54, 55,... above this line upon completing tasks)_
+### Lesson 54: Loan Term (Kỳ Hạn) and Interest Estimate
+
+- **Data**: `loan_contracts.term_months` (int, 1-200, default 12; migration `0023_nervous_sasquatch.sql`, additive, already applied). The new-loan dialog has a "Kỳ Hạn Vay" `SearchSelect` listing 1-200 months (10 rendered at a time, more on scroll; typing "24" finds 24 and 124).
+- **Estimate shown to the user** (`estimateLoanTermInterest` in `src/lib/business.ts`): monthly interest = `principal × rate / 100 / 12`, whole-term interest = monthly × term, plus the expected maturity date (`addMonthsIso(disbursementDate, term)`, end-of-month clamped). It is simple interest on the full principal, shown live in the dialog while the amount, rate or term change, and on the loan detail header ("Kỳ hạn", "Lãi ước tính: x/tháng · y cả kỳ hạn"). The `/loans` list has a "Kỳ Hạn" column.
+- **Not the accounting figure**: the real accrued interest is still the day-exact declining-balance calculation (`calculateLoanInterest`, 365 days/year, split at each principal repayment) on the loan detail page. The maturity date is derived, not stored (the old `maturity_date` column stays removed, Lesson 36).
+- **Gotcha**: loans created before this change got the column default (12 months); there is no edit-loan screen yet, so change them in the database if they differ.
+
+---
+
+_(Next Agent: Append Lesson 55, 56,... above this line upon completing tasks)_
 
