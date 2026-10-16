@@ -1,0 +1,1 @@
+ALTER TABLE `vehicles` MODIFY COLUMN `model_id` int;

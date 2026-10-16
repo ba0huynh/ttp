@@ -1,0 +1,1 @@
+ALTER TABLE `import_batches` MODIFY COLUMN `supplier_id` int;

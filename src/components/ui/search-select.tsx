@@ -1,4 +1,4 @@
-import { CheckIcon, ChevronDownIcon } from 'lucide-react'
+import { CheckIcon, ChevronDownIcon, PlusIcon } from 'lucide-react'
 import * as React from 'react'
 import { cn } from 'cn'
 
@@ -66,6 +66,7 @@ export function SearchSelect({
   searchPlaceholder = 'Tìm kiếm...',
   className,
   disabled,
+  createAction,
   children,
 }: {
   value: string
@@ -74,6 +75,8 @@ export function SearchSelect({
   searchPlaceholder?: string
   className?: string
   disabled?: boolean
+  /** Pinned first row that opens a form to create a new option */
+  createAction?: { label: string; onClick: () => void }
   children?: React.ReactNode
 }) {
   const [open, setOpen] = React.useState(false)
@@ -182,6 +185,19 @@ export function SearchSelect({
               loadMore()
           }}
         >
+          {createAction && (
+            <button
+              type="button"
+              onClick={() => {
+                setOpen(false)
+                createAction.onClick()
+              }}
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs font-semibold text-emerald-700 outline-hidden hover:bg-accent"
+            >
+              <PlusIcon className="size-3.5" />
+              {createAction.label}
+            </button>
+          )}
           {filtered.length === 0 ? (
             <div className="px-2 py-4 text-center text-xs text-slate-400">
               Không tìm thấy kết quả

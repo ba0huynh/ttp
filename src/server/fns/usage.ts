@@ -21,11 +21,7 @@ import {
   users,
   vehicles,
 } from '#/db/schema.ts'
-import {
-  batchLabel,
-  formatDate,
-  formatVnd,
-} from '#/lib/business.ts'
+import { batchLabel, formatDate, formatVnd } from '#/lib/business.ts'
 import { num } from '#/server/services/common.ts'
 import { requirePermission } from './middleware.ts'
 
@@ -224,7 +220,7 @@ async function usageOf(
         })
         .from(vehicles)
         .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))
-        .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+        .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
         .where(eq(column, id))
         .groupBy(importBatches.id, importBatches.importDate, suppliers.name)
       return [
@@ -248,7 +244,7 @@ async function usageOf(
         })
         .from(batchExpenses)
         .innerJoin(importBatches, eq(importBatches.id, batchExpenses.batchId))
-        .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+        .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
         .where(eq(batchExpenses.expenseTypeId, id))
         .groupBy(importBatches.id, importBatches.importDate, suppliers.name)
       return [
@@ -470,7 +466,7 @@ async function usageOf(
             supplierName: suppliers.name,
           })
           .from(importBatches)
-          .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+          .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
           .where(eq(importBatches.loanContractId, id)),
         db
           .select({

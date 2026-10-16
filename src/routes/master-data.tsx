@@ -140,12 +140,7 @@ function MasterDataPage() {
   )
   const modelsPg = usePagination(
     master.models.filter((m) =>
-      matchesSearch(
-        search,
-        m.brand,
-        m.name,
-        m.modelYear,
-      ),
+      matchesSearch(search, m.brand, m.name, m.modelYear),
     ),
     search,
   )

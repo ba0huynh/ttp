@@ -259,9 +259,8 @@ export const importBatches = mysqlTable(
   'import_batches',
   {
     id: int('id').primaryKey().autoincrement(),
-    supplierId: int('supplier_id')
-      .notNull()
-      .references(() => suppliers.id),
+    /** Optional: a batch may be entered before its supplier is known */
+    supplierId: int('supplier_id').references(() => suppliers.id),
     /** Linked loan credit contract financing batch (null if self-funded) */
     loanContractId: int('loan_contract_id').references(() => loanContracts.id, {
       onDelete: 'set null',
@@ -316,9 +315,8 @@ export const vehicles = mysqlTable(
     batchId: int('batch_id')
       .notNull()
       .references(() => importBatches.id, { onDelete: 'cascade' }),
-    modelId: int('model_id')
-      .notNull()
-      .references(() => motorcycleModels.id),
+    /** Optional: a vehicle may be entered without its model line */
+    modelId: int('model_id').references(() => motorcycleModels.id),
     colorId: int('color_id')
       .notNull()
       .references(() => colors.id),

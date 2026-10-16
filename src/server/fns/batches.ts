@@ -49,7 +49,7 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
         totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
       })
       .from(importBatches)
-      .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+      .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
       .leftJoin(
         loanContracts,
         eq(loanContracts.id, importBatches.loanContractId),
@@ -99,7 +99,7 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
         note: importBatches.note,
       })
       .from(importBatches)
-      .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+      .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
       .leftJoin(
         loanContracts,
         eq(loanContracts.id, importBatches.loanContractId),
@@ -121,12 +121,12 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
         isInvoiced: vehicles.isInvoiced,
         isSold: sql<number>`exists (select 1 from ${salesOrderItems} i where i.vehicle_id = ${vehicles.id})`,
         modelId: vehicles.modelId,
-        modelName: motorcycleModels.name,
+        modelName: sql<string>`coalesce(${motorcycleModels.name}, '')`,
         colorId: vehicles.colorId,
         colorName: colors.name,
       })
       .from(vehicles)
-      .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
+      .leftJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
       .innerJoin(colors, eq(colors.id, vehicles.colorId))
       .where(eq(vehicles.batchId, data.id))
       .orderBy(vehicles.id)
@@ -228,7 +228,7 @@ export const updateVehicleFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       vehicleId: z.number().int(),
-      modelId: z.number().int().positive('Chọn dòng xe'),
+      modelId: z.number().int().min(0),
       colorId: z.number().int().positive('Chọn màu xe'),
       chassisNumber: z.string().trim().min(1, 'Nhập số khung'),
       engineNumber: z.string().trim().min(1, 'Nhập số máy'),
@@ -323,7 +323,7 @@ export const updateBatchInfoFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       batchId: z.number().int(),
-      supplierId: z.number().int().positive('Chọn nhà cung cấp'),
+      supplierId: z.number().int().min(0),
       loanContractId: z.number().int().nullable(),
       importDate: z.string().min(10),
     }),

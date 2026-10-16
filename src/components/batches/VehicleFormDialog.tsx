@@ -1,9 +1,11 @@
-import { useQuery } from '@tanstack/react-query'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import * as React from 'react'
 
 import { ModelOption } from '#/components/batches/ModelOption.tsx'
+import { useCan } from '#/components/auth/Can.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { ColorLabel } from '#/components/ui/color-label.tsx'
+import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import {
   Dialog,
   DialogContent,
@@ -18,6 +20,7 @@ import {
   SearchSelect,
   SearchSelectItem,
 } from '#/components/ui/search-select.tsx'
+import { saveColorFn, saveModelFn } from '#/server/fns/master-data.ts'
 import { modelLabel } from '#/lib/business.ts'
 import { masterDataQuery } from '#/lib/queries.ts'
 
@@ -66,6 +69,65 @@ export function VehicleFormDialog({
   const colors = master?.colors ?? []
   const [v, setV] = React.useState<VehicleFormValues>(initial ?? EMPTY)
   const [error, setError] = React.useState<string | null>(null)
+  const queryClient = useQueryClient()
+  const canManage = useCan('master-data.manage')
+
+  // Quick-create a colour without leaving the vehicle form
+  const [colorOpen, setColorOpen] = React.useState(false)
+  const [cName, setCName] = React.useState('')
+  const [cHex, setCHex] = React.useState('#18181b')
+  const [cError, setCError] = React.useState<string | null>(null)
+  const [cPending, setCPending] = React.useState(false)
+
+  // Quick-create a model the same way
+  const [modelOpen, setModelOpen] = React.useState(false)
+  const [mBrand, setMBrand] = React.useState('')
+  const [mName, setMName] = React.useState('')
+  const [mYear, setMYear] = React.useState('')
+  const [mError, setMError] = React.useState<string | null>(null)
+  const [mPending, setMPending] = React.useState(false)
+
+  const handleCreateModel = async (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!mName.trim()) return setMError('Vui lòng nhập dòng xe')
+    setMPending(true)
+    try {
+      const res = await saveModelFn({
+        data: {
+          brand: mBrand.trim() || null,
+          name: mName.trim(),
+          modelYear: mYear.trim() || null,
+        },
+      })
+      await queryClient.invalidateQueries({ queryKey: ['master-data'] })
+      setV((cur) => ({ ...cur, modelId: res.id }))
+      setModelOpen(false)
+    } catch (err: unknown) {
+      setMError(err instanceof Error ? err.message : 'Không lưu được dòng xe')
+    } finally {
+      setMPending(false)
+    }
+  }
+
+  const handleCreateColor = async (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const hex = cHex.trim() ? normalizeHex(cHex) : null
+    if (!cName.trim()) return setCError('Vui lòng nhập tên màu')
+    if (cHex.trim() && !hex) return setCError('Mã màu hex không hợp lệ')
+    setCPending(true)
+    try {
+      const res = await saveColorFn({ data: { name: cName.trim(), hex } })
+      await queryClient.invalidateQueries({ queryKey: ['master-data'] })
+      setV((cur) => ({ ...cur, colorId: res.id }))
+      setColorOpen(false)
+    } catch (err: unknown) {
+      setCError(err instanceof Error ? err.message : 'Không lưu được màu')
+    } finally {
+      setCPending(false)
+    }
+  }
 
   // Start from the vehicle being edited (or an empty form) every time it opens
   React.useEffect(() => {
@@ -77,8 +139,7 @@ export function VehicleFormDialog({
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!v.modelId || !v.colorId)
-      return setError('Vui lòng chọn dòng xe và màu xe')
+    if (!v.colorId) return setError('Vui lòng chọn màu xe')
     if (!v.chassisNumber.trim() || !v.engineNumber.trim())
       return setError('Vui lòng nhập đầy đủ số khung và số máy')
     if (v.importPrice <= 0) return setError('Đơn giá nhập phải lớn hơn 0')
@@ -104,7 +165,7 @@ export function VehicleFormDialog({
         </DialogHeader>
         <form onSubmit={handleSubmit} noValidate className="space-y-3 pt-2">
           <div className="space-y-1">
-            <Label className="text-xs font-semibold">Dòng Xe *</Label>
+            <Label className="text-xs font-semibold">Dòng Xe</Label>
             <SearchSelect
               className="h-11 w-full rounded-lg text-sm"
               placeholder="Chọn dòng xe"
@@ -112,6 +173,20 @@ export function VehicleFormDialog({
               onValueChange={(val) => {
                 setV({ ...v, modelId: Number(val) })
               }}
+              createAction={
+                canManage
+                  ? {
+                      label: 'Thêm dòng xe mới',
+                      onClick: () => {
+                        setMBrand('')
+                        setMName('')
+                        setMYear('')
+                        setMError(null)
+                        setModelOpen(true)
+                      },
+                    }
+                  : undefined
+              }
             >
               {models.map((m) => (
                 <SearchSelectItem
@@ -131,6 +206,19 @@ export function VehicleFormDialog({
               placeholder="Chọn màu xe"
               value={v.colorId ? String(v.colorId) : ''}
               onValueChange={(val) => setV({ ...v, colorId: Number(val) })}
+              createAction={
+                canManage
+                  ? {
+                      label: 'Thêm màu mới',
+                      onClick: () => {
+                        setCName('')
+                        setCHex('#18181b')
+                        setCError(null)
+                        setColorOpen(true)
+                      },
+                    }
+                  : undefined
+              }
             >
               {colors.map((c) => (
                 <SearchSelectItem
@@ -192,6 +280,118 @@ export function VehicleFormDialog({
           </DialogFooter>
         </form>
       </DialogContent>
+      <Dialog open={modelOpen} onOpenChange={setModelOpen}>
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Thêm Dòng Xe Mới
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleCreateModel}
+            noValidate
+            className="space-y-3 pt-2"
+          >
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Hãng Xe</Label>
+              <Input
+                value={mBrand}
+                onChange={(e) => setMBrand(e.target.value)}
+                placeholder="Honda"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Dòng Xe *</Label>
+              <Input
+                autoFocus
+                value={mName}
+                onChange={(e) => setMName(e.target.value)}
+                placeholder="SH 150i ABS"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Đời Xe</Label>
+              <Input
+                value={mYear}
+                onChange={(e) => setMYear(e.target.value)}
+                placeholder="2025"
+              />
+            </div>
+            {mError && (
+              <p className="text-[11px] font-medium text-rose-600">{mError}</p>
+            )}
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setModelOpen(false)}
+                className="h-8 text-xs"
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                disabled={mPending}
+                size="sm"
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                {mPending ? 'Đang lưu...' : 'Lưu Dòng Xe'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={colorOpen} onOpenChange={setColorOpen}>
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Thêm Màu Mới
+            </DialogTitle>
+          </DialogHeader>
+          <form
+            onSubmit={handleCreateColor}
+            noValidate
+            className="space-y-3 pt-2"
+          >
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Tên Màu *</Label>
+              <Input
+                autoFocus
+                value={cName}
+                onChange={(e) => setCName(e.target.value)}
+                placeholder="Đỏ Đô"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Mã Màu Hex</Label>
+              <ColorPicker value={cHex} onChange={setCHex} />
+            </div>
+            {cError && (
+              <p className="text-[11px] font-medium text-rose-600">{cError}</p>
+            )}
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setColorOpen(false)}
+                className="h-8 text-xs"
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                disabled={cPending}
+                size="sm"
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                {cPending ? 'Đang lưu...' : 'Lưu Màu'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
     </Dialog>
   )
 }

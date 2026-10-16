@@ -232,6 +232,20 @@
       "when": 1792158592802,
       "tag": "0032_drop_model_color",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "5",
+      "when": 1792159077754,
+      "tag": "0033_vehicle_model_optional",
+      "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "5",
+      "when": 1792159161353,
+      "tag": "0034_batch_supplier_optional",
+      "breakpoints": true
     }
   ]
 }

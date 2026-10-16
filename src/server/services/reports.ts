@@ -181,13 +181,13 @@ function getInventoryTotals() {
 function getInventoryByModel() {
   return db
     .select({
-      modelId: motorcycleModels.id,
-      modelName: motorcycleModels.name,
+      modelId: sql<number>`coalesce(${motorcycleModels.id}, 0)`,
+      modelName: sql<string>`coalesce(${motorcycleModels.name}, 'Chưa rõ dòng xe')`,
       physical: sql<number>`sum(case when ${vehicles.isDelivered} = 0 then 1 else 0 end)`,
       invoiced: sql<number>`sum(case when ${vehicles.isInvoiced} = 0 then 1 else 0 end)`,
     })
     .from(vehicles)
-    .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
+    .leftJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
     .groupBy(motorcycleModels.id, motorcycleModels.name)
     .orderBy(asc(motorcycleModels.name))
 }
@@ -248,15 +248,15 @@ export async function listVehicles(filter: {
       batchId: importBatches.id,
       importDate: importBatches.importDate,
       supplierName: suppliers.name,
-      modelName: motorcycleModels.name,
+      modelName: sql<string>`coalesce(${motorcycleModels.name}, '')`,
       colorName: colors.name,
       colorHex: colors.hex,
       salesOrderId: salesOrderItems.salesOrderId,
     })
     .from(vehicles)
     .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))
-    .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
-    .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
+    .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+    .leftJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
     .innerJoin(colors, eq(colors.id, vehicles.colorId))
     .leftJoin(salesOrderItems, eq(salesOrderItems.vehicleId, vehicles.id))
     .leftJoin(salesOrders, eq(salesOrders.id, salesOrderItems.salesOrderId))
@@ -291,7 +291,7 @@ export async function getReports(from: string, to: string) {
       customerId: customers.id,
       customerName: customers.name,
       month: sql<string>`date_format(${salesOrders.orderDate}, '%Y-%m')`,
-      modelName: motorcycleModels.name,
+      modelName: sql<string>`coalesce(${motorcycleModels.name}, '')`,
       revenue: salesOrderItems.unitPrice,
       cost: salesOrderItems.costPrice,
     })
@@ -299,7 +299,7 @@ export async function getReports(from: string, to: string) {
     .innerJoin(salesOrders, eq(salesOrders.id, salesOrderItems.salesOrderId))
     .innerJoin(customers, eq(customers.id, salesOrders.customerId))
     .innerJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
-    .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
+    .leftJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
     .where(inRange)
 
   const expensesByType = db

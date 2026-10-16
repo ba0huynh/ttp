@@ -198,10 +198,6 @@ function NewBatchPage() {
 
   const handleSubmit = async () => {
     setError(null)
-    if (!supplierId) {
-      setError('Vui lòng chọn nhà cung cấp')
-      return
-    }
     if (vehicles.length === 0) {
       setError('Vui lòng thêm ít nhất 1 xe vào lô')
       return
@@ -296,7 +292,7 @@ function NewBatchPage() {
         <Section title="Thông Tin Lô">
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="space-y-1">
-              <Label className="text-[11px]">Nhà cung cấp *</Label>
+              <Label className="text-[11px]">Nhà cung cấp</Label>
               <SearchSelect
                 className="h-11 w-full text-sm bg-white rounded-lg"
                 placeholder="Chọn nhà cung cấp"

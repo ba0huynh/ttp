@@ -117,7 +117,9 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
     detail.batch.loanContractId,
   )
   const { data: master } = useQuery(masterDataQuery())
-  const [supplierId, setSupplierId] = React.useState(detail.batch.supplierId)
+  const [supplierId, setSupplierId] = React.useState(
+    detail.batch.supplierId ?? 0,
+  )
   const [importDate, setImportDate] = React.useState(detail.batch.importDate)
   const save = useBatchMutation(updateBatchInfoFn)
 
@@ -125,7 +127,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
     <Section title="Thông Tin Lô">
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
         <div className="space-y-1">
-          <Label className="text-[11px]">Nhà cung cấp *</Label>
+          <Label className="text-[11px]">Nhà cung cấp</Label>
           <SearchSelect
             className="h-11 w-full text-sm bg-white rounded-lg"
             placeholder="Chọn nhà cung cấp"
@@ -554,7 +556,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                 const v = detail.vehicles.find((x) => x.id === editId)
                 return v
                   ? {
-                      modelId: v.modelId,
+                      modelId: v.modelId ?? 0,
                       colorId: v.colorId,
                       chassisNumber: v.chassisNumber,
                       engineNumber: v.engineNumber,

@@ -116,7 +116,8 @@ async function assertNotInDb(exec: Exec, list: VehicleInput[]) {
 
 const normalizeVehicle = (batchId: number, v: VehicleInput) => ({
   batchId,
-  modelId: v.modelId,
+  // 0 = no model line chosen
+  modelId: v.modelId || null,
   colorId: v.colorId,
   chassisNumber: v.chassisNumber.trim().toUpperCase(),
   engineNumber: v.engineNumber.trim().toUpperCase(),
@@ -134,7 +135,8 @@ export async function createBatch(input: CreateBatchInput, userId?: number) {
       const [created] = await tx
         .insert(importBatches)
         .values({
-          supplierId: input.supplierId,
+          // 0 = no supplier chosen
+          supplierId: input.supplierId || null,
           loanContractId: input.loanContractId ?? null,
           importDate: input.importDate,
           pricingBase: input.pricingBase,
@@ -339,6 +341,6 @@ export async function updateBatchInfo(
 ) {
   await db
     .update(importBatches)
-    .set(p)
+    .set({ ...p, supplierId: p.supplierId || null })
     .where(and(eq(importBatches.id, batchId)))
 }

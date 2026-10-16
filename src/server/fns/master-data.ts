@@ -166,13 +166,15 @@ export const saveModelFn = createServerFn({ method: 'POST' })
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
-      if (id)
+      if (id) {
         await db
           .update(motorcycleModels)
           .set(v)
           .where(eq(motorcycleModels.id, id))
-      else await db.insert(motorcycleModels).values(v)
-      return { ok: true }
+        return { ok: true, id }
+      }
+      const [res] = await db.insert(motorcycleModels).values(v)
+      return { ok: true, id: Number(res.insertId) }
     }),
   )
 
@@ -188,9 +190,12 @@ export const saveColorFn = createServerFn({ method: 'POST' })
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
-      if (id) await db.update(colors).set(v).where(eq(colors.id, id))
-      else await db.insert(colors).values(v)
-      return { ok: true }
+      if (id) {
+        await db.update(colors).set(v).where(eq(colors.id, id))
+        return { ok: true, id }
+      }
+      const [res] = await db.insert(colors).values(v)
+      return { ok: true, id: Number(res.insertId) }
     }),
   )
 

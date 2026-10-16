@@ -39,7 +39,7 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
       supplierName: suppliers.name,
     })
     .from(importBatches)
-    .innerJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+    .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
     .where(eq(importBatches.loanContractId, loanId))
     .orderBy(importBatches.importDate)
 

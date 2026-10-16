@@ -106,12 +106,12 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         deliveredAt: vehicles.deliveredAt,
         isInvoiced: vehicles.isInvoiced,
         invoicedAt: vehicles.invoicedAt,
-        modelName: motorcycleModels.name,
+        modelName: sql<string>`coalesce(${motorcycleModels.name}, '')`,
         colorName: colors.name,
       })
       .from(salesOrderItems)
       .innerJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
-      .innerJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
+      .leftJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
       .innerJoin(colors, eq(colors.id, vehicles.colorId))
       .where(eq(salesOrderItems.salesOrderId, data.id))
       .orderBy(salesOrderItems.id)
