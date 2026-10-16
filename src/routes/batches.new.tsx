@@ -1,3 +1,4 @@
+import { ColorLabel } from '#/components/ui/color-label.tsx'
 import {
   useMutation,
   useQueryClient,
@@ -81,9 +82,7 @@ function NewBatchPage() {
   const navigate = useNavigate()
 
   // General batch information
-  const [supplierId, setSupplierId] = React.useState<number>(
-    master.suppliers[0]?.id ?? 1,
-  )
+  const [supplierId, setSupplierId] = React.useState<number>(0)
   const [loanContractId, setLoanContractId] = React.useState<number | null>(
     null,
   )
@@ -96,7 +95,7 @@ function NewBatchPage() {
   const [pricingMethod, setPricingMethod] = React.useState<
     'percent' | 'fixed_amount'
   >('percent')
-  const [pricingValue, setPricingValue] = React.useState<number>(8)
+  const [pricingValue, setPricingValue] = React.useState<number>(0)
 
   // Imported vehicles list
   const [vehicles, setVehicles] = React.useState<
@@ -111,19 +110,11 @@ function NewBatchPage() {
   >([
     {
       id: 1,
-      modelId: master.models[0]?.id ?? 1,
-      colorId: master.colors[0]?.id ?? 1,
-      chassisNumber: 'VIN-TEST-001',
-      engineNumber: 'ENG-TEST-001',
-      importPrice: 80_000_000,
-    },
-    {
-      id: 2,
-      modelId: master.models[0]?.id ?? 1,
-      colorId: master.colors[1]?.id ?? 2,
-      chassisNumber: 'VIN-TEST-002',
-      engineNumber: 'ENG-TEST-002',
-      importPrice: 80_000_000,
+      modelId: 0,
+      colorId: 0,
+      chassisNumber: '',
+      engineNumber: '',
+      importPrice: 0,
     },
   ])
 
@@ -135,20 +126,7 @@ function NewBatchPage() {
       description: string
       amount: number
     }[]
-  >([
-    {
-      id: 1,
-      expenseType: 'import_tax',
-      description: 'Thuế nhập khẩu và tiêu thụ đặc biệt',
-      amount: 15_000_000,
-    },
-    {
-      id: 2,
-      expenseType: 'shipping_international',
-      description: 'Vận chuyển quốc tế',
-      amount: 5_000_000,
-    },
-  ])
+  >([])
 
   const submitting = createBatch.isPending
   const [error, setError] = React.useState<string | null>(null)
@@ -196,11 +174,11 @@ function NewBatchPage() {
       ...vehicles,
       {
         id: nextId,
-        modelId: master.models[0]?.id ?? 1,
-        colorId: master.colors[0]?.id ?? 1,
-        chassisNumber: `VIN-AUTO-${nextId}`,
-        engineNumber: `ENG-AUTO-${nextId}`,
-        importPrice: 50_000_000,
+        modelId: 0,
+        colorId: 0,
+        chassisNumber: '',
+        engineNumber: '',
+        importPrice: 0,
       },
     ])
   }
@@ -217,8 +195,8 @@ function NewBatchPage() {
       {
         id: nextId,
         expenseType: 'customs_fee',
-        description: 'Chi phí hải quan & kiểm định',
-        amount: 3_000_000,
+        description: '',
+        amount: 0,
       },
     ])
   }
@@ -230,6 +208,15 @@ function NewBatchPage() {
   const handleSubmit = async (evt: React.FormEvent) => {
     evt.preventDefault()
     setError(null)
+
+    if (!supplierId) {
+      setError('Vui lòng chọn nhà cung cấp')
+      return
+    }
+    if (vehicles.some((v) => !v.modelId || !v.colorId)) {
+      setError('Vui lòng chọn dòng xe và màu xe cho từng xe')
+      return
+    }
 
     try {
       await createBatch.mutateAsync({
@@ -606,8 +593,9 @@ function NewBatchPage() {
                                   key={c.id}
                                   value={String(c.id)}
                                   className="text-xs"
+                                  keywords={c.name}
                                 >
-                                  {c.name}
+                                  <ColorLabel name={c.name} hex={c.hex} />
                                 </SearchSelectItem>
                               ))}
                             </SearchSelect>

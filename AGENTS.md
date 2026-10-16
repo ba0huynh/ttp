@@ -717,5 +717,17 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 61, 62,... above this line upon completing tasks)_
+### Lesson 61: New Batch Form Opens Empty
+
+- `/batches/new` no longer starts with demo values: no supplier selected, one blank vehicle row (no model / colour / VIN / engine / price), no expense rows, profit value 0. "Thêm xe" / "Thêm chi phí" also add blank rows. Unselected dropdowns use id `0`, so submit checks the supplier and each vehicle's model and colour first and shows a Vietnamese message.
+
+---
+
+### Lesson 62: Colour Swatch in Colour Dropdowns
+
+- `ColorLabel` (`src/components/ui/color-label.tsx`) renders a colour name with a round swatch of `colors.hex`. The colour `SearchSelect`s in `/batches/new` and `BatchEditor` use it (with `keywords={c.name}` so search still matches the name). Use it for any new colour dropdown.
+
+---
+
+_(Next Agent: Append Lesson 63, 64,... above this line upon completing tasks)_
 

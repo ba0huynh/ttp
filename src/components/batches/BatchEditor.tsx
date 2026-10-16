@@ -1,3 +1,4 @@
+import { ColorLabel } from '#/components/ui/color-label.tsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { Plus, Save, Trash2 } from 'lucide-react'
 import * as React from 'react'
@@ -587,8 +588,8 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           onValueChange={(v) => setColorId(Number(v))}
         >
           {colors.map((c) => (
-            <SearchSelectItem key={c.id} value={String(c.id)}>
-              {c.name}
+            <SearchSelectItem key={c.id} value={String(c.id)} keywords={c.name}>
+              <ColorLabel name={c.name} hex={c.hex} />
             </SearchSelectItem>
           ))}
         </SearchSelect>
