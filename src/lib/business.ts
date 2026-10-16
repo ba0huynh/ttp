@@ -73,15 +73,12 @@ export interface BatchPricing {
   pricingValue: number
 }
 
-/**
- * Selling price = import price + % or + fixed amount. Batch expenses are never
- * part of it (`p.pricingBase` is kept only for old data and is ignored).
- */
+/** Selling price = Base (import price | cost price) + % or + fixed amount */
 export function computeSellingPrice(
   v: { importPrice: number; costPrice: number },
   p: BatchPricing,
 ): number {
-  const base = v.importPrice
+  const base = p.pricingBase === 'import_price' ? v.importPrice : v.costPrice
   const price =
     p.pricingMethod === 'percent'
       ? base * (1 + p.pricingValue / 100)

@@ -293,20 +293,20 @@ export function VehicleFormDialog({
             className="space-y-3 pt-2"
           >
             <div className="space-y-1">
-              <Label className="text-xs font-semibold">Hãng Xe</Label>
-              <Input
-                value={mBrand}
-                onChange={(e) => setMBrand(e.target.value)}
-                placeholder="Honda"
-              />
-            </div>
-            <div className="space-y-1">
               <Label className="text-xs font-semibold">Dòng Xe *</Label>
               <Input
                 autoFocus
                 value={mName}
                 onChange={(e) => setMName(e.target.value)}
                 placeholder="SH 150i ABS"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Hãng Xe</Label>
+              <Input
+                value={mBrand}
+                onChange={(e) => setMBrand(e.target.value)}
+                placeholder="Honda"
               />
             </div>
             <div className="space-y-1">

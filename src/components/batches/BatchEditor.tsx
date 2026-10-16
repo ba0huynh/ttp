@@ -32,7 +32,8 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { formatVnd } from '#/lib/business.ts'
+import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
+import { computeSellingPrice, formatVnd, isBelowCost } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
@@ -158,22 +159,55 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
 /* ------------------------------- Selling price ------------------------------- */
 
 function PricingEditor({ detail }: { detail: BatchDetail }) {
-  // The selling price always starts from the import price (no batch expenses)
-  const base: PricingBase = 'import_price'
+  const [base, setBase] = React.useState<PricingBase>(detail.batch.pricingBase)
   const [method, setMethod] = React.useState<PricingMethod>(
     detail.batch.pricingMethod,
   )
   const [value, setValue] = React.useState(detail.batch.pricingValue)
   const save = useBatchMutation(updateBatchPricingFn)
 
+  // Live preview with the same formula the server applies
+  const preview = detail.vehicles.map((v) => ({
+    ...v,
+    newPrice: computeSellingPrice(v, {
+      pricingBase: base,
+      pricingMethod: method,
+      pricingValue: value,
+    }),
+  }))
+  const losses = preview.filter((v) => isBelowCost(v.newPrice, v.costPrice))
+  const worst = [...preview].sort(
+    (a, b) => a.newPrice - a.costPrice - (b.newPrice - b.costPrice),
+  )[0]
   const dirty =
     base !== detail.batch.pricingBase ||
     method !== detail.batch.pricingMethod ||
     value !== detail.batch.pricingValue
 
   return (
-    <Section title="Cài Giá Bán Theo Lô">
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
+    <Section
+      title="Cài Giá Bán Theo Lô"
+      aside={
+        losses.length > 0 && (
+          <Badge className="bg-rose-600 text-white text-[11px]">
+            {losses.length}/{preview.length} xe bán dưới giá vốn
+          </Badge>
+        )
+      }
+    >
+      <div className="grid grid-cols-1 sm:grid-cols-4 gap-2 items-end">
+        <div className="space-y-1">
+          <Label className="text-[11px]">Gốc tính giá</Label>
+          <Select value={base} onValueChange={(v) => setBase(v as PricingBase)}>
+            <SelectTrigger className="h-11 w-full text-sm bg-white rounded-lg">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="import_price">Đơn giá nhập</SelectItem>
+              <SelectItem value="cost_price">Giá vốn thực tế</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
         <div className="space-y-1">
           <Label className="text-[11px]">Cách cộng thêm</Label>
           <Select
@@ -231,6 +265,13 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
           {save.isPending ? 'Đang áp dụng...' : 'Áp dụng cho cả lô'}
         </Button>
       </div>
+      {worst && isBelowCost(worst.newPrice, worst.costPrice) && (
+        <CostWarningAlert
+          sellingPrice={worst.newPrice}
+          costPrice={worst.costPrice}
+          importPrice={worst.importPrice}
+        />
+      )}
     </Section>
   )
 }
@@ -415,6 +456,8 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
               <TableHead>Số Máy</TableHead>
               <TableHead>Dòng xe / Màu</TableHead>
               <TableHead className="text-right">Đơn Giá Nhập</TableHead>
+              <TableHead className="text-right">CP Phân Bổ</TableHead>
+              <TableHead className="text-right">Giá Vốn Xe</TableHead>
               <TableHead className="text-right">Giá Bán Áp Dụng</TableHead>
               <TableHead />
             </TableRow>
@@ -441,8 +484,19 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   <TableCell className="text-right">
                     {formatVnd(v.importPrice)}
                   </TableCell>
+                  <TableCell className="text-right text-slate-500">
+                    +{formatVnd(v.allocatedExpense)}
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-slate-900">
+                    {formatVnd(v.costPrice)}
+                  </TableCell>
                   <TableCell className="text-right font-bold text-emerald-800">
                     {formatVnd(v.sellingPrice)}
+                    {isBelowCost(v.sellingPrice, v.costPrice) && (
+                      <div className="text-[10px] font-medium text-rose-700">
+                        Dưới giá vốn
+                      </div>
+                    )}
                   </TableCell>
                   <TableCell className="text-right">
                     {locked ? (

@@ -52,6 +52,7 @@ import {
   allocateBatchExpenses,
   computeSellingPrice,
   formatVnd,
+  isBelowCost,
   modelLabel,
   todayIso,
 } from '#/lib/business.ts'
@@ -105,8 +106,9 @@ function NewBatchPage() {
   const [importDate, setImportDate] = React.useState(todayIso())
 
   // Selling price configuration
-  // The selling price always starts from the import price (no batch expenses)
-  const pricingBase = 'import_price' as const
+  const [pricingBase, setPricingBase] = React.useState<
+    'cost_price' | 'import_price'
+  >('import_price')
   const [pricingMethod, setPricingMethod] = React.useState<
     'percent' | 'fixed_amount'
   >('percent')
@@ -155,6 +157,10 @@ function NewBatchPage() {
       sellingPrice: selling,
     }
   })
+
+  const hasLossWarning = previewVehicles.some((v) =>
+    isBelowCost(v.sellingPrice, v.costPrice),
+  )
 
   // Add or update an expense of the list (kept here until the batch is saved)
   const saveExpense = (v: ExpenseFormValues) => {
@@ -277,6 +283,21 @@ function NewBatchPage() {
           </Alert>
         )}
 
+        {/* GLOBAL BELOW-COST WARNING ALERT */}
+        {hasLossWarning && (
+          <Alert
+            variant="destructive"
+            className="bg-rose-50 border-rose-300 text-rose-900"
+          >
+            <AlertCircle className="size-5 text-rose-600" />
+            <AlertDescription className="text-xs font-semibold">
+              CẢNH BÁO BÁN LỖ: Có xe trong lô đang có Giá bán thấp hơn Giá vốn
+              sau khi cộng chi phí! Hãy xem xét lại gốc tính giá, mức % hoặc số
+              tiền cộng thêm trong phần cấu hình giá bán.
+            </AlertDescription>
+          </Alert>
+        )}
+
         {/* 1. Batch information */}
         <Section title="Thông Tin Lô">
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
@@ -298,7 +319,24 @@ function NewBatchPage() {
 
         {/* 2. Pricing */}
         <Section title="Cài Giá Bán Theo Lô">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+            <div className="space-y-1">
+              <Label className="text-[11px]">Gốc tính giá</Label>
+              <Select
+                value={pricingBase}
+                onValueChange={(val) =>
+                  setPricingBase(val as 'cost_price' | 'import_price')
+                }
+              >
+                <SelectTrigger className="h-11 w-full text-sm bg-white rounded-lg">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="import_price">Đơn giá nhập</SelectItem>
+                  <SelectItem value="cost_price">Giá vốn thực tế</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="space-y-1">
               <Label className="text-[11px]">Cách cộng thêm</Label>
               <Select
@@ -451,6 +489,8 @@ function NewBatchPage() {
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>
+                    <TableHead className="text-right">CP Phân Bổ</TableHead>
+                    <TableHead className="text-right">Giá Vốn Xe</TableHead>
                     <TableHead className="text-right">
                       Giá Bán Áp Dụng
                     </TableHead>
@@ -461,7 +501,14 @@ function NewBatchPage() {
                   {previewVehicles.map((v) => {
                     const model = modelOf(v.modelId)
                     return (
-                      <TableRow key={v.id}>
+                      <TableRow
+                        key={v.id}
+                        className={
+                          isBelowCost(v.sellingPrice, v.costPrice)
+                            ? 'bg-rose-50'
+                            : ''
+                        }
+                      >
                         <TableCell className="font-medium">
                           {v.chassisNumber}
                         </TableCell>
@@ -479,8 +526,19 @@ function NewBatchPage() {
                         <TableCell className="text-right">
                           {formatVnd(v.importPrice)}
                         </TableCell>
+                        <TableCell className="text-right text-slate-500">
+                          +{formatVnd(v.allocatedExpense)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-slate-900">
+                          {formatVnd(v.costPrice)}
+                        </TableCell>
                         <TableCell className="text-right font-bold text-emerald-800">
                           {formatVnd(v.sellingPrice)}
+                          {isBelowCost(v.sellingPrice, v.costPrice) && (
+                            <div className="text-[10px] font-medium text-rose-700">
+                              Dưới giá vốn
+                            </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-right whitespace-nowrap">
                           <Button
