@@ -17,7 +17,7 @@ import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
+import { confirmDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import {
   Card,
   CardContent,
@@ -206,7 +206,7 @@ function SalesOrderPage() {
       await cancelMutation.mutateAsync({ data: { orderId: order.id } })
       await navigate({ to: '/sales' })
     } catch (err: unknown) {
-      alert((err as Error).message || 'Không thể hủy phiếu bán')
+      await showErrorDialog(err, 'Không thể hủy phiếu bán')
     }
   }
 

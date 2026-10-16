@@ -19,7 +19,6 @@ import {
 import * as React from 'react'
 
 import { BrandMark } from '#/components/layout/BrandMark.tsx'
-import { ConfirmDialogHost } from '#/components/ui/confirm-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Sheet,
@@ -262,7 +261,6 @@ export function AppLayout({ children, user }: AppLayoutProps) {
           {isLoading ? <PageSkeleton /> : children}
         </main>
       </div>
-      <ConfirmDialogHost />
     </div>
   )
 }

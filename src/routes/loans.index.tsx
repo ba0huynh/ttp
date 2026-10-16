@@ -10,6 +10,7 @@ import * as React from 'react'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -101,7 +102,7 @@ function LoansPage() {
       })
       setNewLoanOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi tạo khế ước vay')
+      await showErrorDialog(err, 'Lỗi khi tạo khế ước vay')
     }
   }
 

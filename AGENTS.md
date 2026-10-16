@@ -590,6 +590,15 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Gotcha**: `drizzle-kit generate` asks interactively whether `role_id` is a rename of `role` and aborts without a TTY. The migrations were generated in two steps instead (additive schema first, then the final schema) and the data statements were appended to 0021 by hand. The data statements were checked against TEMPORARY tables only (the database user cannot create databases).
 - **Safety rules**: an admin cannot lock or demote their own account; a role cannot be deleted while users hold it; the Quản trị role is read-only.
 
+### Lesson 47: Global Dialog Popups Instead of `window.alert`
+
+- **Rule**: NEVER call `window.alert` or `alert()`. Use `alertDialog` or `showErrorDialog` from `src/components/ui/confirm-dialog.tsx`:
+  - `await alertDialog('Vui lòng chọn vai trò')` or `await alertDialog({ title: 'Cảnh báo', description: '...', destructive: true })`.
+  - In `catch` blocks: `await showErrorDialog(err, 'Lỗi khi lưu dữ liệu')`.
+- **Zod / API Error Formatting**: `showErrorDialog` automatically parses stringified Zod issues/JSON errors (e.g., `[{"code":"too_small","minimum":8,"path":["password"]}]`), maps field keys to friendly Vietnamese labels (`Mật khẩu: Tối thiểu 8 ký tự`), and presents them in a clean, styled Shadcn `AlertDialog` with a single "Đóng" / "Đã hiểu" button.
+- **Global Mounting**: `<ConfirmDialogHost />` is mounted at root in `src/routes/__root.tsx`, guaranteeing availability across all routes including auth pages and modals without duplicate hosts.
+
 ---
 
-_(Next Agent: Append Lesson 47, 48,... above this line upon completing tasks)_
+_(Next Agent: Append Lesson 48, 49,... above this line upon completing tasks)_
+

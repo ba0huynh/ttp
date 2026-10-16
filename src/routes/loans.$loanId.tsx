@@ -10,6 +10,7 @@ import * as React from 'react'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Card, CardContent } from '#/components/ui/card.tsx'
@@ -119,7 +120,7 @@ function LoanDetailPage() {
       setRepayPrincipal(0)
       setRepayInterest(fresh.interestDue > 0 ? fresh.interestDue : 0)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi ghi nhận trả nợ')
+      await showErrorDialog(err, 'Lỗi khi ghi nhận trả nợ')
     }
   }
 

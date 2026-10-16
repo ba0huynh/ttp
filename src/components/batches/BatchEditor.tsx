@@ -5,7 +5,11 @@ import * as React from 'react'
 import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  alertDialog,
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
@@ -77,7 +81,9 @@ function useBatchMutation<TVars>(fn: (vars: TVars) => Promise<unknown>) {
   return useMutation({
     mutationFn: fn,
     onSuccess: () => queryClient.invalidateQueries(),
-    onError: (err: Error) => alert(err.message || 'Có lỗi xảy ra'),
+    onError: (err: Error) => {
+      void showErrorDialog(err, 'Có lỗi xảy ra')
+    },
   })
 }
 
@@ -291,8 +297,11 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
   const remove = useBatchMutation(removeBatchExpenseFn)
   const total = detail.expenses.reduce((s, e) => s + e.amount, 0)
 
-  const handleAdd = () => {
-    if (amount <= 0) return alert('Số tiền chi phí phải > 0')
+  const handleAdd = async () => {
+    if (amount <= 0) {
+      await alertDialog('Số tiền chi phí phải lớn hơn 0')
+      return
+    }
     add.mutate(
       {
         data: {
@@ -415,11 +424,19 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
   const effModel = modelId ?? models[0]?.id ?? null
   const effColor = colorId ?? colors[0]?.id ?? null
 
-  const handleAdd = () => {
-    if (!effModel || !effColor) return alert('Chưa có dòng xe / màu xe')
-    if (!chassis.trim() || !engine.trim())
-      return alert('Nhập số khung và số máy')
-    if (price <= 0) return alert('Đơn giá nhập phải > 0')
+  const handleAdd = async () => {
+    if (!effModel || !effColor) {
+      await alertDialog('Chưa có dòng xe / màu xe')
+      return
+    }
+    if (!chassis.trim() || !engine.trim()) {
+      await alertDialog('Vui lòng nhập đầy đủ số khung và số máy')
+      return
+    }
+    if (price <= 0) {
+      await alertDialog('Đơn giá nhập phải lớn hơn 0')
+      return
+    }
     add.mutate(
       {
         data: {

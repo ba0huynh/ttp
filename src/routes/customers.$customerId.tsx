@@ -9,6 +9,7 @@ import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -103,7 +104,7 @@ function CustomerDetailPage() {
       })
       setNewBranchOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi tạo điểm bán')
+      await showErrorDialog(err, 'Lỗi khi tạo điểm bán')
     }
   }
 

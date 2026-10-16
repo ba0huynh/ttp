@@ -23,7 +23,11 @@ import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  alertDialog,
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
 import {
   Card,
   CardContent,
@@ -174,7 +178,7 @@ function MasterDataPage() {
       })
       setModelOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi lưu loại xe')
+      await showErrorDialog(err, 'Lỗi khi lưu loại xe')
     }
   }
 
@@ -186,7 +190,7 @@ function MasterDataPage() {
       })
       setSupplierOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi lưu nhà cung cấp')
+      await showErrorDialog(err, 'Lỗi khi lưu nhà cung cấp')
     }
   }
 
@@ -198,13 +202,16 @@ function MasterDataPage() {
       })
       setBankOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi lưu ngân hàng')
+      await showErrorDialog(err, 'Lỗi khi lưu ngân hàng')
     }
   }
 
   const handleSaveAccount = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!accBankId) return alert('Chưa chọn ngân hàng')
+    if (!accBankId) {
+      await alertDialog('Chưa chọn ngân hàng cho tài khoản')
+      return
+    }
     try {
       await saveAccount.mutateAsync({
         data: {
@@ -218,22 +225,24 @@ function MasterDataPage() {
       })
       setAccountOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi lưu tài khoản ngân hàng')
+      await showErrorDialog(err, 'Lỗi khi lưu tài khoản ngân hàng')
     }
   }
 
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
     const hex = cHex.trim() ? normalizeHex(cHex) : null
-    if (cHex.trim() && !hex)
-      return alert('Mã màu hex không hợp lệ. Ví dụ: #990000')
+    if (cHex.trim() && !hex) {
+      await alertDialog('Mã màu hex không hợp lệ. Ví dụ: #990000')
+      return
+    }
     try {
       await saveColor.mutateAsync({
         data: { name: cName, hex },
       })
       setColorOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi lưu màu sắc')
+      await showErrorDialog(err, 'Lỗi khi lưu màu sắc')
     }
   }
 
@@ -250,7 +259,7 @@ function MasterDataPage() {
     try {
       await deleteItem.mutateAsync({ data: { entity, id } })
     } catch (err: unknown) {
-      alert((err as Error).message || 'Không thể xóa mục đang được sử dụng')
+      await showErrorDialog(err, 'Không thể xóa mục đang được sử dụng')
     }
   }
 

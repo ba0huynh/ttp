@@ -18,6 +18,7 @@ import { ImportStatementDialog } from '#/components/finance/ImportStatementDialo
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -127,7 +128,7 @@ function ReconcilePage() {
     try {
       await setLineStatus.mutateAsync({ data: { lineId, status: 'unmatched' } })
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi hủy khớp giao dịch')
+      await showErrorDialog(err, 'Lỗi khi hủy khớp giao dịch')
     }
   }
 
@@ -145,7 +146,7 @@ function ReconcilePage() {
       })
       setMatchingLineId(null)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi khớp giao dịch')
+      await showErrorDialog(err, 'Lỗi khi khớp giao dịch')
     }
   }
 

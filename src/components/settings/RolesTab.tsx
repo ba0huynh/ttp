@@ -11,7 +11,7 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
-import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
+import { confirmDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import {
   Dialog,
   DialogContent,
@@ -104,7 +104,7 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
       })
       setOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi lưu vai trò')
+      await showErrorDialog(err, 'Lỗi khi lưu vai trò')
     }
   }
 
@@ -119,7 +119,7 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
     try {
       await deleteRole.mutateAsync({ data: { id: r.id } })
     } catch (err: unknown) {
-      alert((err as Error).message || 'Không thể xóa vai trò')
+      await showErrorDialog(err, 'Không thể xóa vai trò')
     }
   }
 
@@ -153,7 +153,7 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
             <TableBody className="text-xs">
               {roles.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-semibold text-slate-900">
+                  <TableCell className="font-medium text-slate-900">
                     {r.name}
                   </TableCell>
                   <TableCell className="text-slate-600">
@@ -163,13 +163,13 @@ export function RolesTab({ roles }: { roles: RoleRow[] }) {
                     {r.isAdmin ? (
                       <Badge
                         variant="outline"
-                        className="bg-emerald-50 text-emerald-800 border-emerald-300 gap-1"
+                        className="bg-emerald-50 text-emerald-800 border-emerald-300 gap-1 text-[11px]"
                       >
                         <ShieldCheck className="size-3" />
                         Toàn quyền
                       </Badge>
                     ) : (
-                      <span className="font-semibold">
+                      <span className="font-medium">
                         {r.permissions.length}/{ALL_PERMISSIONS.length}
                       </span>
                     )}

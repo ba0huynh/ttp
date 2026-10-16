@@ -11,6 +11,7 @@ import * as React from 'react'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { RolesTab } from '#/components/settings/RolesTab.tsx'
 import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
+import { alertDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -163,7 +164,7 @@ function SettingsPage() {
       })
       setCompanySuccess(true)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi cập nhật công ty')
+      await showErrorDialog(err, 'Lỗi khi cập nhật công ty')
     }
   }
 
@@ -188,7 +189,10 @@ function SettingsPage() {
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (!uRoleId) return alert('Chưa chọn vai trò')
+    if (!uRoleId) {
+      await alertDialog('Chưa chọn vai trò cho tài khoản')
+      return
+    }
     try {
       await saveUser.mutateAsync({
         data: {
@@ -204,7 +208,7 @@ function SettingsPage() {
       })
       setUserModalOpen(false)
     } catch (err: unknown) {
-      alert((err as Error).message || 'Lỗi khi lưu người dùng')
+      await showErrorDialog(err, 'Lỗi khi lưu người dùng')
     }
   }
 
@@ -259,7 +263,7 @@ function SettingsPage() {
 
           {/* Tab 1: Company Profile */}
           <TabsContent value="company">
-            <Card className="border-slate-200 shadow-xs max-w-2xl">
+            <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
                   Pháp Nhân Doanh Nghiệp
@@ -286,7 +290,7 @@ function SettingsPage() {
                       disabled={!canCompany}
                       value={cName}
                       onChange={(e) => setCName(e.target.value)}
-                      className="h-8 text-xs font-bold"
+                      className="h-8 text-xs"
                     />
                   </div>
 
@@ -299,7 +303,7 @@ function SettingsPage() {
                         disabled={!canCompany}
                         value={cTax}
                         onChange={(e) => setCTax(e.target.value)}
-                        className="h-8 text-xs font-mono font-bold"
+                        className="h-8 text-xs font-mono"
                       />
                     </div>
                     <div className="space-y-1">
@@ -413,10 +417,10 @@ function SettingsPage() {
                     <TableBody className="text-xs">
                       {usersPg.pageItems.map((u: any) => (
                         <TableRow key={u.id}>
-                          <TableCell className="font-mono font-bold text-slate-900">
+                          <TableCell className="font-mono font-medium text-slate-800">
                             {u.username}
                           </TableCell>
-                          <TableCell className="font-semibold text-slate-900">
+                          <TableCell className="font-medium text-slate-900">
                             {u.fullName}
                           </TableCell>
                           <TableCell className="text-slate-600">
@@ -425,7 +429,7 @@ function SettingsPage() {
                           <TableCell>
                             <Badge
                               variant="outline"
-                              className="text-[11px] font-semibold"
+                              className="text-[11px]"
                             >
                               {u.roleName}
                             </Badge>
@@ -435,8 +439,8 @@ function SettingsPage() {
                               variant="outline"
                               className={
                                 u.isActive
-                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300'
-                                  : 'bg-rose-50 text-rose-800 border-rose-300'
+                                  ? 'bg-emerald-50 text-emerald-800 border-emerald-300 text-[11px]'
+                                  : 'bg-rose-50 text-rose-800 border-rose-300 text-[11px]'
                               }
                             >
                               {u.isActive ? 'Đang hoạt động' : 'Đã khóa'}
