@@ -30,7 +30,7 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import {
   addMonthsIso,
-  estimateLoanTermInterest,
+  projectLoanTermInterest,
   formatDate,
   formatVnd,
   todayIso,
@@ -126,11 +126,16 @@ function LoanDetailPage() {
   }
 
   const { loan } = loanDetail
-  const termEstimate = estimateLoanTermInterest(
-    loan.principalAmount,
-    loan.interestRate,
-    loan.termMonths,
-  )
+  const termEstimate = projectLoanTermInterest({
+    principal: loan.principalAmount,
+    annualRatePercent: loan.interestRate,
+    disbursementDate: loan.disbursementDate,
+    termMonths: loan.termMonths,
+    principalRepayments: loanDetail.repayments.map((r) => ({
+      date: r.paymentDate,
+      amount: r.principalAmount,
+    })),
+  })
 
   return (
     <AppLayout user={user}>

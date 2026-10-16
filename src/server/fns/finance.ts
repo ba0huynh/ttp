@@ -209,6 +209,7 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
       salesOrderId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
+      createStatementLine: z.boolean().optional(),
     }),
   )
   .handler(async ({ data, context }) => {
@@ -270,6 +271,7 @@ export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
       amount: z.number().positive('Số tiền chi phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
       description: z.string().trim().nullable().optional(),
+      createStatementLine: z.boolean().optional(),
     }),
   )
   .handler(async ({ data, context }) => {

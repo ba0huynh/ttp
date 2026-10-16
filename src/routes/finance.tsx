@@ -19,6 +19,7 @@ import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { Checkbox } from '#/components/ui/checkbox.tsx'
 import {
   Card,
   CardContent,
@@ -152,6 +153,7 @@ function FinancePage() {
     null,
   )
   const [receiptAmount, setReceiptAmount] = React.useState(50_000_000)
+  const [receiptStatement, setReceiptStatement] = React.useState(false)
   const [receiptAccountId, setReceiptAccountId] = React.useState<number | null>(
     master.bankAccounts.find((a) => a.isActive)?.id ?? null,
   )
@@ -167,6 +169,7 @@ function FinancePage() {
     master.bankAccounts.find((a) => a.isActive)?.id ?? null,
   )
   const [paymentDesc, setPaymentDesc] = React.useState('')
+  const [paymentStatement, setPaymentStatement] = React.useState(false)
 
   const selectedCustomer = customers.find((c) => c.id === receiptCustomerId)
   const branchOptions = selectedCustomer?.branches ?? []
@@ -232,6 +235,8 @@ function FinancePage() {
         branchId: receiptBranchId,
         amount: receiptAmount,
         companyBankAccountId: receiptAccountId,
+        createStatementLine:
+          !editReceiptId && !!receiptAccountId && receiptStatement,
       })
       setReceiptOpen(false)
     } catch (err: unknown) {
@@ -250,6 +255,8 @@ function FinancePage() {
         amount: paymentAmount,
         companyBankAccountId: paymentAccountId,
         description: paymentDesc,
+        createStatementLine:
+          !editPaymentId && !!paymentAccountId && paymentStatement,
       })
       setPaymentOpen(false)
     } catch (err: unknown) {
@@ -686,6 +693,22 @@ function FinancePage() {
                     onChange={setReceiptAccountId}
                     noneLabel="Không chọn (tiền mặt)"
                   />
+                  {receiptAccountId && !editReceiptId && (
+                    <label className="flex cursor-pointer items-start gap-2 pt-1 text-xs text-slate-600">
+                      <Checkbox
+                        checked={receiptStatement}
+                        onCheckedChange={(c) => setReceiptStatement(c === true)}
+                        className="mt-0.5"
+                      />
+                      <span>
+                        Tạo luôn dòng sao kê và khớp với phiếu thu này
+                        <span className="block text-[11px] text-slate-400">
+                          Dùng khi chưa nhập sao kê ngân hàng; nếu sau này nhập
+                          sao kê, tránh tạo trùng.
+                        </span>
+                      </span>
+                    </label>
+                  )}
                 </div>
               </div>
 
@@ -776,6 +799,22 @@ function FinancePage() {
                   onChange={setPaymentAccountId}
                   noneLabel="Không chọn (tiền mặt)"
                 />
+                {paymentAccountId && !editPaymentId && (
+                  <label className="flex cursor-pointer items-start gap-2 pt-1 text-xs text-slate-600">
+                    <Checkbox
+                      checked={paymentStatement}
+                      onCheckedChange={(c) => setPaymentStatement(c === true)}
+                      className="mt-0.5"
+                    />
+                    <span>
+                      Tạo luôn dòng sao kê và khớp với phiếu chi này
+                      <span className="block text-[11px] text-slate-400">
+                        Dùng khi chưa nhập sao kê ngân hàng; nếu sau này nhập
+                        sao kê, tránh tạo trùng.
+                      </span>
+                    </span>
+                  </label>
+                )}
               </div>
 
               <div className="space-y-1">

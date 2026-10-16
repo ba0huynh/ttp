@@ -1,20 +1,28 @@
-import { and, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, eq, gte, isNull, lte, ne, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
   bankStatementLines,
   bankStatements,
   customers,
+  importBatches,
   loanContracts,
   loanRepayments,
   paymentVouchers,
   posBranches,
   receiptVouchers,
+  salesOrders,
   suppliers,
+  vehicles,
 } from '../../db/schema.ts'
 import type { MatchType } from '../../db/schema.ts'
-import { calculateLoanInterest, todayIso } from '../../lib/business.ts'
+import {
+  calculateLoanInterest,
+  formatVnd,
+  todayIso,
+} from '../../lib/business.ts'
 import { BusinessError, num } from './common.ts'
+import type { Exec } from './common.ts'
 
 /* -------------------------------------------------------------------------- */
 /* 04. Bank Loans                                                             */
@@ -88,6 +96,160 @@ export async function recordLoanRepayment(input: {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Debt guard: a voucher may never push a balance below zero                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Refuses a receipt that is larger than what the customer / point of sale
+ * still owes. `excludeId` is the voucher being edited (its old amount is not
+ * counted as already paid).
+ */
+async function assertReceiptWithinDebt(
+  customerId: number,
+  branchId: number | null | undefined,
+  amount: number,
+  excludeId?: number,
+) {
+  const branchSold = branchId
+    ? eq(salesOrders.branchId, branchId)
+    : isNull(salesOrders.branchId)
+  const branchPaid = branchId
+    ? eq(receiptVouchers.branchId, branchId)
+    : isNull(receiptVouchers.branchId)
+  const [[sold], [paid], [customer], branch] = await Promise.all([
+    db
+      .select({ t: sql<string>`coalesce(sum(${salesOrders.totalAmount}),0)` })
+      .from(salesOrders)
+      .where(
+        and(
+          eq(salesOrders.status, 'confirmed'),
+          eq(salesOrders.customerId, customerId),
+          branchSold,
+        ),
+      ),
+    db
+      .select({ t: sql<string>`coalesce(sum(${receiptVouchers.amount}),0)` })
+      .from(receiptVouchers)
+      .where(
+        and(
+          eq(receiptVouchers.customerId, customerId),
+          branchPaid,
+          excludeId ? ne(receiptVouchers.id, excludeId) : undefined,
+        ),
+      ),
+    db
+      .select({ name: customers.name })
+      .from(customers)
+      .where(eq(customers.id, customerId)),
+    branchId
+      ? db
+          .select({ name: posBranches.name })
+          .from(posBranches)
+          .where(eq(posBranches.id, branchId))
+      : Promise.resolve([]),
+  ])
+  const owed = Math.max(0, num(sold?.t) - num(paid?.t))
+  if (amount > owed + 0.5) {
+    const who =
+      branch[0]?.name ?? `${customer?.name ?? 'khách hàng'} (pháp nhân chính)`
+    throw new BusinessError(
+      owed <= 0.5
+        ? `${who} hiện không còn nợ, không thể lập phiếu thu ${formatVnd(amount)}.`
+        : `Số tiền thu ${formatVnd(amount)} vượt quá công nợ còn lại của ${who}: ${formatVnd(owed)} (vượt ${formatVnd(amount - owed)}). Chỉ có thể thu tối đa ${formatVnd(owed)}.`,
+    )
+  }
+}
+
+/** Same for a payment to a supplier: never pay more than is still owed */
+async function assertPaymentWithinDebt(
+  supplierId: number,
+  amount: number,
+  excludeId?: number,
+) {
+  const [[bought], [paid], [supplier]] = await Promise.all([
+    db
+      .select({ t: sql<string>`coalesce(sum(${vehicles.importPrice}),0)` })
+      .from(vehicles)
+      .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))
+      .where(eq(importBatches.supplierId, supplierId)),
+    db
+      .select({ t: sql<string>`coalesce(sum(${paymentVouchers.amount}),0)` })
+      .from(paymentVouchers)
+      .where(
+        and(
+          eq(paymentVouchers.payeeType, 'supplier'),
+          eq(paymentVouchers.supplierId, supplierId),
+          excludeId ? ne(paymentVouchers.id, excludeId) : undefined,
+        ),
+      ),
+    db
+      .select({ name: suppliers.name })
+      .from(suppliers)
+      .where(eq(suppliers.id, supplierId)),
+  ])
+  const owed = Math.max(0, num(bought?.t) - num(paid?.t))
+  if (amount > owed + 0.5) {
+    const who = supplier?.name ?? 'nhà cung cấp'
+    throw new BusinessError(
+      owed <= 0.5
+        ? `Không còn nợ ${who}, không thể lập phiếu chi ${formatVnd(amount)}.`
+        : `Số tiền chi ${formatVnd(amount)} vượt quá công nợ còn lại với ${who}: ${formatVnd(owed)} (vượt ${formatVnd(amount - owed)}). Chỉ có thể chi tối đa ${formatVnd(owed)}.`,
+    )
+  }
+}
+
+/**
+ * Records the bank movement of a voucher as a statement line that is already
+ * matched to it. All such lines of an account go into one "manual" statement.
+ */
+const MANUAL_STATEMENT_NAME = 'Tạo từ phiếu thu/chi'
+async function addMatchedStatementLine(
+  tx: Exec,
+  v: {
+    accountId: number
+    date: string
+    description: string
+    direction: 'in' | 'out'
+    amount: number
+    type: 'receipt' | 'payment'
+    voucherId: number
+    userId?: number
+  },
+) {
+  let [statement] = await tx
+    .select({ id: bankStatements.id })
+    .from(bankStatements)
+    .where(
+      and(
+        eq(bankStatements.companyBankAccountId, v.accountId),
+        eq(bankStatements.fileName, MANUAL_STATEMENT_NAME),
+      ),
+    )
+    .limit(1)
+  if (!statement) {
+    const [created] = await tx
+      .insert(bankStatements)
+      .values({
+        companyBankAccountId: v.accountId,
+        fileName: MANUAL_STATEMENT_NAME,
+        createdBy: v.userId ?? null,
+      })
+      .$returningId()
+    statement = { id: created.id }
+  }
+  await tx.insert(bankStatementLines).values({
+    statementId: statement.id,
+    transactionDate: v.date,
+    description: v.description,
+    debit: v.direction === 'out' ? v.amount : 0,
+    credit: v.direction === 'in' ? v.amount : 0,
+    status: 'matched',
+    matchedType: v.type,
+    matchedId: v.voucherId,
+  })
+}
+
+/* -------------------------------------------------------------------------- */
 /* 08. Receipt Vouchers                                                       */
 /* -------------------------------------------------------------------------- */
 
@@ -99,10 +261,15 @@ export async function createReceiptVoucher(
     salesOrderId?: number | null
     amount: number
     companyBankAccountId?: number | null
+    /** Also add a bank statement line, already matched to this receipt */
+    createStatementLine?: boolean
   },
   userId?: number,
 ) {
+  const { createStatementLine, ...fields } = input
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
+  if (createStatementLine && !input.companyBankAccountId)
+    throw new BusinessError('Chọn tài khoản ngân hàng để tạo dòng sao kê')
   if (input.branchId) {
     const [b] = await db
       .select({ customerId: posBranches.customerId })
@@ -111,17 +278,36 @@ export async function createReceiptVoucher(
     if (!b || b.customerId !== input.customerId)
       throw new BusinessError('Điểm bán không thuộc khách hàng')
   }
-  const [r] = await db
-    .insert(receiptVouchers)
-    .values({
-      ...input,
-      branchId: input.branchId ?? null,
-      salesOrderId: input.salesOrderId ?? null,
-      companyBankAccountId: input.companyBankAccountId ?? null,
-      createdBy: userId ?? null,
-    })
-    .$returningId()
-  return r.id
+  await assertReceiptWithinDebt(input.customerId, input.branchId, input.amount)
+  return db.transaction(async (tx) => {
+    const [r] = await tx
+      .insert(receiptVouchers)
+      .values({
+        ...fields,
+        branchId: input.branchId ?? null,
+        salesOrderId: input.salesOrderId ?? null,
+        companyBankAccountId: input.companyBankAccountId ?? null,
+        createdBy: userId ?? null,
+      })
+      .$returningId()
+    if (createStatementLine && input.companyBankAccountId) {
+      const [c] = await tx
+        .select({ name: customers.name })
+        .from(customers)
+        .where(eq(customers.id, input.customerId))
+      await addMatchedStatementLine(tx, {
+        accountId: input.companyBankAccountId,
+        date: input.receiptDate,
+        description: `Thu tiền ${c?.name ?? ''}`.trim(),
+        direction: 'in',
+        amount: input.amount,
+        type: 'receipt',
+        voucherId: r.id,
+        userId,
+      })
+    }
+    return r.id
+  })
 }
 
 /* -------------------------------------------------------------------------- */
@@ -137,25 +323,54 @@ export async function createPaymentVoucher(
     amount: number
     companyBankAccountId?: number | null
     description?: string | null
+    /** Also add a bank statement line, already matched to this payment */
+    createStatementLine?: boolean
   },
   userId?: number,
 ) {
+  const { createStatementLine, ...fields } = input
+  if (createStatementLine && !input.companyBankAccountId)
+    throw new BusinessError('Chọn tài khoản ngân hàng để tạo dòng sao kê')
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
   if (input.payeeType === 'supplier' && !input.supplierId)
     throw new BusinessError('Chưa chọn nhà cung cấp')
-  const [r] = await db
-    .insert(paymentVouchers)
-    .values({
-      ...input,
-      supplierId:
-        input.payeeType === 'supplier' ? (input.supplierId ?? null) : null,
-      payeeName: input.payeeName ?? null,
-      companyBankAccountId: input.companyBankAccountId ?? null,
-      description: input.description ?? null,
-      createdBy: userId ?? null,
-    })
-    .$returningId()
-  return r.id
+  if (input.payeeType === 'supplier' && input.supplierId)
+    await assertPaymentWithinDebt(input.supplierId, input.amount)
+  return db.transaction(async (tx) => {
+    const [r] = await tx
+      .insert(paymentVouchers)
+      .values({
+        ...fields,
+        supplierId:
+          input.payeeType === 'supplier' ? (input.supplierId ?? null) : null,
+        payeeName: input.payeeName ?? null,
+        companyBankAccountId: input.companyBankAccountId ?? null,
+        description: input.description ?? null,
+        createdBy: userId ?? null,
+      })
+      .$returningId()
+    if (createStatementLine && input.companyBankAccountId) {
+      let who = input.payeeName ?? ''
+      if (input.payeeType === 'supplier' && input.supplierId) {
+        const [s] = await tx
+          .select({ name: suppliers.name })
+          .from(suppliers)
+          .where(eq(suppliers.id, input.supplierId))
+        who = s?.name ?? who
+      }
+      await addMatchedStatementLine(tx, {
+        accountId: input.companyBankAccountId,
+        date: input.paymentDate,
+        description: input.description?.trim() || `Chi tiền ${who}`.trim(),
+        direction: 'out',
+        amount: input.amount,
+        type: 'payment',
+        voucherId: r.id,
+        userId,
+      })
+    }
+    return r.id
+  })
 }
 
 /* -------------------------------------------------------------------------- */
@@ -388,6 +603,12 @@ export async function updateReceiptVoucher(
     if (!b || b.customerId !== input.customerId)
       throw new BusinessError('Điểm bán không thuộc khách hàng')
   }
+  await assertReceiptWithinDebt(
+    input.customerId,
+    input.branchId,
+    input.amount,
+    id,
+  )
   await db
     .update(receiptVouchers)
     .set({
@@ -417,6 +638,7 @@ export async function updatePaymentVoucher(
 ) {
   await assertNotMatched('payment', id)
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
+  await assertPaymentWithinDebt(input.supplierId, input.amount, id)
   await db
     .update(paymentVouchers)
     .set({

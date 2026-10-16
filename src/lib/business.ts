@@ -207,6 +207,33 @@ export function estimateLoanTermInterest(
   return { monthly, total: monthly * termMonths }
 }
 
+/**
+ * Interest over the whole term from the real schedule: principal repayments
+ * already made cut segments, and the balance left after the last one carries
+ * on to maturity (day-exact, 365-day convention). With no repayment it equals
+ * `estimateLoanTermInterest` for a 12-month term.
+ */
+export function projectLoanTermInterest(params: {
+  principal: number
+  annualRatePercent: number
+  disbursementDate: string
+  termMonths: number
+  principalRepayments: { date: string; amount: number }[]
+}) {
+  const maturity = addMonthsIso(params.disbursementDate, params.termMonths)
+  const { totalInterest } = calculateLoanInterest({
+    principal: params.principal,
+    annualRatePercent: params.annualRatePercent,
+    disbursementDate: params.disbursementDate,
+    asOf: maturity,
+    principalRepayments: params.principalRepayments,
+  })
+  return {
+    total: totalInterest,
+    monthly: params.termMonths > 0 ? totalInterest / params.termMonths : 0,
+  }
+}
+
 /** yyyy-mm-dd + N months, clamped to the end of a shorter month (31 Jan + 1 = 28/29 Feb) */
 export function addMonthsIso(date: string, months: number): string {
   const [y, m, d] = date.split('-').map(Number)
