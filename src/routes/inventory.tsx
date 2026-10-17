@@ -1,10 +1,18 @@
-import { useSuspenseQuery } from '@tanstack/react-query'
+import {
+  useMutation,
+  useQueryClient,
+  useSuspenseQuery,
+} from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Search } from 'lucide-react'
+import { Pencil, Search } from 'lucide-react'
+import * as React from 'react'
 import { z } from 'zod'
 
+import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
+import { useCan } from '#/components/auth/Can.tsx'
 import { DualInventoryBadge } from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -32,7 +40,10 @@ import {
   currentUserQuery,
 } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
+import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
+import { useBusyKeys } from '#/lib/use-busy.ts'
 import { useUrlText } from '#/lib/use-url-text.ts'
+import { removeVehicleFn, updateVehicleFn } from '#/server/fns/batches.ts'
 
 const STOCK_FILTERS = [
   'all',
@@ -68,6 +79,48 @@ function InventoryPage() {
   const { user } = Route.useRouteContext()
   const { data: summary } = useSuspenseQuery(inventorySummaryQuery())
   const { data: vehicles } = useSuspenseQuery(vehiclesQuery())
+  const queryClient = useQueryClient()
+  const canManage = useCan('batches.manage')
+  const { isBusy, setBusy } = useBusyKeys()
+  const [editVehicle, setEditVehicle] = React.useState<
+    (typeof vehicles)[number] | null
+  >(null)
+
+  const deleteVehicle = useMutation({
+    mutationFn: removeVehicleFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+
+  const updateVehicle = useMutation({
+    mutationFn: updateVehicleFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+
+  const handleDeleteVehicle = async (v: (typeof vehicles)[number]) => {
+    const key = `vehicles:${v.id}`
+    const ok = await confirmDelete(
+      { entity: 'vehicles', id: v.id, name: v.chassisNumber },
+      {
+        title: `Xóa xe ${v.chassisNumber}?`,
+        description:
+          'Xe sẽ bị xóa khỏi kho và chi phí lô sẽ được phân bổ lại.',
+      },
+      (checking) => setBusy(key, checking),
+    )
+    if (!ok) return
+    setBusy(key, true)
+    try {
+      await deleteVehicle.mutateAsync({ data: { vehicleId: v.id } })
+    } catch (err: unknown) {
+      await reportDeleteFailure(
+        err,
+        { entity: 'vehicles', id: v.id, name: v.chassisNumber },
+        'Không thể xóa xe',
+      )
+    } finally {
+      setBusy(key, false)
+    }
+  }
 
   const searchParams = Route.useSearch()
   const navigate = Route.useNavigate()
@@ -222,13 +275,16 @@ function InventoryPage() {
                       Kho Kép (2 Kho)
                     </TableHead>
                     <TableHead>Đơn Bán</TableHead>
+                    {canManage && (
+                      <TableHead className="text-center">Thao tác</TableHead>
+                    )}
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={canManage ? 9 : 8}
                         className="text-center py-8 text-slate-500"
                       >
                         Không tìm thấy chiếc xe nào phù hợp bộ lọc
@@ -258,7 +314,14 @@ function InventoryPage() {
                           </div>
                         </TableCell>
                         <TableCell className="text-slate-900">
-                          {batchLabel(v)}
+                          <Link
+                            to="/batches/$batchId"
+                            params={{ batchId: String(v.batchId) }}
+                            preload="intent"
+                            className="font-medium text-emerald-700 hover:underline"
+                          >
+                            {batchLabel(v)}
+                          </Link>
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
                           {formatVnd(v.importPrice)}
@@ -287,6 +350,60 @@ function InventoryPage() {
                             <span className="text-slate-500">—</span>
                           )}
                         </TableCell>
+                        {canManage && (
+                          <TableCell className="text-center whitespace-nowrap">
+                            {v.salesOrderId ||
+                            v.isDelivered ||
+                            v.isInvoiced ? (
+                              <span
+                                className="text-xs text-slate-400 select-none cursor-not-allowed inline-block p-1"
+                                title="Xe đã bán/giao/xuất hóa đơn — không thể sửa hoặc xóa"
+                              >
+                                —
+                              </span>
+                            ) : (
+                              <div className="flex items-center justify-center gap-1">
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => setEditVehicle(v)}
+                                  disabled={
+                                    isBusy(`vehicles:${v.id}`) ||
+                                    deleteVehicle.isPending ||
+                                    updateVehicle.isPending
+                                  }
+                                  className="size-7 text-slate-400 hover:text-emerald-700"
+                                  aria-label={`Sửa xe ${v.chassisNumber}`}
+                                  title={`Sửa xe ${v.chassisNumber}`}
+                                >
+                                  <Pencil className="size-3.5" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  onClick={() => handleDeleteVehicle(v)}
+                                  disabled={
+                                    isBusy(`vehicles:${v.id}`) ||
+                                    deleteVehicle.isPending ||
+                                    updateVehicle.isPending
+                                  }
+                                  className="size-7 text-slate-400 hover:text-rose-600"
+                                  aria-label={`Xóa xe ${v.chassisNumber}`}
+                                  title={`Xóa xe ${v.chassisNumber}`}
+                                >
+                                  <BusyTrash
+                                    busy={
+                                      isBusy(`vehicles:${v.id}`) ||
+                                      (deleteVehicle.isPending &&
+                                        deleteVehicle.variables?.data
+                                          .vehicleId === v.id)
+                                    }
+                                  />
+                                </Button>
+                              </div>
+                            )}
+                          </TableCell>
+                        )}
                       </TableRow>
                     ))
                   )}
@@ -297,6 +414,42 @@ function InventoryPage() {
           </CardContent>
         </Card>
       </div>
+
+      {canManage && (
+        <VehicleFormDialog
+          open={Boolean(editVehicle)}
+          onOpenChange={(isOpen) => {
+            if (!isOpen) setEditVehicle(null)
+          }}
+          title={
+            editVehicle
+              ? `Sửa Xe ${editVehicle.chassisNumber}`
+              : 'Sửa Xe'
+          }
+          submitLabel="Lưu"
+          pending={updateVehicle.isPending}
+          initial={
+            editVehicle
+              ? {
+                  modelId: editVehicle.modelId ?? 0,
+                  colorId: editVehicle.colorId,
+                  chassisNumber: editVehicle.chassisNumber,
+                  engineNumber: editVehicle.engineNumber,
+                  importPrice: editVehicle.importPrice,
+                }
+              : null
+          }
+          onSubmit={async (values) => {
+            if (!editVehicle) return
+            await updateVehicle.mutateAsync({
+              data: {
+                vehicleId: editVehicle.id,
+                ...values,
+              },
+            })
+          }}
+        />
+      )}
     </AppLayout>
   )
 }

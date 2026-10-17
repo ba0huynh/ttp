@@ -918,5 +918,15 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 86, 87,... above this line upon completing tasks)_
+### Lesson 86: Batch Detail Link, Vehicle Edit & Delete on `/inventory`
+
+- **Batch Link**: The "Lô Nhập" column in `/inventory` ([src/routes/inventory.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/inventory.tsx)) links directly to the batch detail page (`/batches/$batchId`) with preloading enabled.
+- **Edit Vehicle**: Each available vehicle has an edit action (pencil icon) opening `VehicleFormDialog` with pre-filled model, color, chassis number, engine number, and import price. Saving updates the vehicle via `updateVehicleFn`, triggers batch expense recalculation, and invalidates query caches.
+- **Delete Vehicle**: Available vehicles display a delete button using `BusyTrash` and `confirmDelete` from `src/lib/usage.ts`. Deletions recalculate batch cost distributions.
+- **Locked Vehicles**: Vehicles already sold (`salesOrderId`), physically delivered (`isDelivered`), or invoiced (`isInvoiced`) cannot be edited or deleted to preserve audit integrity; they display an un-deletable dash (`—`) with an explanatory tooltip.
+
+---
+
+_(Next Agent: Append Lesson 87, 88,... above this line upon completing tasks)_
+
 
