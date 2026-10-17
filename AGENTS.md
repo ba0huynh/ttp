@@ -901,7 +901,22 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - Existing batches were fixed by migration `0031_import_price_selling_base.sql` (custom SQL, applied): it re-prices `vehicles.selling_price` with the same formula and sets `import_batches.pricing_base = 'import_price'`. Sales order items keep the price they were sold at (Lesson 17). The "Cách định giá bán" column on `/batches` now reads "Trên Giá Nhập +x%" for every batch.
 - Custom data migrations: `npx drizzle-kit generate --custom --name=<name>` creates the empty file and the journal entry, then write the SQL by hand (use `--> statement-breakpoint` between statements).
 
+### Lesson 85: Custom Migration Runner Supports TypeScript (.ts) Files
+
+- **Feature**: `src/db/migrate.ts` (`npm run migration:run`) now supports both standard `.sql` files and programmatic `.ts` migration files located in `src/db/migrations/`.
+- **Sorting & Execution**: Files are discovered directly from `src/db/migrations/` and ordered alphabetically/numerically (`0000_...`, `0001_...`, etc.). The runner prevents duplicate names across `.sql` and `.ts`.
+- **TypeScript Migration Signature**: A `.ts` migration file exports an `up`, `migrate`, or default async function:
+  ```typescript
+  import type { db } from '#/db/index.ts'
+  import type { MigrationContext } from '#/db/migrate.ts'
+
+  export async function up(database: typeof db, context: MigrationContext) {
+    // Perform complex Drizzle queries, data migrations, or transactions
+  }
+  ```
+- **Database Tracking**: Both `.sql` and `.ts` migrations are recorded identically in the `migrations` table by base file name (without file extension).
+
 ---
 
-_(Next Agent: Append Lesson 85, 86,... above this line upon completing tasks)_
+_(Next Agent: Append Lesson 86, 87,... above this line upon completing tasks)_
 
