@@ -3,7 +3,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Pencil, Plus } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
@@ -362,7 +362,14 @@ function FinancePage() {
                     {receivablesPg.pageItems.map((r, idx) => (
                       <TableRow key={idx} className="hover:bg-slate-50/80">
                         <TableCell className="font-medium text-slate-900">
-                          {r.customerName}
+                          <Link
+                            to="/customers/$customerId"
+                            params={{ customerId: String(r.customerId) }}
+                            preload="intent"
+                            className="hover:text-emerald-700 hover:underline"
+                          >
+                            {r.customerName}
+                          </Link>
                         </TableCell>
                         <TableCell className="font-medium text-emerald-900">
                           {r.branchId ? r.entityName : 'Pháp nhân chính KH mẹ'}

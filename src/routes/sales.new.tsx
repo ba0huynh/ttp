@@ -148,6 +148,10 @@ function NewSalesOrderPage() {
     0,
   )
 
+  const lossItems = selectedItems.filter(
+    (i) => i.unitPrice > 0 && i.unitPrice < i.costPrice,
+  )
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (selectedItems.length === 0) {
@@ -250,6 +254,17 @@ function NewSalesOrderPage() {
                 </Button>
               </CardHeader>
               <CardContent className="p-0">
+                {lossItems.length > 0 && (
+                  <div className="px-4 py-2 border-b border-rose-100 bg-rose-50 text-xs text-rose-600 space-y-0.5">
+                    {lossItems.map((i) => (
+                      <p key={i.vehicleId}>
+                        Lưu ý: xe <strong>{i.chassisNumber}</strong> có giá bán
+                        thấp hơn giá vốn {formatVnd(i.costPrice - i.unitPrice)}{' '}
+                        (bán lỗ).
+                      </p>
+                    ))}
+                  </div>
+                )}
                 {selectedItems.length === 0 ? (
                   <div className="py-12 text-center text-xs text-slate-400 space-y-2">
                     <p>Chưa có chiếc xe nào được chọn cho đơn hàng này.</p>

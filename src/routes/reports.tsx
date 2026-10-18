@@ -1,5 +1,5 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -219,7 +219,14 @@ function ReportsPage() {
                       className="hover:bg-slate-50/80"
                     >
                       <TableCell className="font-medium text-slate-900">
-                        {c.customerName}
+                        <Link
+                          to="/customers/$customerId"
+                          params={{ customerId: String(c.customerId) }}
+                          preload="intent"
+                          className="hover:text-emerald-700 hover:underline"
+                        >
+                          {c.customerName}
+                        </Link>
                       </TableCell>
                       <TableCell className="text-center font-medium">
                         {c.vehicles} xe
