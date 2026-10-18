@@ -1,4 +1,5 @@
 import { useBusyKeys } from '#/lib/use-busy.ts'
+import { useUrlText } from '#/lib/use-url-text.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import {
   useMutation,
@@ -6,8 +7,17 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Calculator, Pencil, Plus } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Calculator,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+} from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
@@ -24,6 +34,7 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
@@ -31,6 +42,8 @@ import {
 import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
+import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
+import { PriceRangeFilter } from '#/components/ui/price-range-filter.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   SearchSelect,
@@ -66,7 +79,58 @@ import {
 /** Selectable loan terms: 1 to 200 months */
 const TERM_OPTIONS = Array.from({ length: 200 }, (_, i) => i + 1)
 
+const SORT_KEYS = [
+  'contract',
+  'bank',
+  'rate',
+  'term',
+  'paid',
+  'outstanding',
+] as const
+type SortKey = (typeof SORT_KEYS)[number]
+const SORT_LABELS: Record<SortKey, string> = {
+  contract: 'Số khế ước',
+  bank: 'Ngân hàng',
+  rate: 'Lãi suất',
+  term: 'Kỳ hạn',
+  paid: 'Gốc đã trả',
+  outstanding: 'Dư nợ còn lại',
+}
+const SORT_VALUE: Record<
+  SortKey,
+  (l: {
+    contractNumber: string
+    bankName: string
+    interestRate: number
+    termMonths: number
+    principalPaid: number
+    outstanding: number
+  }) => number | string
+> = {
+  contract: (l) => l.contractNumber,
+  bank: (l) => l.bankName,
+  rate: (l) => l.interestRate,
+  term: (l) => l.termMonths,
+  paid: (l) => l.principalPaid,
+  outstanding: (l) => l.outstanding,
+}
+const STATUS_LABELS = { active: 'Đang vay', settled: 'Đã tất toán' } as const
+
 export const Route = createFileRoute('/loans/')({
+  // Filters and sort live in the URL so a reload or shared link keeps them
+  validateSearch: z.object({
+    q: z.string().optional().catch(undefined),
+    bank: z.array(z.number().int()).optional().catch(undefined),
+    status: z.array(z.enum(['active', 'settled'])).optional().catch(undefined),
+    from: z.string().optional().catch(undefined),
+    to: z.string().optional().catch(undefined),
+    minPrincipal: z.number().optional().catch(undefined),
+    maxPrincipal: z.number().optional().catch(undefined),
+    minOutstanding: z.number().optional().catch(undefined),
+    maxOutstanding: z.number().optional().catch(undefined),
+    sort: z.enum(SORT_KEYS).optional().catch(undefined),
+    dir: z.enum(['asc', 'desc']).optional().catch(undefined),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -85,8 +149,110 @@ export const Route = createFileRoute('/loans/')({
 function LoansPage() {
   const { user } = Route.useRouteContext()
   const { data: loans } = useSuspenseQuery(loansQuery())
-  const loansPg = usePagination(loans)
   const { data: master } = useSuspenseQuery(masterDataQuery())
+
+  const searchParams = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const [showFilters, setShowFilters] = React.useState(false)
+  const {
+    bank,
+    status,
+    from,
+    to,
+    minPrincipal,
+    maxPrincipal,
+    minOutstanding,
+    maxOutstanding,
+    sort,
+    dir,
+  } = searchParams
+  // The box filters instantly; the URL follows once typing pauses
+  const [contractSearch, setContractSearch] = useUrlText(
+    searchParams.q ?? '',
+    (q) =>
+      navigate({
+        search: (prev) => ({ ...prev, q: q || undefined }),
+        replace: true,
+      }),
+  )
+  const setFilter = (
+    key: 'bank' | 'status' | 'from' | 'to' | 'dir',
+    value: string | string[] | number[] | undefined,
+  ) =>
+    navigate({ search: (prev) => ({ ...prev, [key]: value }), replace: true })
+
+  const activeFilterCount = [
+    Boolean(contractSearch.trim()),
+    Boolean(bank?.length),
+    Boolean(status?.length),
+    Boolean(from || to),
+    minPrincipal !== undefined || maxPrincipal !== undefined,
+    minOutstanding !== undefined || maxOutstanding !== undefined,
+  ].filter(Boolean).length
+
+  const filtered = loans.filter((l) => {
+    const q = contractSearch.trim().toLowerCase()
+    if (q && !l.contractNumber.toLowerCase().includes(q)) return false
+    if (bank?.length && !bank.includes(l.bankId)) return false
+    if (status?.length && !status.includes(l.status)) return false
+    const date = String(l.disbursementDate).slice(0, 10)
+    if (from && date < from) return false
+    if (to && date > to) return false
+    if (minPrincipal !== undefined && l.principalAmount < minPrincipal)
+      return false
+    if (maxPrincipal !== undefined && l.principalAmount > maxPrincipal)
+      return false
+    if (minOutstanding !== undefined && l.outstanding < minOutstanding)
+      return false
+    if (maxOutstanding !== undefined && l.outstanding > maxOutstanding)
+      return false
+    return true
+  })
+  // No sort chosen keeps the server order (newest disbursement first)
+  const sorted = sort
+    ? [...filtered].sort((a, b) => {
+        const va = SORT_VALUE[sort](a)
+        const vb = SORT_VALUE[sort](b)
+        const cmp =
+          typeof va === 'string' || typeof vb === 'string'
+            ? String(va).localeCompare(String(vb), 'vi')
+            : va - vb
+        return dir === 'asc' ? cmp : -cmp
+      })
+    : filtered
+  const loansPg = usePagination(
+    sorted,
+    `${contractSearch}|${bank?.join()}|${status?.join()}|${from}|${to}|${minPrincipal}|${maxPrincipal}|${minOutstanding}|${maxOutstanding}|${sort}|${dir}`,
+  )
+
+  // Header click: ascending, then descending, then back to the default order
+  const toggleSort = (key: SortKey) => {
+    const next =
+      sort !== key
+        ? { sort: key, dir: 'asc' as const }
+        : dir === 'asc'
+          ? { sort: key, dir: 'desc' as const }
+          : { sort: undefined, dir: undefined }
+    navigate({ search: (prev) => ({ ...prev, ...next }), replace: true })
+  }
+  const sortHead = (key: SortKey, label: string, align: string) => (
+    <TableHead className={align}>
+      <button
+        type="button"
+        onClick={() => toggleSort(key)}
+        className={`inline-flex items-center gap-1 font-[inherit] uppercase hover:text-slate-900 ${sort === key ? 'text-purple-800' : ''}`}
+      >
+        {label}
+        {sort !== key ? (
+          <ArrowUpDown className="size-3 opacity-40" />
+        ) : dir === 'asc' ? (
+          <ArrowUp className="size-3" />
+        ) : (
+          <ArrowDown className="size-3" />
+        )}
+      </button>
+    </TableHead>
+  )
   const queryClient = useQueryClient()
   const deleteLoan = useMutation({
     mutationFn: deleteLoanContractFn,
@@ -201,23 +367,40 @@ function LoansPage() {
               chính xác theo từng lần trả gốc thực tế.
             </p>
           </div>
-          <Can permission="loans.manage">
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
-              onClick={openNewLoan}
-              className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 shadow-xs"
+              variant="outline"
+              onClick={() => setShowFilters(true)}
+              aria-haspopup="dialog"
+              className={`gap-1.5 ${activeFilterCount > 0 ? 'border-purple-600 text-purple-800' : ''}`}
             >
-              <Plus className="size-4" />
-              Tạo Khế Ước Mới
+              <SlidersHorizontal className="size-4" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 rounded-full bg-purple-700 text-white text-[11px] px-1.5">
+                  {activeFilterCount}
+                </span>
+              )}
             </Button>
-          </Can>
+            <Can permission="loans.manage">
+              <Button
+                size="sm"
+                onClick={openNewLoan}
+                className="bg-purple-700 hover:bg-purple-800 text-white gap-1.5 shadow-xs"
+              >
+                <Plus className="size-4" />
+                Tạo Khế Ước Mới
+              </Button>
+            </Can>
+          </div>
         </div>
 
         {/* Loan Contracts Table */}
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold text-slate-800">
-              Danh Sách Khế Ước Vay Ngân Hàng ({loans.length})
+              Danh Sách Khế Ước Vay Ngân Hàng ({filtered.length})
             </CardTitle>
             <div className="text-xs text-slate-500">
               Quy ước 365 ngày &bull; Dư nợ giảm dần
@@ -228,12 +411,12 @@ function LoansPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead>Số Khế Ước</TableHead>
-                    <TableHead>Ngân Hàng</TableHead>
-                    <TableHead className="text-center">Lãi Suất</TableHead>
-                    <TableHead className="text-center">Kỳ Hạn</TableHead>
-                    <TableHead className="text-right">Gốc Đã Trả</TableHead>
-                    <TableHead className="text-right">Dư Nợ Còn Lại</TableHead>
+                    {sortHead('contract', 'Số Khế Ước', '')}
+                    {sortHead('bank', 'Ngân Hàng', '')}
+                    {sortHead('rate', 'Lãi Suất', 'text-center')}
+                    {sortHead('term', 'Kỳ Hạn', 'text-center')}
+                    {sortHead('paid', 'Gốc Đã Trả', 'text-right')}
+                    {sortHead('outstanding', 'Dư Nợ Còn Lại', 'text-right')}
                     <TableHead className="text-center">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -318,6 +501,203 @@ function LoansPage() {
             <TablePagination pagination={loansPg} />
           </CardContent>
         </Card>
+
+        {/* Filter + sort dialog */}
+        <Dialog open={showFilters} onOpenChange={setShowFilters}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Bộ Lọc Khế Ước
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Kết quả được lọc ngay khi thay đổi ({filtered.length} khế ước
+                phù hợp)
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Sắp xếp theo</Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Mặc định (mới giải ngân trước)"
+                  value={sort ?? 'default'}
+                  onValueChange={(val) =>
+                    navigate({
+                      search: (prev) => ({
+                        ...prev,
+                        sort: val === 'default' ? undefined : (val as SortKey),
+                        dir:
+                          val === 'default' ? undefined : (prev.dir ?? 'desc'),
+                      }),
+                      replace: true,
+                    })
+                  }
+                >
+                  <SearchSelectItem value="default" className="text-xs">
+                    Mặc định (mới giải ngân trước)
+                  </SearchSelectItem>
+                  {SORT_KEYS.map((k) => (
+                    <SearchSelectItem key={k} value={k} className="text-xs">
+                      {SORT_LABELS[k]}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Thứ tự</Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  value={dir ?? 'desc'}
+                  disabled={!sort}
+                  onValueChange={(val) => setFilter('dir', val)}
+                >
+                  <SearchSelectItem value="asc" className="text-xs">
+                    Tăng dần (A → Z, thấp → cao)
+                  </SearchSelectItem>
+                  <SearchSelectItem value="desc" className="text-xs">
+                    Giảm dần (Z → A, cao → thấp)
+                  </SearchSelectItem>
+                </SearchSelect>
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Số khế ước</Label>
+                <Input
+                  placeholder="Tìm theo số khế ước..."
+                  value={contractSearch}
+                  onChange={(e) => setContractSearch(e.target.value)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Ngân hàng</Label>
+                <MultiSearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Tất cả ngân hàng"
+                  values={(bank ?? []).map(String)}
+                  onValuesChange={(vals) =>
+                    setFilter('bank', vals.length ? vals.map(Number) : undefined)
+                  }
+                >
+                  {master.banks.map((b) => (
+                    <SearchSelectItem
+                      key={b.id}
+                      value={String(b.id)}
+                      keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
+                      className="text-xs"
+                    >
+                      <BankLabel image={b.image} name={b.name}>
+                        {b.name}
+                      </BankLabel>
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Trạng thái</Label>
+                <MultiSearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Tất cả trạng thái"
+                  values={status ?? []}
+                  onValuesChange={(vals) =>
+                    setFilter('status', vals.length ? vals : undefined)
+                  }
+                >
+                  <SearchSelectItem value="active" className="text-xs">
+                    {STATUS_LABELS.active}
+                  </SearchSelectItem>
+                  <SearchSelectItem value="settled" className="text-xs">
+                    {STATUS_LABELS.settled}
+                  </SearchSelectItem>
+                </MultiSearchSelect>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Giải ngân từ</Label>
+                <Input
+                  type="date"
+                  value={from ?? ''}
+                  onChange={(e) =>
+                    setFilter('from', e.target.value || undefined)
+                  }
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Giải ngân đến</Label>
+                <Input
+                  type="date"
+                  value={to ?? ''}
+                  onChange={(e) => setFilter('to', e.target.value || undefined)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <PriceRangeFilter
+                  label="Số tiền vay"
+                  min={minPrincipal}
+                  max={maxPrincipal}
+                  onChange={(lo, hi) =>
+                    navigate({
+                      search: (prev) => ({
+                        ...prev,
+                        minPrincipal: lo,
+                        maxPrincipal: hi,
+                      }),
+                      replace: true,
+                    })
+                  }
+                />
+              </div>
+              <div className="sm:col-span-2">
+                <PriceRangeFilter
+                  label="Dư nợ còn lại"
+                  min={minOutstanding}
+                  max={maxOutstanding}
+                  onChange={(lo, hi) =>
+                    navigate({
+                      search: (prev) => ({
+                        ...prev,
+                        minOutstanding: lo,
+                        maxOutstanding: hi,
+                      }),
+                      replace: true,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={activeFilterCount === 0}
+                onClick={() => {
+                  setContractSearch('')
+                  navigate({
+                    search: (prev) => ({
+                      sort: prev.sort,
+                      dir: prev.dir,
+                    }),
+                    replace: true,
+                  })
+                }}
+                className="h-8 text-xs text-slate-500"
+              >
+                Xóa lọc
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+                className="h-8 text-xs bg-purple-700 hover:bg-purple-800 text-white font-semibold"
+              >
+                Xong
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Create New Loan Contract Modal */}
         <Dialog open={newLoanOpen} onOpenChange={setNewLoanOpen}>

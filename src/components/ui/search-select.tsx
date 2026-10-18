@@ -29,7 +29,7 @@ export function SearchSelectItem(_props: SearchSelectItemProps) {
 }
 
 /** Plain text of a React node, used to search options whose label is JSX */
-function nodeText(node: React.ReactNode): string {
+export function nodeText(node: React.ReactNode): string {
   if (node === null || node === undefined || typeof node === 'boolean')
     return ''
   if (typeof node === 'string' || typeof node === 'number') return String(node)
@@ -40,7 +40,7 @@ function nodeText(node: React.ReactNode): string {
 }
 
 /** Lower-case and strip Vietnamese diacritics so "ngan hang" finds "Ngân hàng" */
-function fold(text: string) {
+export function fold(text: string) {
   return text
     .normalize('NFD')
     .replace(/[̀-ͯ]/g, '')

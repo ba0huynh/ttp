@@ -4,8 +4,17 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
-import { Eye, Pencil, Plus } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Eye,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+} from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -45,19 +54,71 @@ import { useBusyKeys } from '#/lib/use-busy.ts'
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
+import { PriceRangeFilter } from '#/components/ui/price-range-filter.tsx'
 import {
   SearchSelect,
   SearchSelectItem,
 } from '#/components/ui/search-select.tsx'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 
+const PROGRESS = ['none', 'partial', 'full'] as const
+type Progress = (typeof PROGRESS)[number]
+const DIRECT_BRANCH = 'none'
+
+const SORT_KEYS = ['date', 'customer', 'branch', 'amount', 'vehicles'] as const
+type SortKey = (typeof SORT_KEYS)[number]
+const SORT_LABELS: Record<SortKey, string> = {
+  date: 'Ngày bán',
+  customer: 'Khách hàng',
+  branch: 'Điểm bán nhận xe',
+  amount: 'Tổng tiền',
+  vehicles: 'Số xe',
+}
+const SORT_VALUE: Record<
+  SortKey,
+  (o: {
+    orderDate: string
+    customerName: string
+    branchName: string | null
+    totalAmount: number
+    vehicleCount: number
+  }) => number | string
+> = {
+  date: (o) => String(o.orderDate),
+  customer: (o) => o.customerName,
+  branch: (o) => o.branchName ?? '',
+  amount: (o) => o.totalAmount,
+  vehicles: (o) => o.vehicleCount,
+}
+
+/** How many of an order's vehicles have been delivered / invoiced */
+function progressOf(done: number, total: number): Progress {
+  if (total > 0 && done === total) return 'full'
+  return done === 0 ? 'none' : 'partial'
+}
+
 export const Route = createFileRoute('/sales/')({
+  // Filters live in the URL so a reload or shared link keeps them
+  validateSearch: z.object({
+    customer: z.array(z.number().int()).optional().catch(undefined),
+    branch: z.array(z.string()).optional().catch(undefined),
+    from: z.string().optional().catch(undefined),
+    to: z.string().optional().catch(undefined),
+    delivery: z.array(z.enum(PROGRESS)).optional().catch(undefined),
+    invoice: z.array(z.enum(PROGRESS)).optional().catch(undefined),
+    minAmount: z.number().optional().catch(undefined),
+    maxAmount: z.number().optional().catch(undefined),
+    sort: z.enum(SORT_KEYS).optional().catch(undefined),
+    dir: z.enum(['asc', 'desc']).optional().catch(undefined),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -76,8 +137,128 @@ export const Route = createFileRoute('/sales/')({
 function SalesPage() {
   const { user } = Route.useRouteContext()
   const { data: orders } = useSuspenseQuery(salesOrdersQuery())
-  const ordersPg = usePagination(orders)
   const { data: customers } = useSuspenseQuery(customerOptionsQuery())
+
+  const searchParams = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const [showFilters, setShowFilters] = React.useState(false)
+  const {
+    customer,
+    branch,
+    from,
+    to,
+    delivery,
+    invoice,
+    minAmount,
+    maxAmount,
+    sort,
+    dir,
+  } = searchParams
+  const setFilter = (
+    key:
+      | 'customer'
+      | 'branch'
+      | 'from'
+      | 'to'
+      | 'delivery'
+      | 'invoice'
+      | 'dir',
+    value: string | string[] | number[] | undefined,
+  ) =>
+    navigate({ search: (prev) => ({ ...prev, [key]: value }), replace: true })
+
+  // Every customer / receiving branch, not only those already on an order
+  const customerOptions = customers.map((c) => [c.id, c.name] as const)
+  const branchOptions = [
+    [DIRECT_BRANCH, 'Trực tiếp KH mẹ'] as const,
+    ...customers.flatMap((c) =>
+      c.branches.map((b) => [String(b.id), `${b.name} (${c.name})`] as const),
+    ),
+  ]
+  const progressLabels: Record<Progress, [string, string]> = {
+    none: ['Chưa giao', 'Chưa ra HĐ'],
+    partial: ['Giao một phần', 'Ra HĐ một phần'],
+    full: ['Đã giao đủ', 'Đã lập HĐ đủ'],
+  }
+
+  const activeFilterCount = [
+    Boolean(customer?.length),
+    Boolean(branch?.length),
+    Boolean(from || to),
+    Boolean(delivery?.length),
+    Boolean(invoice?.length),
+    minAmount !== undefined || maxAmount !== undefined,
+  ].filter(Boolean).length
+
+  const filtered = orders.filter((o) => {
+    if (customer?.length && !customer.includes(o.customerId)) return false
+    if (
+      branch?.length &&
+      !branch.includes(o.branchId ? String(o.branchId) : DIRECT_BRANCH)
+    )
+      return false
+    const date = String(o.orderDate).slice(0, 10)
+    if (from && date < from) return false
+    if (to && date > to) return false
+    if (
+      delivery?.length &&
+      !delivery.includes(progressOf(o.deliveredCount, o.vehicleCount))
+    )
+      return false
+    if (
+      invoice?.length &&
+      !invoice.includes(progressOf(o.invoicedCount, o.vehicleCount))
+    )
+      return false
+    if (minAmount !== undefined && o.totalAmount < minAmount) return false
+    if (maxAmount !== undefined && o.totalAmount > maxAmount) return false
+    return true
+  })
+  // No sort chosen keeps the server order (newest first)
+  const sorted = sort
+    ? [...filtered].sort((a, b) => {
+        const va = SORT_VALUE[sort](a)
+        const vb = SORT_VALUE[sort](b)
+        const cmp =
+          typeof va === 'string' || typeof vb === 'string'
+            ? String(va).localeCompare(String(vb), 'vi')
+            : va - vb
+        return dir === 'asc' ? cmp : -cmp
+      })
+    : filtered
+  const ordersPg = usePagination(
+    sorted,
+    `${customer?.join()}|${branch?.join()}|${from}|${to}|${delivery?.join()}|${invoice?.join()}|${minAmount}|${maxAmount}|${sort}|${dir}`,
+  )
+
+  // Header click: ascending, then descending, then back to the default order
+  const toggleSort = (key: SortKey) => {
+    const next =
+      sort !== key
+        ? { sort: key, dir: 'asc' as const }
+        : dir === 'asc'
+          ? { sort: key, dir: 'desc' as const }
+          : { sort: undefined, dir: undefined }
+    navigate({ search: (prev) => ({ ...prev, ...next }), replace: true })
+  }
+  const sortHead = (key: SortKey, label: string, align: string) => (
+    <TableHead className={align}>
+      <button
+        type="button"
+        onClick={() => toggleSort(key)}
+        className={`inline-flex items-center gap-1 font-[inherit] uppercase hover:text-slate-900 ${sort === key ? 'text-emerald-800' : ''}`}
+      >
+        {label}
+        {sort !== key ? (
+          <ArrowUpDown className="size-3 opacity-40" />
+        ) : dir === 'asc' ? (
+          <ArrowUp className="size-3" />
+        ) : (
+          <ArrowDown className="size-3" />
+        )}
+      </button>
+    </TableHead>
+  )
   const queryClient = useQueryClient()
   const { isBusy, setBusy } = useBusyKeys()
 
@@ -151,24 +332,41 @@ function SalesPage() {
               tồn kho hóa đơn) là <strong>2 nghiệp vụ độc lập</strong>.
             </p>
           </div>
-          <Can permission="sales.create">
-            <Link to="/sales/new">
-              <Button
-                size="sm"
-                className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
-              >
-                <Plus className="size-4" />
-                Lập Phiếu Bán Xe
-              </Button>
-            </Link>
-          </Can>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowFilters(true)}
+              aria-haspopup="dialog"
+              className={`gap-1.5 ${activeFilterCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
+            >
+              <SlidersHorizontal className="size-4" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+            <Can permission="sales.create">
+              <Link to="/sales/new">
+                <Button
+                  size="sm"
+                  className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
+                >
+                  <Plus className="size-4" />
+                  Lập Phiếu Bán Xe
+                </Button>
+              </Link>
+            </Can>
+          </div>
         </div>
 
         {/* Orders Table */}
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold text-slate-800">
-              Danh Sách Phiếu Bán Xe ({orders.length})
+              Danh Sách Phiếu Bán Xe ({filtered.length})
             </CardTitle>
             <div className="text-xs text-slate-500">
               Chặn bán trùng số khung tuyệt đối
@@ -179,11 +377,11 @@ function SalesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead>Ngày Bán</TableHead>
-                    <TableHead>Khách Hàng</TableHead>
-                    <TableHead>Điểm Bán Nhận Xe</TableHead>
-                    <TableHead className="text-right">Tổng Tiền</TableHead>
-                    <TableHead className="text-center">Số Xe</TableHead>
+                    {sortHead('date', 'Ngày Bán', '')}
+                    {sortHead('customer', 'Khách Hàng', '')}
+                    {sortHead('branch', 'Điểm Bán Nhận Xe', '')}
+                    {sortHead('amount', 'Tổng Tiền', 'text-right')}
+                    {sortHead('vehicles', 'Số Xe', 'text-center')}
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
                     <TableHead className="text-center">Kho Hóa Đơn</TableHead>
                     <TableHead className="text-center">Thao tác</TableHead>
@@ -306,6 +504,194 @@ function SalesPage() {
           </CardContent>
         </Card>
       </div>
+
+      <Dialog open={showFilters} onOpenChange={setShowFilters}>
+        <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Bộ Lọc Phiếu Bán
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Kết quả được lọc ngay khi thay đổi ({filtered.length} phiếu phù
+              hợp)
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Sắp xếp theo</Label>
+              <SearchSelect
+                className="h-11 w-full text-sm rounded-lg"
+                placeholder="Mặc định (mới nhất trước)"
+                value={sort ?? 'default'}
+                onValueChange={(val) =>
+                  navigate({
+                    search: (prev) => ({
+                      ...prev,
+                      sort: val === 'default' ? undefined : (val as SortKey),
+                      dir: val === 'default' ? undefined : (prev.dir ?? 'desc'),
+                    }),
+                    replace: true,
+                  })
+                }
+              >
+                <SearchSelectItem value="default" className="text-xs">
+                  Mặc định (mới nhất trước)
+                </SearchSelectItem>
+                {SORT_KEYS.map((k) => (
+                  <SearchSelectItem key={k} value={k} className="text-xs">
+                    {SORT_LABELS[k]}
+                  </SearchSelectItem>
+                ))}
+              </SearchSelect>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Thứ tự</Label>
+              <SearchSelect
+                className="h-11 w-full text-sm rounded-lg"
+                value={dir ?? 'desc'}
+                disabled={!sort}
+                onValueChange={(val) => setFilter('dir', val)}
+              >
+                <SearchSelectItem value="asc" className="text-xs">
+                  Tăng dần (A → Z, thấp → cao, cũ → mới)
+                </SearchSelectItem>
+                <SearchSelectItem value="desc" className="text-xs">
+                  Giảm dần (Z → A, cao → thấp, mới → cũ)
+                </SearchSelectItem>
+              </SearchSelect>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs font-semibold">Khách hàng</Label>
+              <MultiSearchSelect
+                className="h-11 w-full text-sm rounded-lg"
+                placeholder="Tất cả khách hàng"
+                values={(customer ?? []).map(String)}
+                onValuesChange={(vals) =>
+                  setFilter('customer', vals.length ? vals.map(Number) : undefined)
+                }
+              >
+                {customerOptions.map(([id, name]) => (
+                  <SearchSelectItem
+                    key={id}
+                    value={String(id)}
+                    className="text-xs"
+                  >
+                    {name}
+                  </SearchSelectItem>
+                ))}
+              </MultiSearchSelect>
+            </div>
+            <div className="space-y-1 sm:col-span-2">
+              <Label className="text-xs font-semibold">Điểm bán nhận xe</Label>
+              <MultiSearchSelect
+                className="h-11 w-full text-sm rounded-lg"
+                placeholder="Tất cả điểm bán"
+                values={branch ?? []}
+                onValuesChange={(vals) =>
+                  setFilter('branch', vals.length ? vals : undefined)
+                }
+              >
+                {branchOptions.map(([id, name]) => (
+                  <SearchSelectItem key={id} value={id} className="text-xs">
+                    {name}
+                  </SearchSelectItem>
+                ))}
+              </MultiSearchSelect>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Ngày bán từ</Label>
+              <Input
+                type="date"
+                value={from ?? ''}
+                onChange={(e) => setFilter('from', e.target.value || undefined)}
+                className="h-11 text-sm px-4 rounded-lg"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Ngày bán đến</Label>
+              <Input
+                type="date"
+                value={to ?? ''}
+                onChange={(e) => setFilter('to', e.target.value || undefined)}
+                className="h-11 text-sm px-4 rounded-lg"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Kho thực tế (giao xe)</Label>
+              <MultiSearchSelect
+                className="h-11 w-full text-sm rounded-lg"
+                placeholder="Tất cả"
+                values={delivery ?? []}
+                onValuesChange={(vals) =>
+                  setFilter('delivery', vals.length ? vals : undefined)
+                }
+              >
+                {PROGRESS.map((p) => (
+                  <SearchSelectItem key={p} value={p} className="text-xs">
+                    {progressLabels[p][0]}
+                  </SearchSelectItem>
+                ))}
+              </MultiSearchSelect>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Kho hóa đơn</Label>
+              <MultiSearchSelect
+                className="h-11 w-full text-sm rounded-lg"
+                placeholder="Tất cả"
+                values={invoice ?? []}
+                onValuesChange={(vals) =>
+                  setFilter('invoice', vals.length ? vals : undefined)
+                }
+              >
+                {PROGRESS.map((p) => (
+                  <SearchSelectItem key={p} value={p} className="text-xs">
+                    {progressLabels[p][1]}
+                  </SearchSelectItem>
+                ))}
+              </MultiSearchSelect>
+            </div>
+            <div className="sm:col-span-2">
+              <PriceRangeFilter
+                label="Tổng tiền"
+                min={minAmount}
+                max={maxAmount}
+                onChange={(lo, hi) =>
+                  navigate({
+                    search: (prev) => ({
+                      ...prev,
+                      minAmount: lo,
+                      maxAmount: hi,
+                    }),
+                    replace: true,
+                  })
+                }
+              />
+            </div>
+          </div>
+
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={activeFilterCount === 0}
+              onClick={() => navigate({ search: () => ({}), replace: true })}
+              className="h-8 text-xs text-slate-500"
+            >
+              Xóa lọc
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              onClick={() => setShowFilters(false)}
+              className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+            >
+              Xong
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={edit !== null} onOpenChange={(o) => !o && setEdit(null)}>
         <DialogContent className="max-w-md" aria-describedby={undefined}>

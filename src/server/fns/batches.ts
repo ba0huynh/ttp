@@ -60,11 +60,41 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
       )
       .orderBy(desc(importBatches.importDate), desc(importBatches.id))
 
+    // Expense lines per batch (summed per type) so the list can be filtered by fee type
+    const expenseRows = await db
+      .select({
+        batchId: batchExpenses.batchId,
+        expenseTypeId: batchExpenses.expenseTypeId,
+        expenseTypeName: expenseTypes.name,
+        amount: sql<string>`sum(${batchExpenses.amount})`,
+      })
+      .from(batchExpenses)
+      .innerJoin(expenseTypes, eq(expenseTypes.id, batchExpenses.expenseTypeId))
+      .groupBy(
+        batchExpenses.batchId,
+        batchExpenses.expenseTypeId,
+        expenseTypes.name,
+      )
+    const expensesByBatch = new Map<
+      number,
+      { expenseTypeId: number; expenseTypeName: string; amount: number }[]
+    >()
+    for (const e of expenseRows) {
+      const list = expensesByBatch.get(e.batchId) ?? []
+      list.push({
+        expenseTypeId: e.expenseTypeId,
+        expenseTypeName: e.expenseTypeName,
+        amount: num(e.amount),
+      })
+      expensesByBatch.set(e.batchId, list)
+    }
+
     return rows.map((r) => {
       const imp = num(r.totalImport)
       const exp = num(r.totalExpense)
       return {
         ...r,
+        expenses: expensesByBatch.get(r.id) ?? [],
         vehicleCount: num(r.vehicleCount),
         totalImport: imp,
         totalExpense: exp,
