@@ -4,7 +4,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Pencil, Plus } from 'lucide-react'
+import { Pencil, Plus, SlidersHorizontal } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -37,6 +37,9 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
+import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
+import { PriceRangeFilter } from '#/components/ui/price-range-filter.tsx'
+import { useUrlText } from '#/lib/use-url-text.ts'
 import { Label } from '#/components/ui/label.tsx'
 import { Textarea } from '#/components/ui/textarea.tsx'
 import {
@@ -81,12 +84,55 @@ import {
   updateReceiptVoucherFn,
 } from '#/server/fns/finance.ts'
 
+const DIRECT_BRANCH = 'none'
+const NO_ACCOUNT = 'none'
+const BALANCE = ['owing', 'cleared'] as const
+
+// Each tab keeps its own filters under one key, so the URL stays readable
+const moneyRange = {
+  min: z.number().optional(),
+  max: z.number().optional(),
+}
+const rcvFilter = z.object({
+  customer: z.array(z.number()).optional(),
+  branch: z.array(z.string()).optional(),
+  status: z.array(z.enum(BALANCE)).optional(),
+  ...moneyRange,
+})
+const payFilter = z.object({
+  supplier: z.array(z.number()).optional(),
+  status: z.array(z.enum(BALANCE)).optional(),
+  ...moneyRange,
+})
+const recFilter = z.object({
+  customer: z.array(z.number()).optional(),
+  branch: z.array(z.string()).optional(),
+  account: z.array(z.string()).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  ...moneyRange,
+})
+const pmtFilter = z.object({
+  supplier: z.array(z.number()).optional(),
+  account: z.array(z.string()).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
+  q: z.string().optional(),
+  ...moneyRange,
+})
+type FilterKey = 'rcv' | 'pay' | 'rec' | 'pmt'
+type RangeFilter = { min?: number; max?: number }
+
 export const Route = createFileRoute('/finance')({
-  // The active tab lives in the URL (?tab=...) so a reload stays on it
+  // The active tab and its filters live in the URL so a reload keeps them
   validateSearch: z.object({
     tab: z
       .enum(['receivables', 'payables', 'receipts', 'payments'])
       .catch('receivables'),
+    rcv: rcvFilter.optional().catch(undefined),
+    pay: payFilter.optional().catch(undefined),
+    rec: recFilter.optional().catch(undefined),
+    pmt: pmtFilter.optional().catch(undefined),
   }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
@@ -109,16 +155,174 @@ export const Route = createFileRoute('/finance')({
 
 function FinancePage() {
   const { user } = Route.useRouteContext()
-  const { tab } = Route.useSearch()
+  const search = Route.useSearch()
+  const { tab } = search
   const navigate = Route.useNavigate()
+  const [showFilters, setShowFilters] = React.useState(false)
+
+  // Merge a change into one tab's filters; empty values are dropped from the URL
+  const setTabFilter = (key: FilterKey, patch: Record<string, unknown>) =>
+    navigate({
+      search: (prev) => {
+        const merged = { ...(prev[key] ?? {}), ...patch } as Record<
+          string,
+          unknown
+        >
+        const clean = Object.fromEntries(
+          Object.entries(merged).filter(
+            ([, v]) =>
+              v !== undefined &&
+              v !== '' &&
+              !(Array.isArray(v) && v.length === 0),
+          ),
+        )
+        return { ...prev, [key]: Object.keys(clean).length ? clean : undefined }
+      },
+      replace: true,
+    })
+  const clearTabFilter = (key: FilterKey) =>
+    navigate({ search: (prev) => ({ ...prev, [key]: undefined }), replace: true })
+
+  const rcvF = search.rcv ?? {}
+  const payF = search.pay ?? {}
+  const recF = search.rec ?? {}
+  const pmtF = search.pmt ?? {}
+  // The payment-note box filters instantly; the URL follows once typing pauses
+  const [pmtText, setPmtText] = useUrlText(pmtF.q ?? '', (q) =>
+    setTabFilter('pmt', { q: q || undefined }),
+  )
+  const outOfRange = (v: number, r: RangeFilter) =>
+    (r.min !== undefined && v < r.min) || (r.max !== undefined && v > r.max)
+  const hasRange = (r: RangeFilter) =>
+    r.min !== undefined || r.max !== undefined
   const { data: receivables } = useSuspenseQuery(receivablesQuery())
   const { data: payables } = useSuspenseQuery(payablesQuery())
   const { data: receipts } = useSuspenseQuery(receiptsQuery())
   const { data: payments } = useSuspenseQuery(paymentsQuery())
-  const receivablesPg = usePagination(receivables)
-  const payablesPg = usePagination(payables)
-  const receiptsPg = usePagination(receipts)
-  const paymentsPg = usePagination(payments)
+
+  const receivablesFiltered = receivables.filter((r) => {
+    if (rcvF.customer?.length && !rcvF.customer.includes(r.customerId))
+      return false
+    if (
+      rcvF.branch?.length &&
+      !rcvF.branch.includes(r.branchId ? String(r.branchId) : DIRECT_BRANCH)
+    )
+      return false
+    if (
+      rcvF.status?.length &&
+      !rcvF.status.includes(r.balance > 0 ? 'owing' : 'cleared')
+    )
+      return false
+    return !outOfRange(r.balance, rcvF)
+  })
+  const payablesFiltered = payables.filter((p) => {
+    if (payF.supplier?.length && !payF.supplier.includes(p.supplierId))
+      return false
+    if (
+      payF.status?.length &&
+      !payF.status.includes(p.balance > 0 ? 'owing' : 'cleared')
+    )
+      return false
+    return !outOfRange(p.balance, payF)
+  })
+  const receiptsFiltered = receipts.filter((r) => {
+    if (recF.customer?.length && !recF.customer.includes(r.customerId))
+      return false
+    if (
+      recF.branch?.length &&
+      !recF.branch.includes(r.branchId ? String(r.branchId) : DIRECT_BRANCH)
+    )
+      return false
+    if (
+      recF.account?.length &&
+      !recF.account.includes(
+        r.companyBankAccountId ? String(r.companyBankAccountId) : NO_ACCOUNT,
+      )
+    )
+      return false
+    const date = String(r.receiptDate).slice(0, 10)
+    if (recF.from && date < recF.from) return false
+    if (recF.to && date > recF.to) return false
+    return !outOfRange(r.amount, recF)
+  })
+  const paymentsFiltered = payments.filter((p) => {
+    if (
+      pmtF.supplier?.length &&
+      !(p.supplierId !== null && pmtF.supplier.includes(p.supplierId))
+    )
+      return false
+    if (
+      pmtF.account?.length &&
+      !pmtF.account.includes(
+        p.companyBankAccountId ? String(p.companyBankAccountId) : NO_ACCOUNT,
+      )
+    )
+      return false
+    const date = String(p.paymentDate).slice(0, 10)
+    if (pmtF.from && date < pmtF.from) return false
+    if (pmtF.to && date > pmtF.to) return false
+    const q = pmtText.trim().toLowerCase()
+    if (
+      q &&
+      !`${p.description ?? ''} ${p.supplierName ?? p.payeeName ?? ''}`
+        .toLowerCase()
+        .includes(q)
+    )
+      return false
+    return !outOfRange(p.amount, pmtF)
+  })
+  const receivablesPg = usePagination(
+    receivablesFiltered,
+    JSON.stringify(rcvF),
+  )
+  const payablesPg = usePagination(payablesFiltered, JSON.stringify(payF))
+  const receiptsPg = usePagination(receiptsFiltered, JSON.stringify(recF))
+  const paymentsPg = usePagination(
+    paymentsFiltered,
+    `${JSON.stringify(pmtF)}|${pmtText}`,
+  )
+
+  // Number of filter groups in use on each tab (drives the badge)
+  const activeCounts: Record<typeof tab, number> = {
+    receivables: [
+      rcvF.customer?.length,
+      rcvF.branch?.length,
+      rcvF.status?.length,
+      hasRange(rcvF),
+    ].filter(Boolean).length,
+    payables: [
+      payF.supplier?.length,
+      payF.status?.length,
+      hasRange(payF),
+    ].filter(Boolean).length,
+    receipts: [
+      recF.customer?.length,
+      recF.branch?.length,
+      recF.account?.length,
+      recF.from || recF.to,
+      hasRange(recF),
+    ].filter(Boolean).length,
+    payments: [
+      pmtF.supplier?.length,
+      pmtF.account?.length,
+      pmtF.from || pmtF.to,
+      pmtText.trim(),
+      hasRange(pmtF),
+    ].filter(Boolean).length,
+  }
+  const activeCount = activeCounts[tab]
+  const tabKey: Record<typeof tab, FilterKey> = {
+    receivables: 'rcv',
+    payables: 'pay',
+    receipts: 'rec',
+    payments: 'pmt',
+  }
+  const resultCount = {
+    receivables: receivablesFiltered.length,
+    payables: payablesFiltered.length,
+    receipts: receiptsFiltered.length,
+    payments: paymentsFiltered.length,
+  }[tab]
   const { data: customers } = useSuspenseQuery(customerOptionsQuery())
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const queryClient = useQueryClient()
@@ -170,6 +374,32 @@ function FinancePage() {
   )
   const [paymentDesc, setPaymentDesc] = React.useState('')
   const [paymentStatement, setPaymentStatement] = React.useState(false)
+
+  // Filter dropdown options: every customer / branch / supplier / account
+  const customerOptions = customers.map((c) => [c.id, c.name] as const)
+  const filterBranchOptions = [
+    [DIRECT_BRANCH, 'Trực tiếp KH mẹ'] as const,
+    ...customers.flatMap((c) =>
+      c.branches.map((b) => [String(b.id), `${b.name} (${c.name})`] as const),
+    ),
+  ]
+  const supplierOptions = master.suppliers.map((s) => [s.id, s.name] as const)
+  const accountOptions = [
+    ...master.bankAccounts.map((a) => ({
+      id: String(a.id),
+      name: a.bankName,
+      image: a.bankImage,
+      label: `${a.bankName} (${a.accountNumber})`,
+      keywords: `${a.accountNumber} ${a.bankCode ?? ''} ${a.bankShortName ?? ''}`,
+    })),
+    {
+      id: NO_ACCOUNT,
+      name: '',
+      image: null,
+      label: '(Không ghi tài khoản)',
+      keywords: '',
+    },
+  ]
 
   const selectedCustomer = customers.find((c) => c.id === receiptCustomerId)
   const branchOptions = selectedCustomer?.branches ?? []
@@ -313,10 +543,14 @@ function FinancePage() {
         <Tabs
           value={tab}
           onValueChange={(v) =>
-            navigate({ search: { tab: v as typeof tab }, replace: true })
+            navigate({
+              search: (prev) => ({ ...prev, tab: v as typeof tab }),
+              replace: true,
+            })
           }
           className="space-y-4"
         >
+          <div className="flex flex-wrap items-center justify-between gap-2">
           <TabsList className="bg-slate-100 p-1">
             <TabsTrigger value="receivables" className="text-xs font-semibold">
               Công Nợ Phải Thu ({receivables.length})
@@ -331,6 +565,22 @@ function FinancePage() {
               Lịch Sử Phiếu Chi ({payments.length})
             </TabsTrigger>
           </TabsList>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowFilters(true)}
+              aria-haspopup="dialog"
+              className={`gap-1.5 ${activeCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
+            >
+              <SlidersHorizontal className="size-4" />
+              Bộ lọc
+              {activeCount > 0 && (
+                <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                  {activeCount}
+                </span>
+              )}
+            </Button>
+          </div>
 
           {/* Tab 1: Accounts Receivable */}
           <TabsContent value="receivables">
@@ -446,7 +696,7 @@ function FinancePage() {
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
-                  Lịch Sử Phiếu Thu Tiền Bán Xe ({receipts.length})
+                  Lịch Sử Phiếu Thu Tiền Bán Xe ({receiptsFiltered.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -468,7 +718,14 @@ function FinancePage() {
                           {formatDate(r.receiptDate)}
                         </TableCell>
                         <TableCell className="font-medium text-slate-900">
-                          {r.customerName}
+                          <Link
+                            to="/customers/$customerId"
+                            params={{ customerId: String(r.customerId) }}
+                            preload="intent"
+                            className="hover:text-emerald-700 hover:underline"
+                          >
+                            {r.customerName}
+                          </Link>
                         </TableCell>
                         <TableCell className="text-slate-900">
                           {r.branchName ?? 'Trực tiếp KH mẹ'}
@@ -532,7 +789,7 @@ function FinancePage() {
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
-                  Lịch Sử Phiếu Chi ({payments.length})
+                  Lịch Sử Phiếu Chi ({paymentsFiltered.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -604,6 +861,370 @@ function FinancePage() {
             </Card>
           </TabsContent>
         </Tabs>
+
+        {/* Filter dialog: shows the fields of the active tab */}
+        <Dialog open={showFilters} onOpenChange={setShowFilters}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                {
+                  {
+                    receivables: 'Bộ Lọc Công Nợ Phải Thu',
+                    payables: 'Bộ Lọc Công Nợ Phải Trả',
+                    receipts: 'Bộ Lọc Phiếu Thu',
+                    payments: 'Bộ Lọc Phiếu Chi',
+                  }[tab]
+                }
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Kết quả được lọc ngay khi thay đổi ({resultCount} dòng phù hợp)
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              {tab === 'receivables' && (
+                <>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Khách hàng</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả khách hàng"
+                      values={(rcvF.customer ?? []).map(String)}
+                      onValuesChange={(v) =>
+                        setTabFilter('rcv', { customer: v.map(Number) })
+                      }
+                    >
+                      {customerOptions.map(([id, name]) => (
+                        <SearchSelectItem
+                          key={id}
+                          value={String(id)}
+                          className="text-xs"
+                        >
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">
+                      Pháp nhân điểm bán chịu nợ
+                    </Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả pháp nhân"
+                      values={rcvF.branch ?? []}
+                      onValuesChange={(v) => setTabFilter('rcv', { branch: v })}
+                    >
+                      {filterBranchOptions.map(([id, name]) => (
+                        <SearchSelectItem
+                          key={id}
+                          value={id}
+                          className="text-xs"
+                        >
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Tình trạng nợ</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả"
+                      values={rcvF.status ?? []}
+                      onValuesChange={(v) => setTabFilter('rcv', { status: v })}
+                    >
+                      <SearchSelectItem value="owing" className="text-xs">
+                        Còn nợ
+                      </SearchSelectItem>
+                      <SearchSelectItem value="cleared" className="text-xs">
+                        Đã thanh toán đủ
+                      </SearchSelectItem>
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <PriceRangeFilter
+                      label="Dư nợ còn lại"
+                      min={rcvF.min}
+                      max={rcvF.max}
+                      onChange={(min, max) => setTabFilter('rcv', { min, max })}
+                    />
+                  </div>
+                </>
+              )}
+
+              {tab === 'payables' && (
+                <>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Nhà cung cấp</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả nhà cung cấp"
+                      values={(payF.supplier ?? []).map(String)}
+                      onValuesChange={(v) =>
+                        setTabFilter('pay', { supplier: v.map(Number) })
+                      }
+                    >
+                      {supplierOptions.map(([id, name]) => (
+                        <SearchSelectItem
+                          key={id}
+                          value={String(id)}
+                          className="text-xs"
+                        >
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Tình trạng nợ</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả"
+                      values={payF.status ?? []}
+                      onValuesChange={(v) => setTabFilter('pay', { status: v })}
+                    >
+                      <SearchSelectItem value="owing" className="text-xs">
+                        Còn nợ NCC
+                      </SearchSelectItem>
+                      <SearchSelectItem value="cleared" className="text-xs">
+                        Đã thanh toán đủ
+                      </SearchSelectItem>
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="sm:col-span-2">
+                    <PriceRangeFilter
+                      label="Còn nợ NCC"
+                      min={payF.min}
+                      max={payF.max}
+                      onChange={(min, max) => setTabFilter('pay', { min, max })}
+                    />
+                  </div>
+                </>
+              )}
+
+              {tab === 'receipts' && (
+                <>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Khách hàng</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả khách hàng"
+                      values={(recF.customer ?? []).map(String)}
+                      onValuesChange={(v) =>
+                        setTabFilter('rec', { customer: v.map(Number) })
+                      }
+                    >
+                      {customerOptions.map(([id, name]) => (
+                        <SearchSelectItem
+                          key={id}
+                          value={String(id)}
+                          className="text-xs"
+                        >
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">
+                      Điểm bán thanh toán
+                    </Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả điểm bán"
+                      values={recF.branch ?? []}
+                      onValuesChange={(v) => setTabFilter('rec', { branch: v })}
+                    >
+                      {filterBranchOptions.map(([id, name]) => (
+                        <SearchSelectItem
+                          key={id}
+                          value={id}
+                          className="text-xs"
+                        >
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Tài khoản nhận</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả tài khoản"
+                      values={recF.account ?? []}
+                      onValuesChange={(v) => setTabFilter('rec', { account: v })}
+                    >
+                      {accountOptions.map((a) => (
+                        <SearchSelectItem
+                          key={a.id}
+                          value={a.id}
+                          keywords={a.keywords}
+                          className="text-xs"
+                        >
+                          {a.image ? (
+                            <BankLabel image={a.image} name={a.name}>
+                              {a.label}
+                            </BankLabel>
+                          ) : (
+                            a.label
+                          )}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Ngày thu từ</Label>
+                    <Input
+                      type="date"
+                      value={recF.from ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('rec', { from: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Ngày thu đến</Label>
+                    <Input
+                      type="date"
+                      value={recF.to ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('rec', { to: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <PriceRangeFilter
+                      label="Số tiền thu"
+                      min={recF.min}
+                      max={recF.max}
+                      onChange={(min, max) => setTabFilter('rec', { min, max })}
+                    />
+                  </div>
+                </>
+              )}
+
+              {tab === 'payments' && (
+                <>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">
+                      Nội dung / đối tượng nhận
+                    </Label>
+                    <Input
+                      placeholder="Tìm theo nội dung hoặc tên người nhận..."
+                      value={pmtText}
+                      onChange={(e) => setPmtText(e.target.value)}
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Nhà cung cấp</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả nhà cung cấp"
+                      values={(pmtF.supplier ?? []).map(String)}
+                      onValuesChange={(v) =>
+                        setTabFilter('pmt', { supplier: v.map(Number) })
+                      }
+                    >
+                      {supplierOptions.map(([id, name]) => (
+                        <SearchSelectItem
+                          key={id}
+                          value={String(id)}
+                          className="text-xs"
+                        >
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Tài khoản chi</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả tài khoản"
+                      values={pmtF.account ?? []}
+                      onValuesChange={(v) => setTabFilter('pmt', { account: v })}
+                    >
+                      {accountOptions.map((a) => (
+                        <SearchSelectItem
+                          key={a.id}
+                          value={a.id}
+                          keywords={a.keywords}
+                          className="text-xs"
+                        >
+                          {a.image ? (
+                            <BankLabel image={a.image} name={a.name}>
+                              {a.label}
+                            </BankLabel>
+                          ) : (
+                            a.label
+                          )}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Ngày chi từ</Label>
+                    <Input
+                      type="date"
+                      value={pmtF.from ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('pmt', { from: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">Ngày chi đến</Label>
+                    <Input
+                      type="date"
+                      value={pmtF.to ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('pmt', { to: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <div className="sm:col-span-2">
+                    <PriceRangeFilter
+                      label="Số tiền chi"
+                      min={pmtF.min}
+                      max={pmtF.max}
+                      onChange={(min, max) => setTabFilter('pmt', { min, max })}
+                    />
+                  </div>
+                </>
+              )}
+            </div>
+
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={activeCount === 0}
+                onClick={() => {
+                  if (tab === 'payments') setPmtText('')
+                  clearTabFilter(tabKey[tab])
+                }}
+                className="h-8 text-xs text-slate-500"
+              >
+                Xóa lọc
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                Xong
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Create Receipt Voucher Modal */}
         <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>

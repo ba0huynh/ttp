@@ -7,8 +7,17 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Eye, Pencil, Plus } from 'lucide-react'
+import {
+  ArrowDown,
+  ArrowUp,
+  ArrowUpDown,
+  Eye,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+} from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -24,12 +33,20 @@ import {
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogFooter,
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
+import { PriceRangeFilter } from '#/components/ui/price-range-filter.tsx'
+import {
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
+import { useUrlText } from '#/lib/use-url-text.ts'
 import {
   Table,
   TableBody,
@@ -47,7 +64,38 @@ import { customersQuery, currentUserQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { deleteCustomerFn, saveCustomerFn } from '#/server/fns/customers.ts'
 
+const SORT_KEYS = ['name', 'branches', 'balance'] as const
+type SortKey = (typeof SORT_KEYS)[number]
+const SORT_LABELS: Record<SortKey, string> = {
+  name: 'Tên khách hàng',
+  branches: 'Số điểm bán',
+  balance: 'Còn nợ',
+}
+const SORT_VALUE: Record<
+  SortKey,
+  (c: { name: string; branchCount: number; balance: number }) => number | string
+> = {
+  name: (c) => c.name,
+  branches: (c) => c.branchCount,
+  balance: (c) => c.balance,
+}
+const DEBT = ['owing', 'zero', 'overpaid'] as const
+const DEBT_LABELS = {
+  owing: 'Còn nợ',
+  zero: 'Không nợ',
+  overpaid: 'Trả dư (số âm)',
+} as const
+
 export const Route = createFileRoute('/customers/')({
+  // Filters and sort live in the URL so a reload or shared link keeps them
+  validateSearch: z.object({
+    q: z.string().optional().catch(undefined),
+    debt: z.array(z.enum(DEBT)).optional().catch(undefined),
+    min: z.number().optional().catch(undefined),
+    max: z.number().optional().catch(undefined),
+    sort: z.enum(SORT_KEYS).optional().catch(undefined),
+    dir: z.enum(['asc', 'desc']).optional().catch(undefined),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -63,8 +111,82 @@ export const Route = createFileRoute('/customers/')({
 function CustomersPage() {
   const { user } = Route.useRouteContext()
   const { data: customers } = useSuspenseQuery(customersQuery())
-  const customersPg = usePagination(customers)
   const queryClient = useQueryClient()
+
+  const searchParams = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const [showFilters, setShowFilters] = React.useState(false)
+  const { debt, min, max, sort, dir } = searchParams
+  // The box filters instantly; the URL follows once typing pauses
+  const [nameSearch, setNameSearch] = useUrlText(searchParams.q ?? '', (q) =>
+    navigate({
+      search: (prev) => ({ ...prev, q: q || undefined }),
+      replace: true,
+    }),
+  )
+  const activeFilterCount = [
+    Boolean(nameSearch.trim()),
+    Boolean(debt?.length),
+    min !== undefined || max !== undefined,
+  ].filter(Boolean).length
+
+  const filtered = customers.filter((c) => {
+    const q = nameSearch.trim().toLowerCase()
+    if (q && !c.name.toLowerCase().includes(q)) return false
+    if (
+      debt?.length &&
+      !debt.includes(c.balance > 0 ? 'owing' : c.balance < 0 ? 'overpaid' : 'zero')
+    )
+      return false
+    if (min !== undefined && c.balance < min) return false
+    if (max !== undefined && c.balance > max) return false
+    return true
+  })
+  // No sort chosen keeps the server order
+  const sorted = sort
+    ? [...filtered].sort((a, b) => {
+        const va = SORT_VALUE[sort](a)
+        const vb = SORT_VALUE[sort](b)
+        const cmp =
+          typeof va === 'string' || typeof vb === 'string'
+            ? String(va).localeCompare(String(vb), 'vi')
+            : va - vb
+        return dir === 'asc' ? cmp : -cmp
+      })
+    : filtered
+  const customersPg = usePagination(
+    sorted,
+    `${nameSearch}|${debt?.join()}|${min}|${max}|${sort}|${dir}`,
+  )
+
+  // Header click: ascending, then descending, then back to the default order
+  const toggleSort = (key: SortKey) => {
+    const next =
+      sort !== key
+        ? { sort: key, dir: 'asc' as const }
+        : dir === 'asc'
+          ? { sort: key, dir: 'desc' as const }
+          : { sort: undefined, dir: undefined }
+    navigate({ search: (prev) => ({ ...prev, ...next }), replace: true })
+  }
+  const sortHead = (key: SortKey, label: string, align: string) => (
+    <TableHead className={align}>
+      <button
+        type="button"
+        onClick={() => toggleSort(key)}
+        className={`inline-flex items-center gap-1 font-[inherit] uppercase hover:text-slate-900 ${sort === key ? 'text-emerald-800' : ''}`}
+      >
+        {label}
+        {sort !== key ? (
+          <ArrowUpDown className="size-3 opacity-40" />
+        ) : dir === 'asc' ? (
+          <ArrowUp className="size-3" />
+        ) : (
+          <ArrowDown className="size-3" />
+        )}
+      </button>
+    </TableHead>
+  )
 
   // Create Parent Customer Modal
   const [newCustOpen, setNewCustOpen] = React.useState(false)
@@ -136,27 +258,44 @@ function CustomersPage() {
               công nợ ghi theo <strong>điểm bán</strong> nhận xe.
             </p>
           </div>
-          <Can permission="customers.manage">
+          <div className="flex items-center gap-2">
             <Button
               size="sm"
-              onClick={() => {
-                setEditId(null)
-                setName('')
-                setNewCustOpen(true)
-              }}
-              className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
+              variant="outline"
+              onClick={() => setShowFilters(true)}
+              aria-haspopup="dialog"
+              className={`gap-1.5 ${activeFilterCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
             >
-              <Plus className="size-4" />
-              Thêm Khách Hàng
+              <SlidersHorizontal className="size-4" />
+              Bộ lọc
+              {activeFilterCount > 0 && (
+                <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                  {activeFilterCount}
+                </span>
+              )}
             </Button>
-          </Can>
+            <Can permission="customers.manage">
+              <Button
+                size="sm"
+                onClick={() => {
+                  setEditId(null)
+                  setName('')
+                  setNewCustOpen(true)
+                }}
+                className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
+              >
+                <Plus className="size-4" />
+                Thêm Khách Hàng
+              </Button>
+            </Can>
+          </div>
         </div>
 
         {/* Customers Table */}
         <Card className="border-slate-200 shadow-xs">
           <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
             <CardTitle className="text-sm font-bold text-slate-800">
-              Danh Sách Khách Hàng ({customers.length})
+              Danh Sách Khách Hàng ({filtered.length})
             </CardTitle>
           </CardHeader>
           <CardContent className="p-0">
@@ -164,9 +303,9 @@ function CustomersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
-                    <TableHead>Tên Khách Hàng</TableHead>
-                    <TableHead className="text-center">Số Điểm Bán</TableHead>
-                    <TableHead className="text-right">Còn Nợ</TableHead>
+                    {sortHead('name', 'Tên Khách Hàng', '')}
+                    {sortHead('branches', 'Số Điểm Bán', 'text-center')}
+                    {sortHead('balance', 'Còn Nợ', 'text-right')}
                     <TableHead className="text-center">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -242,6 +381,148 @@ function CustomersPage() {
             <TablePagination pagination={customersPg} />
           </CardContent>
         </Card>
+
+        {/* Filter + sort dialog */}
+        <Dialog open={showFilters} onOpenChange={setShowFilters}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Bộ Lọc Khách Hàng
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Kết quả được lọc ngay khi thay đổi ({filtered.length} khách
+                hàng phù hợp)
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Sắp xếp theo</Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Mặc định"
+                  value={sort ?? 'default'}
+                  onValueChange={(val) =>
+                    navigate({
+                      search: (prev) => ({
+                        ...prev,
+                        sort: val === 'default' ? undefined : (val as SortKey),
+                        dir:
+                          val === 'default' ? undefined : (prev.dir ?? 'desc'),
+                      }),
+                      replace: true,
+                    })
+                  }
+                >
+                  <SearchSelectItem value="default" className="text-xs">
+                    Mặc định
+                  </SearchSelectItem>
+                  {SORT_KEYS.map((k) => (
+                    <SearchSelectItem key={k} value={k} className="text-xs">
+                      {SORT_LABELS[k]}
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Thứ tự</Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  value={dir ?? 'desc'}
+                  disabled={!sort}
+                  onValueChange={(val) =>
+                    navigate({
+                      search: (prev) => ({
+                        ...prev,
+                        dir: val as 'asc' | 'desc',
+                      }),
+                      replace: true,
+                    })
+                  }
+                >
+                  <SearchSelectItem value="asc" className="text-xs">
+                    Tăng dần (A → Z, thấp → cao)
+                  </SearchSelectItem>
+                  <SearchSelectItem value="desc" className="text-xs">
+                    Giảm dần (Z → A, cao → thấp)
+                  </SearchSelectItem>
+                </SearchSelect>
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Tên khách hàng</Label>
+                <Input
+                  placeholder="Tìm theo tên khách hàng..."
+                  value={nameSearch}
+                  onChange={(e) => setNameSearch(e.target.value)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Tình trạng công nợ</Label>
+                <MultiSearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Tất cả"
+                  values={debt ?? []}
+                  onValuesChange={(v) =>
+                    navigate({
+                      search: (prev) => ({
+                        ...prev,
+                        debt: v.length ? (v as (typeof DEBT)[number][]) : undefined,
+                      }),
+                      replace: true,
+                    })
+                  }
+                >
+                  {DEBT.map((k) => (
+                    <SearchSelectItem key={k} value={k} className="text-xs">
+                      {DEBT_LABELS[k]}
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+              </div>
+              <div className="sm:col-span-2">
+                <PriceRangeFilter
+                  label="Số tiền còn nợ"
+                  min={min}
+                  max={max}
+                  onChange={(lo, hi) =>
+                    navigate({
+                      search: (prev) => ({ ...prev, min: lo, max: hi }),
+                      replace: true,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={activeFilterCount === 0}
+                onClick={() => {
+                  setNameSearch('')
+                  navigate({
+                    search: (prev) => ({ sort: prev.sort, dir: prev.dir }),
+                    replace: true,
+                  })
+                }}
+                className="h-8 text-xs text-slate-500"
+              >
+                Xóa lọc
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                Xong
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Add Parent Customer Modal */}
         <Dialog open={newCustOpen} onOpenChange={setNewCustOpen}>

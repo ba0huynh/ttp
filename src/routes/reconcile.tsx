@@ -11,9 +11,11 @@ import {
   CheckCircle2,
   Loader2,
   Pencil,
+  SlidersHorizontal,
   Upload,
 } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
@@ -45,6 +47,9 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
+import { PriceRangeFilter } from '#/components/ui/price-range-filter.tsx'
+import { useUrlText } from '#/lib/use-url-text.ts'
 import {
   SearchSelect,
   SearchSelectItem,
@@ -76,7 +81,27 @@ import {
   updateStatementLineFn,
 } from '#/server/fns/finance.ts'
 
+const MATCH_LABELS = {
+  receipt: 'Phiếu thu',
+  payment: 'Phiếu chi',
+  loan_repayment: 'Trả nợ khế ước',
+} as const
+
 export const Route = createFileRoute('/reconcile')({
+  // Filters live in the URL so a reload or shared link keeps them
+  validateSearch: z.object({
+    q: z.string().optional().catch(undefined),
+    from: z.string().optional().catch(undefined),
+    to: z.string().optional().catch(undefined),
+    flow: z.array(z.enum(['in', 'out'])).optional().catch(undefined),
+    status: z.array(z.enum(['matched', 'unmatched'])).optional().catch(undefined),
+    type: z
+      .array(z.enum(['receipt', 'payment', 'loan_repayment']))
+      .optional()
+      .catch(undefined),
+    min: z.number().optional().catch(undefined),
+    max: z.number().optional().catch(undefined),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
     const user = await queryClient.query(currentUserQuery())
     if (!user) throw redirect({ to: '/login' })
@@ -102,9 +127,56 @@ function ReconcilePage() {
     ...bankStatementDetailQuery(selectedStatementId ?? 0),
     enabled: selectedStatementId !== null,
   })
+
+  const searchParams = Route.useSearch()
+  const navigate = Route.useNavigate()
+  const [showFilters, setShowFilters] = React.useState(false)
+  const { from, to, flow, status, type, min, max } = searchParams
+  // The box filters instantly; the URL follows once typing pauses
+  const [descSearch, setDescSearch] = useUrlText(searchParams.q ?? '', (q) =>
+    navigate({
+      search: (prev) => ({ ...prev, q: q || undefined }),
+      replace: true,
+    }),
+  )
+  const setFilter = (
+    key: 'from' | 'to' | 'flow' | 'status' | 'type',
+    value: string | string[] | undefined,
+  ) =>
+    navigate({ search: (prev) => ({ ...prev, [key]: value }), replace: true })
+
+  const activeFilterCount = [
+    Boolean(descSearch.trim()),
+    Boolean(from || to),
+    Boolean(flow?.length),
+    Boolean(status?.length),
+    Boolean(type?.length),
+    min !== undefined || max !== undefined,
+  ].filter(Boolean).length
+
+  const allLines: any[] = statementDetail?.lines ?? []
+  const filteredLines = allLines.filter((l) => {
+    const q = descSearch.trim().toLowerCase()
+    if (q && !String(l.description ?? '').toLowerCase().includes(q))
+      return false
+    const date = String(l.transactionDate).slice(0, 10)
+    if (from && date < from) return false
+    if (to && date > to) return false
+    if (flow?.length && !flow.includes(l.debit > 0 ? 'out' : 'in')) return false
+    if (
+      status?.length &&
+      !status.includes(l.status === 'matched' ? 'matched' : 'unmatched')
+    )
+      return false
+    if (type?.length && !type.includes(l.matchedType)) return false
+    const amount = l.debit > 0 ? l.debit : l.credit
+    if (min !== undefined && amount < min) return false
+    if (max !== undefined && amount > max) return false
+    return true
+  })
   const linesPg = usePagination<any>(
-    statementDetail?.lines ?? [],
-    selectedStatementId,
+    filteredLines,
+    `${selectedStatementId}|${descSearch}|${from}|${to}|${flow?.join()}|${status?.join()}|${type?.join()}|${min}|${max}`,
   )
 
   // Matching suggestions
@@ -306,8 +378,27 @@ function ReconcilePage() {
                 Hiển thị số dư biến động & trạng thái đối chiếu
               </CardDescription>
             </div>
-            <div className="text-xs text-slate-500">
-              Tổng {statementDetail?.lines?.length ?? 0} dòng
+            <div className="flex items-center gap-3">
+              <div className="text-xs text-slate-500">
+                {activeFilterCount > 0
+                  ? `${filteredLines.length}/${allLines.length} dòng`
+                  : `Tổng ${allLines.length} dòng`}
+              </div>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowFilters(true)}
+                aria-haspopup="dialog"
+                className={`gap-1.5 ${activeFilterCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
+              >
+                <SlidersHorizontal className="size-4" />
+                Bộ lọc
+                {activeFilterCount > 0 && (
+                  <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                    {activeFilterCount}
+                  </span>
+                )}
+              </Button>
             </div>
           </CardHeader>
           <CardContent className="p-0">
@@ -450,6 +541,143 @@ function ReconcilePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Filter dialog */}
+        <Dialog open={showFilters} onOpenChange={setShowFilters}>
+          <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-xl">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Bộ Lọc Giao Dịch Sao Kê
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Kết quả được lọc ngay khi thay đổi ({filteredLines.length} dòng
+                phù hợp)
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Nội dung diễn giải</Label>
+                <Input
+                  placeholder="Tìm theo nội dung giao dịch..."
+                  value={descSearch}
+                  onChange={(e) => setDescSearch(e.target.value)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Ngày giao dịch từ</Label>
+                <Input
+                  type="date"
+                  value={from ?? ''}
+                  onChange={(e) => setFilter('from', e.target.value || undefined)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Ngày giao dịch đến</Label>
+                <Input
+                  type="date"
+                  value={to ?? ''}
+                  onChange={(e) => setFilter('to', e.target.value || undefined)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Chiều tiền</Label>
+                <MultiSearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Tất cả"
+                  values={flow ?? []}
+                  onValuesChange={(v) =>
+                    setFilter('flow', v.length ? v : undefined)
+                  }
+                >
+                  <SearchSelectItem value="in" className="text-xs">
+                    Tiền vào (ghi có)
+                  </SearchSelectItem>
+                  <SearchSelectItem value="out" className="text-xs">
+                    Tiền ra (ghi nợ)
+                  </SearchSelectItem>
+                </MultiSearchSelect>
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Đối chiếu</Label>
+                <MultiSearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Tất cả"
+                  values={status ?? []}
+                  onValuesChange={(v) =>
+                    setFilter('status', v.length ? v : undefined)
+                  }
+                >
+                  <SearchSelectItem value="matched" className="text-xs">
+                    Đã khớp
+                  </SearchSelectItem>
+                  <SearchSelectItem value="unmatched" className="text-xs">
+                    Chưa đối soát
+                  </SearchSelectItem>
+                </MultiSearchSelect>
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Khớp với chứng từ</Label>
+                <MultiSearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Tất cả loại chứng từ"
+                  values={type ?? []}
+                  onValuesChange={(v) =>
+                    setFilter('type', v.length ? v : undefined)
+                  }
+                >
+                  {(Object.keys(MATCH_LABELS) as (keyof typeof MATCH_LABELS)[]).map(
+                    (k) => (
+                      <SearchSelectItem key={k} value={k} className="text-xs">
+                        {MATCH_LABELS[k]}
+                      </SearchSelectItem>
+                    ),
+                  )}
+                </MultiSearchSelect>
+              </div>
+              <div className="sm:col-span-2">
+                <PriceRangeFilter
+                  label="Số tiền giao dịch"
+                  min={min}
+                  max={max}
+                  onChange={(lo, hi) =>
+                    navigate({
+                      search: (prev) => ({ ...prev, min: lo, max: hi }),
+                      replace: true,
+                    })
+                  }
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={activeFilterCount === 0}
+                onClick={() => {
+                  setDescSearch('')
+                  navigate({ search: () => ({}), replace: true })
+                }}
+                className="h-8 text-xs text-slate-500"
+              >
+                Xóa lọc
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowFilters(false)}
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                Xong
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         {/* Transaction Matching Suggestions Modal */}
         <Dialog
