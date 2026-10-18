@@ -103,3 +103,10 @@ UPDATE `users` SET `role_id` = (SELECT `id` FROM `roles` WHERE `name` = 'Kế to
 UPDATE `users` SET `role_id` = (SELECT `id` FROM `roles` WHERE `name` = 'Kinh doanh') WHERE `role` = 'sales';
 --> statement-breakpoint
 UPDATE `users` SET `role_id` = (SELECT `id` FROM `roles` WHERE `name` = 'Thủ kho') WHERE `role` = 'warehouse';
+
+--> down
+
+ALTER TABLE `users` DROP FOREIGN KEY `users_role_id_roles_id_fk`;--> statement-breakpoint
+ALTER TABLE `users` DROP COLUMN `role_id`;--> statement-breakpoint
+DROP TABLE IF EXISTS `role_permissions`;--> statement-breakpoint
+DROP TABLE IF EXISTS `roles`;

@@ -1,4 +1,4 @@
-import { readdirSync, readFileSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
@@ -15,9 +15,13 @@ import { db } from './index.ts'
  * - Custom `.ts` files exporting an `up`, `migrate`, or default async function
  *   for complex data updates, calculations, or schema patches.
  *
+ * Supports rolling back (down / revert):
+ * - `.ts` migrations: export `down` or `revert` async function
+ * - `.sql` migrations: `<name>.down.sql` file OR in-file `--> down` delimiter
+ *
  * Applied migrations are tracked by file name in the `migrations` table, so it
  * is NOT compatible with drizzle-kit's / drizzle-orm's own migrator (they expect
- * hash + created_at columns). Keep using `npm run migration:run`.
+ * hash + created_at columns). Keep using `npm run migration:run` / `npm run migration:down`.
  */
 const MIGRATIONS_FOLDER = './src/db/migrations'
 const MIGRATIONS_TABLE = 'migrations'
@@ -37,14 +41,20 @@ interface SqlMigration {
   type: 'sql'
   /** File name without extension, e.g. 0000_wet_sentinel */
   name: string
+  /** Exact filename with extension, e.g. 0000_wet_sentinel.sql */
+  file: string
   statements: string[]
+  downStatements?: string[]
 }
 
 interface TsMigration {
   type: 'ts'
   /** File name without extension, e.g. 0036_custom_data_update */
   name: string
+  /** Exact filename with extension, e.g. 0036_custom_data_update.ts */
+  file: string
   run: MigrationFn
+  down?: MigrationFn
 }
 
 type Migration = SqlMigration | TsMigration
@@ -52,11 +62,32 @@ type Migration = SqlMigration | TsMigration
 const count = (rows: unknown) => Number((rows as { n: number }[])[0]?.n)
 const run = (query: string) => db.execute(sql.raw(query))
 
+/**
+ * Splits a SQL script into individual executable statements.
+ * Supports Drizzle's `--> statement-breakpoint` delimiter or standard
+ * semicolon-terminated statements.
+ */
+function splitSqlStatements(script: string): string[] {
+  if (script.includes(STATEMENT_BREAKPOINT)) {
+    return script
+      .split(STATEMENT_BREAKPOINT)
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+  }
+
+  return script
+    .split(/;\s*(?:\r?\n|$)/)
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0)
+}
+
 async function loadMigrations(): Promise<Migration[]> {
   const files = readdirSync(MIGRATIONS_FOLDER, { withFileTypes: true })
     .filter(
       (entry) =>
         entry.isFile() &&
+        !entry.name.endsWith('.down.sql') &&
+        !entry.name.endsWith('.down.ts') &&
         (entry.name.endsWith('.sql') || entry.name.endsWith('.ts')),
     )
     .map((entry) => entry.name)
@@ -81,13 +112,38 @@ async function loadMigrations(): Promise<Migration[]> {
 
     if (isSql) {
       const script = readFileSync(fullPath, 'utf-8')
+      let upScript = script
+      let downScript: string | null = null
+
+      // Check for in-file down separator:
+      // Supports "--> down", "-- down", "/* down */", "-- DOWN", "--> @down"
+      const downSeparatorMatch = script.match(
+        /(?:^|\r?\n)\s*(?:-->|--|\/\*)\s*@?down\b(?:\s*\*\/)?/i,
+      )
+      if (downSeparatorMatch && downSeparatorMatch.index !== undefined) {
+        upScript = script.slice(0, downSeparatorMatch.index)
+        downScript = script.slice(
+          downSeparatorMatch.index + downSeparatorMatch[0].length,
+        )
+      } else {
+        // Check for separate down file: <name>.down.sql
+        const downFilePath = join(MIGRATIONS_FOLDER, `${name}.down.sql`)
+        if (existsSync(downFilePath)) {
+          downScript = readFileSync(downFilePath, 'utf-8')
+        }
+      }
+
+      const upStatements = splitSqlStatements(upScript)
+      const downStatements = downScript
+        ? splitSqlStatements(downScript)
+        : undefined
+
       migrations.push({
         type: 'sql',
         name,
-        statements: script
-          .split(STATEMENT_BREAKPOINT)
-          .map((s) => s.trim())
-          .filter(Boolean),
+        file,
+        statements: upStatements,
+        downStatements,
       })
     } else {
       const moduleUrl = pathToFileURL(fullPath).href
@@ -95,6 +151,8 @@ async function loadMigrations(): Promise<Migration[]> {
         default?: MigrationFn
         up?: MigrationFn
         migrate?: MigrationFn
+        down?: MigrationFn
+        revert?: MigrationFn
       }
 
       const runFn = mod.up ?? mod.migrate ?? mod.default
@@ -104,10 +162,14 @@ async function loadMigrations(): Promise<Migration[]> {
         )
       }
 
+      const downFn = mod.down ?? mod.revert
+
       migrations.push({
         type: 'ts',
         name,
+        file,
         run: runFn,
+        down: downFn,
       })
     }
   }
@@ -151,6 +213,107 @@ function describe(statement: string) {
 }
 
 /**
+ * Creates a logged execution context for TypeScript migrations.
+ * Every call to `context.run(query)` or `database.execute(query)` logs the exact
+ * SQL statement text with an index and status checkmark, matching the progress
+ * output of .sql migrations.
+ */
+function createTsMigrationContext(
+  runFn: (query: string) => Promise<unknown> = run,
+  dbInstance: typeof db = db,
+) {
+  let step = 0
+  let succeeded = 0
+
+  const loggedRun = async (query: string): ReturnType<typeof run> => {
+    const rawStatements = query.includes(STATEMENT_BREAKPOINT)
+      ? query.split(STATEMENT_BREAKPOINT)
+      : [query]
+
+    const statements = rawStatements
+      .map((s) => s.trim())
+      .filter((s) => s.length > 0)
+
+    let lastResult: unknown
+    for (const statement of statements) {
+      step++
+      const label = `[${step}] ${describe(statement)}`
+      try {
+        lastResult = await runFn(statement)
+        succeeded++
+        console.log(`  ✓ ${label}`)
+      } catch (err) {
+        console.error(`  ✗ ${label}`)
+        throw err
+      }
+    }
+    return lastResult as ReturnType<typeof run>
+  }
+
+  const loggedDb = new Proxy(dbInstance, {
+    get(target, prop, receiver) {
+      if (prop === 'execute') {
+        return async (queryArg: unknown) => {
+          step++
+          let sqlText = ''
+          try {
+            if (typeof queryArg === 'string') {
+              sqlText = queryArg
+            } else if (queryArg && typeof queryArg === 'object') {
+              const obj = queryArg as Record<string, unknown>
+              if (typeof obj.toQuery === 'function') {
+                const q = (obj.toQuery as (params: unknown) => { sql: string })({
+                  escapeName: (n: string) => `\`${n}\``,
+                  escapeParam: () => '?',
+                })
+                sqlText = q.sql
+              } else if (typeof obj.sql === 'string') {
+                sqlText = obj.sql
+              } else if (Array.isArray(obj.queryChunks)) {
+                sqlText = obj.queryChunks
+                  .map((c: unknown) =>
+                    typeof c === 'string'
+                      ? c
+                      : (c as { value?: unknown })?.value !== undefined
+                        ? String((c as { value?: unknown }).value)
+                        : '',
+                  )
+                  .join(' ')
+              } else {
+                sqlText = String(queryArg)
+              }
+            } else {
+              sqlText = String(queryArg)
+            }
+          } catch {
+            sqlText = String(queryArg)
+          }
+
+          const label = `[${step}] ${describe(sqlText || 'db.execute(...)')}`
+          try {
+            const res = await (target.execute as (q: unknown) => Promise<unknown>)(queryArg)
+            succeeded++
+            console.log(`  ✓ ${label}`)
+            return res
+          } catch (err) {
+            console.error(`  ✗ ${label}`)
+            throw err
+          }
+        }
+      }
+      return Reflect.get(target, prop, receiver)
+    }
+  }) as typeof db
+
+  return {
+    context: { sql, run: loggedRun },
+    database: loggedDb,
+    getStepCount: () => step,
+    getSucceededCount: () => succeeded,
+  }
+}
+
+/**
  * A database created before the tracking table existed (via db:push or the old
  * script) already has the first migration's tables, so re-running it would fail
  * with "already exists". If the tracking table is empty but the business
@@ -166,11 +329,14 @@ async function baselineIfNeeded(first: Migration) {
   const existingTables = count(tableRows)
   if (existingTables === 0) return // empty database: run migrations normally
 
-  if (first.type !== 'sql') return
-
-  const script = first.statements.join('\n')
-  const expectedTables = (script.match(/CREATE TABLE/g) ?? []).length
-  const expectedFks = (script.match(/FOREIGN KEY/g) ?? []).length
+  const expectedTables =
+    first.type === 'sql'
+      ? (first.statements.join('\n').match(/CREATE TABLE/g) ?? []).length
+      : 21
+  const expectedFks =
+    first.type === 'sql'
+      ? (first.statements.join('\n').match(/FOREIGN KEY/g) ?? []).length
+      : 28
   const [fkRows] = await run(
     `SELECT COUNT(*) AS n FROM information_schema.table_constraints WHERE table_schema = DATABASE() AND constraint_type = 'FOREIGN KEY'`,
   )
@@ -187,6 +353,76 @@ async function baselineIfNeeded(first: Migration) {
   console.log(
     `↺ Database already has all tables: recording ${first.name} as applied (baseline).`,
   )
+}
+
+/**
+ * In MySQL, DDL statements (CREATE, ALTER, DROP) trigger an implicit COMMIT,
+ * meaning InnoDB cannot roll back schema changes natively on error.
+ * If a multi-statement migration fails halfway after successfully running one
+ * or more statements, this helper attempts compensating rollback using the
+ * migration's down() handler (or down statements) to restore the database
+ * to its pre-migration state.
+ */
+async function attemptCompensatingRollback(
+  migration: Migration,
+  executedCount: number,
+) {
+  if (executedCount === 0) {
+    console.log(
+      `ℹ Failure occurred before any statements took effect. Database remains in consistent pre-migration state.`,
+    )
+    return
+  }
+
+  console.log(
+    `\n⚠️ Migration failed after executing ${executedCount} statement(s).`,
+  )
+
+  if (migration.type === 'ts' && migration.down) {
+    console.log(
+      `↺ [Compensating Rollback] Executing down() handler to undo partial changes and prevent corrupted state...`,
+    )
+    try {
+      const { context, database } = createTsMigrationContext(run, db)
+      await migration.down(database, context)
+      console.log(
+        `✓ [Compensating Rollback] Successfully reverted partial changes. Database restored to pre-migration state.`,
+      )
+    } catch (compensationErr) {
+      console.error(
+        `❌ [Compensating Rollback] Automatic rollback failed:`,
+        compensationErr instanceof Error ? compensationErr.message : compensationErr,
+      )
+      console.error(
+        `Please inspect the database and migration "${migration.file}" to resolve any partial schema changes.`,
+      )
+    }
+  } else if (
+    migration.type === 'sql' &&
+    migration.downStatements &&
+    migration.downStatements.length > 0
+  ) {
+    console.log(
+      `↺ [Compensating Rollback] Executing down statements to undo partial changes...`,
+    )
+    try {
+      for (const statement of migration.downStatements) {
+        await run(statement)
+      }
+      console.log(
+        `✓ [Compensating Rollback] Successfully reverted partial changes. Database restored to pre-migration state.`,
+      )
+    } catch (compensationErr) {
+      console.error(
+        `❌ [Compensating Rollback] Automatic rollback failed:`,
+        compensationErr instanceof Error ? compensationErr.message : compensationErr,
+      )
+    }
+  } else {
+    console.warn(
+      `⚠️ No down() handler available for "${migration.file}". Database may contain partial schema modifications.`,
+    )
+  }
 }
 
 async function migrate() {
@@ -215,15 +451,106 @@ async function migrate() {
 
   for (const migration of pending) {
     const startedAt = performance.now()
+    let executedCount = 0
+
+    try {
+      await db.transaction(async (tx) => {
+        const txRun = (query: string) => tx.execute(sql.raw(query))
+
+        if (migration.type === 'sql') {
+          const total = migration.statements.length
+          console.log(`\n▶ ${migration.name} [SQL] (${total} statements) [transaction]`)
+
+          for (const [i, statement] of migration.statements.entries()) {
+            const label = `[${i + 1}/${total}] ${describe(statement)}`
+            try {
+              await txRun(statement)
+              executedCount++
+              console.log(`  ✓ ${label}`)
+            } catch (err) {
+              console.error(`  ✗ ${label}`)
+              throw err
+            }
+          }
+        } else {
+          console.log(`\n▶ ${migration.name} [TypeScript] [transaction]`)
+          const { context, database, getStepCount, getSucceededCount } =
+            createTsMigrationContext(txRun, tx as unknown as typeof db)
+          await migration.run(database, context)
+          executedCount = getSucceededCount()
+          if (getStepCount() === 0) {
+            console.log(`  ✓ executed TypeScript migration`)
+          }
+        }
+
+        // Atomically record migration in the migrations table inside the transaction
+        await txRun(
+          `INSERT INTO \`${MIGRATIONS_TABLE}\` (name) VALUES ('${migration.name}')`,
+        )
+      })
+
+      const seconds = ((performance.now() - startedAt) / 1000).toFixed(1)
+      console.log(`✔ ${migration.name} done in ${seconds}s`)
+    } catch (err) {
+      console.error(`\n❌ Migration "${migration.name}" failed! Transaction rolled back.`)
+      await attemptCompensatingRollback(migration, executedCount)
+      throw err
+    }
+  }
+
+  console.log(`\nMigration complete (${pending.length} applied).`)
+}
+
+/**
+ * Reverts exactly one migration at a time (the most recently applied migration)
+ * and announces the exact file name and path being rolled back.
+ */
+async function revert() {
+  const migrations = await loadMigrations()
+  const migrationMap = new Map(migrations.map((m) => [m.name, m]))
+
+  await ensureTrackingTable()
+
+  const [appliedRows] = await run(
+    `SELECT name FROM \`${MIGRATIONS_TABLE}\` ORDER BY id DESC LIMIT 1`,
+  )
+  const applied = appliedRows as unknown as { name: string }[]
+
+  if (applied.length === 0) {
+    console.log('✓ No applied migrations to revert.')
+    return
+  }
+
+  const latestName = applied[0]!.name
+  const migration = migrationMap.get(latestName)
+
+  if (!migration) {
+    throw new Error(
+      `Cannot revert "${latestName}": migration file not found in ${MIGRATIONS_FOLDER}.`,
+    )
+  }
+
+  const filePath = `${MIGRATIONS_FOLDER}/${migration.file}`
+  console.log(`\n◀ Reverting 1 migration from file: ${filePath}`)
+  const startedAt = performance.now()
+
+  await db.transaction(async (tx) => {
+    const txRun = (query: string) => tx.execute(sql.raw(query))
 
     if (migration.type === 'sql') {
-      const total = migration.statements.length
-      console.log(`\n▶ ${migration.name} [SQL] (${total} statements)`)
+      const downStatements = migration.downStatements
+      if (!downStatements || downStatements.length === 0) {
+        throw new Error(
+          `Cannot revert file "${filePath}": no down migration script found.\n` +
+            `To enable revert for this SQL migration, create "${MIGRATIONS_FOLDER}/${migration.name}.down.sql" or add "--> down" in "${filePath}".`,
+        )
+      }
 
-      for (const [i, statement] of migration.statements.entries()) {
+      const total = downStatements.length
+      for (const [i, statement] of downStatements.entries()) {
         const label = `[${i + 1}/${total}] ${describe(statement)}`
         try {
-          await run(statement)
+          await txRun(statement)
           console.log(`  ✓ ${label}`)
         } catch (err) {
           console.error(`  ✗ ${label}`)
@@ -231,27 +558,49 @@ async function migrate() {
         }
       }
     } else {
-      console.log(`\n▶ ${migration.name} [TypeScript]`)
-      try {
-        await migration.run(db, { sql, run })
-        console.log(`  ✓ executed TypeScript migration`)
-      } catch (err) {
-        console.error(`  ✗ failed TypeScript migration ${migration.name}`)
-        throw err
+      if (!migration.down) {
+        throw new Error(
+          `Cannot revert file "${filePath}": the TypeScript migration does not export a 'down' function.\n` +
+            `Please export an async function down(database, context) in "${filePath}".`,
+        )
+      }
+
+      const { context, database, getStepCount } = createTsMigrationContext(
+        txRun,
+        tx as unknown as typeof db,
+      )
+      await migration.down(database, context)
+      if (getStepCount() === 0) {
+        console.log(`  ✓ executed TypeScript down() handler`)
       }
     }
 
-    await run(
-      `INSERT INTO \`${MIGRATIONS_TABLE}\` (name) VALUES ('${migration.name}')`,
+    // Atomically delete the tracking record inside the transaction
+    await txRun(
+      `DELETE FROM \`${MIGRATIONS_TABLE}\` WHERE name = '${migration.name}'`,
     )
-    const seconds = ((performance.now() - startedAt) / 1000).toFixed(1)
-    console.log(`✔ ${migration.name} done in ${seconds}s`)
-  }
+  })
 
-  console.log(`\nMigration complete (${pending.length} applied).`)
+  const seconds = ((performance.now() - startedAt) / 1000).toFixed(1)
+  console.log(`\n✔ Successfully reverted file: ${filePath} in ${seconds}s.`)
 }
 
-migrate()
+// Parse CLI flags: --down, down, --revert, revert
+const isDown =
+  process.argv.includes('--down') ||
+  process.argv.includes('down') ||
+  process.argv.includes('--revert') ||
+  process.argv.includes('revert')
+
+async function main() {
+  if (isDown) {
+    await revert()
+  } else {
+    await migrate()
+  }
+}
+
+main()
   .catch((err) => {
     console.error('\n❌ Migration failed:', err)
     process.exitCode = 1

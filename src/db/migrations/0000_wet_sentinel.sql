@@ -424,3 +424,9 @@ CREATE INDEX `vehicles_batch_idx` ON `vehicles` (`batch_id`);--> statement-break
 CREATE INDEX `vehicles_model_idx` ON `vehicles` (`model_id`);--> statement-breakpoint
 CREATE INDEX `vehicles_delivered_idx` ON `vehicles` (`is_delivered`);--> statement-breakpoint
 CREATE INDEX `vehicles_invoiced_idx` ON `vehicles` (`is_invoiced`);
+
+--> down
+
+SET FOREIGN_KEY_CHECKS = 0;--> statement-breakpoint
+DROP TABLE IF EXISTS `reconciliations`, `sales_order_items`, `invoices`, `delivery_notes`, `sales_orders`, `receipt_vouchers`, `payment_vouchers`, `loan_repayments`, `batch_expenses`, `vehicles`, `loan_contracts`, `import_batches`, `pos_branches`, `customers`, `company_bank_accounts`, `company_info`, `bank_statement_lines`, `bank_statements`, `motorcycle_models`, `colors`, `suppliers`, `banks`, `sessions`, `users`;--> statement-breakpoint
+SET FOREIGN_KEY_CHECKS = 1;

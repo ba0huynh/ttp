@@ -925,8 +925,45 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Delete Vehicle**: Available vehicles display a delete button using `BusyTrash` and `confirmDelete` from `src/lib/usage.ts`. Deletions recalculate batch cost distributions.
 - **Locked Vehicles**: Vehicles already sold (`salesOrderId`), physically delivered (`isDelivered`), or invoiced (`isInvoiced`) cannot be edited or deleted to preserve audit integrity; they display an un-deletable dash (`—`) with an explanatory tooltip.
 
+### Lesson 87: Single-Step Migration Revert / Down (`npm run migration:down`)
+
+- **Feature**: `src/db/migrate.ts` now rolls back migrations one at a time via `npm run migration:down` (or `npm run migration:revert`).
+- **Single-Step Execution**: Each invocation targets strictly the single most recently applied migration, announcing the exact file path before and after execution (e.g. `src/db/migrations/0031_import_price_selling_base.ts`).
+- **TypeScript Migrations**: Export an `async function down(database, context)` (or `revert`).
+- **SQL Migrations**: Supported via `<name>.down.sql` sidecar files or in-file `--> down` / `-- down` sections.
+- **Rollback Tracking**: On successful revert, the record is removed from the `migrations` table so it can be re-run on demand.
+
+### Lesson 88: Full Migration Conversion to TypeScript (.ts) with Up and Down
+
+- **Conversion**: All 36 migrations in `src/db/migrations/` (`0000_wet_sentinel.ts` through `0035_drop_batch_loan_link.ts`) are now native TypeScript files exporting both:
+  - `export async function up(database: typeof db, context: MigrationContext): Promise<void>`
+  - `export async function down(database: typeof db, context: MigrationContext): Promise<void>`
+- **Down Operations**:
+  - `0000_wet_sentinel.ts` down drops all created tables in reverse dependency order with `FOREIGN_KEY_CHECKS = 0`.
+  - Incremental migrations down properly drop newly added columns/tables, or re-add removed constraints/columns.
+  - Baseline safety: `migrate.ts` automatically baselines `0000_wet_sentinel` if tables already exist when starting on an established database.
+- **Per-Statement SQL Text Logging**: `createTsMigrationContext` wraps `context.run` and `database.execute` so each statement executed by `.ts` migrations logs the exact SQL text with an incremental step index `✓ [1] ...` and status indicator, identical to `.sql` execution.
+- **Workflow Commands**:
+  - Forward migration: `npm run migration:run`
+  - Single-step rollback: `npm run migration:down` (or `npm run migration:revert`), which identifies and reports the exact file being reverted.
+
+### Lesson 89: Transaction Safety & Compensating Rollback in Migration Runner
+
+- **Problem**: In raw script execution without transactions, a migration failure halfway leaves the database in an inconsistent state, and re-running causes "column/table already exists" crashes.
+- **Transaction Wrapping**: Both `migrate()` and `revert()` in `src/db/migrate.ts` now execute every migration inside a dedicated `db.transaction(async (tx) => { ... })` block.
+  - On transactional DDL engines (e.g. PostgreSQL), any failure triggers a native complete transaction rollback.
+  - On MySQL (where DDL causes implicit commit), all DML updates/inserts/deletes roll back automatically, and the tracking record in `migrations` is saved atomically only upon successful completion.
+- **Compensating Rollback on Failure**: When a multi-statement migration fails halfway in MySQL after running 1 or more statements, `attemptCompensatingRollback` automatically invokes the migration's `down()` handler to revert the partial changes and restore the database to its pre-migration state.
+
+### Lesson 90: In-File Down Separator Support for `.sql` Migrations
+
+- **Feature**: `.sql` migration files fully support reverse/down migrations using in-file section separators:
+  - Supported delimiters: `-- down`, `--> down`, `/* down */`, `-- DOWN`, `--> @down` (case-insensitive).
+  - Alternative: `<migration_name>.down.sql` sidecar files.
+- **Standardization**: All 36 migrations in `src/db/migrations/` (`0000_wet_sentinel.sql` through `0035_drop_batch_loan_link.sql`) are standardized as `.sql` files with embedded `--> down` sections containing their exact revert logic.
+- **Statement Splitting**: `splitSqlStatements()` automatically parses statements delimited by either Drizzle's `--> statement-breakpoint` or standard semicolons `;`.
+- **Parity with `.ts`**: Both `.sql` and `.ts` migrations have 100% feature parity: forward migration, per-statement logging, single-step revert (`npm run migration:down`), transactional execution, and compensating rollback on failure.
+
 ---
 
-_(Next Agent: Append Lesson 87, 88,... above this line upon completing tasks)_
-
-
+_(Next Agent: Append Lesson 91, 92,... above this line upon completing tasks)_
