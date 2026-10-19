@@ -81,7 +81,6 @@ export function VehicleFormDialog({
 
   // Quick-create a model the same way
   const [modelOpen, setModelOpen] = React.useState(false)
-  const [mBrand, setMBrand] = React.useState('')
   const [mName, setMName] = React.useState('')
   const [mYear, setMYear] = React.useState('')
   const [mError, setMError] = React.useState<string | null>(null)
@@ -95,7 +94,6 @@ export function VehicleFormDialog({
     try {
       const res = await saveModelFn({
         data: {
-          brand: mBrand.trim() || null,
           name: mName.trim(),
           modelYear: mYear.trim() || null,
         },
@@ -179,7 +177,6 @@ export function VehicleFormDialog({
                   ? {
                       label: 'Thêm dòng xe mới',
                       onClick: () => {
-                        setMBrand('')
                         setMName('')
                         setMYear('')
                         setMError(null)
@@ -300,14 +297,6 @@ export function VehicleFormDialog({
                 value={mName}
                 onChange={(e) => setMName(e.target.value)}
                 placeholder="SH 150i ABS"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Hãng Xe</Label>
-              <Input
-                value={mBrand}
-                onChange={(e) => setMBrand(e.target.value)}
-                placeholder="Honda"
               />
             </div>
             <div className="space-y-1">

@@ -7,7 +7,7 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { createFileRoute, redirect } from '@tanstack/react-router'
-import { Plus } from 'lucide-react'
+import { Pencil, Plus } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -300,6 +300,8 @@ function SettingsPage() {
     // Client-side checks so the user sees the problem right under the input
     const errors: FieldErrors = {}
     if (!uUsername.trim()) errors.username = 'Vui lòng nhập tên đăng nhập'
+    else if (uUsername.trim().length < 3)
+      errors.username = 'Tên đăng nhập phải có tối thiểu 3 ký tự'
     if (!uFullName.trim()) errors.fullName = 'Vui lòng nhập họ và tên'
     if (!uEmail.trim()) errors.email = 'Vui lòng nhập email'
     else if (!/^\S+@\S+\.\S+$/.test(uEmail.trim()))
@@ -332,7 +334,14 @@ function SettingsPage() {
       if (Object.keys(fieldErrors).length > 0) {
         setUErrors(fieldErrors)
       } else {
-        setUFormError((err as Error).message || 'Lỗi khi lưu người dùng')
+        const msg = (err as Error).message || 'Lỗi khi lưu người dùng'
+        if (msg.includes('Tên đăng nhập')) {
+          setUErrors({ username: msg })
+        } else if (msg.includes('Email')) {
+          setUErrors({ email: msg })
+        } else {
+          setUFormError(msg)
+        }
       }
     }
   }
@@ -557,35 +566,39 @@ function SettingsPage() {
                             </Badge>
                           </TableCell>
                           <TableCell className="text-center">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="h-7 text-xs text-emerald-800"
-                              onClick={() => {
-                                setEditId(u.id)
-                                setUUsername(u.username)
-                                setUEmail(u.email)
-                                setUFullName(u.fullName)
-                                setUPhone(u.phone ?? '')
-                                setURoleId(u.roleId)
-                                setUActive(u.isActive)
-                                setUPassword('')
-                                setUserModalOpen(true)
-                              }}
-                            >
-                              Chỉnh sửa
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              onClick={() => handleDeleteUser(u)}
-                              disabled={isBusy(`users:${u.id}`)}
-                              className="size-7 text-slate-400 hover:text-rose-600"
-                              aria-label="Xóa tài khoản"
-                              title="Xóa tài khoản"
-                            >
-                              <BusyTrash busy={isBusy(`users:${u.id}`)} />
-                            </Button>
+                            <div className="flex items-center justify-center gap-1">
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="size-7 text-slate-400 hover:text-emerald-700"
+                                aria-label="Chỉnh sửa tài khoản"
+                                title="Chỉnh sửa tài khoản"
+                                onClick={() => {
+                                  setEditId(u.id)
+                                  setUUsername(u.username)
+                                  setUEmail(u.email)
+                                  setUFullName(u.fullName)
+                                  setUPhone(u.phone ?? '')
+                                  setURoleId(u.roleId)
+                                  setUActive(u.isActive)
+                                  setUPassword('')
+                                  setUserModalOpen(true)
+                                }}
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => handleDeleteUser(u)}
+                                disabled={isBusy(`users:${u.id}`)}
+                                className="size-7 text-slate-400 hover:text-rose-600"
+                                aria-label="Xóa tài khoản"
+                                title="Xóa tài khoản"
+                              >
+                                <BusyTrash busy={isBusy(`users:${u.id}`)} />
+                              </Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -632,8 +645,9 @@ function SettingsPage() {
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Tên Đăng Nhập *</Label>
                 <Input
-                  disabled={Boolean(editId)}
+                  disabled={!canUsers}
                   value={uUsername}
+                  placeholder="ketoan"
                   aria-invalid={Boolean(uErrors.username)}
                   onChange={(e) => {
                     setUUsername(e.target.value)

@@ -966,4 +966,148 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 ---
 
-_(Next Agent: Append Lesson 91, 92,... above this line upon completing tasks)_
+### Lesson 91: List Filter Dialogs, Sorting and Shared Filter Components
+
+- **Pattern**: list pages (`/inventory`, `/batches`, `/sales`, `/loans`, `/customers`, `/reconcile`, and the four tabs of `/finance`) have a "Bộ lọc" button with a count badge that opens a filter `Dialog` (`max-h-[90dvh] overflow-y-auto sm:max-w-xl`). All filtering and sorting is client-side over the already-loaded list; filter values live in the URL search params (Lesson 52), defaults are left out, and the list passes a key of the filter values to `usePagination` so it returns to page 1. "Xóa lọc" clears filters (not the sort).
+- **Shared components**: `MultiSearchSelect` (`src/components/ui/multi-search-select.tsx`: checkbox options, stays open, same `SearchSelectItem` children; several picks mean "any of") and `PriceRangeFilter` (`src/components/ui/price-range-filter.tsx`: min/max with a ₫ suffix, edits local state and calls `onChange` 1 s after typing stops, so the URL is not written per keystroke). `nodeText` and `fold` are exported from `search-select.tsx`.
+- **Sorting** (batches, sales, loans, customers): clickable column headers cycle ascending → descending → default (server order); the dialog also has "Sắp xếp theo" / "Thứ tự" selects bound to the same `sort` / `dir` params.
+- **Options come from master data, not from the rows in view**: dropdowns list every supplier, fee type, bank, customer and branch (e.g. `/batches` uses `masterDataQuery`), so unused entries are selectable. `/inventory` model / color / batch options still come from the vehicles loaded.
+- **Fee types**: `listBatchesFn` returns `expenses` (per batch, per fee type) so `/batches` can filter by fee type; with fee types picked, the fee range applies to the sum of just those types.
+- **URL shapes**: arrays and objects are serialised as JSON by TanStack Router, so `/finance` keeps one object per tab (`rcv`, `pay`, `rec`, `pmt`) and old single-value links (e.g. `?stock=mismatch`) are ignored.
+- **Customer links**: customer names link to `/customers/$customerId` in `/finance` (receivables, receipts) and `/reports`.
+- **Sale form**: `/sales/new` shows a red heads-up (not a blocker) above the vehicle table when a unit price is below the cost price.
+
+### Lesson 92: UI/UX Pro Max Skill Installed Per Project
+
+- Installed with `npx -y uipro-cli init --ai claude` from the repo root: it creates `.claude/skills/ui-ux-pro-max/` (the skill files, plus shared data/scripts). A Claude Code session must be **restarted** before the skill appears. The plugin route (`/plugin marketplace add nextlevelbuilder/ui-ux-pro-max-skill`, then `/plugin install ui-ux-pro-max@ui-ux-pro-max-skill`) is the alternative and has to be typed inside an interactive session.
+
+---
+
+### Lesson 93: Page Content Uses the Full Screen Width
+
+- **Symptom**: on large monitors every page sat in a narrow centred column with empty space on both sides.
+- **Cause**: the `<main>` in `AppLayout.tsx` had `max-w-[1400px] mx-auto`, a cap applied to every page (no page sets its own width).
+- **Fix**: the cap was removed; `<main>` is `flex-1 w-full min-w-0` with side padding only (`px-4` → `sm:px-6` → `lg:px-8` → `2xl:px-10`). Do not add a page-level `max-w-*` wrapper; keep width limits for forms and dialogs only (e.g. the statement picker on `/reconcile`).
+
+### Lesson 94: Reversion of Brand CRUD & Model Color Coupling; Removal of Brand Input from Model Dialogs
+
+- **Client Decision**:
+  - The client confirmed that Brand CRUD (`Hãng xe`) is not required, and color should not be coupled to the motorcycle model (vehicles continue to select color upon batch import).
+  - The "Loại chi phí" (Expense Types) page in Master Data is retained as originally designed.
+  - The Brand (`Hãng xe`) input field was completely removed from the Add/Edit Motorcycle Model dialogs (`src/routes/master-data.tsx` and `src/components/batches/VehicleFormDialog.tsx`), and the "Hãng Xe" table column was removed from the Master Data models table so staff only manage Model Name and Model Year.
+- **Database & Clean State**:
+  - Rolled back and cleaned up migrations `0036` and `0037`.
+  - Database schema remains untouched (`motorcycle_models.brand` stays as optional nullable string in schema for backwards compatibility).
+
+### Lesson 95: Settings User Table Action Icon & Editable Username for Administrators
+
+- **Context**: In Settings > User Management (`/settings?tab=users`), the edit button was previously rendered as plain text ("Chỉnh sửa") instead of matching the application-wide icon button aesthetic, and the `username` field was hardcoded as `disabled={Boolean(editId)}` on edit.
+- **UI & UX Refinement**:
+  - Replaced the text button in [settings.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/settings.tsx) with a ghost `Pencil` icon button (`size-7 text-slate-400 hover:text-emerald-700`).
+  - Removed `disabled={Boolean(editId)}` from the username input, enabling authorized administrators to update account usernames.
+- **Server Validation**:
+  - Enhanced `saveUserFn` in [system.ts](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/server/fns/system.ts) to check uniqueness of both `username` and `email` across other active records (excluding current user `id`), returning specific, user-friendly error messages that map directly to field-level validation indicators.
+
+### Lesson 96: Inline Table Row Editing for Batch Vehicles
+
+- **Context**: In both batch creation (`/batches/new`) and batch editing (`/batches/$batchId` via `BatchEditor.tsx`), adding or editing a vehicle previously opened a modal dialog (`VehicleFormDialog`). This interrupted high-volume vehicle data entry workflows.
+- **UI & UX Refinement**:
+  - Replaced the modal popup with inline table row editing directly inside the "Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn" table:
+    - Clicking the `Pencil` icon on a vehicle transforms that row into editable input fields (`chassisNumber`, `engineNumber`, model `SearchSelect`, color `SearchSelect`, and `MoneyInput` for unit import price).
+    - Clicking `+ Thêm xe` appends an inline editing draft row directly in the table.
+    - Added quick keyboard interactions: pressing `Enter` inside any field validates and saves the vehicle; pressing `Escape` cancels and exits edit mode.
+    - Row action buttons provide explicit Save (`Check` icon) and Cancel (`X` icon) controls.
+  - Eliminated `VehicleFormDialog` from both [batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx) and [BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx), creating a streamlined, friction-free data entry experience.
+
+### Lesson 97: Inline Table Row Editing for Batch Expenses / Fees
+
+- **Context**: Just like batch vehicles in Lesson 96, adding or editing batch expenses ("Chi Phí Lô") previously required opening a modal dialog (`ExpenseFormDialog`).
+- **UI & UX Refinement**:
+  - Replaced the modal popup with inline table row editing directly inside the "Chi Phí Lô" table across both batch creation ([batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx)) and batch editing ([BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx)):
+    - Clicking `+ Thêm chi phí` appends an inline editable draft row with `SearchSelect` for expense type, text `Input` for optional description, and right-aligned `MoneyInput` for amount.
+    - Clicking the `Pencil` icon on any existing expense row activates inline editing in place.
+    - Pressing `Enter` automatically commits and saves the row; pressing `Escape` or clicking `X` cancels editing.
+    - Action buttons feature explicit Save (`Check` icon) and Cancel (`X` icon) controls.
+  - Eliminated `ExpenseFormDialog` dependency from both route and component files, unifying the inline editing workflow across all batch table sections.
+
+### Lesson 98: Dedicated Dropdown Selects with Quick Creation for Models, Colors, and Expense Types
+
+- **Context**: During inline batch editing, users needed a convenient way to add new motorcycle models, colors, or expense types directly from the dropdowns without having to navigate to "Dữ liệu chung" (`/master-data`).
+- **Solution & Components**:
+  - Created modular select components following the existing pattern of `SupplierSelect`:
+    - `ModelSelect` (`src/components/batches/ModelSelect.tsx`): Integrates `SearchSelect` with `createAction: { label: 'Thêm dòng xe mới', onClick: () => setOpen(true) }` and an inline quick creation dialog (`name`, `modelYear`). Automatically invalidates master data query and selects the new model.
+    - `ColorSelect` (`src/components/batches/ColorSelect.tsx`): Integrates `SearchSelect` with `createAction: { label: 'Thêm màu mới', onClick: () => setOpen(true) }` and an inline quick creation dialog (`name`, `hex` with `ColorPicker`). Automatically invalidates master data query and selects the new color.
+    - `ExpenseTypeSelect` (`src/components/batches/ExpenseTypeSelect.tsx`): Integrates `SearchSelect` with `createAction: { label: 'Thêm loại chi phí mới', onClick: () => setOpen(true) }` and quick creation dialog.
+  - Replaced inline `SearchSelect` implementations in both [batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx) and [BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx) with these dedicated components, providing consistent quick-add buttons inside all dropdown lists for authorized users (`master-data.manage`).
+
+### Lesson 99: Click-to-Edit Row Values, Blur Auto-Save, and Red Validation Borders in Batch Tables
+
+- **Context & User Feedback**:
+  - Clicking a separate pencil icon to edit was redundant and disrupted quick entry. Users requested clicking directly on table cells/column values to start editing, with automatic saving when pressing `Enter` or clicking away/unfocusing (`blur`).
+  - When required fields are incomplete or invalid during inline editing, unfinished fields must be visibly highlighted with red borders.
+- **Implementation Across Batch Creation & Editing**:
+  - Applied to both Batch Creation ([batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx)) and Existing Batch Editor ([BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx)):
+    1. **Click-to-Edit**:
+       - Entire row is interactive (`cursor-pointer hover:bg-emerald-50/40 transition-colors group`).
+       - Editable text values display a subtle emerald dashed underline on hover (`border-b border-dashed border-transparent group-hover:border-emerald-600 transition-colors`), providing clear visual affordance.
+       - The redundant `Pencil` icon button was removed from table actions.
+       - Row delete buttons stop event propagation (`ev.stopPropagation()`) so clicking delete never triggers edit mode.
+       - In `BatchEditor.tsx`, locked vehicles (`isSold || isDelivered || isInvoiced`) remain non-interactive with normal badge indicator.
+    2. **Debounced Blur Auto-Save**:
+       - Handled at `<TableRow onBlur={handleRowBlur}>` with a 120ms timeout checking `currentTarget.contains(activeElement)` and `closest('[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]')`.
+       - Prevents premature saves or cancels when switching focus between inputs inside the same row or when interacting with Radix popover dropdowns (`ModelSelect`, `ColorSelect`, `ExpenseTypeSelect`) or quick-create dialogs.
+       - Action buttons have `onMouseDown={(ev) => ev.preventDefault()}` to prevent blur before click events execute.
+       - Empty newly-added draft rows exit gracefully on blur without showing validation error toasts.
+    3. **Red Validation Border Highlighting**:
+       - When saving with incomplete fields or upon blur validation, fields missing required values are highlighted with `border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20`.
+       - Vehicle required fields: `chassisNumber`, `engineNumber`, `modelId`, `colorId`, and `importPrice` (> 0).
+       - Expense required fields: `expenseTypeId` and `amount` (> 0).
+
+### Lesson 100: Quick Duplicate Vehicle Row Button in Batch Tables
+
+- **Context & User Need**:
+  - In motorcycle import batches, many vehicles share identical configurations (`modelId`, `colorId`, and `importPrice`) while having distinct Chassis (`chassisNumber` / VIN) and Engine (`engineNumber`) serial numbers. Manually re-selecting the model, color, and price for dozens of identical vehicles was slow and repetitive.
+- **Implementation Across Batch Creation & Editing**:
+  - Implemented in both Batch Creation ([batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx)) and Batch Editor ([BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx)):
+    - Added a `Copy` icon button (`lucide-react`) in the row action group with tooltip `"Nhân bản xe"`.
+    - Clicking `duplicateVehicle(v)` opens a new inline row with `modelId`, `colorId`, and `importPrice` pre-filled, leaving `chassisNumber: ''` and `engineNumber: ''` blank and automatically focused on the chassis input.
+    - Prevents event bubbling (`ev.stopPropagation()`) so clicking duplicate directly clones the configuration into a new editing row without triggering existing row selection.
+    - In `BatchEditor.tsx`, the duplicate button is available even if the source vehicle has been locked/sold (`isSold || isDelivered || isInvoiced`), allowing staff to quickly duplicate the specifications for new units arriving in the batch.
+
+### Lesson 101: Keyboard Arrow Key Navigation (Left / Right / Up / Down) Across Inline Table Row Fields
+
+- **Context & Requirement**:
+  - During rapid batch data entry, users requested being able to navigate across input fields within an inline editing row using keyboard arrow keys (`ArrowLeft` `<-` and `ArrowRight` `->`), similar to spreadsheet software, without relying solely on `Tab`.
+- **Implementation & Architecture**:
+  - Created reusable `handleRowArrowNavigation(e: React.KeyboardEvent)` in `src/lib/utils.ts` and attached it to `<TableRow onKeyDown={...}>` and row inputs in both [batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx) and [BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx):
+    1. **Focusable Elements Query**: Dynamically discovers all active inputs and combobox buttons (`button[role="combobox"]`) within the table row in natural document order.
+    2. **Caret-Aware Horizontal Navigation**:
+       - For text inputs (`chassisNumber`, `engineNumber`, `importPrice`, `description`, `amount`):
+         - `ArrowRight` advances to the next field when the caret reaches the end of the text (`selectionStart === value.length`), if the field is empty, or if text is all selected.
+         - `ArrowLeft` moves to the previous field when the caret is at the beginning (`selectionEnd === 0`), if the field is empty, or if text is all selected.
+         - Inside the middle of text, standard arrow keys continue to move the caret between characters normally for precise text editing.
+         - Upon focusing a target input via arrow keys, its content is automatically selected (`next.select()`), allowing immediate typing or rapid consecutive arrow jumping.
+       - For dropdown combobox triggers (`ModelSelect`, `ColorSelect`, `ExpenseTypeSelect` buttons):
+         - Since buttons don't have text carets, `ArrowLeft` and `ArrowRight` instantly navigate to adjacent fields when the dropdown is closed.
+    3. **Stacked Dropdown Vertical Navigation**:
+       - In columns with vertically stacked comboboxes (e.g. Model above Color), pressing `ArrowDown` on Model jumps directly to Color, and `ArrowUp` on Color jumps back to Model.
+    4. **Safety & Focus Guards**:
+       - Does not intercept arrow keys if a Radix Popover or modal dialog is currently open (`active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')`), preserving internal dropdown list navigation.
+
+### Lesson 102: Removal of Row Hover Text Underlines in Batch Tables
+
+- **Feedback & Clean UI**:
+  - The subtle dashed green underline previously displayed on column values during row hover (`group-hover:border-emerald-600 border-b border-dashed`) was found to be visually noisy and distracting to users.
+- **Refinement**:
+  - Removed all `border-b border-dashed border-transparent group-hover:border-emerald-600` wrapper spans and classes from table cells across both [batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx) and [BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx).
+  - The row-level background highlight (`hover:bg-emerald-50/40`) and pointer cursor (`cursor-pointer`) remain in place, preserving clean, uncluttered visual feedback while clearly communicating row interactivity.
+
+---
+
+_(Next Agent: Append Lesson 103, 104,... above this line upon completing tasks)_
+
+
+
+
+
+

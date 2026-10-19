@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, eq, ne, sql } from 'drizzle-orm'
+import { and, asc, eq, ne, or, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -91,36 +91,74 @@ export const saveUserFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data, context }) => {
     const { id, password, ...rest } = data
-    if (id) {
-      if (id === context.user.id) {
-        const [newRole] = await db
-          .select({ isAdmin: roles.isAdmin })
-          .from(roles)
-          .where(eq(roles.id, rest.roleId))
-        if (!rest.isActive || !newRole?.isAdmin)
-          throw new Error(
-            'Không thể tự hạ quyền hoặc khóa tài khoản của chính mình',
-          )
+
+    // Check uniqueness of username and email
+    const [existing] = await db
+      .select({ username: users.username, email: users.email })
+      .from(users)
+      .where(
+        id
+          ? and(
+              or(eq(users.username, rest.username), eq(users.email, rest.email)),
+              ne(users.id, id),
+            )
+          : or(eq(users.username, rest.username), eq(users.email, rest.email)),
+      )
+      .limit(1)
+
+    if (existing) {
+      if (existing.username.toLowerCase() === rest.username.toLowerCase()) {
+        throw new Error('Tên đăng nhập đã tồn tại')
       }
-      await db
-        .update(users)
-        .set({
-          ...rest,
-          ...(password ? { passwordHash: await hashPassword(password) } : {}),
-        })
-        .where(eq(users.id, id))
-      // A deactivated account, or one whose password an admin just reset, must
-      // not keep working (or come back to life when re-activated) with an old
-      // session. Its next request gets UNAUTHENTICATED and the client logs out.
-      if (!rest.isActive || password)
-        await db.delete(sessions).where(eq(sessions.userId, id))
-    } else {
-      if (!password) throw new Error('Nhập mật khẩu cho tài khoản mới')
-      await db
-        .insert(users)
-        .values({ ...rest, passwordHash: await hashPassword(password) })
+      if (existing.email.toLowerCase() === rest.email.toLowerCase()) {
+        throw new Error('Email đã tồn tại')
+      }
     }
-    return { ok: true }
+
+    try {
+      if (id) {
+        if (id === context.user.id) {
+          const [newRole] = await db
+            .select({ isAdmin: roles.isAdmin })
+            .from(roles)
+            .where(eq(roles.id, rest.roleId))
+          if (!rest.isActive || !newRole?.isAdmin)
+            throw new Error(
+              'Không thể tự hạ quyền hoặc khóa tài khoản của chính mình',
+            )
+        }
+        await db
+          .update(users)
+          .set({
+            ...rest,
+            ...(password ? { passwordHash: await hashPassword(password) } : {}),
+          })
+          .where(eq(users.id, id))
+        // A deactivated account, or one whose password an admin just reset, must
+        // not keep working (or come back to life when re-activated) with an old
+        // session. Its next request gets UNAUTHENTICATED and the client logs out.
+        if (!rest.isActive || password)
+          await db.delete(sessions).where(eq(sessions.userId, id))
+      } else {
+        if (!password) throw new Error('Nhập mật khẩu cho tài khoản mới')
+        await db
+          .insert(users)
+          .values({ ...rest, passwordHash: await hashPassword(password) })
+      }
+      return { ok: true }
+    } catch (e) {
+      if (isDuplicateError(e)) {
+        const msg = String((e as { message?: string })?.message || '')
+        if (msg.includes('username') || msg.includes('users_username_unique')) {
+          throw new Error('Tên đăng nhập đã tồn tại')
+        }
+        if (msg.includes('email') || msg.includes('users_email_unique')) {
+          throw new Error('Email đã tồn tại')
+        }
+        throw new Error('Tên đăng nhập hoặc email đã tồn tại')
+      }
+      throw e
+    }
   })
 
 /* ------------------------------ Roles & Permissions ------------------------------ */

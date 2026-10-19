@@ -100,8 +100,7 @@ export const Route = createFileRoute('/master-data')({
 const TAB_TITLES = {
   models: {
     title: 'Dòng Xe',
-    description:
-      'Hãng xe, dòng xe, đời xe và màu xe gợi ý (có thể đổi khi nhập xe).',
+    description: 'Dòng xe, đời xe và thông tin chi tiết.',
   },
   suppliers: {
     title: 'Nhà Cung Cấp',
@@ -487,7 +486,6 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Dòng Xe</TableHead>
-                      <TableHead>Hãng Xe</TableHead>
                       <TableHead>Đời Xe</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
@@ -497,9 +495,6 @@ function MasterDataPage() {
                       <TableRow key={m.id}>
                         <TableCell className="font-medium text-slate-900">
                           {m.name}
-                        </TableCell>
-                        <TableCell className="text-slate-500">
-                          {m.brand}
                         </TableCell>
                         <TableCell className="text-slate-500">
                           {m.modelYear}
@@ -1031,15 +1026,6 @@ function MasterDataPage() {
                   onChange={(e) => setMName(e.target.value)}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="SH 150i ABS"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Hãng Xe</Label>
-                <Input
-                  value={mBrand}
-                  onChange={(e) => setMBrand(e.target.value)}
-                  className="h-11 text-sm px-4 rounded-lg"
-                  placeholder="Honda"
                 />
               </div>
               <div className="space-y-1">

@@ -1,0 +1,142 @@
+import { useQuery, useQueryClient } from '@tanstack/react-query'
+import * as React from 'react'
+
+import { useCan } from '#/components/auth/Can.tsx'
+import { Button } from '#/components/ui/button.tsx'
+import { ColorLabel } from '#/components/ui/color-label.tsx'
+import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
+import {
+  Dialog,
+  DialogContent,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '#/components/ui/dialog.tsx'
+import { Input } from '#/components/ui/input.tsx'
+import { Label } from '#/components/ui/label.tsx'
+import {
+  SearchSelect,
+  SearchSelectItem,
+} from '#/components/ui/search-select.tsx'
+import { masterDataQuery } from '#/lib/queries.ts'
+import { saveColorFn } from '#/server/fns/master-data.ts'
+
+export function ColorSelect({
+  value,
+  onChange,
+  className,
+  placeholder = 'Chọn màu xe',
+}: {
+  value: number
+  onChange: (id: number) => void
+  className?: string
+  placeholder?: string
+}) {
+  const { data: master } = useQuery(masterDataQuery())
+  const queryClient = useQueryClient()
+  const canManage = useCan('master-data.manage')
+  const [open, setOpen] = React.useState(false)
+  const [name, setName] = React.useState('')
+  const [hex, setHex] = React.useState('#18181b')
+  const [error, setError] = React.useState<string | null>(null)
+  const [pending, setPending] = React.useState(false)
+
+  const colors = master?.colors ?? []
+
+  const handleCreate = async (e: React.FormEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    const normalizedHex = hex.trim() ? normalizeHex(hex) : null
+    if (!name.trim()) return setError('Vui lòng nhập tên màu')
+    if (hex.trim() && !normalizedHex) return setError('Mã màu hex không hợp lệ')
+    setPending(true)
+    try {
+      const res = await saveColorFn({
+        data: { name: name.trim(), hex: normalizedHex },
+      })
+      await queryClient.invalidateQueries({ queryKey: ['master-data'] })
+      onChange(res.id)
+      setOpen(false)
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Không lưu được màu')
+    } finally {
+      setPending(false)
+    }
+  }
+
+  return (
+    <>
+      <SearchSelect
+        className={className}
+        placeholder={placeholder}
+        value={value ? String(value) : ''}
+        onValueChange={(val) => onChange(Number(val))}
+        createAction={
+          canManage
+            ? {
+                label: 'Thêm màu mới',
+                onClick: () => {
+                  setName('')
+                  setHex('#18181b')
+                  setError(null)
+                  setOpen(true)
+                },
+              }
+            : undefined
+        }
+      >
+        {colors.map((c) => (
+          <SearchSelectItem key={c.id} value={String(c.id)} keywords={c.name}>
+            <ColorLabel name={c.name} hex={c.hex} />
+          </SearchSelectItem>
+        ))}
+      </SearchSelect>
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent className="max-w-md" aria-describedby={undefined}>
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Thêm Màu Mới
+            </DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleCreate} noValidate className="space-y-3 pt-2">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Tên Màu *</Label>
+              <Input
+                autoFocus
+                value={name}
+                onChange={(e) => setName(e.target.value)}
+                placeholder="Đỏ Đô"
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Mã Màu Hex</Label>
+              <ColorPicker value={hex} onChange={setHex} />
+            </div>
+            {error && (
+              <p className="text-[11px] font-medium text-rose-600">{error}</p>
+            )}
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setOpen(false)}
+                className="h-8 text-xs"
+              >
+                Hủy
+              </Button>
+              <Button
+                type="submit"
+                disabled={pending}
+                size="sm"
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                {pending ? 'Đang lưu...' : 'Lưu Màu'}
+              </Button>
+            </DialogFooter>
+          </form>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}

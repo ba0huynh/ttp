@@ -1,12 +1,15 @@
 import { SupplierSelect } from '#/components/batches/SupplierSelect.tsx'
-import { ExpenseFormDialog } from '#/components/batches/ExpenseFormDialog.tsx'
-import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
+import { ModelSelect } from '#/components/batches/ModelSelect.tsx'
+import { ColorSelect } from '#/components/batches/ColorSelect.tsx'
+import { ExpenseTypeSelect } from '#/components/batches/ExpenseTypeSelect.tsx'
+import { toast } from 'sonner'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
-import { useMutation, useQueryClient } from '@tanstack/react-query'
-import { Pencil, Plus, Save } from 'lucide-react'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { Check, Copy, Plus, Save, X } from 'lucide-react'
 import * as React from 'react'
 
+import { cn, handleRowArrowNavigation } from '#/lib/utils.ts'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -35,6 +38,7 @@ import {
 import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
 import { computeSellingPrice, formatVnd, isBelowCost } from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
+import { masterDataQuery } from '#/lib/queries.ts'
 import type { batchDetailQuery } from '#/lib/queries.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import {
@@ -279,13 +283,129 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
 /* -------------------------------- Batch expenses ------------------------------- */
 
 function ExpensesEditor({ detail }: { detail: BatchDetail }) {
-  // Popup form: id of the expense being edited (null = adding)
-  const [open, setOpen] = React.useState(false)
-  const [editId, setEditId] = React.useState<number | null>(null)
+  const { data: master } = useQuery(masterDataQuery())
+  const [editingExpenseId, setEditingExpenseId] = React.useState<
+    number | 'new' | null
+  >(null)
+  const [eSubmitted, setESubmitted] = React.useState(false)
+  const [eDraft, setEDraft] = React.useState<{
+    expenseTypeId: number
+    description: string
+    amount: number
+  }>({
+    expenseTypeId: 0,
+    description: '',
+    amount: 0,
+  })
+
   const add = useBatchMutation(addBatchExpenseFn)
   const update = useBatchMutation(updateBatchExpenseFn)
   const remove = useBatchMutation(removeBatchExpenseFn)
+  const isSaving = add.isPending || update.isPending
   const total = detail.expenses.reduce((s, e) => s + e.amount, 0)
+
+  const startAddExpense = () => {
+    setEDraft({
+      expenseTypeId: master?.expenseTypes[0]?.id ?? 0,
+      description: '',
+      amount: 0,
+    })
+    setESubmitted(false)
+    setEditingExpenseId('new')
+  }
+
+  const startEditExpense = (e: (typeof detail.expenses)[number]) => {
+    setEDraft({
+      expenseTypeId: e.expenseTypeId,
+      description: e.description ?? '',
+      amount: e.amount,
+    })
+    setESubmitted(false)
+    setEditingExpenseId(e.id)
+  }
+
+  const cancelExpenseEdit = () => {
+    setEditingExpenseId(null)
+    setESubmitted(false)
+  }
+
+  const saveExpenseInline = async () => {
+    setESubmitted(true)
+    if (!eDraft.expenseTypeId) {
+      toast.error('Vui lòng chọn loại chi phí (viền đỏ)')
+      return
+    }
+    if (eDraft.amount <= 0) {
+      toast.error('Số tiền chi phí phải lớn hơn 0 (viền đỏ)')
+      return
+    }
+
+    try {
+      const expense = {
+        expenseTypeId: eDraft.expenseTypeId,
+        description: eDraft.description.trim() || null,
+        amount: eDraft.amount,
+      }
+      if (editingExpenseId === 'new') {
+        await add.mutateAsync({
+          data: { batchId: detail.batch.id, expense },
+        })
+        toast.success('Đã thêm khoản chi phí')
+      } else if (editingExpenseId !== null) {
+        await update.mutateAsync({
+          data: { expenseId: editingExpenseId, expense },
+        })
+        toast.success('Đã cập nhật chi phí')
+      }
+      setEditingExpenseId(null)
+      setESubmitted(false)
+    } catch (err: unknown) {
+      toast.error((err as Error).message || 'Có lỗi xảy ra khi lưu chi phí')
+    }
+  }
+
+  const handleExpenseRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
+    const currentTarget = e.currentTarget
+    setTimeout(() => {
+      const active = document.activeElement
+      if (currentTarget && currentTarget.contains(active)) return
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
+        )
+      )
+        return
+      if (
+        editingExpenseId === 'new' &&
+        !eDraft.expenseTypeId &&
+        eDraft.amount <= 0 &&
+        !eDraft.description
+      ) {
+        setEditingExpenseId(null)
+        setESubmitted(false)
+        return
+      }
+      void saveExpenseInline()
+    }, 120)
+  }
+
+  const handleExpenseKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      const active = document.activeElement
+      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      e.preventDefault()
+      void saveExpenseInline()
+      return
+    }
+    if (e.key === 'Escape') {
+      const active = document.activeElement
+      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      e.preventDefault()
+      cancelExpenseEdit()
+      return
+    }
+    handleRowArrowNavigation(e)
+  }
 
   return (
     <Section
@@ -295,120 +415,274 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
           size="sm"
           variant="outline"
           className="h-9 gap-1.5 rounded-lg bg-white text-sm"
-          onClick={() => {
-            setEditId(null)
-            setOpen(true)
-          }}
+          onClick={startAddExpense}
+          disabled={editingExpenseId !== null}
         >
           <Plus className="size-3.5" />
           Thêm chi phí
         </Button>
       }
     >
-      {detail.expenses.length > 0 && (
+      {detail.expenses.length === 0 && editingExpenseId === null ? (
+        <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center bg-white">
+          <p className="text-sm text-slate-500">
+            Chưa có khoản chi phí nào cho lô này
+          </p>
+          <Button
+            size="sm"
+            variant="outline"
+            className="mt-3 h-8 gap-1.5 text-xs text-emerald-700 hover:text-emerald-800"
+            onClick={startAddExpense}
+          >
+            <Plus className="size-3.5" />
+            Thêm chi phí lô
+          </Button>
+        </div>
+      ) : (
         <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
           <Table>
             <TableHeader>
               <TableRow className="text-xs bg-slate-50">
-                <TableHead>Loại Chi Phí</TableHead>
+                <TableHead className="w-[240px]">Loại Chi Phí</TableHead>
                 <TableHead>Diễn Giải</TableHead>
-                <TableHead className="text-right">Số Tiền</TableHead>
-                <TableHead className="w-20" />
+                <TableHead className="w-[180px] text-right">Số Tiền</TableHead>
+                <TableHead className="w-[90px] text-right" />
               </TableRow>
             </TableHeader>
             <TableBody className="text-xs">
-              {detail.expenses.map((e) => (
-                <TableRow key={e.id}>
-                  <TableCell className="font-medium text-slate-900">
-                    {e.expenseTypeName}
-                  </TableCell>
-                  <TableCell className="text-slate-500">
-                    {e.description}
-                  </TableCell>
-                  <TableCell className="text-right font-medium text-slate-900">
-                    {formatVnd(e.amount)}
-                  </TableCell>
-                  <TableCell className="text-right whitespace-nowrap">
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 text-slate-400 hover:text-emerald-700"
-                      onClick={() => {
-                        setEditId(e.id)
-                        setOpen(true)
-                      }}
-                      aria-label="Sửa chi phí"
-                      title="Sửa chi phí"
+              {detail.expenses.map((e) => {
+                const isEditing = editingExpenseId === e.id
+                if (isEditing) {
+                  return (
+                    <TableRow
+                      key={e.id}
+                      className="bg-emerald-50/40 border-y border-emerald-200"
+                      onBlur={handleExpenseRowBlur}
+                      onKeyDown={handleExpenseKeyDown}
                     >
-                      <Pencil className="size-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
-                      disabled={remove.isPending}
-                      onClick={async () => {
-                        if (
-                          await confirmDialog({
-                            title: 'Xóa khoản chi phí này?',
-                            description: 'Giá vốn cả lô sẽ được tính lại.',
-                            confirmLabel: 'Xóa',
-                            destructive: true,
-                          })
-                        )
-                          remove.mutate({ data: { expenseId: e.id } })
-                      }}
-                      aria-label="Xóa chi phí"
-                      title="Xóa chi phí"
+                      <TableCell className="p-2 align-middle">
+                        <ExpenseTypeSelect
+                          className={cn(
+                            'h-8 text-xs bg-white w-full',
+                            eSubmitted &&
+                              !eDraft.expenseTypeId &&
+                              'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+                          )}
+                          value={eDraft.expenseTypeId}
+                          onChange={(val) =>
+                            setEDraft({
+                              ...eDraft,
+                              expenseTypeId: val,
+                            })
+                          }
+                        />
+                      </TableCell>
+                      <TableCell className="p-2 align-middle">
+                        <Input
+                          value={eDraft.description}
+                          onChange={(ev) =>
+                            setEDraft({
+                              ...eDraft,
+                              description: ev.target.value,
+                            })
+                          }
+                          onKeyDown={handleExpenseKeyDown}
+                          placeholder="Diễn giải (tùy chọn)"
+                          className="h-8 text-xs bg-white"
+                        />
+                      </TableCell>
+                      <TableCell className="p-2 align-middle text-right">
+                        <MoneyInput
+                          value={eDraft.amount}
+                          onValueChange={(val: number) =>
+                            setEDraft({ ...eDraft, amount: val })
+                          }
+                          blankZero
+                          onKeyDown={handleExpenseKeyDown}
+                          placeholder="Số tiền *"
+                          className={cn(
+                            'h-8 text-xs text-right bg-white',
+                            eSubmitted &&
+                              eDraft.amount <= 0 &&
+                              'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                          )}
+                        />
+                      </TableCell>
+                      <TableCell className="text-right whitespace-nowrap p-2 align-middle">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
+                            onMouseDown={(ev) => ev.preventDefault()}
+                            onClick={() => void saveExpenseInline()}
+                            disabled={isSaving}
+                            title="Lưu (Enter)"
+                          >
+                            <Check className="size-4" />
+                          </Button>
+                          <Button
+                            type="button"
+                            variant="ghost"
+                            size="icon"
+                            className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                            onMouseDown={(ev) => ev.preventDefault()}
+                            onClick={cancelExpenseEdit}
+                            title="Hủy (Esc)"
+                          >
+                            <X className="size-4" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  )
+                }
+
+                return (
+                  <TableRow
+                    key={e.id}
+                    className="cursor-pointer hover:bg-emerald-50/40 transition-colors group"
+                    onClick={() => {
+                      if (editingExpenseId !== e.id) startEditExpense(e)
+                    }}
+                  >
+                    <TableCell className="font-medium text-slate-900">
+                      {e.expenseTypeName}
+                    </TableCell>
+                    <TableCell className="text-slate-500">
+                      {e.description || '—'}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-slate-900">
+                      {formatVnd(e.amount)}
+                    </TableCell>
+                    <TableCell
+                      className="text-right whitespace-nowrap"
+                      onClick={(ev) => ev.stopPropagation()}
                     >
-                      <BusyTrash
-                        busy={
-                          remove.isPending &&
-                          remove.variables?.data.expenseId === e.id
-                        }
-                      />
-                    </Button>
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="size-7 text-slate-400 hover:text-rose-600"
+                          disabled={remove.isPending || editingExpenseId !== null}
+                          onClick={async () => {
+                            if (
+                              await confirmDialog({
+                                title: 'Xóa khoản chi phí này?',
+                                description: 'Giá vốn cả lô sẽ được tính lại.',
+                                confirmLabel: 'Xóa',
+                                destructive: true,
+                              })
+                            )
+                              remove.mutate({ data: { expenseId: e.id } })
+                          }}
+                          aria-label="Xóa chi phí"
+                          title="Xóa chi phí"
+                        >
+                          <BusyTrash
+                            busy={
+                              remove.isPending &&
+                              remove.variables?.data.expenseId === e.id
+                            }
+                          />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
+
+              {/* New row when adding an expense */}
+              {editingExpenseId === 'new' && (
+                <TableRow
+                  className="bg-emerald-50/40 border-y border-emerald-200"
+                  onBlur={handleExpenseRowBlur}
+                  onKeyDown={handleExpenseKeyDown}
+                >
+                  <TableCell className="p-2 align-middle">
+                    <ExpenseTypeSelect
+                      className={cn(
+                        'h-8 text-xs bg-white w-full',
+                        eSubmitted &&
+                          !eDraft.expenseTypeId &&
+                          'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+                      )}
+                      value={eDraft.expenseTypeId}
+                      onChange={(val) =>
+                        setEDraft({
+                          ...eDraft,
+                          expenseTypeId: val,
+                        })
+                      }
+                    />
+                  </TableCell>
+                  <TableCell className="p-2 align-middle">
+                    <Input
+                      autoFocus
+                      value={eDraft.description}
+                      onChange={(ev) =>
+                        setEDraft({
+                          ...eDraft,
+                          description: ev.target.value,
+                        })
+                      }
+                      onKeyDown={handleExpenseKeyDown}
+                      placeholder="Diễn giải (tùy chọn)"
+                      className="h-8 text-xs bg-white"
+                    />
+                  </TableCell>
+                  <TableCell className="p-2 align-middle text-right">
+                    <MoneyInput
+                      value={eDraft.amount}
+                      onValueChange={(val: number) =>
+                        setEDraft({ ...eDraft, amount: val })
+                      }
+                      blankZero
+                      onKeyDown={handleExpenseKeyDown}
+                      placeholder="Số tiền *"
+                      className={cn(
+                        'h-8 text-xs text-right bg-white',
+                        eSubmitted &&
+                          eDraft.amount <= 0 &&
+                          'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                      )}
+                    />
+                  </TableCell>
+                  <TableCell className="text-right whitespace-nowrap p-2 align-middle">
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
+                        onMouseDown={(ev) => ev.preventDefault()}
+                        onClick={() => void saveExpenseInline()}
+                        disabled={isSaving}
+                        title="Lưu (Enter)"
+                      >
+                        <Check className="size-4" />
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                        onMouseDown={(ev) => ev.preventDefault()}
+                        onClick={cancelExpenseEdit}
+                        title="Hủy (Esc)"
+                      >
+                        <X className="size-4" />
+                      </Button>
+                    </div>
                   </TableCell>
                 </TableRow>
-              ))}
+              )}
             </TableBody>
           </Table>
         </div>
       )}
-      <ExpenseFormDialog
-        open={open}
-        onOpenChange={setOpen}
-        title={editId ? 'Sửa Chi Phí' : 'Thêm Chi Phí Của Lô'}
-        submitLabel={editId ? 'Lưu' : 'Thêm Chi Phí'}
-        pending={add.isPending || update.isPending}
-        initial={
-          editId
-            ? (() => {
-                const e = detail.expenses.find((x) => x.id === editId)
-                return e
-                  ? {
-                      expenseTypeId: e.expenseTypeId,
-                      description: e.description ?? '',
-                      amount: e.amount,
-                    }
-                  : null
-              })()
-            : null
-        }
-        onSubmit={async (v) => {
-          const expense = {
-            expenseTypeId: v.expenseTypeId,
-            description: v.description || null,
-            amount: v.amount,
-          }
-          if (editId)
-            await update.mutateAsync({ data: { expenseId: editId, expense } })
-          else
-            await add.mutateAsync({
-              data: { batchId: detail.batch.id, expense },
-            })
-        }}
-      />
     </Section>
   )
 }
@@ -416,10 +690,27 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
 /* ---------------------------------- Vehicles ---------------------------------- */
 
 function VehiclesEditor({ detail }: { detail: BatchDetail }) {
+  const { data: master } = useQuery(masterDataQuery())
   const { isBusy, setBusy } = useBusyKeys()
-  // Popup form: id of the vehicle being edited (null = adding)
-  const [open, setOpen] = React.useState(false)
-  const [editId, setEditId] = React.useState<number | null>(null)
+  // Inline row editing: id of vehicle being edited, or 'new' when adding
+  const [editingVehicleId, setEditingVehicleId] = React.useState<
+    number | 'new' | null
+  >(null)
+  const [vSubmitted, setVSubmitted] = React.useState(false)
+  const [vDraft, setVDraft] = React.useState<{
+    modelId: number
+    colorId: number
+    chassisNumber: string
+    engineNumber: string
+    importPrice: number
+  }>({
+    modelId: 0,
+    colorId: 0,
+    chassisNumber: '',
+    engineNumber: '',
+    importPrice: 0,
+  })
+
   const add = useBatchMutation(addVehiclesToBatchFn)
   const update = useBatchMutation(updateVehicleFn)
   const remove = useBatchMutation(removeVehicleFn, (err, vars) => {
@@ -430,6 +721,153 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     )
   })
 
+  const isSaving = add.isPending || update.isPending
+
+  const startAddVehicle = () => {
+    setVDraft({
+      modelId: master?.models[0]?.id ?? 0,
+      colorId: master?.colors[0]?.id ?? 0,
+      chassisNumber: '',
+      engineNumber: '',
+      importPrice: 0,
+    })
+    setVSubmitted(false)
+    setEditingVehicleId('new')
+  }
+
+  const duplicateVehicle = (v: (typeof detail.vehicles)[number]) => {
+    setVDraft({
+      modelId: v.modelId ?? 0,
+      colorId: v.colorId,
+      chassisNumber: '',
+      engineNumber: '',
+      importPrice: v.importPrice,
+    })
+    setVSubmitted(false)
+    setEditingVehicleId('new')
+  }
+
+  const startEditVehicle = (v: (typeof detail.vehicles)[number]) => {
+    setVDraft({
+      modelId: v.modelId ?? 0,
+      colorId: v.colorId,
+      chassisNumber: v.chassisNumber,
+      engineNumber: v.engineNumber,
+      importPrice: v.importPrice,
+    })
+    setVSubmitted(false)
+    setEditingVehicleId(v.id)
+  }
+
+  const cancelVehicleEdit = () => {
+    setEditingVehicleId(null)
+    setVSubmitted(false)
+  }
+
+  const saveVehicleInline = async () => {
+    setVSubmitted(true)
+    const chassis = vDraft.chassisNumber.trim()
+    const engine = vDraft.engineNumber.trim()
+    if (
+      !chassis ||
+      !engine ||
+      !vDraft.modelId ||
+      !vDraft.colorId ||
+      vDraft.importPrice <= 0
+    ) {
+      toast.error('Vui lòng điền đầy đủ các thông tin bắt buộc (viền đỏ)')
+      return
+    }
+    const dup = detail.vehicles.some(
+      (x) =>
+        x.id !== editingVehicleId &&
+        x.chassisNumber.trim().toLowerCase() === chassis.toLowerCase(),
+    )
+    if (dup) {
+      toast.error('Số khung này đã có trong lô')
+      return
+    }
+
+    try {
+      if (editingVehicleId === 'new') {
+        await add.mutateAsync({
+          data: {
+            batchId: detail.batch.id,
+            vehicles: [
+              {
+                chassisNumber: chassis,
+                engineNumber: engine,
+                modelId: vDraft.modelId,
+                colorId: vDraft.colorId,
+                importPrice: vDraft.importPrice,
+              },
+            ],
+          },
+        })
+        toast.success('Đã thêm xe vào lô')
+      } else if (editingVehicleId !== null) {
+        await update.mutateAsync({
+          data: {
+            vehicleId: editingVehicleId,
+            chassisNumber: chassis,
+            engineNumber: engine,
+            modelId: vDraft.modelId,
+            colorId: vDraft.colorId,
+            importPrice: vDraft.importPrice,
+          },
+        })
+        toast.success('Đã cập nhật thông tin xe')
+      }
+      setEditingVehicleId(null)
+      setVSubmitted(false)
+    } catch (err: unknown) {
+      toast.error((err as Error).message || 'Có lỗi xảy ra khi lưu xe')
+    }
+  }
+
+  const handleVehicleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
+    const currentTarget = e.currentTarget
+    setTimeout(() => {
+      const active = document.activeElement
+      if (currentTarget && currentTarget.contains(active)) return
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
+        )
+      )
+        return
+      if (
+        editingVehicleId === 'new' &&
+        !vDraft.chassisNumber.trim() &&
+        !vDraft.engineNumber.trim() &&
+        vDraft.importPrice <= 0
+      ) {
+        setEditingVehicleId(null)
+        setVSubmitted(false)
+        return
+      }
+      void saveVehicleInline()
+    }, 120)
+  }
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      const active = document.activeElement
+      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      e.preventDefault()
+      void saveVehicleInline()
+      return
+    }
+    if (e.key === 'Escape') {
+      const active = document.activeElement
+      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      e.preventDefault()
+      cancelVehicleEdit()
+      return
+    }
+    handleRowArrowNavigation(e)
+  }
+
   return (
     <Section
       title={`Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (${detail.vehicles.length} chiếc)`}
@@ -438,10 +876,8 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           size="sm"
           variant="outline"
           className="h-9 gap-1.5 rounded-lg bg-white text-sm"
-          onClick={() => {
-            setEditId(null)
-            setOpen(true)
-          }}
+          onClick={startAddVehicle}
+          disabled={editingVehicleId !== null || isSaving}
         >
           <Plus className="size-3.5" />
           Thêm xe
@@ -452,25 +888,177 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         <Table>
           <TableHeader>
             <TableRow className="text-xs bg-slate-50">
-              <TableHead>Số Khung</TableHead>
-              <TableHead>Số Máy</TableHead>
-              <TableHead>Dòng xe / Màu</TableHead>
-              <TableHead className="text-right">Đơn Giá Nhập</TableHead>
-              <TableHead className="text-right">CP Phân Bổ</TableHead>
-              <TableHead className="text-right">Giá Vốn Xe</TableHead>
-              <TableHead className="text-right">Giá Bán Áp Dụng</TableHead>
-              <TableHead />
+              <TableHead className="w-[180px]">Số Khung</TableHead>
+              <TableHead className="w-[180px]">Số Máy</TableHead>
+              <TableHead className="min-w-[220px]">Dòng xe / Màu</TableHead>
+              <TableHead className="text-right w-[160px]">
+                Đơn Giá Nhập
+              </TableHead>
+              <TableHead className="text-right w-[130px]">CP Phân Bổ</TableHead>
+              <TableHead className="text-right w-[140px]">Giá Vốn Xe</TableHead>
+              <TableHead className="text-right w-[140px]">
+                Giá Bán Áp Dụng
+              </TableHead>
+              <TableHead className="w-[90px] text-right" />
             </TableRow>
           </TableHeader>
           <TableBody className="text-xs">
             {detail.vehicles.map((v) => {
               const locked = v.isSold || v.isDelivered || v.isInvoiced
+              const isEditing = editingVehicleId === v.id
+
+              if (isEditing) {
+                return (
+                  <TableRow
+                    key={v.id}
+                    className="bg-emerald-50/40 border-y border-emerald-200"
+                    onBlur={handleVehicleRowBlur}
+                    onKeyDown={handleKeyDown}
+                  >
+                    <TableCell className="p-2 align-middle">
+                      <Input
+                        autoFocus
+                        value={vDraft.chassisNumber}
+                        onChange={(e) =>
+                          setVDraft({
+                            ...vDraft,
+                            chassisNumber: e.target.value,
+                          })
+                        }
+                        onKeyDown={handleKeyDown}
+                        placeholder="Số khung *"
+                        className={cn(
+                          'h-8 text-xs font-mono uppercase bg-white',
+                          vSubmitted &&
+                            !vDraft.chassisNumber.trim() &&
+                            'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                        )}
+                        disabled={isSaving}
+                      />
+                    </TableCell>
+                    <TableCell className="p-2 align-middle">
+                      <Input
+                        value={vDraft.engineNumber}
+                        onChange={(e) =>
+                          setVDraft({
+                            ...vDraft,
+                            engineNumber: e.target.value,
+                          })
+                        }
+                        onKeyDown={handleKeyDown}
+                        placeholder="Số máy *"
+                        className={cn(
+                          'h-8 text-xs font-mono uppercase bg-white',
+                          vSubmitted &&
+                            !vDraft.engineNumber.trim() &&
+                            'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                        )}
+                        disabled={isSaving}
+                      />
+                    </TableCell>
+                    <TableCell className="p-2 align-middle">
+                      <div className="flex flex-col gap-1.5">
+                        <ModelSelect
+                          className={cn(
+                            'h-8 text-xs bg-white w-full',
+                            vSubmitted &&
+                              !vDraft.modelId &&
+                              'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+                          )}
+                          value={vDraft.modelId}
+                          onChange={(val) =>
+                            setVDraft({ ...vDraft, modelId: val })
+                          }
+                        />
+                        <ColorSelect
+                          className={cn(
+                            'h-8 text-xs bg-white w-full',
+                            vSubmitted &&
+                              !vDraft.colorId &&
+                              'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+                          )}
+                          value={vDraft.colorId}
+                          onChange={(val) =>
+                            setVDraft({ ...vDraft, colorId: val })
+                          }
+                        />
+                      </div>
+                    </TableCell>
+                    <TableCell className="p-2 align-middle text-right">
+                      <MoneyInput
+                        value={vDraft.importPrice}
+                        onValueChange={(val: number) =>
+                          setVDraft({ ...vDraft, importPrice: val })
+                        }
+                        blankZero
+                        onKeyDown={handleKeyDown}
+                        placeholder="Đơn giá nhập *"
+                        className={cn(
+                          'h-8 text-xs text-right bg-white',
+                          vSubmitted &&
+                            vDraft.importPrice <= 0 &&
+                            'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                        )}
+                        disabled={isSaving}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right text-slate-400 text-xs align-middle">
+                      +{formatVnd(v.allocatedExpense)}
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-slate-600 text-xs align-middle">
+                      {formatVnd(v.costPrice)}
+                    </TableCell>
+                    <TableCell className="text-right font-bold text-emerald-800 text-xs align-middle">
+                      {formatVnd(v.sellingPrice)}
+                    </TableCell>
+                    <TableCell className="text-right whitespace-nowrap p-2 align-middle">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={isSaving}
+                          className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
+                          onMouseDown={(ev) => ev.preventDefault()}
+                          onClick={() => void saveVehicleInline()}
+                          title="Lưu (Enter)"
+                        >
+                          <Check className="size-4" />
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          disabled={isSaving}
+                          className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                          onMouseDown={(ev) => ev.preventDefault()}
+                          onClick={cancelVehicleEdit}
+                          title="Hủy (Esc)"
+                        >
+                          <X className="size-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                )
+              }
+
               return (
-                <TableRow key={v.id}>
-                  <TableCell className="font-medium">
+                <TableRow
+                  key={v.id}
+                  className={cn(
+                    !locked &&
+                      'cursor-pointer hover:bg-emerald-50/40 transition-colors group',
+                    isBelowCost(v.sellingPrice, v.costPrice) && 'bg-rose-50',
+                  )}
+                  onClick={() => {
+                    if (!locked && editingVehicleId !== v.id) startEditVehicle(v)
+                  }}
+                >
+                  <TableCell className="font-medium font-mono">
                     {v.chassisNumber}
                   </TableCell>
-                  <TableCell className="text-slate-500">
+                  <TableCell className="text-slate-500 font-mono">
                     {v.engineNumber}
                   </TableCell>
                   <TableCell>
@@ -498,32 +1086,37 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                       </div>
                     )}
                   </TableCell>
-                  <TableCell className="text-right">
-                    {locked ? (
-                      <Badge variant="secondary" className="text-[10px]">
-                        Đã bán
-                      </Badge>
-                    ) : (
-                      <>
+                  <TableCell
+                    className="text-right"
+                    onClick={(ev) => ev.stopPropagation()}
+                  >
+                    <div className="flex items-center justify-end gap-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="size-7 text-slate-400 hover:text-emerald-700"
+                        onClick={() => duplicateVehicle(v)}
+                        disabled={editingVehicleId !== null || isSaving}
+                        aria-label="Nhân bản xe"
+                        title="Nhân bản xe"
+                      >
+                        <Copy className="size-3.5" />
+                      </Button>
+                      {locked ? (
+                        <Badge variant="secondary" className="text-[10px]">
+                          Đã bán
+                        </Badge>
+                      ) : (
                         <Button
+                          type="button"
                           variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-slate-400 hover:text-emerald-700"
-                          onClick={() => {
-                            setEditId(v.id)
-                            setOpen(true)
-                          }}
-                          aria-label="Sửa xe"
-                          title="Sửa xe"
-                        >
-                          <Pencil className="size-3.5" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          className="h-6 w-6 p-0 text-slate-400 hover:text-rose-600"
+                          size="icon"
+                          className="size-7 text-slate-400 hover:text-rose-600"
                           disabled={
-                            remove.isPending || isBusy(`vehicles:${v.id}`)
+                            remove.isPending ||
+                            isBusy(`vehicles:${v.id}`) ||
+                            editingVehicleId !== null
                           }
                           onClick={async () => {
                             if (
@@ -544,6 +1137,8 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                             )
                               remove.mutate({ data: { vehicleId: v.id } })
                           }}
+                          aria-label="Xóa xe"
+                          title="Xóa xe"
                         >
                           <BusyTrash
                             busy={
@@ -553,46 +1148,149 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                             }
                           />
                         </Button>
-                      </>
-                    )}
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               )
             })}
+
+            {/* New row when adding a vehicle */}
+            {editingVehicleId === 'new' && (
+              <TableRow
+                className="bg-emerald-50/40 border-y border-emerald-200"
+                onBlur={handleVehicleRowBlur}
+                onKeyDown={handleKeyDown}
+              >
+                <TableCell className="p-2 align-middle">
+                  <Input
+                    autoFocus
+                    value={vDraft.chassisNumber}
+                    onChange={(e) =>
+                      setVDraft({
+                        ...vDraft,
+                        chassisNumber: e.target.value,
+                      })
+                    }
+                    onKeyDown={handleKeyDown}
+                    placeholder="Số khung *"
+                    className={cn(
+                      'h-8 text-xs font-mono uppercase bg-white',
+                      vSubmitted &&
+                        !vDraft.chassisNumber.trim() &&
+                        'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                    )}
+                    disabled={isSaving}
+                  />
+                </TableCell>
+                <TableCell className="p-2 align-middle">
+                  <Input
+                    value={vDraft.engineNumber}
+                    onChange={(e) =>
+                      setVDraft({
+                        ...vDraft,
+                        engineNumber: e.target.value,
+                      })
+                    }
+                    onKeyDown={handleKeyDown}
+                    placeholder="Số máy *"
+                    className={cn(
+                      'h-8 text-xs font-mono uppercase bg-white',
+                      vSubmitted &&
+                        !vDraft.engineNumber.trim() &&
+                        'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                    )}
+                    disabled={isSaving}
+                  />
+                </TableCell>
+                <TableCell className="p-2 align-middle">
+                  <div className="flex flex-col gap-1.5">
+                    <ModelSelect
+                      className={cn(
+                        'h-8 text-xs bg-white w-full',
+                        vSubmitted &&
+                          !vDraft.modelId &&
+                          'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+                      )}
+                      value={vDraft.modelId}
+                      onChange={(val) =>
+                        setVDraft({ ...vDraft, modelId: val })
+                      }
+                    />
+                    <ColorSelect
+                      className={cn(
+                        'h-8 text-xs bg-white w-full',
+                        vSubmitted &&
+                          !vDraft.colorId &&
+                          'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+                      )}
+                      value={vDraft.colorId}
+                      onChange={(val) =>
+                        setVDraft({ ...vDraft, colorId: val })
+                      }
+                    />
+                  </div>
+                </TableCell>
+                <TableCell className="p-2 align-middle text-right">
+                  <MoneyInput
+                    value={vDraft.importPrice}
+                    onValueChange={(val: number) =>
+                      setVDraft({ ...vDraft, importPrice: val })
+                    }
+                    blankZero
+                    onKeyDown={handleKeyDown}
+                    placeholder="Đơn giá nhập *"
+                    className={cn(
+                      'h-8 text-xs text-right bg-white',
+                      vSubmitted &&
+                        vDraft.importPrice <= 0 &&
+                        'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                    )}
+                    disabled={isSaving}
+                  />
+                </TableCell>
+                <TableCell className="text-right text-slate-400 text-xs align-middle">
+                  (tính tự động)
+                </TableCell>
+                <TableCell className="text-right text-slate-400 text-xs align-middle">
+                  (tính tự động)
+                </TableCell>
+                <TableCell className="text-right text-slate-400 text-xs align-middle">
+                  (tính tự động)
+                </TableCell>
+                <TableCell className="text-right whitespace-nowrap p-2 align-middle">
+                  <div className="flex items-center justify-end gap-1">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={isSaving}
+                      className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
+                      onMouseDown={(ev) => ev.preventDefault()}
+                      onClick={() => void saveVehicleInline()}
+                      title="Lưu (Enter)"
+                    >
+                      <Check className="size-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="icon"
+                      disabled={isSaving}
+                      className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                      onMouseDown={(ev) => ev.preventDefault()}
+                      onClick={cancelVehicleEdit}
+                      title="Hủy (Esc)"
+                    >
+                      <X className="size-4" />
+                    </Button>
+                  </div>
+                </TableCell>
+              </TableRow>
+            )}
           </TableBody>
         </Table>
       </div>
-      <VehicleFormDialog
-        open={open}
-        onOpenChange={setOpen}
-        title={editId ? 'Sửa Xe' : 'Thêm Xe Vào Lô'}
-        submitLabel={editId ? 'Lưu' : 'Thêm Xe'}
-        pending={add.isPending || update.isPending}
-        initial={
-          editId
-            ? (() => {
-                const v = detail.vehicles.find((x) => x.id === editId)
-                return v
-                  ? {
-                      modelId: v.modelId ?? 0,
-                      colorId: v.colorId,
-                      chassisNumber: v.chassisNumber,
-                      engineNumber: v.engineNumber,
-                      importPrice: v.importPrice,
-                    }
-                  : null
-              })()
-            : null
-        }
-        onSubmit={async (v) => {
-          if (editId)
-            await update.mutateAsync({ data: { vehicleId: editId, ...v } })
-          else
-            await add.mutateAsync({
-              data: { batchId: detail.batch.id, vehicles: [v] },
-            })
-        }}
-      />
     </Section>
   )
 }

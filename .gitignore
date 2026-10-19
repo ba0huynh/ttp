@@ -48,3 +48,6 @@ Thumbs.db
 project.inlang/cache/
 todos.json
 __unconfig*
+
+# Claude Code local files (skills, settings)
+.claude/
