@@ -10,7 +10,7 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { AlertCircle, ArrowLeft, Check, Plus, Trash2 } from 'lucide-react'
+import { AlertCircle, ArrowLeft, Check, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -35,6 +35,7 @@ import {
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
 import {
   SearchSelect,
   SearchSelectItem,
@@ -98,9 +99,173 @@ function NewSalesOrderPage() {
     }[]
   >([])
 
-  // Modal to select vehicles from inventory
+  // Modal to select vehicles from inventory with infinite scroll & search & filters
+  const PICKER_PAGE_SIZE = 15
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [tempChecked, setTempChecked] = React.useState<Set<number>>(new Set())
+  const [pickerSearch, setPickerSearch] = React.useState('')
+  const [filterModelIds, setFilterModelIds] = React.useState<number[]>([])
+  const [filterColorIds, setFilterColorIds] = React.useState<number[]>([])
+  const [filterBatchIds, setFilterBatchIds] = React.useState<number[]>([])
+  const [visibleCount, setVisibleCount] = React.useState(PICKER_PAGE_SIZE)
+  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
+  const sentinelRef = React.useRef<HTMLDivElement | null>(null)
+
+  // Unique filter options extracted from available vehicles
+  const modelOptions = React.useMemo(() => {
+    const map = new Map<number, string>()
+    for (const v of availableVehicles) {
+      if (v.modelId && v.modelName) {
+        map.set(v.modelId, v.modelName)
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  }, [availableVehicles])
+
+  const colorOptions = React.useMemo(() => {
+    const map = new Map<number, string>()
+    for (const v of availableVehicles) {
+      if (v.colorId && v.colorName) {
+        map.set(v.colorId, v.colorName)
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  }, [availableVehicles])
+
+  const batchOptions = React.useMemo(() => {
+    const map = new Map<number, string>()
+    for (const v of availableVehicles) {
+      if (v.batchId) {
+        map.set(v.batchId, batchLabel(v))
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, label]) => ({ id, label }))
+      .sort((a, b) => a.label.localeCompare(b.label, 'vi'))
+  }, [availableVehicles])
+
+  const hasActiveFilters =
+    pickerSearch.trim() !== '' ||
+    filterModelIds.length > 0 ||
+    filterColorIds.length > 0 ||
+    filterBatchIds.length > 0
+
+  const clearAllFilters = () => {
+    setPickerSearch('')
+    setFilterModelIds([])
+    setFilterColorIds([])
+    setFilterBatchIds([])
+    setVisibleCount(PICKER_PAGE_SIZE)
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0
+    }
+  }
+
+  const filteredAvailableVehicles = React.useMemo(() => {
+    const q = pickerSearch.trim().toLowerCase()
+    return availableVehicles.filter((v) => {
+      if (
+        filterModelIds.length > 0 &&
+        (!v.modelId || !filterModelIds.includes(v.modelId))
+      )
+        return false
+      if (
+        filterColorIds.length > 0 &&
+        (!v.colorId || !filterColorIds.includes(v.colorId))
+      )
+        return false
+      if (
+        filterBatchIds.length > 0 &&
+        (!v.batchId || !filterBatchIds.includes(v.batchId))
+      )
+        return false
+
+      if (!q) return true
+      const chassis = v.chassisNumber?.toLowerCase() ?? ''
+      const engine = v.engineNumber?.toLowerCase() ?? ''
+      const model = v.modelName?.toLowerCase() ?? ''
+      const color = v.colorName?.toLowerCase() ?? ''
+      const batch = batchLabel(v).toLowerCase()
+      return (
+        chassis.includes(q) ||
+        engine.includes(q) ||
+        model.includes(q) ||
+        color.includes(q) ||
+        batch.includes(q)
+      )
+    })
+  }, [
+    availableVehicles,
+    pickerSearch,
+    filterModelIds,
+    filterColorIds,
+    filterBatchIds,
+  ])
+
+  const visibleVehicles = React.useMemo(() => {
+    return filteredAvailableVehicles.slice(0, visibleCount)
+  }, [filteredAvailableVehicles, visibleCount])
+
+  const handlePickerScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const target = e.currentTarget
+    if (
+      target.scrollTop + target.clientHeight >= target.scrollHeight - 120 &&
+      visibleCount < filteredAvailableVehicles.length
+    ) {
+      setVisibleCount((prev) =>
+        Math.min(filteredAvailableVehicles.length, prev + PICKER_PAGE_SIZE),
+      )
+    }
+  }
+
+  React.useEffect(() => {
+    if (!pickerOpen) return
+    const el = sentinelRef.current
+    if (!el) return
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries[0]?.isIntersecting) {
+          setVisibleCount((prev) => {
+            if (prev < filteredAvailableVehicles.length) {
+              return Math.min(
+                filteredAvailableVehicles.length,
+                prev + PICKER_PAGE_SIZE,
+              )
+            }
+            return prev
+          })
+        }
+      },
+      { root: scrollContainerRef.current, rootMargin: '120px' },
+    )
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [pickerOpen, filteredAvailableVehicles.length])
+
+  const allFilteredChecked =
+    filteredAvailableVehicles.length > 0 &&
+    filteredAvailableVehicles.every((v) => tempChecked.has(v.id))
+  const someFilteredChecked =
+    filteredAvailableVehicles.some((v) => tempChecked.has(v.id)) &&
+    !allFilteredChecked
+
+  const toggleSelectAllFiltered = () => {
+    const next = new Set(tempChecked)
+    if (allFilteredChecked) {
+      for (const v of filteredAvailableVehicles) {
+        next.delete(v.id)
+      }
+    } else {
+      for (const v of filteredAvailableVehicles) {
+        next.add(v.id)
+      }
+    }
+    setTempChecked(next)
+  }
 
   const submitting = createOrder.isPending
   const [error, setError] = React.useState<string | null>(null)
@@ -111,7 +276,20 @@ function NewSalesOrderPage() {
 
   const openPicker = () => {
     setTempChecked(new Set(selectedItems.map((i) => i.vehicleId)))
+    setPickerSearch('')
+    setFilterModelIds([])
+    setFilterColorIds([])
+    setFilterBatchIds([])
+    setVisibleCount(PICKER_PAGE_SIZE)
     setPickerOpen(true)
+  }
+
+  const handleSearchChange = (val: string) => {
+    setPickerSearch(val)
+    setVisibleCount(PICKER_PAGE_SIZE)
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0
+    }
   }
 
   const toggleCheck = (vId: number) => {
@@ -421,10 +599,10 @@ function NewSalesOrderPage() {
           </div>
         </div>
 
-        {/* Modal: Select vehicles from inventory */}
+        {/* Modal: Select vehicles from inventory with infinite scroll */}
         <Dialog open={pickerOpen} onOpenChange={setPickerOpen}>
-          <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-5xl">
-            <DialogHeader>
+          <DialogContent className="max-h-[85vh] sm:max-w-5xl flex flex-col p-6 overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="text-base font-bold text-slate-900">
                 Chọn Xe Từ Kho Để Bán
               </DialogTitle>
@@ -434,11 +612,142 @@ function NewSalesOrderPage() {
               </DialogDescription>
             </DialogHeader>
 
-            <div className="border border-slate-200 rounded-lg overflow-x-auto my-2">
+            {/* Search and filters bar */}
+            <div className="space-y-2 pt-1 shrink-0">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input
+                    value={pickerSearch}
+                    onChange={(e) => handleSearchChange(e.target.value)}
+                    placeholder="Tìm theo số khung, số máy, dòng xe, màu, lô nhập..."
+                    className="h-9 pl-9 pr-8 text-xs rounded-lg"
+                  />
+                  {pickerSearch && (
+                    <button
+                      type="button"
+                      onClick={() => handleSearchChange('')}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 size-4 flex items-center justify-center text-xs"
+                      title="Xóa tìm kiếm"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                {hasActiveFilters && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearAllFilters}
+                    className="h-9 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 px-2.5 gap-1 shrink-0"
+                  >
+                    <RotateCcw className="size-3" />
+                    Xóa lọc
+                  </Button>
+                )}
+
+                <div className="text-[11px] text-slate-500 whitespace-nowrap self-center shrink-0">
+                  Hiển thị <strong>{visibleVehicles.length}</strong> / {filteredAvailableVehicles.length} xe
+                </div>
+              </div>
+
+              {/* Filter dropdowns row with MultiSearchSelect */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                <MultiSearchSelect
+                  className="h-9 w-full text-xs rounded-lg"
+                  placeholder={`Tất cả dòng xe (${modelOptions.length})`}
+                  values={filterModelIds.map(String)}
+                  onValuesChange={(vals) => {
+                    setFilterModelIds(vals.map(Number))
+                    setVisibleCount(PICKER_PAGE_SIZE)
+                    if (scrollContainerRef.current) {
+                      scrollContainerRef.current.scrollTop = 0
+                    }
+                  }}
+                >
+                  {modelOptions.map((m) => (
+                    <SearchSelectItem
+                      key={m.id}
+                      value={String(m.id)}
+                      className="text-xs"
+                    >
+                      {m.name}
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+
+                <MultiSearchSelect
+                  className="h-9 w-full text-xs rounded-lg"
+                  placeholder={`Tất cả màu xe (${colorOptions.length})`}
+                  values={filterColorIds.map(String)}
+                  onValuesChange={(vals) => {
+                    setFilterColorIds(vals.map(Number))
+                    setVisibleCount(PICKER_PAGE_SIZE)
+                    if (scrollContainerRef.current) {
+                      scrollContainerRef.current.scrollTop = 0
+                    }
+                  }}
+                >
+                  {colorOptions.map((c) => (
+                    <SearchSelectItem
+                      key={c.id}
+                      value={String(c.id)}
+                      className="text-xs"
+                    >
+                      {c.name}
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+
+                <MultiSearchSelect
+                  className="h-9 w-full text-xs rounded-lg"
+                  placeholder={`Tất cả lô nhập (${batchOptions.length})`}
+                  values={filterBatchIds.map(String)}
+                  onValuesChange={(vals) => {
+                    setFilterBatchIds(vals.map(Number))
+                    setVisibleCount(PICKER_PAGE_SIZE)
+                    if (scrollContainerRef.current) {
+                      scrollContainerRef.current.scrollTop = 0
+                    }
+                  }}
+                >
+                  {batchOptions.map((b) => (
+                    <SearchSelectItem
+                      key={b.id}
+                      value={String(b.id)}
+                      className="text-xs truncate"
+                    >
+                      {b.label}
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+              </div>
+            </div>
+
+            {/* Table container with infinite scroll */}
+            <div
+              ref={scrollContainerRef}
+              onScroll={handlePickerScroll}
+              className="border border-slate-200 rounded-lg overflow-y-auto max-h-[50vh] min-h-[220px] flex-1 my-2"
+            >
               <Table>
-                <TableHeader>
+                <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-xs">
                   <TableRow className="text-xs bg-slate-50">
-                    <TableHead className="w-10"></TableHead>
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={
+                          allFilteredChecked
+                            ? true
+                            : someFilteredChecked
+                              ? 'indeterminate'
+                              : false
+                        }
+                        onCheckedChange={toggleSelectAllFiltered}
+                        aria-label="Chọn tất cả"
+                      />
+                    </TableHead>
                     <TableHead>Số Khung</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead>Lô Nhập</TableHead>
@@ -446,7 +755,7 @@ function NewSalesOrderPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {availableVehicles.map((v) => {
+                  {visibleVehicles.map((v) => {
                     const checked = tempChecked.has(v.id)
                     return (
                       <TableRow
@@ -480,13 +789,53 @@ function NewSalesOrderPage() {
                       </TableRow>
                     )
                   })}
+                  {filteredAvailableVehicles.length === 0 && (
+                    <TableRow>
+                      <TableCell
+                        colSpan={5}
+                        className="py-8 text-center text-xs text-slate-400 italic"
+                      >
+                        {pickerSearch
+                          ? 'Không tìm thấy xe phù hợp với từ khóa'
+                          : 'Kho không còn xe nào chưa bán'}
+                      </TableCell>
+                    </TableRow>
+                  )}
                 </TableBody>
               </Table>
+
+              {/* Infinite scroll loader / sentinel */}
+              {visibleCount < filteredAvailableVehicles.length && (
+                <div
+                  ref={sentinelRef}
+                  className="py-3 text-center text-xs text-slate-500 font-medium flex items-center justify-center gap-2 border-t border-slate-100"
+                >
+                  <div className="size-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
+                  Đang cuộn tải thêm xe ({visibleVehicles.length}/{filteredAvailableVehicles.length})...
+                </div>
+              )}
+              {visibleCount >= filteredAvailableVehicles.length &&
+                filteredAvailableVehicles.length > 0 && (
+                  <div className="py-2.5 text-center text-[11px] text-slate-400 border-t border-slate-100">
+                    Đã hiển thị toàn bộ {filteredAvailableVehicles.length} xe
+                  </div>
+                )}
             </div>
 
-            <DialogFooter className="flex items-center justify-between sm:justify-between">
-              <div className="text-xs font-semibold text-slate-700">
-                Đã chọn: <strong>{tempChecked.size} xe</strong>
+            <DialogFooter className="flex items-center justify-between sm:justify-between shrink-0 pt-2 border-t border-slate-100">
+              <div className="flex items-center gap-3">
+                <span className="text-xs font-semibold text-slate-700">
+                  Đã chọn: <strong>{tempChecked.size} xe</strong>
+                </span>
+                {tempChecked.size > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setTempChecked(new Set())}
+                    className="text-[11px] text-rose-600 hover:underline font-medium"
+                  >
+                    Bỏ chọn tất cả
+                  </button>
+                )}
               </div>
               <div className="flex gap-2">
                 <Button

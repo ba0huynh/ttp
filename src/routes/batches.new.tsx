@@ -182,19 +182,30 @@ function NewBatchPage() {
       ])
       toast.success('Đã thêm khoản chi phí')
     } else if (editingExpenseId !== null) {
-      setExpenses(
-        expenses.map((x) =>
-          x.id === editingExpenseId
-            ? {
-                ...x,
-                expenseTypeId: eDraft.expenseTypeId,
-                description: eDraft.description.trim(),
-                amount: eDraft.amount,
-              }
-            : x,
-        ),
-      )
-      toast.success('Đã cập nhật chi phí')
+      const orig = expenses.find((x) => x.id === editingExpenseId)
+      const desc = eDraft.description.trim()
+      const origDesc = orig?.description?.trim() ?? ''
+      const hasChanged =
+        !orig ||
+        orig.expenseTypeId !== eDraft.expenseTypeId ||
+        origDesc !== desc ||
+        orig.amount !== eDraft.amount
+
+      if (hasChanged) {
+        setExpenses(
+          expenses.map((x) =>
+            x.id === editingExpenseId
+              ? {
+                  ...x,
+                  expenseTypeId: eDraft.expenseTypeId,
+                  description: desc,
+                  amount: eDraft.amount,
+                }
+              : x,
+          ),
+        )
+        toast.success('Đã cập nhật chi phí')
+      }
     }
     setEditingExpenseId(null)
     setESubmitted(false)
@@ -342,21 +353,32 @@ function NewBatchPage() {
       ])
       toast.success('Đã thêm xe vào lô')
     } else if (editingVehicleId !== null) {
-      setVehicles(
-        vehicles.map((x) =>
-          x.id === editingVehicleId
-            ? {
-                ...x,
-                modelId: vDraft.modelId,
-                colorId: vDraft.colorId,
-                chassisNumber: chassis,
-                engineNumber: engine,
-                importPrice: vDraft.importPrice,
-              }
-            : x,
-        ),
-      )
-      toast.success('Đã cập nhật thông tin xe')
+      const orig = vehicles.find((x) => x.id === editingVehicleId)
+      const hasChanged =
+        !orig ||
+        orig.modelId !== vDraft.modelId ||
+        orig.colorId !== vDraft.colorId ||
+        orig.chassisNumber.trim() !== chassis ||
+        orig.engineNumber.trim() !== engine ||
+        orig.importPrice !== vDraft.importPrice
+
+      if (hasChanged) {
+        setVehicles(
+          vehicles.map((x) =>
+            x.id === editingVehicleId
+              ? {
+                  ...x,
+                  modelId: vDraft.modelId,
+                  colorId: vDraft.colorId,
+                  chassisNumber: chassis,
+                  engineNumber: engine,
+                  importPrice: vDraft.importPrice,
+                }
+              : x,
+          ),
+        )
+        toast.success('Đã cập nhật thông tin xe')
+      }
     }
     setEditingVehicleId(null)
     setVSubmitted(false)

@@ -17,6 +17,7 @@ import {
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import {
   SearchSelect,
   SearchSelectItem,
@@ -107,7 +108,9 @@ export function ImportStatementDialog({
     })
 
   /** Pasting several rows copied from Excel fills the table instead of one cell */
-  const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+  const handlePaste = (
+    e: React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const text = e.clipboardData.getData('text')
     if (!/[\n\t]/.test(text.trim())) return
     const { lines } = parseStatementText(text)
@@ -254,14 +257,15 @@ export function ImportStatementDialog({
                         />
                       </TableCell>
                       <TableCell>
-                        <Input
+                        <Textarea
                           value={r.description}
                           onChange={(e) =>
                             update(r.key, { description: e.target.value })
                           }
                           onPaste={handlePaste}
                           placeholder="Nội dung giao dịch"
-                          className="h-11 text-sm px-4 rounded-lg"
+                          rows={2}
+                          className="min-h-11 text-xs px-3 py-2 rounded-lg resize-y"
                         />
                       </TableCell>
                       <TableCell>

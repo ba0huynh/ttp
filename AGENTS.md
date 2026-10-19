@@ -1102,12 +1102,140 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - Removed all `border-b border-dashed border-transparent group-hover:border-emerald-600` wrapper spans and classes from table cells across both [batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx) and [BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx).
   - The row-level background highlight (`hover:bg-emerald-50/40`) and pointer cursor (`cursor-pointer`) remain in place, preserving clean, uncluttered visual feedback while clearly communicating row interactivity.
 
+### Lesson 103: Loan Interest Schedule Table — Replacing "Dư Nợ Đoạn Này" with "Gốc Đã Trả" and "Dư Nợ Còn Lại"
+
+- **Context & User Requirement**:
+  - In the Bank Loan detail page ([loans.$loanId.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/loans.$loanId.tsx)), the schedule table *"Bảng Tính Lãi Từng Đoạn Theo Dư Nợ Giảm Dần (Quy ước 365 ngày)"* previously had a single column `Dư Nợ Đoạn Này` displaying the starting balance of the interval.
+  - Users and project managers requested bringing the two columns from the outer loan list ([loans.index.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/loans.index.tsx)) into the schedule table: **`Gốc Đã Trả`** and **`Dư Nợ Còn Lại`**.
+- **Implementation & Domain Logic**:
+  1. **Core Financial Engine (`src/lib/business.ts`)**:
+     - Extended `InterestSegment` interface with `principalPaid: number` and `remainingBalance: number`.
+     - In `calculateLoanInterest`, grouped principal repayments by date and calculated the progressive `cumulativePaid` and `remainingBalance` after each repayment cut point.
+     - Preserved exact interest calculation (`outstanding * annualRatePercent * days / 365`) while tracking the post-repayment remaining principal.
+  2. **UI & Styling Alignment (`src/routes/loans.$loanId.tsx`)**:
+     - Replaced `<TableHead className="text-right">Dư Nợ Đoạn Này</TableHead>` with:
+       - `<TableHead className="text-right">Gốc Đã Trả</TableHead>`
+       - `<TableHead className="text-right">Dư Nợ Còn Lại</TableHead>`
+     - Styled the table cells to match the outer loan list table:
+       - `Gốc Đã Trả`: `text-right text-emerald-800 font-medium` (`formatVnd(seg.principalPaid)`).
+       - `Dư Nợ Còn Lại`: `text-right font-medium text-purple-900` (`formatVnd(seg.remainingBalance)`).
+       - `Lãi Phát Sinh`: `text-right font-medium text-purple-900` (`formatVnd(seg.interest)`).
+
+### Lesson 104: Inline Row Editing — Suppress Toast and Network Mutation When Nothing Has Changed
+
+- **Context & User Pain Point**:
+  - In batch tables ([batches.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/batches.new.tsx) and [BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx)), clicking into an existing vehicle or expense row to inspect it and then clicking away / blurring previously triggered `saveVehicle` / `saveExpense`, displaying `"Đã cập nhật thông tin xe"` or `"Đã cập nhật chi phí"` even when no fields were modified.
+- **Implementation**:
+  - Added shallow equality comparison against the original record before dispatching mutations or UI notifications:
+    - **Vehicle Comparison**: Checks `(orig.modelId ?? 0) === vDraft.modelId`, `orig.colorId === vDraft.colorId`, `orig.chassisNumber.trim() === chassis`, `orig.engineNumber.trim() === engine`, and `Number(orig.importPrice) === vDraft.importPrice`.
+    - **Expense Comparison**: Checks `orig.expenseTypeId === eDraft.expenseTypeId`, `(orig.description?.trim() || null) === (eDraft.description.trim() || null)`, and `Number(orig.amount) === eDraft.amount`.
+  - If `hasChanged === false`:
+    - Cleanly closes the inline editor (`setEditingId(null)`) and clears submitted status (`setSubmitted(false)`).
+    - Skips network requests (`update.mutateAsync`) and avoids firing misleading success toasts.
+
+### Lesson 105: Sales Order Vehicle Picker — Pagination with Infinite Scroll, Search Filter & Bulk Selection
+
+- **Context & Requirement**:
+  - In the sales creation flow ([sales.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/sales.new.tsx)), the vehicle selection dialog ("Chọn Xe Từ Kho Để Bán") previously rendered the entire list of available unsold vehicles in a single batch without pagination or filtering. In large warehouse inventories, this degraded rendering performance and made discovering vehicles tedious.
+- **Architecture & Implementation**:
+  1. **Dual Scroll Detection (Scroll Event + IntersectionObserver)**:
+     - Implemented `PICKER_PAGE_SIZE = 15`. `visibleVehicles = filteredAvailableVehicles.slice(0, visibleCount)`.
+     - Attached `onScroll` to the scrollable table container checking `target.scrollTop + target.clientHeight >= target.scrollHeight - 120`.
+     - Additionally attached an `IntersectionObserver` to a bottom sentinel element (`sentinelRef`) with `rootMargin: '120px'` so scrolling automatically loads the next chunk of vehicles smoothly.
+     - Displays progressive status: animated spinner when more rows exist (`Đang cuộn tải thêm xe (X/Y)...`) and completion notice when reaching the end (`Đã hiển thị toàn bộ Y xe`).
+  2. **Real-time Substring Filter**:
+     - Added an inline search box filtering across `chassisNumber`, `modelName`, `colorName`, and `batchLabel(v)`.
+     - Dynamically resets `visibleCount` to `PICKER_PAGE_SIZE` and scrolls back to top when typing or clearing search.
+  3. **Multi-Page Selection State & Header Master Checkbox**:
+     - `tempChecked: Set<number>` preserves selections across all pages and filtered queries.
+     - The table header includes a tri-state master checkbox (`allFilteredChecked ? true : someFilteredChecked ? 'indeterminate' : false`) allowing one-click selection / deselection of all matching vehicles.
+     - The dialog footer provides a "Bỏ chọn tất cả" shortcut alongside total selected count.
+  4. **Fixed Header & Footer Layout**:
+     - `DialogContent` formatted as a flex column (`flex flex-col p-6 overflow-hidden max-h-[85vh]`) with sticky table headers (`sticky top-0 bg-slate-50 z-10`), keeping the search input, headers, and confirmation buttons accessible at all times while the table scrolls independently.
+
+### Lesson 106: Multi-Dimensional Filter Dropdowns & Real-Time Search in Vehicle Lists
+
+- **Context & Requirement**:
+  - In addition to text search and infinite scrolling, users requested comprehensive filtering capabilities for discovering vehicles rapidly across large inventories and batch manifests.
+- **Implementation Across Modules**:
+  1. **Sales Order Vehicle Picker ([sales.new.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/sales.new.tsx))**:
+     - Added 3 dynamic dropdown filters derived automatically from `availableVehicles`:
+       - **Dòng xe (Model)**: Populated with unique models from available stock.
+       - **Màu sắc (Color)**: Populated with unique colors from available stock.
+       - **Lô nhập (Batch)**: Populated with unique batches formatted as `Lô dd/mm/yyyy · Nhà cung cấp`.
+     - Integrated with the live text search input (searching `chassisNumber`, `engineNumber`, `modelName`, `colorName`, and `batchLabel`).
+     - Added a `Xóa lọc` (`RotateCcw`) button when any filter or search query is active to reset all parameters in one click.
+     - Resets `visibleCount` to `PAGE_SIZE` and scrolls back to top when filters change.
+  2. **Batch Vehicles Table ([BatchEditor.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/batches/BatchEditor.tsx))**:
+     - Added an inline search bar and Model / Color filter dropdowns above the batch vehicle table.
+     - Automatically hides filter dropdowns if only 1 model or color exists in the batch to avoid UI clutter.
+     - Guarantees that any row currently being edited (`editingVehicleId === v.id`) remains visible even if it temporarily doesn't match active filter criteria.
+
+### Lesson 107: Dual Inventory Badge Standardization — Receipt/Invoice State Always Last
+
+- **Context & User Requirement**:
+  - The previous badge text `"Còn ở cả 2 kho"` caused misunderstanding among users and staff, leading them to believe the vehicle was physically located in two separate warehouses.
+  - Additionally, previous badge text had inconsistent ordering (e.g. `"Đã HĐ · Chưa giao"` had invoice first and delivery last, whereas `"Đã giao · Chưa HĐ"` had delivery first and invoice last).
+  - Users explicitly requested:
+    1. Making the label wording more appropriate and unambiguous.
+    2. Enforcing that the **receipt/invoice inventory state is always placed last**.
+- **Standardized 4-State Nomenclature**:
+  - Format: `[Trạng thái kho thực tế] · [Trạng thái kho hóa đơn]`
+  1. `!isDelivered && !isInvoiced` $\rightarrow$ **`Chưa giao · Chưa HĐ`** (Slate neutral badge, replaces misleading `"Còn ở cả 2 kho"`).
+  2. `!isDelivered && isInvoiced` $\rightarrow$ **`Chưa giao · Đã HĐ`** (Amber warning badge, delivery state first, invoice state last).
+  3. `isDelivered && !isInvoiced` $\rightarrow$ **`Đã giao · Chưa HĐ`** (Sky info badge, delivery state first, invoice state last).
+  4. `isDelivered && isInvoiced` $\rightarrow$ **`Đã giao · Đã HĐ`** (Emerald success badge, delivery state first, invoice state last).
+- **Interactive Tooltips**:
+  - Every badge variant in [DualInventoryBadge.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/inventory/DualInventoryBadge.tsx) is wrapped in a `TooltipProvider` with detailed hover explanations showing dispatch timestamps (`deliveredAt`) and invoice issuance timestamps (`invoicedAt`).
+
+### Lesson 108: Multi-Select Filter Dropdowns Standardized Across Sales, Inventory, and Batches
+
+- **Context & Requirement**:
+  - Filter dropdowns previously relied on single-select `SearchSelect` or standard HTML `<Select>`, forcing users to clear and re-select one option at a time.
+  - Users requested converting filter dropdowns across dialogs and tables to multi-select using the standardized `MultiSearchSelect` component (from `#/components/ui/multi-search-select.tsx`).
+- **Implementations**:
+  1. **New Sales Order Vehicle Picker Modal (`/sales/new`)**:
+     - Converted `filterModelIds` (Dòng xe), `filterColorIds` (Màu xe), and `filterBatchIds` (Lô nhập) into multi-value arrays (`number[]`).
+     - Rendered with `MultiSearchSelect`, supporting search, item checkboxes, selected count badge, and a bulk "Bỏ chọn tất cả" button.
+     - Preserved sticky header select-all checkbox, pagination infinite scroll, and keyword search integration.
+  2. **Inventory Advanced Filter Modal (`/inventory`)**:
+     - Converted `delivered` (Giao xe) and `invoiced` (Hóa đơn) from single-value enums to array multi-selects (`z.array(z.enum(['yes', 'no']))`).
+     - Replaced single `SearchSelect` with `MultiSearchSelect` for both delivery and invoice filter dropdowns.
+  3. **Batch Vehicle Table Filters (`BatchEditor.tsx`)**:
+     - Converted `vehicleModelFilters` and `vehicleColorFilters` from single select `<Select>` to `MultiSearchSelect`.
+     - Preserves editing row isolation so that a row being actively edited remains visible regardless of filter toggles.
+
+### Lesson 109: Bank Loan Repayment History Inline CRUD and Table Unification
+
+- **Context & Requirement**:
+  - Previously, bank loan repayment transactions under `/loans/$loanId` were displayed in a read-only table with a separate create form positioned at the bottom of the page. Users were unable to edit or delete existing repayment entries.
+  - Users requested the ability to delete and edit repayment transactions with the same inline editing and creation experience seen in batch editors (`batches/new` and `BatchEditor.tsx`).
+- **Backend Implementation**:
+  - Added `updateLoanRepayment` and `deleteLoanRepayment` services in [src/server/services/finance.ts](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/server/services/finance.ts).
+  - Enforced statement reconciliation safeguard `assertNotMatched('loan_repayment', id)` to block editing or deleting repayments that have already been matched with uploaded bank statement lines.
+  - Enforced debt guard preventing principal updates from exceeding remaining loan balance.
+  - Exposed server functions `updateLoanPaymentFn` and `deleteLoanPaymentFn` in [src/server/fns/finance.ts](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/server/fns/finance.ts) protected by `loans.manage` permission.
+- **Frontend Implementation**:
+  - Replaced the disconnected bottom form with an integrated inline row creation/editing system directly within the "Lịch Sử Các Đợt Đã Trả Nợ" table in [src/routes/loans.$loanId.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/loans.$loanId.tsx).
+  - Added `+ Thêm đợt trả nợ` button in the card header opening an inline entry row (`editingRepaymentId === 'new'`).
+  - Clicking on any existing row switches it into inline editing mode (`editingRepaymentId === r.id`).
+  - Supported inline date input, principal and interest `MoneyInput`, and `BankAccountSelect`.
+  - Added red border validation highlights (`border-rose-500 ring-1 ring-rose-500 bg-rose-50/20`) on unfinished fields when submitted.
+  - Supported `Enter` to save, `Escape` to cancel, blur-to-save (with radix modal/popover isolation), and arrow key row navigation `<-` / `->` via `handleRowArrowNavigation`.
+  - Added confirmation modal (`confirmDialog`) for deleting repayment entries with toast feedback.
+
+### Lesson 110: Textarea Input for Bank Statement Descriptions in Import and Edit Dialogs
+
+- **Context & Requirement**:
+  - Bank statement transaction descriptions are typically long, multi-line narration strings from bank wire transfers (e.g. transfer remarks, counterparty identifiers, account numbers).
+  - Users requested converting the description input to a multi-line `Textarea` so narration strings can be comfortably viewed, pasted, and edited.
+- **Implementation**:
+  - In [src/components/finance/ImportStatementDialog.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/finance/ImportStatementDialog.tsx):
+    - Replaced the single-line `Input` with `Textarea` (`rows={2}`, `min-h-11`, `resize-y`).
+    - Extended `handlePaste` parameter signature to accept `React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>` so batch copy-pasting from Excel continues working seamlessly directly into the description cell.
+  - In [src/routes/reconcile.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/reconcile.tsx):
+    - Converted the statement line edit modal description field (`editLine.description`) to `Textarea` (`rows={3}`, `resize-y`).
+
 ---
 
-_(Next Agent: Append Lesson 103, 104,... above this line upon completing tasks)_
-
-
-
-
-
-
+_(Next Agent: Append Lesson 111, 112,... above this line upon completing tasks)_

@@ -66,6 +66,7 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import {
   bankStatementDetailQuery,
@@ -802,7 +803,9 @@ function ReconcilePage() {
                 <Label className="text-xs font-semibold">
                   Nội Dung Diễn Giải
                 </Label>
-                <Input
+                <Textarea
+                  rows={3}
+                  className="text-xs resize-y"
                   value={editLine.description}
                   onChange={(e) =>
                     setEditLine({ ...editLine, description: e.target.value })

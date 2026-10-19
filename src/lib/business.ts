@@ -100,6 +100,8 @@ export interface InterestSegment {
   days: number
   outstanding: number
   interest: number
+  principalPaid: number
+  remainingBalance: number
 }
 
 export interface InterestResult {
@@ -125,17 +127,28 @@ export function calculateLoanInterest(params: {
   principalRepayments: { date: string; amount: number }[]
 }): InterestResult {
   const { principal, annualRatePercent, disbursementDate, asOf } = params
-  const repayments = [...params.principalRepayments]
-    .filter((r) => r.amount > 0 && r.date <= asOf)
+
+  // Aggregate repayments by date so each date is a single cut point
+  const repaymentMap = new Map<string, number>()
+  for (const r of params.principalRepayments) {
+    if (r.amount > 0 && r.date <= asOf) {
+      repaymentMap.set(r.date, (repaymentMap.get(r.date) ?? 0) + r.amount)
+    }
+  }
+  const repayments = Array.from(repaymentMap.entries())
+    .map(([date, amount]) => ({ date, amount }))
     .sort((a, b) => a.date.localeCompare(b.date))
 
   const segments: InterestSegment[] = []
   let outstanding = principal
+  let cumulativePaid = 0
   let cursor = disbursementDate
 
-  const pushSegment = (to: string) => {
+  const pushSegment = (to: string, repaymentAmountAtTo = 0) => {
     const days = daysBetween(cursor, to)
     if (days > 0 && outstanding > 0) {
+      cumulativePaid += repaymentAmountAtTo
+      const remainingBalance = Math.max(0, outstanding - repaymentAmountAtTo)
       segments.push({
         from: cursor,
         to,
@@ -144,16 +157,21 @@ export function calculateLoanInterest(params: {
         interest: roundVnd(
           (outstanding * (annualRatePercent / 100) * days) / 365,
         ),
+        principalPaid: cumulativePaid,
+        remainingBalance,
       })
+      outstanding = remainingBalance
+    } else if (repaymentAmountAtTo > 0) {
+      cumulativePaid += repaymentAmountAtTo
+      outstanding = Math.max(0, outstanding - repaymentAmountAtTo)
     }
     cursor = to > cursor ? to : cursor
   }
 
   for (const r of repayments) {
-    pushSegment(r.date)
-    outstanding = Math.max(0, outstanding - r.amount)
+    pushSegment(r.date, r.amount)
   }
-  pushSegment(asOf)
+  pushSegment(asOf, 0)
 
   return {
     segments,

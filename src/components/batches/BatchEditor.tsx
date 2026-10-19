@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Copy, Plus, Save, X } from 'lucide-react'
+import { Check, Copy, Plus, RotateCcw, Save, Search, X } from 'lucide-react'
 import * as React from 'react'
 
 import { cn, handleRowArrowNavigation } from '#/lib/utils.ts'
@@ -20,6 +20,8 @@ import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
+import { SearchSelectItem } from '#/components/ui/search-select.tsx'
 import {
   Select,
   SelectContent,
@@ -352,10 +354,21 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
         })
         toast.success('Đã thêm khoản chi phí')
       } else if (editingExpenseId !== null) {
-        await update.mutateAsync({
-          data: { expenseId: editingExpenseId, expense },
-        })
-        toast.success('Đã cập nhật chi phí')
+        const orig = detail.expenses.find((x) => x.id === editingExpenseId)
+        const desc = eDraft.description.trim() || null
+        const origDesc = orig?.description?.trim() || null
+        const hasChanged =
+          !orig ||
+          orig.expenseTypeId !== eDraft.expenseTypeId ||
+          origDesc !== desc ||
+          orig.amount !== eDraft.amount
+
+        if (hasChanged) {
+          await update.mutateAsync({
+            data: { expenseId: editingExpenseId, expense },
+          })
+          toast.success('Đã cập nhật chi phí')
+        }
       }
       setEditingExpenseId(null)
       setESubmitted(false)
@@ -723,6 +736,79 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
 
   const isSaving = add.isPending || update.isPending
 
+  const [vehicleSearch, setVehicleSearch] = React.useState('')
+  const [vehicleModelFilters, setVehicleModelFilters] = React.useState<number[]>([])
+  const [vehicleColorFilters, setVehicleColorFilters] = React.useState<number[]>([])
+
+  const batchModelOptions = React.useMemo(() => {
+    const map = new Map<number, string>()
+    for (const v of detail.vehicles) {
+      if (v.modelId && v.modelName) {
+        map.set(v.modelId, v.modelName)
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  }, [detail.vehicles])
+
+  const batchColorOptions = React.useMemo(() => {
+    const map = new Map<number, string>()
+    for (const v of detail.vehicles) {
+      if (v.colorId && v.colorName) {
+        map.set(v.colorId, v.colorName)
+      }
+    }
+    return Array.from(map.entries())
+      .map(([id, name]) => ({ id, name }))
+      .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
+  }, [detail.vehicles])
+
+  const hasVehicleFilter =
+    vehicleSearch.trim() !== '' ||
+    vehicleModelFilters.length > 0 ||
+    vehicleColorFilters.length > 0
+
+  const clearVehicleFilters = () => {
+    setVehicleSearch('')
+    setVehicleModelFilters([])
+    setVehicleColorFilters([])
+  }
+
+  const filteredVehicles = React.useMemo(() => {
+    const q = vehicleSearch.trim().toLowerCase()
+    return detail.vehicles.filter((v) => {
+      if (editingVehicleId === v.id) return true
+      if (
+        vehicleModelFilters.length > 0 &&
+        (!v.modelId || !vehicleModelFilters.includes(v.modelId))
+      )
+        return false
+      if (
+        vehicleColorFilters.length > 0 &&
+        (!v.colorId || !vehicleColorFilters.includes(v.colorId))
+      )
+        return false
+      if (!q) return true
+      const chassis = v.chassisNumber.toLowerCase()
+      const engine = v.engineNumber.toLowerCase()
+      const model = (v.modelName ?? '').toLowerCase()
+      const color = (v.colorName ?? '').toLowerCase()
+      return (
+        chassis.includes(q) ||
+        engine.includes(q) ||
+        model.includes(q) ||
+        color.includes(q)
+      )
+    })
+  }, [
+    detail.vehicles,
+    vehicleSearch,
+    vehicleModelFilters,
+    vehicleColorFilters,
+    editingVehicleId,
+  ])
+
   const startAddVehicle = () => {
     setVDraft({
       modelId: master?.models[0]?.id ?? 0,
@@ -806,17 +892,28 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         })
         toast.success('Đã thêm xe vào lô')
       } else if (editingVehicleId !== null) {
-        await update.mutateAsync({
-          data: {
-            vehicleId: editingVehicleId,
-            chassisNumber: chassis,
-            engineNumber: engine,
-            modelId: vDraft.modelId,
-            colorId: vDraft.colorId,
-            importPrice: vDraft.importPrice,
-          },
-        })
-        toast.success('Đã cập nhật thông tin xe')
+        const orig = detail.vehicles.find((x) => x.id === editingVehicleId)
+        const hasChanged =
+          !orig ||
+          (orig.modelId ?? 0) !== vDraft.modelId ||
+          orig.colorId !== vDraft.colorId ||
+          orig.chassisNumber.trim() !== chassis ||
+          orig.engineNumber.trim() !== engine ||
+          Number(orig.importPrice) !== vDraft.importPrice
+
+        if (hasChanged) {
+          await update.mutateAsync({
+            data: {
+              vehicleId: editingVehicleId,
+              chassisNumber: chassis,
+              engineNumber: engine,
+              modelId: vDraft.modelId,
+              colorId: vDraft.colorId,
+              importPrice: vDraft.importPrice,
+            },
+          })
+          toast.success('Đã cập nhật thông tin xe')
+        }
       }
       setEditingVehicleId(null)
       setVSubmitted(false)
@@ -884,6 +981,91 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         </Button>
       }
     >
+      {detail.vehicles.length > 0 && (
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2 mb-3">
+          <div className="relative flex-1">
+            <Search className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+            <Input
+              value={vehicleSearch}
+              onChange={(e) => setVehicleSearch(e.target.value)}
+              placeholder="Tìm theo số khung, số máy, dòng xe, màu..."
+              className="h-9 pl-9 pr-8 text-xs rounded-lg bg-white"
+            />
+            {vehicleSearch && (
+              <button
+                type="button"
+                onClick={() => setVehicleSearch('')}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 size-4 flex items-center justify-center text-xs"
+                title="Xóa tìm kiếm"
+              >
+                ×
+              </button>
+            )}
+          </div>
+
+          <div className="flex items-center gap-2">
+            {batchModelOptions.length > 1 && (
+              <MultiSearchSelect
+                className="h-9 w-44 text-xs rounded-lg bg-white"
+                placeholder={`Tất cả dòng xe (${batchModelOptions.length})`}
+                values={vehicleModelFilters.map(String)}
+                onValuesChange={(vals) =>
+                  setVehicleModelFilters(vals.map(Number))
+                }
+              >
+                {batchModelOptions.map((m) => (
+                  <SearchSelectItem
+                    key={m.id}
+                    value={String(m.id)}
+                    className="text-xs"
+                  >
+                    {m.name}
+                  </SearchSelectItem>
+                ))}
+              </MultiSearchSelect>
+            )}
+
+            {batchColorOptions.length > 1 && (
+              <MultiSearchSelect
+                className="h-9 w-40 text-xs rounded-lg bg-white"
+                placeholder={`Tất cả màu (${batchColorOptions.length})`}
+                values={vehicleColorFilters.map(String)}
+                onValuesChange={(vals) =>
+                  setVehicleColorFilters(vals.map(Number))
+                }
+              >
+                {batchColorOptions.map((c) => (
+                  <SearchSelectItem
+                    key={c.id}
+                    value={String(c.id)}
+                    className="text-xs"
+                  >
+                    {c.name}
+                  </SearchSelectItem>
+                ))}
+              </MultiSearchSelect>
+            )}
+
+            {hasVehicleFilter && (
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                onClick={clearVehicleFilters}
+                className="h-9 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 px-2.5 gap-1 shrink-0"
+              >
+                <RotateCcw className="size-3" />
+                Xóa lọc
+              </Button>
+            )}
+
+            <div className="text-[11px] text-slate-500 whitespace-nowrap self-center px-1">
+              Hiển thị <strong>{filteredVehicles.length}</strong> / {detail.vehicles.length} xe
+            </div>
+          </div>
+        </div>
+      )}
+
       <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
         <Table>
           <TableHeader>
@@ -903,7 +1085,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
             </TableRow>
           </TableHeader>
           <TableBody className="text-xs">
-            {detail.vehicles.map((v) => {
+            {filteredVehicles.map((v) => {
               const locked = v.isSold || v.isDelivered || v.isInvoiced
               const isEditing = editingVehicleId === v.id
 
@@ -1285,6 +1467,16 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                       <X className="size-4" />
                     </Button>
                   </div>
+                </TableCell>
+              </TableRow>
+            )}
+            {filteredVehicles.length === 0 && editingVehicleId !== 'new' && (
+              <TableRow>
+                <TableCell
+                  colSpan={8}
+                  className="py-8 text-center text-xs text-slate-400 italic"
+                >
+                  Không tìm thấy xe phù hợp với bộ lọc
                 </TableCell>
               </TableRow>
             )}

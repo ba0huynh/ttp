@@ -22,6 +22,7 @@ import { isDuplicateError, num } from '#/server/services/common.ts'
 import {
   createPaymentVoucher,
   createReceiptVoucher,
+  deleteLoanRepayment,
   deletePaymentVoucher,
   deleteReceiptVoucher,
   deleteStatementLine,
@@ -31,6 +32,7 @@ import {
   recordLoanRepayment,
   setStatementLineStatus,
   suggestMatches,
+  updateLoanRepayment,
   updatePaymentVoucher,
   updateReceiptVoucher,
   updateStatementLine,
@@ -133,6 +135,31 @@ export const recordLoanPaymentFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await recordLoanRepayment(data)
+    return { ok: true }
+  })
+
+export const updateLoanPaymentFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('loans.manage')])
+  .validator(
+    z.object({
+      id: z.number().int(),
+      paymentDate: z.string().min(10),
+      principalAmount: z.number().min(0),
+      interestAmount: z.number().min(0),
+      companyBankAccountId: z.number().int().nullable().optional(),
+      note: z.string().trim().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await updateLoanRepayment(data.id, data)
+    return { ok: true }
+  })
+
+export const deleteLoanPaymentFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('loans.manage')])
+  .validator(z.object({ id: z.number().int() }))
+  .handler(async ({ data }) => {
+    await deleteLoanRepayment(data.id)
     return { ok: true }
   })
 

@@ -77,8 +77,8 @@ export const Route = createFileRoute('/inventory')({
     batch: z.array(z.number().int()).optional().catch(undefined),
     model: z.array(z.string()).optional().catch(undefined),
     color: z.array(z.string()).optional().catch(undefined),
-    delivered: z.enum(['yes', 'no']).optional().catch(undefined),
-    invoiced: z.enum(['yes', 'no']).optional().catch(undefined),
+    delivered: z.array(z.enum(['yes', 'no'])).optional().catch(undefined),
+    invoiced: z.array(z.enum(['yes', 'no'])).optional().catch(undefined),
     priceType: z.enum(['import', 'cost']).optional().catch(undefined),
     minPrice: z.number().optional().catch(undefined),
     maxPrice: z.number().optional().catch(undefined),
@@ -179,8 +179,8 @@ function InventoryPage() {
   const filterBatch = searchParams.batch ?? []
   const filterModel = searchParams.model ?? []
   const filterColor = searchParams.color ?? []
-  const filterDelivered = searchParams.delivered
-  const filterInvoiced = searchParams.invoiced
+  const filterDelivered = searchParams.delivered ?? []
+  const filterInvoiced = searchParams.invoiced ?? []
   const filterPriceType = searchParams.priceType ?? 'import'
   const filterMinPrice = searchParams.minPrice
   const filterMaxPrice = searchParams.maxPrice
@@ -215,8 +215,8 @@ function InventoryPage() {
     filterBatch.length > 0,
     filterModel.length > 0,
     filterColor.length > 0,
-    Boolean(filterDelivered),
-    Boolean(filterInvoiced),
+    filterDelivered.length > 0,
+    filterInvoiced.length > 0,
     filterMinPrice !== undefined || filterMaxPrice !== undefined,
     filterMinFee !== undefined || filterMaxFee !== undefined,
     filterStock.length > 0,
@@ -230,9 +230,15 @@ function InventoryPage() {
     if (filterBatch.length && !filterBatch.includes(v.batchId)) return false
     if (filterModel.length && !filterModel.includes(v.modelName)) return false
     if (filterColor.length && !filterColor.includes(v.colorName)) return false
-    if (filterDelivered && v.isDelivered !== (filterDelivered === 'yes'))
+    if (
+      filterDelivered.length &&
+      !filterDelivered.includes(v.isDelivered ? 'yes' : 'no')
+    )
       return false
-    if (filterInvoiced && v.isInvoiced !== (filterInvoiced === 'yes'))
+    if (
+      filterInvoiced.length &&
+      !filterInvoiced.includes(v.isInvoiced ? 'yes' : 'no')
+    )
       return false
     const price = filterPriceType === 'cost' ? v.costPrice : v.importPrice
     if (filterMinPrice !== undefined && price < filterMinPrice) return false
@@ -428,51 +434,45 @@ function InventoryPage() {
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Giao xe</Label>
-              <SearchSelect
-                className="h-11 w-full text-sm rounded-lg"
-                placeholder="Giao xe: tất cả"
-                value={filterDelivered ?? 'all'}
-                onValueChange={(val) =>
-                  setDropdownFilter(
-                    'delivered',
-                    val === 'all' ? undefined : val,
-                  )
-                }
-              >
-                <SearchSelectItem value="all" className="text-xs">
-                  Giao xe: tất cả
-                </SearchSelectItem>
-                <SearchSelectItem value="yes" className="text-xs">
-                  Đã giao xe
-                </SearchSelectItem>
-                <SearchSelectItem value="no" className="text-xs">
-                  Chưa giao xe
-                </SearchSelectItem>
-              </SearchSelect>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Giao xe: tất cả"
+                      values={filterDelivered}
+                      onValuesChange={(vals) =>
+                        setDropdownFilter(
+                          'delivered',
+                          vals.length ? (vals as ('yes' | 'no')[]) : undefined,
+                        )
+                      }
+                    >
+                      <SearchSelectItem value="yes" className="text-xs">
+                        Đã giao xe
+                      </SearchSelectItem>
+                      <SearchSelectItem value="no" className="text-xs">
+                        Chưa giao xe
+                      </SearchSelectItem>
+                    </MultiSearchSelect>
                   </div>
                   <div className="space-y-1">
                     <Label className="text-xs font-semibold">Hóa đơn</Label>
-              <SearchSelect
-                className="h-11 w-full text-sm rounded-lg"
-                placeholder="Hóa đơn: tất cả"
-                value={filterInvoiced ?? 'all'}
-                onValueChange={(val) =>
-                  setDropdownFilter(
-                    'invoiced',
-                    val === 'all' ? undefined : val,
-                  )
-                }
-              >
-                <SearchSelectItem value="all" className="text-xs">
-                  Hóa đơn: tất cả
-                </SearchSelectItem>
-                <SearchSelectItem value="yes" className="text-xs">
-                  Đã có hóa đơn
-                </SearchSelectItem>
-                <SearchSelectItem value="no" className="text-xs">
-                  Chưa có hóa đơn
-                </SearchSelectItem>
-              </SearchSelect>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Hóa đơn: tất cả"
+                      values={filterInvoiced}
+                      onValuesChange={(vals) =>
+                        setDropdownFilter(
+                          'invoiced',
+                          vals.length ? (vals as ('yes' | 'no')[]) : undefined,
+                        )
+                      }
+                    >
+                      <SearchSelectItem value="yes" className="text-xs">
+                        Đã có hóa đơn
+                      </SearchSelectItem>
+                      <SearchSelectItem value="no" className="text-xs">
+                        Chưa có hóa đơn
+                      </SearchSelectItem>
+                    </MultiSearchSelect>
                   </div>
 
                   {/* Price filter: which price, plus a min / max range */}

@@ -4,18 +4,18 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowLeft, CreditCard } from 'lucide-react'
+import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react'
 import * as React from 'react'
+import { toast } from 'sonner'
 
 import { BankAccountSelect } from '#/components/finance/BankAccountSelect.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
-import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import { confirmDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Card, CardContent } from '#/components/ui/card.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
-import { Label } from '#/components/ui/label.tsx'
 import {
   Table,
   TableBody,
@@ -42,7 +42,12 @@ import {
 } from '#/lib/queries.ts'
 import { hasPermission } from '#/lib/permissions.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
-import { recordLoanPaymentFn } from '#/server/fns/finance.ts'
+import { cn, handleRowArrowNavigation } from '#/lib/utils.ts'
+import {
+  deleteLoanPaymentFn,
+  recordLoanPaymentFn,
+  updateLoanPaymentFn,
+} from '#/server/fns/finance.ts'
 
 export const Route = createFileRoute('/loans/$loanId')({
   beforeLoad: async ({ context: { queryClient } }) => {
@@ -86,43 +91,205 @@ function LoanDetailPage() {
   const id = Number(loanId)
   const { data: loanDetail } = useSuspenseQuery(loanDetailQuery(id))
   const { data: master } = useSuspenseQuery(masterDataQuery())
+  const canManage = hasPermission(user, 'loans.manage')
   const repaymentsPg = usePagination<any>(loanDetail.repayments)
   const queryClient = useQueryClient()
+
   const repayLoan = useMutation({
     mutationFn: recordLoanPaymentFn,
     onSuccess: () => queryClient.invalidateQueries(),
   })
+  const updateRepayment = useMutation({
+    mutationFn: updateLoanPaymentFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
+  const deleteRepayment = useMutation({
+    mutationFn: deleteLoanPaymentFn,
+    onSuccess: () => queryClient.invalidateQueries(),
+  })
 
-  // Repayment form; the interest is pre-filled with what is currently due
-  const [repayDate, setRepayDate] = React.useState(todayIso())
-  const [repayPrincipal, setRepayPrincipal] = React.useState(0)
-  const [repayInterest, setRepayInterest] = React.useState(
-    loanDetail.interestDue > 0 ? loanDetail.interestDue : 0,
+  // Inline repayment edit / create state
+  const [editingRepaymentId, setEditingRepaymentId] = React.useState<
+    number | 'new' | null
+  >(null)
+  const [rSubmitted, setRSubmitted] = React.useState(false)
+  const [rDraft, setRDraft] = React.useState<{
+    paymentDate: string
+    principalAmount: number
+    interestAmount: number
+    companyBankAccountId: number | null
+  }>({
+    paymentDate: todayIso(),
+    principalAmount: 0,
+    interestAmount: 0,
+    companyBankAccountId: null,
+  })
+
+  const accountLabel = React.useCallback(
+    (bankAccountId: number | null | undefined) => {
+      if (!bankAccountId) return '—'
+      const acc = master.bankAccounts.find((a) => a.id === bankAccountId)
+      if (!acc) return '—'
+      return `${acc.bankCode || acc.bankName} - ${acc.accountNumber}`
+    },
+    [master.bankAccounts],
   )
-  const [repayBankAccountId, setRepayBankAccountId] = React.useState<
-    number | null
-  >(master.bankAccounts.find((a) => a.isActive)?.id ?? null)
-  const repaying = repayLoan.isPending
 
-  const handleRepaySubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    try {
-      await repayLoan.mutateAsync({
-        data: {
-          loanContractId: id,
-          paymentDate: repayDate,
-          principalAmount: repayPrincipal,
-          interestAmount: repayInterest,
-          companyBankAccountId: repayBankAccountId,
-        },
-      })
-      // Same cache as useSuspenseQuery above; re-fill the interest still due
-      const fresh = await queryClient.query(loanDetailQuery(id))
-      setRepayPrincipal(0)
-      setRepayInterest(fresh.interestDue > 0 ? fresh.interestDue : 0)
-    } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi ghi nhận trả nợ')
+  const startAddRepayment = () => {
+    setRDraft({
+      paymentDate: todayIso(),
+      principalAmount: 0,
+      interestAmount: loanDetail.interestDue > 0 ? loanDetail.interestDue : 0,
+      companyBankAccountId:
+        master.bankAccounts.find((a) => a.isActive)?.id ?? null,
+    })
+    setRSubmitted(false)
+    setEditingRepaymentId('new')
+  }
+
+  const startEditRepayment = (r: (typeof loanDetail.repayments)[number]) => {
+    setRDraft({
+      paymentDate: r.paymentDate,
+      principalAmount: Number(r.principalAmount) || 0,
+      interestAmount: Number(r.interestAmount) || 0,
+      companyBankAccountId: r.companyBankAccountId ?? null,
+    })
+    setRSubmitted(false)
+    setEditingRepaymentId(r.id)
+  }
+
+  const cancelRepaymentEdit = () => {
+    setEditingRepaymentId(null)
+    setRSubmitted(false)
+  }
+
+  const saveRepaymentInline = async () => {
+    setRSubmitted(true)
+    if (!rDraft.paymentDate) {
+      toast.error('Vui lòng chọn ngày thanh toán (viền đỏ)')
+      return
     }
+    if (rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0) {
+      toast.error('Vui lòng nhập số tiền gốc hoặc lãi cần trả (viền đỏ)')
+      return
+    }
+
+    try {
+      if (editingRepaymentId === 'new') {
+        await repayLoan.mutateAsync({
+          data: {
+            loanContractId: id,
+            paymentDate: rDraft.paymentDate,
+            principalAmount: rDraft.principalAmount,
+            interestAmount: rDraft.interestAmount,
+            companyBankAccountId: rDraft.companyBankAccountId,
+          },
+        })
+        toast.success('Đã ghi nhận đợt trả nợ')
+      } else if (typeof editingRepaymentId === 'number') {
+        const orig = loanDetail.repayments.find(
+          (x) => x.id === editingRepaymentId,
+        )
+        const hasChanged =
+          !orig ||
+          orig.paymentDate !== rDraft.paymentDate ||
+          Number(orig.principalAmount) !== rDraft.principalAmount ||
+          Number(orig.interestAmount) !== rDraft.interestAmount ||
+          orig.companyBankAccountId !== rDraft.companyBankAccountId
+
+        if (hasChanged) {
+          await updateRepayment.mutateAsync({
+            data: {
+              id: editingRepaymentId,
+              paymentDate: rDraft.paymentDate,
+              principalAmount: rDraft.principalAmount,
+              interestAmount: rDraft.interestAmount,
+              companyBankAccountId: rDraft.companyBankAccountId,
+            },
+          })
+          toast.success('Đã cập nhật đợt trả nợ')
+        }
+      }
+      setEditingRepaymentId(null)
+      setRSubmitted(false)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Lỗi khi lưu đợt trả nợ')
+    }
+  }
+
+  const handleDeleteRepayment = async (
+    r: (typeof loanDetail.repayments)[number],
+  ) => {
+    const totalAmount =
+      Number(r.principalAmount) + Number(r.interestAmount)
+    const ok = await confirmDialog({
+      title: 'Xóa đợt trả nợ này?',
+      description: `Đợt trả nợ ngày ${formatDate(r.paymentDate)} với tổng tiền ${formatVnd(totalAmount)} sẽ bị xóa vĩnh viễn và lịch tính lãi sẽ được tính lại tự động.`,
+      confirmLabel: 'Xác nhận xóa',
+      destructive: true,
+    })
+    if (!ok) return
+    try {
+      await deleteRepayment.mutateAsync({ data: { id: r.id } })
+      toast.success('Đã xóa đợt trả nợ')
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Lỗi khi xóa đợt trả nợ')
+    }
+  }
+
+  const handleRepaymentRowBlur = (
+    e: React.FocusEvent<HTMLTableRowElement>,
+  ) => {
+    const currentTarget = e.currentTarget
+    setTimeout(() => {
+      const active = document.activeElement
+      if (currentTarget && currentTarget.contains(active)) return
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
+        )
+      )
+        return
+      if (
+        editingRepaymentId === 'new' &&
+        !rDraft.paymentDate &&
+        rDraft.principalAmount <= 0 &&
+        rDraft.interestAmount <= 0
+      ) {
+        setEditingRepaymentId(null)
+        setRSubmitted(false)
+        return
+      }
+      saveRepaymentInline()
+    }, 120)
+  }
+
+  const handleRepaymentKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === 'Enter') {
+      const active = document.activeElement
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"]',
+        )
+      )
+        return
+      e.preventDefault()
+      saveRepaymentInline()
+      return
+    }
+    if (e.key === 'Escape') {
+      const active = document.activeElement
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"]',
+        )
+      )
+        return
+      e.preventDefault()
+      cancelRepaymentEdit()
+      return
+    }
+    handleRowArrowNavigation(e)
   }
 
   const { loan } = loanDetail
@@ -136,6 +303,113 @@ function LoanDetailPage() {
       amount: r.principalAmount,
     })),
   })
+
+  const renderEditingRow = (key: string | number) => {
+    const hasZeroError =
+      rSubmitted && rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0
+    return (
+      <TableRow
+        key={key}
+        className="bg-purple-50/50 border-y border-purple-300"
+        onBlur={handleRepaymentRowBlur}
+        onKeyDown={handleRepaymentKeyDown}
+      >
+        <TableCell className="p-2 align-middle">
+          <Input
+            type="date"
+            required
+            value={rDraft.paymentDate}
+            onChange={(e) =>
+              setRDraft({ ...rDraft, paymentDate: e.target.value })
+            }
+            onKeyDown={handleRepaymentKeyDown}
+            className={cn(
+              'h-8 text-xs bg-white',
+              rSubmitted &&
+                !rDraft.paymentDate &&
+                'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+            )}
+          />
+        </TableCell>
+        <TableCell className="p-2 align-middle text-right">
+          <MoneyInput
+            value={rDraft.principalAmount}
+            onValueChange={(val: number) =>
+              setRDraft((prev) => ({ ...prev, principalAmount: val }))
+            }
+            blankZero
+            placeholder="Tiền gốc"
+            onKeyDown={handleRepaymentKeyDown}
+            className={cn(
+              'h-8 text-xs text-right bg-white',
+              hasZeroError &&
+                'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+            )}
+          />
+        </TableCell>
+        <TableCell className="p-2 align-middle text-right">
+          <MoneyInput
+            value={rDraft.interestAmount}
+            onValueChange={(val: number) =>
+              setRDraft((prev) => ({ ...prev, interestAmount: val }))
+            }
+            blankZero
+            placeholder="Tiền lãi"
+            onKeyDown={handleRepaymentKeyDown}
+            className={cn(
+              'h-8 text-xs text-right bg-white',
+              hasZeroError &&
+                'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
+            )}
+          />
+        </TableCell>
+        <TableCell className="p-2 align-middle">
+          <BankAccountSelect
+            className="w-full h-8 text-xs bg-white rounded-lg"
+            value={rDraft.companyBankAccountId}
+            onChange={(val) =>
+              setRDraft((prev) => ({
+                ...prev,
+                companyBankAccountId: val,
+              }))
+            }
+          />
+        </TableCell>
+        <TableCell className="p-2 align-middle text-right font-semibold text-slate-900">
+          {formatVnd(
+            (Number(rDraft.principalAmount) || 0) +
+              (Number(rDraft.interestAmount) || 0),
+          )}
+        </TableCell>
+        <TableCell className="text-right whitespace-nowrap p-2 align-middle">
+          <div className="flex items-center justify-end gap-1">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-purple-700 hover:text-purple-800 hover:bg-purple-100/60"
+              onMouseDown={(ev) => ev.preventDefault()}
+              onClick={saveRepaymentInline}
+              title="Lưu (Enter)"
+            >
+              <Check className="size-4" />
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+              onMouseDown={(ev) => ev.preventDefault()}
+              onClick={cancelRepaymentEdit}
+              title="Hủy (Esc)"
+            >
+              <X className="size-4" />
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    )
+  }
 
   return (
     <AppLayout user={user}>
@@ -186,8 +460,9 @@ function LoanDetailPage() {
                       <TableHead>Từ Ngày</TableHead>
                       <TableHead>Đến Ngày</TableHead>
                       <TableHead className="text-center">Số Ngày</TableHead>
+                      <TableHead className="text-right">Gốc Đã Trả</TableHead>
                       <TableHead className="text-right">
-                        Dư Nợ Đoạn Này
+                        Dư Nợ Còn Lại
                       </TableHead>
                       <TableHead className="text-right">
                         Lãi Phát Sinh
@@ -202,8 +477,11 @@ function LoanDetailPage() {
                         <TableCell className="text-center">
                           {seg.days} ngày
                         </TableCell>
-                        <TableCell className="text-right font-medium text-slate-900">
-                          {formatVnd(seg.outstanding)}
+                        <TableCell className="text-right text-emerald-800 font-medium">
+                          {formatVnd(seg.principalPaid ?? 0)}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-purple-900">
+                          {formatVnd(seg.remainingBalance ?? seg.outstanding)}
                         </TableCell>
                         <TableCell className="text-right font-medium text-purple-900">
                           {formatVnd(seg.interest)}
@@ -216,51 +494,145 @@ function LoanDetailPage() {
             </CardContent>
           </Card>
 
-          {/* 2. Repayment history */}
+          {/* 2. Repayment history with inline create, edit and delete */}
           <Card className="border-slate-200 shadow-xs">
             <CardContent className="p-4">
-              <div className="text-xs font-bold text-slate-800 mb-2">
-                Lịch Sử Các Đợt Đã Trả Nợ (Gốc:{' '}
-                {formatVnd(loanDetail.principalPaid)} &bull; Lãi:{' '}
-                {formatVnd(loanDetail.interestPaid)}):
+              <div className="flex items-center justify-between mb-3">
+                <div className="text-xs font-bold text-slate-800">
+                  Lịch Sử Các Đợt Đã Trả Nợ (Gốc:{' '}
+                  {formatVnd(loanDetail.principalPaid)} &bull; Lãi:{' '}
+                  {formatVnd(loanDetail.interestPaid)}):
+                </div>
+                {canManage && (
+                  <Button
+                    type="button"
+                    size="sm"
+                    variant="outline"
+                    className="h-8 gap-1.5 rounded-lg bg-white text-xs border-purple-300 text-purple-900 hover:bg-purple-50"
+                    onClick={startAddRepayment}
+                    disabled={editingRepaymentId !== null}
+                  >
+                    <Plus className="size-3.5" />
+                    Thêm đợt trả nợ
+                  </Button>
+                )}
               </div>
-              {loanDetail.repayments.length === 0 ? (
-                <div className="text-xs text-slate-400 italic py-2">
-                  Chưa có đợt thanh toán nào.
+
+              {loanDetail.repayments.length === 0 &&
+              editingRepaymentId !== 'new' ? (
+                <div className="rounded-lg border border-dashed border-slate-200 p-8 text-center bg-white">
+                  <p className="text-sm text-slate-500">
+                    Chưa có đợt thanh toán nào cho khế ước này
+                  </p>
+                  {canManage && (
+                    <Button
+                      type="button"
+                      size="sm"
+                      variant="outline"
+                      className="mt-3 h-8 gap-1.5 text-xs text-purple-700 hover:text-purple-800 border-purple-200"
+                      onClick={startAddRepayment}
+                    >
+                      <Plus className="size-3.5" />
+                      Ghi nhận đợt trả nợ
+                    </Button>
+                  )}
                 </div>
               ) : (
-                <div className="border border-slate-200 rounded-lg overflow-x-auto">
+                <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
                   <Table>
                     <TableHeader>
                       <TableRow className="text-xs bg-slate-50">
-                        <TableHead>Ngày Trả</TableHead>
-                        <TableHead className="text-right">Tiền Gốc</TableHead>
-                        <TableHead className="text-right">Tiền Lãi</TableHead>
-                        <TableHead className="text-right">
+                        <TableHead className="w-[160px]">Ngày Trả</TableHead>
+                        <TableHead className="w-[170px] text-right">
+                          Tiền Gốc
+                        </TableHead>
+                        <TableHead className="w-[170px] text-right">
+                          Tiền Lãi
+                        </TableHead>
+                        <TableHead className="min-w-[200px]">
+                          Tài Khoản Chi
+                        </TableHead>
+                        <TableHead className="w-[170px] text-right">
                           Tổng Thanh Toán
                         </TableHead>
+                        <TableHead className="w-[80px] text-right" />
                       </TableRow>
                     </TableHeader>
                     <TableBody className="text-xs">
-                      {repaymentsPg.pageItems.map((r: any) => (
-                        <TableRow key={r.id}>
-                          <TableCell className="font-medium">
-                            {formatDate(r.paymentDate)}
-                          </TableCell>
-                          <TableCell className="text-right text-emerald-800 font-medium">
-                            {formatVnd(r.principalAmount)}
-                          </TableCell>
-                          <TableCell className="text-right text-purple-800 font-medium">
-                            {formatVnd(r.interestAmount)}
-                          </TableCell>
-                          <TableCell className="text-right text-slate-900">
-                            {formatVnd(
-                              Number(r.principalAmount) +
-                                Number(r.interestAmount),
+                      {editingRepaymentId === 'new' && renderEditingRow('new')}
+                      {repaymentsPg.pageItems.map((r: any) => {
+                        const isEditing = editingRepaymentId === r.id
+                        if (isEditing) {
+                          return renderEditingRow(r.id)
+                        }
+
+                        return (
+                          <TableRow
+                            key={r.id}
+                            className={cn(
+                              canManage &&
+                                'cursor-pointer hover:bg-purple-50/40 transition-colors group',
                             )}
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                            onClick={() => {
+                              if (canManage && editingRepaymentId !== r.id) {
+                                startEditRepayment(r)
+                              }
+                            }}
+                          >
+                            <TableCell className="font-medium text-slate-900">
+                              {formatDate(r.paymentDate)}
+                            </TableCell>
+                            <TableCell className="text-right text-emerald-800 font-medium">
+                              {formatVnd(r.principalAmount)}
+                            </TableCell>
+                            <TableCell className="text-right text-purple-800 font-medium">
+                              {formatVnd(r.interestAmount)}
+                            </TableCell>
+                            <TableCell className="text-slate-600 text-xs">
+                              {accountLabel(r.companyBankAccountId)}
+                            </TableCell>
+                            <TableCell className="text-right text-slate-900 font-semibold">
+                              {formatVnd(
+                                Number(r.principalAmount) +
+                                  Number(r.interestAmount),
+                              )}
+                            </TableCell>
+                            <TableCell
+                              className="text-right whitespace-nowrap p-2 align-middle"
+                              onClick={(ev) => ev.stopPropagation()}
+                            >
+                              {canManage && (
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 text-slate-400 hover:text-purple-700 hover:bg-purple-50"
+                                    onClick={() => startEditRepayment(r)}
+                                    disabled={editingRepaymentId !== null}
+                                    aria-label="Sửa đợt trả nợ"
+                                    title="Sửa đợt trả nợ"
+                                  >
+                                    <Pencil className="size-3.5" />
+                                  </Button>
+                                  <Button
+                                    type="button"
+                                    variant="ghost"
+                                    size="icon"
+                                    className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                                    onClick={() => handleDeleteRepayment(r)}
+                                    disabled={editingRepaymentId !== null}
+                                    aria-label="Xóa đợt trả nợ"
+                                    title="Xóa đợt trả nợ"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        )
+                      })}
                     </TableBody>
                   </Table>
                   <TablePagination pagination={repaymentsPg} />
@@ -268,83 +640,9 @@ function LoanDetailPage() {
               )}
             </CardContent>
           </Card>
-
-          {/* 3. Record New Principal / Interest Repayment Form */}
-          {loanDetail.outstanding > 0 &&
-            hasPermission(user, 'loans.manage') && (
-              <form
-                onSubmit={handleRepaySubmit}
-                className="p-4 bg-purple-50/60 border border-purple-200 rounded-lg space-y-3"
-              >
-                <div className="text-xs font-bold text-purple-950 flex items-center gap-1.5">
-                  <CreditCard className="size-4 text-purple-700" />
-                  Ghi Nhận Đợt Trả Nợ Gốc / Lãi Mới:
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-2 text-xs">
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Ngày Thanh Toán *
-                    </Label>
-                    <Input
-                      type="date"
-                      required
-                      value={repayDate}
-                      onChange={(e) => setRepayDate(e.target.value)}
-                      className="h-11 text-sm px-4 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Trả Nợ Gốc (VNĐ)
-                    </Label>
-                    <MoneyInput
-                      value={repayPrincipal}
-                      onValueChange={setRepayPrincipal}
-                      className="h-11 text-sm px-4 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Trả Nợ Lãi (VNĐ)
-                    </Label>
-                    <MoneyInput
-                      value={repayInterest}
-                      onValueChange={setRepayInterest}
-                      className="h-11 text-sm px-4 rounded-lg"
-                    />
-                  </div>
-
-                  <div className="space-y-1">
-                    <Label className="text-xs font-semibold">
-                      Tài Khoản Chi Tiền
-                    </Label>
-                    <BankAccountSelect
-                      className="w-full h-11 text-sm bg-white rounded-lg"
-                      value={repayBankAccountId}
-                      onChange={setRepayBankAccountId}
-                    />
-                  </div>
-                </div>
-
-                <div className="flex items-center justify-end pt-1">
-                  <Button
-                    type="submit"
-                    disabled={
-                      repaying || (repayPrincipal <= 0 && repayInterest <= 0)
-                    }
-                    size="sm"
-                    className="h-8 text-xs bg-purple-700 hover:bg-purple-800 text-white font-semibold shrink-0"
-                  >
-                    {repaying ? 'Đang lưu...' : 'Xác Nhận Trả Nợ'}
-                  </Button>
-                </div>
-              </form>
-            )}
         </div>
       </div>
     </AppLayout>
   )
 }
+

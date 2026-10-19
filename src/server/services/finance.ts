@@ -72,6 +72,25 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
   }
 }
 
+/** A voucher/repayment matched to a bank statement line must be un-matched there first */
+async function assertNotMatched(type: MatchType, id: number) {
+  const [m] = await db
+    .select({ id: bankStatementLines.id })
+    .from(bankStatementLines)
+    .where(
+      and(
+        eq(bankStatementLines.status, 'matched'),
+        eq(bankStatementLines.matchedType, type),
+        eq(bankStatementLines.matchedId, id),
+      ),
+    )
+    .limit(1)
+  if (m)
+    throw new BusinessError(
+      'Khoản này đã khớp với sao kê: hãy hủy khớp ở mục Đối chiếu sao kê trước',
+    )
+}
+
 export async function recordLoanRepayment(input: {
   loanContractId: number
   paymentDate: string
@@ -93,6 +112,58 @@ export async function recordLoanRepayment(input: {
     companyBankAccountId: input.companyBankAccountId ?? null,
     note: input.note ?? null,
   })
+}
+
+export async function updateLoanRepayment(
+  id: number,
+  input: {
+    paymentDate: string
+    principalAmount: number
+    interestAmount: number
+    companyBankAccountId?: number | null
+    note?: string | null
+  },
+) {
+  await assertNotMatched('loan_repayment', id)
+  const [repayment] = await db
+    .select()
+    .from(loanRepayments)
+    .where(eq(loanRepayments.id, id))
+  if (!repayment) throw new BusinessError('Không tìm thấy đợt thanh toán này')
+
+  if (input.principalAmount <= 0 && input.interestAmount <= 0)
+    throw new BusinessError('Số tiền trả phải lớn hơn 0')
+
+  const status = await getLoanStatus(
+    repayment.loanContractId,
+    input.paymentDate,
+  )
+  const maxAllowedPrincipal =
+    status.outstanding + num(repayment.principalAmount)
+  if (input.principalAmount > maxAllowedPrincipal + 0.5)
+    throw new BusinessError('Số tiền trả gốc vượt quá dư nợ còn lại')
+
+  await db
+    .update(loanRepayments)
+    .set({
+      paymentDate: input.paymentDate,
+      principalAmount: input.principalAmount,
+      interestAmount: input.interestAmount,
+      companyBankAccountId: input.companyBankAccountId ?? null,
+      note: input.note ?? null,
+    })
+    .where(eq(loanRepayments.id, id))
+}
+
+export async function deleteLoanRepayment(id: number) {
+  await assertNotMatched('loan_repayment', id)
+  const [repayment] = await db
+    .select({ id: loanRepayments.id })
+    .from(loanRepayments)
+    .where(eq(loanRepayments.id, id))
+  if (!repayment) throw new BusinessError('Không tìm thấy đợt thanh toán này')
+
+  await db.delete(loanRepayments).where(eq(loanRepayments.id, id))
 }
 
 /* -------------------------------------------------------------------------- */
@@ -564,24 +635,7 @@ export async function deleteStatementLine(lineId: number) {
   await db.delete(bankStatementLines).where(eq(bankStatementLines.id, lineId))
 }
 
-/** A voucher matched to a bank statement line must be un-matched there first */
-async function assertNotMatched(type: 'receipt' | 'payment', id: number) {
-  const [m] = await db
-    .select({ id: bankStatementLines.id })
-    .from(bankStatementLines)
-    .where(
-      and(
-        eq(bankStatementLines.status, 'matched'),
-        eq(bankStatementLines.matchedType, type),
-        eq(bankStatementLines.matchedId, id),
-      ),
-    )
-    .limit(1)
-  if (m)
-    throw new BusinessError(
-      'Phiếu đã khớp với sao kê: hãy hủy khớp ở mục Đối chiếu sao kê trước',
-    )
-}
+
 
 export async function updateReceiptVoucher(
   id: number,
