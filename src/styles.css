@@ -27,12 +27,12 @@
   --color-emerald-50: oklch(0.972 0.014 254);
   --color-emerald-100: oklch(0.942 0.03 254);
   --color-emerald-200: oklch(0.89 0.052 254);
-  --color-emerald-300: oklch(0.81 0.068 254);
-  --color-emerald-400: oklch(0.682 0.072 254);
-  --color-emerald-500: oklch(0.62 0.082 254);
-  --color-emerald-600: oklch(0.55 0.088 254);
-  --color-emerald-700: oklch(0.47 0.082 254);
-  --color-emerald-800: oklch(0.395 0.068 254);
+  --color-emerald-300: #b5cee9;
+  --color-emerald-400: #8fb4dd;
+  --color-emerald-500: #6b9ace;
+  --color-emerald-600: #6b9ace;
+  --color-emerald-700: #6b9ace;
+  --color-emerald-800: #5f8fc4;
   --color-emerald-900: oklch(0.325 0.052 254);
   --color-emerald-950: oklch(0.24 0.038 254);
 
@@ -67,11 +67,11 @@
   --color-brass-500: oklch(0.7 0.13 75);
   --color-brass-600: oklch(0.6 0.12 70);
 
-  /* Sidebar ink (deep navy) */
-  --color-ink-800: oklch(0.27 0.022 255);
-  --color-ink-850: oklch(0.235 0.02 255);
-  --color-ink-900: oklch(0.205 0.018 255);
-  --color-ink-950: oklch(0.175 0.016 255);
+  /* Sidebar / auth brand panel: deep navy from the brand hue; #6b9ace is the accent on it */
+  --color-ink-800: #2b3d55;
+  --color-ink-850: #24344a;
+  --color-ink-900: #1e2c3f;
+  --color-ink-950: #172333;
 }
 
 :root {
@@ -83,8 +83,8 @@
   --card-foreground: oklch(0.225 0.015 255);
   --popover: oklch(1 0 0);
   --popover-foreground: oklch(0.225 0.015 255);
-  --primary: oklch(0.47 0.082 254);
-  --primary-foreground: oklch(0.99 0.005 254);
+  --primary: #6b9ace;
+  --primary-foreground: #ffffff;
   --secondary: oklch(0.955 0.006 255);
   --secondary-foreground: oklch(0.3 0.016 255);
   --muted: oklch(0.962 0.005 255);
@@ -95,21 +95,21 @@
   --destructive-foreground: oklch(0.577 0.215 22);
   --border: oklch(0.915 0.008 255);
   --input: oklch(0.89 0.01 255);
-  --ring: oklch(0.682 0.072 254);
-  --chart-1: oklch(0.55 0.088 254);
+  --ring: #6b9ace;
+  --chart-1: #6b9ace;
   --chart-2: oklch(0.55 0.13 255);
   --chart-3: oklch(0.7 0.13 75);
   --chart-4: oklch(0.55 0.15 300);
   --chart-5: oklch(0.6 0.17 25);
 
-  --sidebar: oklch(0.205 0.018 255);
-  --sidebar-foreground: oklch(0.87 0.011 255);
-  --sidebar-primary: oklch(0.682 0.072 254);
-  --sidebar-primary-foreground: oklch(0.205 0.018 255);
-  --sidebar-accent: oklch(0.27 0.022 255);
-  --sidebar-accent-foreground: oklch(0.984 0.003 255);
-  --sidebar-border: oklch(0.3 0.02 255);
-  --sidebar-ring: oklch(0.682 0.072 254);
+  --sidebar: #1e2c3f;
+  --sidebar-foreground: #e2eaf4;
+  --sidebar-primary: #6b9ace;
+  --sidebar-primary-foreground: #ffffff;
+  --sidebar-accent: #2b3d55;
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: #ffffff14;
+  --sidebar-ring: #6b9ace;
 
   --shadow-card:
     0 1px 2px oklch(0.225 0.015 255 / 0.05),
@@ -210,7 +210,7 @@
 }
 
 .sidebar-scroll {
-  scrollbar-color: oklch(0.36 0.02 255) transparent;
+  scrollbar-color: #ffffff59 transparent;
 }
 
 @keyframes top-loading-bar {

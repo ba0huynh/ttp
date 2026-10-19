@@ -44,14 +44,14 @@ export function AuthShell({
   return (
     <div className="min-h-screen grid lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] bg-background">
       {/* Brand panel (desktop) */}
-      <aside className="hidden lg:flex relative overflow-hidden bg-ink-900 text-slate-300 flex-col justify-between p-12">
+      <aside className="hidden lg:flex relative overflow-hidden bg-ink-900 text-white/90 flex-col justify-between p-12">
         <div
           aria-hidden
-          className="absolute inset-0 opacity-[0.35] [background-image:radial-gradient(oklch(0.5_0.06_254)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(160deg,black,transparent_70%)]"
+          className="absolute inset-0 opacity-[0.35] [background-image:radial-gradient(rgb(255_255_255/0.35)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(160deg,black,transparent_70%)]"
         />
         <div
           aria-hidden
-          className="absolute -bottom-40 -right-32 size-[520px] rounded-full bg-emerald-700/25 blur-3xl"
+          className="absolute -bottom-40 -right-32 size-[520px] rounded-full bg-white/15 blur-3xl"
         />
 
         <div className="relative flex items-center gap-3">
@@ -60,7 +60,7 @@ export function AuthShell({
             <div className="text-white font-bold tracking-wide">
               TRƯỜNG THỊNH PHÁT
             </div>
-            <div className="text-[11px] uppercase tracking-[0.16em] text-brass-300/90">
+            <div className="text-[11px] uppercase tracking-[0.16em] text-white/80">
               Xe máy nhập khẩu · Bán sỉ
             </div>
           </div>
@@ -73,21 +73,21 @@ export function AuthShell({
           <ul className="space-y-5">
             {HIGHLIGHTS.map(({ icon: Icon, title: t, text }) => (
               <li key={t} className="flex gap-3.5">
-                <span className="size-9 shrink-0 rounded-lg bg-white/[0.06] ring-1 ring-white/10 flex items-center justify-center">
-                  <Icon className="size-4 text-emerald-300" />
+                <span className="size-9 shrink-0 rounded-lg bg-white/[0.15] ring-1 ring-white/25 flex items-center justify-center">
+                  <Icon className="size-4 text-emerald-400" />
                 </span>
                 <div>
-                  <div className="text-sm font-semibold text-slate-100">
+                  <div className="text-sm font-semibold text-white">
                     {t}
                   </div>
-                  <div className="text-sm text-slate-400">{text}</div>
+                  <div className="text-sm text-white/80">{text}</div>
                 </div>
               </li>
             ))}
           </ul>
         </div>
 
-        <p className="relative text-xs text-slate-500">
+        <p className="relative text-xs text-white/70">
           Công ty TNHH Kinh doanh Dịch vụ Trường Thịnh Phát · MST 0316513248
         </p>
       </aside>

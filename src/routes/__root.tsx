@@ -51,7 +51,7 @@ export const Route = createRootRouteWithContext<MyRouterContext>()({
         rel: 'icon',
         type: 'image/svg+xml',
         // Bump ?v= when the icon changes; browsers cache favicons aggressively
-        href: '/favicon.svg?v=2',
+        href: '/favicon.svg?v=3',
       },
       {
         rel: 'stylesheet',
