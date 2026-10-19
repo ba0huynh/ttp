@@ -1,14 +1,14 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32">
   <defs>
     <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#0f7a58"/>
-      <stop offset="1" stop-color="#06281f"/>
+      <stop offset="0" stop-color="#6b9ace"/>
+      <stop offset="1" stop-color="#3a5d88"/>
     </linearGradient>
-    <linearGradient id="brass" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#f1d48a"/>
-      <stop offset="1" stop-color="#d09a2c"/>
+    <linearGradient id="mark" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#dbe6f5"/>
     </linearGradient>
   </defs>
   <rect width="32" height="32" rx="8" fill="url(#bg)"/>
-  <path d="M7 9h18v4.2h-6.9V25h-4.2V13.2H7z" fill="url(#brass)"/>
+  <path d="M7 9h18v4.2h-6.9V25h-4.2V13.2H7z" fill="url(#mark)"/>
 </svg>

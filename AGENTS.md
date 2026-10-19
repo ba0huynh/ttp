@@ -1231,11 +1231,72 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - Users requested converting the description input to a multi-line `Textarea` so narration strings can be comfortably viewed, pasted, and edited.
 - **Implementation**:
   - In [src/components/finance/ImportStatementDialog.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/components/finance/ImportStatementDialog.tsx):
-    - Replaced the single-line `Input` with `Textarea` (`rows={2}`, `min-h-11`, `resize-y`).
+    - Replaced the single-line `Input` with `Textarea` (`rows={3}`, `min-h-[4.75rem]`, `resize-y`) so multi-line narration is comfortably visible with at least 3 full lines.
     - Extended `handlePaste` parameter signature to accept `React.ClipboardEvent<HTMLInputElement | HTMLTextAreaElement>` so batch copy-pasting from Excel continues working seamlessly directly into the description cell.
   - In [src/routes/reconcile.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/reconcile.tsx):
-    - Converted the statement line edit modal description field (`editLine.description`) to `Textarea` (`rows={3}`, `resize-y`).
+    - Converted the statement line edit modal description field (`editLine.description`) to `Textarea` (`rows={3}`, `min-h-[4.75rem]`, `resize-y`).
+
+### Lesson 111: Reconcile Match Details Inspection, UI Language Standardization, and Sidebar Visibility
+
+- **Context & Requirements**:
+  1. **Bank Statement Reconciliation (`/reconcile`)**:
+     - Removed raw English match tags (`(payment)`, `(receipt)`, `(loan_repayment)`) from the "Đối chiếu" column and replaced with clear Vietnamese labels (`Đã khớp · Phiếu chi`, `Đã khớp · Phiếu thu`, `Đã khớp · Trả nợ khế ước`).
+     - Added a dedicated button "Xem khớp" with `<Eye />` icon (and made the match badge clickable) allowing users to inspect the exact linked internal document (customer/supplier/loan contract, date, amount, details note, and direct link).
+     - Upgraded "Hủy khớp" to a standardized action button "Gỡ khớp" with `<Unlink />` icon and loading feedback.
+     - Enriched `getBankStatementDetailFn` in [src/server/fns/finance.ts](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/server/fns/finance.ts) to batch load matched voucher details for matched lines.
+  2. **Receivables & Branch Label Normalization**:
+     - Standardized colloquial "Trực tiếp KH mẹ" to formal "Công ty mẹ (Trực tiếp)" across [src/routes/finance.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/finance.tsx), [src/routes/sales.index.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/sales.index.tsx), and [src/routes/sales.$orderId.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/sales.$orderId.tsx).
+  3. **Dashboard Cleanup (`src/routes/index.tsx`)**:
+     - Removed the dual-inventory alert banners (`Kho hóa đơn đã xuất — Xe còn tại kho` and `Đã giao xe vật lý — Chưa lập hóa đơn`) per user request.
+  4. **Sidebar Contrast & Legibility (`AppLayout.tsx`)**:
+     - Changed sidebar navigation link text, parent buttons, icons, and group section titles to bright white (`text-white/90`, `text-slate-200`, `text-slate-300`) for high contrast against `bg-ink-900`.
+
+### Lesson 112: Bank Loan Interest Cap Validation and Current Debt & Accrued Interest Tracking
+
+- **Context & Requirements**:
+  - In `/loans/$loanId`, users were previously able to input arbitrary interest payments exceeding the total interest accrued on the loan at that payment date (e.g. paying hundreds of millions or billions in interest when only a few million had accrued).
+  - Users requested:
+    1. Displaying clearly how much interest is currently left unpaid (`Lãi còn nợ đến nay`) and how much total debt is currently owed (`Tổng nợ hiện tại = Dư nợ gốc còn lại + Lãi còn nợ`).
+    2. Throwing an explicit validation error if an interest payment exceeds the interest accrued up to that payment date.
+- **Backend Implementation**:
+  - In [src/server/services/finance.ts](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/server/services/finance.ts) inside `recordLoanRepayment` and `updateLoanRepayment`:
+    - Validated that `paymentDate >= loan.disbursementDate`.
+    - Computed exact accrued interest from disbursement date up to `paymentDate` via `calculateLoanInterest`.
+    - Enforced interest ceiling: `maxAllowedInterest = Math.max(0, interestAtPaymentDate.totalInterest - otherInterestPaid)`.
+    - Threw `BusinessError`: `Số tiền trả lãi (${formatVnd(interestAmount)}) vượt quá số lãi phát sinh lũy kế đến ngày ${formatDate(paymentDate)} (tối đa: ${formatVnd(maxAllowedInterest)})` if exceeded.
+- **Frontend Implementation**:
+    - Removed estimated interest line (`Lãi ước tính: ...`) from `PageHeader` description.
+    - Contextualized metrics directly inside table headers to completely eliminate redundancy and separate card/ribbon clutter:
+      1. **Top Table ("Bảng Tính Lãi Từng Đoạn")**: Displays accumulated interest: `Lãi phát sinh lũy kế: {formatVnd(loanDetail.accruedInterest)}`.
+      2. **Bottom Table ("Lịch Sử Các Đợt Đã Trả Nợ")**: Displays currently owed amounts: `Gốc còn nợ: {formatVnd(loanDetail.outstanding)} • Lãi còn nợ: {formatVnd(currentInterestLeft)} • Tổng nợ: {formatVnd(currentTotalOwing)}`.
+    - Real-time client validation in `renderEditingRow`: inputs display red ring/border when exceeding ceilings while error explanation text is rendered in a dedicated alert banner above the table, keeping all inputs in the table row vertically centered and baseline-aligned.
+    - Inline edit simplification: clicking anywhere on a repayment row activates inline editing mode, so the redundant pencil icon was removed from the actions column.
+
+### Lesson 113: Filter Popup Dialog and Infinite Scroll Pagination for Bank Statement Reconciliation Matches
+
+- **Context & Requirements**:
+  - In `/reconcile`, the suggestion modal ("Gợi Ý Chứng Từ Khớp Với Giao Dịch Sao Kê") previously displayed an unfilterable flat list limited to $\pm 5$ days.
+  - Users requested a filter popup dialog and pagination with infinite scroll to easily find and match internal vouchers (receipts, payments, loan repayments) against statement lines.
+- **Backend Enhancements**:
+  - In [src/server/services/finance.ts](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/server/services/finance.ts) inside `suggestMatches`:
+    - Broadened candidate search interval from $\pm 5$ days to $\pm 60$ days (`INTERVAL 60 DAY`) to capture a wide window of potential matching vouchers.
+    - Added voucher notes and descriptions into candidate objects (`paymentVouchers.description`, `loanRepayments.note`) for rich searchability.
+- **Frontend Enhancements**:
+  - In [src/routes/reconcile.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PHẦN%20MỀM%20QUẢN%20LÝ%20XE%20MÁY%20TRƯỜNG%20THỊNH%20PHÁT/src/routes/reconcile.tsx):
+    - Added in-modal search toolbar with clear button, counter `Hiển thị X / Y chứng từ`, and "Bộ lọc" popup button with active filter badge.
+    - Added a nested Filter Popup Dialog (`<Dialog open={showSuggestFilters}>`) allowing multi-selection of voucher types (`Phiếu Thu`, `Phiếu Chi`, `Trả Nợ Khế Ước`), date range (Từ ngày - Đến ngày), and amount range with `PriceRangeFilter`.
+    - Implemented infinite scroll pagination: `SUGGEST_PAGE_SIZE = 6`, `visibleSuggestions` slice, scroll listener (`handleSuggestScroll`), loading sentinel (`Loader2`), and completion indicators.
+    - Clean reset of suggestion pagination and search filters whenever a new statement line is opened for matching.
 
 ---
 
-_(Next Agent: Append Lesson 111, 112,... above this line upon completing tasks)_
+### Lesson 114: Brand Colour Is Blue `#6b9ace` (supersedes the jade palette of Lesson 18)
+
+- **Client decision**: the whole site uses the blue `#6b9ace` (≈ `oklch(0.682 0.072 254)`). Because pages use `emerald-*` / `teal-*` / `slate-*` / `ink-*` classes directly, `src/styles.css` remaps those scales (hue 254 / 238 / 255) instead of editing pages: `emerald-400` is the exact brand colour, `emerald-600/700` are darker shades used for buttons and text so white text stays readable. `--primary`, `--ring`, `--accent`, chart-1 and the sidebar variables follow the same hue; the sidebar ink is now deep navy.
+- **Gotcha**: "emerald" now means blue, so positive-money green and invoiced-stock blue (`blue/sky`) look alike; rose (errors) and amber stay unchanged. The logo (`BrandMark.tsx`) is a white "T" on a `#6b9ace` → `emerald-700` tile, and `public/favicon.svg` matches it (linked as `/favicon.svg?v=2` in `__root.tsx`; bump `v` when the icon changes, browsers cache favicons hard); brass is now only used for the active-nav marker, the loading bar and small captions. Class names still say `emerald` on purpose.
+- **Not changed**: hardcoded hex values in `LocaleSwitcher.tsx` and the colour-picker presets.
+
+_(Next Agent: Append Lesson 115, 116,... above this line upon completing tasks)_
+
+
+

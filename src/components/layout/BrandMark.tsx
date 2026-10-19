@@ -1,19 +1,19 @@
 import * as React from 'react'
 
-/** "TTP" monogram: brass on deep jade — used in the sidebar and on auth pages */
+/** "TTP" monogram: white on brand blue (#6b9ace) — used in the sidebar and on auth pages */
 export function BrandMark({ className }: { className?: string }) {
   // Unique per instance: a gradient defined inside a hidden copy would not render
-  const gid = `ttp-brass-${React.useId().replace(/:/g, '')}`
+  const gid = `ttp-mark-${React.useId().replace(/:/g, '')}`
   return (
     <div
-      className={`shrink-0 rounded-[28%] bg-gradient-to-br from-emerald-700 to-emerald-950 ring-1 ring-brass-400/50 shadow-sm flex items-center justify-center ${className ?? ''}`}
+      className={`shrink-0 rounded-[28%] bg-gradient-to-br from-emerald-400 to-emerald-700 ring-1 ring-white/25 shadow-sm flex items-center justify-center ${className ?? ''}`}
       aria-hidden
     >
       <svg viewBox="0 0 32 32" className="w-[62%] h-[62%]">
         <defs>
           <linearGradient id={gid} x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="oklch(0.9 0.075 85)" />
-            <stop offset="100%" stopColor="oklch(0.72 0.13 75)" />
+            <stop offset="0%" stopColor="oklch(1 0 0)" />
+            <stop offset="100%" stopColor="oklch(0.9 0.035 254)" />
           </linearGradient>
         </defs>
         {/* Stylised T over a rising road line */}

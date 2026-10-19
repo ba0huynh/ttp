@@ -447,8 +447,8 @@ function SidebarBody({
           sub ? 'pl-9 pr-3' : 'px-3'
         } ${
           on
-            ? 'bg-white/[0.08] text-white'
-            : 'text-slate-400 hover:text-slate-100 hover:bg-white/[0.04]'
+            ? 'bg-white/[0.1] text-white font-semibold'
+            : 'text-white/90 hover:text-white hover:bg-white/[0.06]'
         }`}
       >
         {on && (
@@ -459,7 +459,7 @@ function SidebarBody({
             className={`size-4 shrink-0 ${
               on
                 ? 'text-emerald-300'
-                : 'text-slate-500 group-hover:text-slate-300'
+                : 'text-slate-300 group-hover:text-white'
             }`}
           />
         )}
@@ -472,7 +472,7 @@ function SidebarBody({
   }
 
   return (
-    <div className="flex flex-col w-full h-full bg-ink-900 text-slate-300">
+    <div className="flex flex-col w-full h-full bg-ink-900 text-slate-200">
       <div
         className={`h-14 flex items-center gap-3 border-b border-white/[0.06] ${'px-4'}`}
       >
@@ -481,7 +481,7 @@ function SidebarBody({
           <span className="font-bold text-[13px] tracking-wide text-white truncate">
             TRƯỜNG THỊNH PHÁT
           </span>
-          <span className="text-[10.5px] font-medium text-brass-300/90 uppercase tracking-[0.14em]">
+          <span className="text-[10.5px] font-medium text-brass-300 uppercase tracking-[0.14em]">
             Xe máy nhập khẩu
           </span>
         </div>
@@ -492,7 +492,7 @@ function SidebarBody({
       >
         {visibleGroups.map((grp) => (
           <div key={grp.group}>
-            <div className="px-3 pb-1.5 text-[10.5px] font-semibold text-slate-500 uppercase tracking-[0.12em]">
+            <div className="px-3 pb-1.5 text-[10.5px] font-bold text-slate-300 uppercase tracking-[0.14em]">
               {grp.group}
             </div>
             <div className="space-y-0.5">
@@ -508,12 +508,12 @@ function SidebarBody({
                         }))
                       }
                       aria-expanded={isOpen(item)}
-                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-slate-300 transition-colors hover:bg-white/[0.04] hover:text-slate-100"
+                      className="flex w-full items-center gap-3 rounded-lg px-3 py-2 text-left text-[13px] font-medium text-white/90 transition-colors hover:bg-white/[0.06] hover:text-white"
                     >
-                      <item.icon className="size-4 shrink-0 text-slate-500" />
+                      <item.icon className="size-4 shrink-0 text-slate-300" />
                       <span className="truncate">{item.title}</span>
                       <ChevronDown
-                        className={`ml-auto size-3.5 shrink-0 text-slate-500 transition-transform ${
+                        className={`ml-auto size-3.5 shrink-0 text-slate-300 transition-transform ${
                           isOpen(item) ? '' : '-rotate-90'
                         }`}
                       />

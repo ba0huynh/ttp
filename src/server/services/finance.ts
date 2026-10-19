@@ -18,6 +18,7 @@ import {
 import type { MatchType } from '../../db/schema.ts'
 import {
   calculateLoanInterest,
+  formatDate,
   formatVnd,
   todayIso,
 } from '../../lib/business.ts'
@@ -99,11 +100,64 @@ export async function recordLoanRepayment(input: {
   companyBankAccountId?: number | null
   note?: string | null
 }) {
-  const status = await getLoanStatus(input.loanContractId, input.paymentDate)
-  if (input.principalAmount > status.outstanding + 0.5)
-    throw new BusinessError('Số tiền trả gốc vượt quá dư nợ còn lại')
+  const [loan] = await db
+    .select()
+    .from(loanContracts)
+    .where(eq(loanContracts.id, input.loanContractId))
+  if (!loan) throw new BusinessError('Không tìm thấy khế ước')
+
+  if (input.paymentDate < loan.disbursementDate) {
+    throw new BusinessError(
+      `Ngày thanh toán (${formatDate(input.paymentDate)}) không thể trước ngày giải ngân (${formatDate(loan.disbursementDate)})`,
+    )
+  }
+
   if (input.principalAmount <= 0 && input.interestAmount <= 0)
     throw new BusinessError('Số tiền trả phải lớn hơn 0')
+
+  const existingRepayments = await db
+    .select()
+    .from(loanRepayments)
+    .where(eq(loanRepayments.loanContractId, input.loanContractId))
+
+  const totalPrincipalPaid = existingRepayments.reduce(
+    (s, r) => s + num(r.principalAmount),
+    0,
+  )
+  const remainingPrincipal = num(loan.principalAmount) - totalPrincipalPaid
+  if (input.principalAmount > remainingPrincipal + 0.5) {
+    throw new BusinessError(
+      `Số tiền trả gốc (${formatVnd(input.principalAmount)}) vượt quá dư nợ còn lại (${formatVnd(remainingPrincipal)})`,
+    )
+  }
+
+  // Calculate accrued interest from disbursement date up to input.paymentDate
+  const interestAtPaymentDate = calculateLoanInterest({
+    principal: num(loan.principalAmount),
+    annualRatePercent: num(loan.interestRate),
+    disbursementDate: loan.disbursementDate,
+    asOf: input.paymentDate,
+    principalRepayments: existingRepayments.map((r) => ({
+      date: r.paymentDate,
+      amount: num(r.principalAmount),
+    })),
+  })
+
+  const otherInterestPaid = existingRepayments.reduce(
+    (s, r) => s + num(r.interestAmount),
+    0,
+  )
+  const maxAllowedInterest = Math.max(
+    0,
+    interestAtPaymentDate.totalInterest - otherInterestPaid,
+  )
+
+  if (input.interestAmount > maxAllowedInterest + 1.0) {
+    throw new BusinessError(
+      `Số tiền trả lãi (${formatVnd(input.interestAmount)}) vượt quá số lãi phát sinh lũy kế đến ngày ${formatDate(input.paymentDate)} (tối đa có thể trả: ${formatVnd(maxAllowedInterest)})`,
+    )
+  }
+
   await db.insert(loanRepayments).values({
     loanContractId: input.loanContractId,
     paymentDate: input.paymentDate,
@@ -131,17 +185,65 @@ export async function updateLoanRepayment(
     .where(eq(loanRepayments.id, id))
   if (!repayment) throw new BusinessError('Không tìm thấy đợt thanh toán này')
 
+  const [loan] = await db
+    .select()
+    .from(loanContracts)
+    .where(eq(loanContracts.id, repayment.loanContractId))
+  if (!loan) throw new BusinessError('Không tìm thấy khế ước')
+
+  if (input.paymentDate < loan.disbursementDate) {
+    throw new BusinessError(
+      `Ngày thanh toán (${formatDate(input.paymentDate)}) không thể trước ngày giải ngân (${formatDate(loan.disbursementDate)})`,
+    )
+  }
+
   if (input.principalAmount <= 0 && input.interestAmount <= 0)
     throw new BusinessError('Số tiền trả phải lớn hơn 0')
 
-  const status = await getLoanStatus(
-    repayment.loanContractId,
-    input.paymentDate,
+  const allRepayments = await db
+    .select()
+    .from(loanRepayments)
+    .where(eq(loanRepayments.loanContractId, repayment.loanContractId))
+
+  const otherRepayments = allRepayments.filter((r) => r.id !== id)
+
+  const otherPrincipalPaid = otherRepayments.reduce(
+    (s, r) => s + num(r.principalAmount),
+    0,
   )
-  const maxAllowedPrincipal =
-    status.outstanding + num(repayment.principalAmount)
-  if (input.principalAmount > maxAllowedPrincipal + 0.5)
-    throw new BusinessError('Số tiền trả gốc vượt quá dư nợ còn lại')
+  const remainingPrincipal = num(loan.principalAmount) - otherPrincipalPaid
+  if (input.principalAmount > remainingPrincipal + 0.5) {
+    throw new BusinessError(
+      `Số tiền trả gốc (${formatVnd(input.principalAmount)}) vượt quá dư nợ còn lại (${formatVnd(remainingPrincipal)})`,
+    )
+  }
+
+  // Calculate accrued interest from disbursement date up to input.paymentDate
+  const interestAtPaymentDate = calculateLoanInterest({
+    principal: num(loan.principalAmount),
+    annualRatePercent: num(loan.interestRate),
+    disbursementDate: loan.disbursementDate,
+    asOf: input.paymentDate,
+    principalRepayments: otherRepayments.map((r) => ({
+      date: r.paymentDate,
+      amount: num(r.principalAmount),
+    })),
+  })
+
+  const otherInterestPaid = otherRepayments.reduce(
+    (s, r) => s + num(r.interestAmount),
+    0,
+  )
+  const maxAllowedInterest = Math.max(
+    0,
+    interestAtPaymentDate.totalInterest - otherInterestPaid,
+  )
+
+  if (input.interestAmount > maxAllowedInterest + 1.0) {
+    throw new BusinessError(
+      `Số tiền trả lãi (${formatVnd(input.interestAmount)}) vượt quá số lãi phát sinh lũy kế đến ngày ${formatDate(input.paymentDate)} (tối đa có thể trả: ${formatVnd(maxAllowedInterest)})`,
+    )
+  }
 
   await db
     .update(loanRepayments)
@@ -497,8 +599,8 @@ export async function suggestMatches(lineId: number) {
     .where(eq(bankStatementLines.id, lineId))
   if (!line) throw new BusinessError('Không tìm thấy dòng sao kê')
   const d = line.transactionDate
-  const from = sql`DATE_SUB(${d}, INTERVAL 5 DAY)`
-  const to = sql`DATE_ADD(${d}, INTERVAL 5 DAY)`
+  const from = sql`DATE_SUB(${d}, INTERVAL 60 DAY)`
+  const to = sql`DATE_ADD(${d}, INTERVAL 60 DAY)`
 
   const notMatched = (type: MatchType, idCol: unknown) =>
     sql`NOT EXISTS (SELECT 1 FROM ${bankStatementLines} l WHERE l.matched_type = ${type} AND l.matched_id = ${idCol})`
@@ -510,6 +612,7 @@ export async function suggestMatches(lineId: number) {
         number: customers.name,
         date: receiptVouchers.receiptDate,
         amount: receiptVouchers.amount,
+        description: sql<string | null>`NULL`,
       })
       .from(receiptVouchers)
       .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
@@ -534,6 +637,7 @@ export async function suggestMatches(lineId: number) {
       number: sql<string>`coalesce(${suppliers.name}, ${paymentVouchers.payeeName}, '')`,
       date: paymentVouchers.paymentDate,
       amount: paymentVouchers.amount,
+      description: paymentVouchers.description,
     })
     .from(paymentVouchers)
     .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
@@ -551,6 +655,7 @@ export async function suggestMatches(lineId: number) {
       number: loanContracts.contractNumber,
       date: loanRepayments.paymentDate,
       amount: sql<string>`${loanRepayments.principalAmount} + ${loanRepayments.interestAmount}`,
+      description: loanRepayments.note,
     })
     .from(loanRepayments)
     .innerJoin(

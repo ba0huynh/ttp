@@ -4,7 +4,14 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowLeft, Check, Pencil, Plus, Trash2, X } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Plus,
+  Trash2,
+  X,
+} from 'lucide-react'
 import * as React from 'react'
 import { toast } from 'sonner'
 
@@ -30,7 +37,7 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import {
   addMonthsIso,
-  projectLoanTermInterest,
+  calculateLoanInterest,
   formatDate,
   formatVnd,
   todayIso,
@@ -125,6 +132,46 @@ function LoanDetailPage() {
     companyBankAccountId: null,
   })
 
+  const { loan } = loanDetail
+  const currentInterestLeft = Math.max(
+    0,
+    loanDetail.accruedInterest - loanDetail.interestPaid,
+  )
+  const currentTotalOwing = loanDetail.outstanding + currentInterestLeft
+
+  const otherRepayments = React.useMemo(() => {
+    return loanDetail.repayments.filter((r) => r.id !== editingRepaymentId)
+  }, [loanDetail.repayments, editingRepaymentId])
+
+  const maxPrincipalAllowed = React.useMemo(() => {
+    const otherPaid = otherRepayments.reduce(
+      (s, r) => s + (Number(r.principalAmount) || 0),
+      0,
+    )
+    return Math.max(0, loan.principalAmount - otherPaid)
+  }, [loan.principalAmount, otherRepayments])
+
+  const maxInterestAllowed = React.useMemo(() => {
+    if (!rDraft.paymentDate || rDraft.paymentDate < loan.disbursementDate) {
+      return 0
+    }
+    const result = calculateLoanInterest({
+      principal: loan.principalAmount,
+      annualRatePercent: loan.interestRate,
+      disbursementDate: loan.disbursementDate,
+      asOf: rDraft.paymentDate,
+      principalRepayments: otherRepayments.map((r) => ({
+        date: r.paymentDate,
+        amount: Number(r.principalAmount) || 0,
+      })),
+    })
+    const otherPaid = otherRepayments.reduce(
+      (s, r) => s + (Number(r.interestAmount) || 0),
+      0,
+    )
+    return Math.max(0, result.totalInterest - otherPaid)
+  }, [loan, rDraft.paymentDate, otherRepayments])
+
   const accountLabel = React.useCallback(
     (bankAccountId: number | null | undefined) => {
       if (!bankAccountId) return '—'
@@ -136,10 +183,27 @@ function LoanDetailPage() {
   )
 
   const startAddRepayment = () => {
+    const today = todayIso()
+    const result = calculateLoanInterest({
+      principal: loan.principalAmount,
+      annualRatePercent: loan.interestRate,
+      disbursementDate: loan.disbursementDate,
+      asOf: today,
+      principalRepayments: loanDetail.repayments.map((r) => ({
+        date: r.paymentDate,
+        amount: Number(r.principalAmount) || 0,
+      })),
+    })
+    const paid = loanDetail.repayments.reduce(
+      (s, r) => s + (Number(r.interestAmount) || 0),
+      0,
+    )
+    const maxToday = Math.max(0, result.totalInterest - paid)
+
     setRDraft({
-      paymentDate: todayIso(),
+      paymentDate: today,
       principalAmount: 0,
-      interestAmount: loanDetail.interestDue > 0 ? loanDetail.interestDue : 0,
+      interestAmount: maxToday,
       companyBankAccountId:
         master.bankAccounts.find((a) => a.isActive)?.id ?? null,
     })
@@ -169,8 +233,26 @@ function LoanDetailPage() {
       toast.error('Vui lòng chọn ngày thanh toán (viền đỏ)')
       return
     }
+    if (rDraft.paymentDate < loan.disbursementDate) {
+      toast.error(
+        `Ngày thanh toán (${formatDate(rDraft.paymentDate)}) không thể trước ngày giải ngân (${formatDate(loan.disbursementDate)})`,
+      )
+      return
+    }
     if (rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0) {
       toast.error('Vui lòng nhập số tiền gốc hoặc lãi cần trả (viền đỏ)')
+      return
+    }
+    if (rDraft.principalAmount > maxPrincipalAllowed + 0.5) {
+      toast.error(
+        `Số tiền trả gốc (${formatVnd(rDraft.principalAmount)}) vượt quá dư nợ gốc còn lại (tối đa ${formatVnd(maxPrincipalAllowed)})`,
+      )
+      return
+    }
+    if (rDraft.interestAmount > maxInterestAllowed + 1.0) {
+      toast.error(
+        `Số tiền trả lãi (${formatVnd(rDraft.interestAmount)}) vượt quá số lãi phát sinh đến ngày ${formatDate(rDraft.paymentDate)} (tối đa ${formatVnd(maxInterestAllowed)})`,
+      )
       return
     }
 
@@ -292,21 +374,18 @@ function LoanDetailPage() {
     handleRowArrowNavigation(e)
   }
 
-  const { loan } = loanDetail
-  const termEstimate = projectLoanTermInterest({
-    principal: loan.principalAmount,
-    annualRatePercent: loan.interestRate,
-    disbursementDate: loan.disbursementDate,
-    termMonths: loan.termMonths,
-    principalRepayments: loanDetail.repayments.map((r) => ({
-      date: r.paymentDate,
-      amount: r.principalAmount,
-    })),
-  })
+
+  const hasZeroError =
+    rSubmitted && rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0
+  const hasInterestOverError =
+    editingRepaymentId !== null &&
+    rDraft.interestAmount > maxInterestAllowed + 1.0
+  const hasPrincipalOverError =
+    editingRepaymentId !== null &&
+    rDraft.principalAmount > maxPrincipalAllowed + 0.5
 
   const renderEditingRow = (key: string | number) => {
-    const hasZeroError =
-      rSubmitted && rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0
+
     return (
       <TableRow
         key={key}
@@ -340,9 +419,10 @@ function LoanDetailPage() {
             blankZero
             placeholder="Tiền gốc"
             onKeyDown={handleRepaymentKeyDown}
+            title={`Tối đa có thể trả: ${formatVnd(maxPrincipalAllowed)}`}
             className={cn(
               'h-8 text-xs text-right bg-white',
-              hasZeroError &&
+              (hasZeroError || hasPrincipalOverError) &&
                 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
             )}
           />
@@ -356,9 +436,10 @@ function LoanDetailPage() {
             blankZero
             placeholder="Tiền lãi"
             onKeyDown={handleRepaymentKeyDown}
+            title={`Tối đa có thể trả đến ngày này: ${formatVnd(maxInterestAllowed)}`}
             className={cn(
               'h-8 text-xs text-right bg-white',
-              hasZeroError &&
+              (hasZeroError || hasInterestOverError) &&
                 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
             )}
           />
@@ -432,10 +513,6 @@ function LoanDetailPage() {
               <strong>{loan.termMonths} tháng</strong> (đáo hạn dự kiến{' '}
               {formatDate(addMonthsIso(loan.disbursementDate, loan.termMonths))}
               )
-              <br />
-              Lãi ước tính: <strong>{formatVnd(termEstimate.monthly)}</strong>
-              /tháng · <strong>{formatVnd(termEstimate.total)}</strong> cả kỳ
-              hạn
             </>
           }
         />
@@ -444,13 +521,16 @@ function LoanDetailPage() {
           {/* 1. 365-day declining balance interest schedule */}
           <Card className="border-slate-200 shadow-xs">
             <CardContent className="p-4">
-              <div className="text-xs font-bold text-slate-800 mb-2 flex items-center justify-between">
+              <div className="text-xs font-bold text-slate-800 mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span>
                   Bảng Tính Lãi Từng Đoạn Theo Dư Nợ Giảm Dần (Quy ước 365
                   ngày):
                 </span>
-                <span className="text-purple-900 font-bold">
-                  Tổng lãi phát sinh: {formatVnd(loanDetail.accruedInterest)}
+                <span className="text-slate-600 font-medium">
+                  Lãi phát sinh lũy kế:{' '}
+                  <strong className="text-slate-900 font-bold tabular">
+                    {formatVnd(loanDetail.accruedInterest)}
+                  </strong>
                 </span>
               </div>
               <div className="border border-slate-200 rounded-lg overflow-x-auto">
@@ -497,18 +577,48 @@ function LoanDetailPage() {
           {/* 2. Repayment history with inline create, edit and delete */}
           <Card className="border-slate-200 shadow-xs">
             <CardContent className="p-4">
-              <div className="flex items-center justify-between mb-3">
-                <div className="text-xs font-bold text-slate-800">
-                  Lịch Sử Các Đợt Đã Trả Nợ (Gốc:{' '}
-                  {formatVnd(loanDetail.principalPaid)} &bull; Lãi:{' '}
-                  {formatVnd(loanDetail.interestPaid)}):
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <span className="text-xs font-bold text-slate-800">
+                    Lịch Sử Các Đợt Đã Trả Nợ:
+                  </span>
+                  <div className="flex flex-wrap items-center gap-2 text-xs">
+                    <span className="text-slate-300 hidden sm:inline">&bull;</span>
+                    <span className="text-slate-500">
+                      Gốc còn nợ:{' '}
+                      <strong className="text-blue-700 font-semibold tabular">
+                        {formatVnd(loanDetail.outstanding)}
+                      </strong>
+                    </span>
+                    <span className="text-slate-300">&bull;</span>
+                    <span className="text-slate-500">
+                      Lãi còn nợ:{' '}
+                      <strong
+                        className={`font-semibold tabular ${
+                          currentInterestLeft > 0
+                            ? 'text-amber-700'
+                            : 'text-emerald-700'
+                        }`}
+                      >
+                        {formatVnd(currentInterestLeft)}
+                      </strong>
+                    </span>
+                    <span className="text-slate-300">&bull;</span>
+                    <span className="text-slate-500">
+                      Tổng nợ:{' '}
+                      <strong className="text-slate-900 font-bold tabular">
+                        {formatVnd(currentTotalOwing)}
+                      </strong>
+                    </span>
+                  </div>
                 </div>
+
                 {canManage && (
                   <Button
                     type="button"
                     size="sm"
                     variant="outline"
-                    className="h-8 gap-1.5 rounded-lg bg-white text-xs border-purple-300 text-purple-900 hover:bg-purple-50"
+                    className="h-8 gap-1.5 rounded-lg bg-white text-xs border-purple-300 text-purple-900 hover:bg-purple-50 shrink-0"
                     onClick={startAddRepayment}
                     disabled={editingRepaymentId !== null}
                   >
@@ -517,6 +627,37 @@ function LoanDetailPage() {
                   </Button>
                 )}
               </div>
+
+              {/* Inline warning banner when entered amounts exceed ceilings */}
+              {editingRepaymentId !== null &&
+                (hasInterestOverError || hasPrincipalOverError) && (
+                  <div className="mb-3 px-3 py-2 rounded-lg bg-rose-50 border border-rose-200 text-xs text-rose-700 flex items-center gap-2">
+                    <AlertCircle className="size-4 shrink-0 text-rose-600" />
+                    <div className="flex-1 space-y-0.5">
+                      {hasInterestOverError && (
+                        <div>
+                          Tiền lãi nhập ({formatVnd(rDraft.interestAmount)})
+                          vượt quá lãi phát sinh đến ngày{' '}
+                          {formatDate(rDraft.paymentDate)} (Tối đa:{' '}
+                          <strong className="text-rose-950 font-bold">
+                            {formatVnd(maxInterestAllowed)}
+                          </strong>
+                          ).
+                        </div>
+                      )}
+                      {hasPrincipalOverError && (
+                        <div>
+                          Tiền gốc nhập ({formatVnd(rDraft.principalAmount)})
+                          vượt quá dư nợ gốc còn lại (Tối đa:{' '}
+                          <strong className="text-rose-950 font-bold">
+                            {formatVnd(maxPrincipalAllowed)}
+                          </strong>
+                          ).
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                )}
 
               {loanDetail.repayments.length === 0 &&
               editingRepaymentId !== 'new' ? (
@@ -602,19 +743,7 @@ function LoanDetailPage() {
                               onClick={(ev) => ev.stopPropagation()}
                             >
                               {canManage && (
-                                <div className="flex items-center justify-end gap-1">
-                                  <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="icon"
-                                    className="size-7 text-slate-400 hover:text-purple-700 hover:bg-purple-50"
-                                    onClick={() => startEditRepayment(r)}
-                                    disabled={editingRepaymentId !== null}
-                                    aria-label="Sửa đợt trả nợ"
-                                    title="Sửa đợt trả nợ"
-                                  >
-                                    <Pencil className="size-3.5" />
-                                  </Button>
+                                <div className="flex items-center justify-end">
                                   <Button
                                     type="button"
                                     variant="ghost"

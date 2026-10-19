@@ -1,10 +1,8 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import {
-  AlertCircle,
   ArrowRight,
   Banknote,
-  Clock,
   FileText,
   Landmark,
   Warehouse,
@@ -13,7 +11,6 @@ import {
 import { DualInventoryBadge } from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader, StatCard } from '#/components/layout/StatCard.tsx'
-import { Alert, AlertDescription, AlertTitle } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -79,64 +76,6 @@ function DashboardPage() {
           title="Bàn làm việc"
           description="Dòng tiền, tồn kho 2 lớp (thực tế và hóa đơn) và dư nợ khế ước vay — cập nhật theo thời gian thực."
         />
-
-        {/* DUAL INDEPENDENT INVENTORY ALERTS (Core Business Rule) */}
-        {(inv.invoicedNotDelivered > 0 || inv.deliveredNotInvoiced > 0) && (
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {inv.invoicedNotDelivered > 0 && (
-              <Alert className="bg-amber-50 border-amber-200 text-amber-900">
-                <AlertCircle className="size-5 text-amber-600" />
-                <AlertTitle className="font-bold text-amber-900 flex items-center justify-between">
-                  <span>
-                    Kho hóa đơn đã xuất — Xe còn tại kho (
-                    {inv.invoicedNotDelivered} xe)
-                  </span>
-                  <Link to="/inventory">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="text-amber-800 p-0 h-auto text-xs font-semibold underline"
-                    >
-                      Chi tiết &rarr;
-                    </Button>
-                  </Link>
-                </AlertTitle>
-                <AlertDescription className="text-xs text-amber-700 mt-1">
-                  Có <strong>{inv.invoicedNotDelivered} xe</strong> đã xuất hóa
-                  đơn nội bộ (để khách làm hồ sơ/thủ tục vay) nhưng xe vật lý
-                  vẫn gửi lưu kho Trường Thịnh Phát chờ phương tiện vận chuyển
-                  tới nhận.
-                </AlertDescription>
-              </Alert>
-            )}
-
-            {inv.deliveredNotInvoiced > 0 && (
-              <Alert className="bg-sky-50 border-sky-200 text-sky-900">
-                <Clock className="size-5 text-sky-600" />
-                <AlertTitle className="font-bold text-sky-900 flex items-center justify-between">
-                  <span>
-                    Đã giao xe vật lý — Chưa lập hóa đơn (
-                    {inv.deliveredNotInvoiced} xe)
-                  </span>
-                  <Link to="/inventory">
-                    <Button
-                      variant="link"
-                      size="sm"
-                      className="text-sky-800 p-0 h-auto text-xs font-semibold underline"
-                    >
-                      Chi tiết &rarr;
-                    </Button>
-                  </Link>
-                </AlertTitle>
-                <AlertDescription className="text-xs text-sky-700 mt-1">
-                  Có <strong>{inv.deliveredNotInvoiced} xe</strong> đã bàn giao
-                  chở đi cho đại lý nhưng kế toán chưa lập hóa đơn chứng từ xuất
-                  bán.
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
-        )}
 
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           <StatCard

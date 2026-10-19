@@ -47,7 +47,7 @@ export function AuthShell({
       <aside className="hidden lg:flex relative overflow-hidden bg-ink-900 text-slate-300 flex-col justify-between p-12">
         <div
           aria-hidden
-          className="absolute inset-0 opacity-[0.35] [background-image:radial-gradient(oklch(0.45_0.05_170)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(160deg,black,transparent_70%)]"
+          className="absolute inset-0 opacity-[0.35] [background-image:radial-gradient(oklch(0.5_0.06_254)_1px,transparent_1px)] [background-size:22px_22px] [mask-image:linear-gradient(160deg,black,transparent_70%)]"
         />
         <div
           aria-hidden
@@ -107,7 +107,7 @@ export function AuthShell({
             </div>
           </div>
 
-          <Card className="shadow-[0_1px_2px_oklch(0.22_0.015_200/0.04),0_12px_32px_-12px_oklch(0.22_0.015_200/0.18)]">
+          <Card className="shadow-[0_1px_2px_oklch(0.22_0.015_255/0.04),0_12px_32px_-12px_oklch(0.22_0.015_255/0.18)]">
             <CardHeader className="pb-4">
               <CardTitle className="text-xl font-bold text-slate-900">
                 {title}

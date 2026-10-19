@@ -4,14 +4,19 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import {
   ArrowRightLeft,
   Check,
   CheckCircle2,
+  ExternalLink,
+  Eye,
   Loader2,
   Pencil,
+  RotateCcw,
+  Search,
   SlidersHorizontal,
+  Unlink,
   Upload,
 } from 'lucide-react'
 import * as React from 'react'
@@ -192,6 +197,92 @@ function ReconcilePage() {
     staleTime: 0,
   })
 
+  // Suggestion filters & infinite scroll
+  const SUGGEST_PAGE_SIZE = 6
+  const [suggestSearch, setSuggestSearch] = React.useState('')
+  const [suggestType, setSuggestType] = React.useState<string[]>([])
+  const [suggestFrom, setSuggestFrom] = React.useState('')
+  const [suggestTo, setSuggestTo] = React.useState('')
+  const [suggestMin, setSuggestMin] = React.useState('')
+  const [suggestMax, setSuggestMax] = React.useState('')
+  const [showSuggestFilters, setShowSuggestFilters] = React.useState(false)
+  const [suggestVisibleCount, setSuggestVisibleCount] =
+    React.useState(SUGGEST_PAGE_SIZE)
+  const suggestScrollRef = React.useRef<HTMLDivElement | null>(null)
+
+  React.useEffect(() => {
+    if (matchingLineId !== null) {
+      setSuggestSearch('')
+      setSuggestType([])
+      setSuggestFrom('')
+      setSuggestTo('')
+      setSuggestMin('')
+      setSuggestMax('')
+      setShowSuggestFilters(false)
+      setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+      if (suggestScrollRef.current) {
+        suggestScrollRef.current.scrollTop = 0
+      }
+    }
+  }, [matchingLineId])
+
+  const suggestActiveFilterCount =
+    (suggestSearch ? 1 : 0) +
+    (suggestType.length ? 1 : 0) +
+    (suggestFrom || suggestTo ? 1 : 0) +
+    (suggestMin || suggestMax ? 1 : 0)
+
+  const clearSuggestFilters = () => {
+    setSuggestSearch('')
+    setSuggestType([])
+    setSuggestFrom('')
+    setSuggestTo('')
+    setSuggestMin('')
+    setSuggestMax('')
+    setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+  }
+
+  const filteredSuggestions = React.useMemo(() => {
+    return suggestions.filter((s: any) => {
+      if (suggestSearch) {
+        const q = suggestSearch.toLowerCase()
+        const matchNum = String(s.number || '').toLowerCase().includes(q)
+        const matchDesc = String(s.description || '').toLowerCase().includes(q)
+        const matchAmt = String(s.amount).includes(q)
+        if (!matchNum && !matchDesc && !matchAmt) return false
+      }
+      if (suggestType.length > 0 && !suggestType.includes(s.type)) {
+        return false
+      }
+      if (suggestFrom && s.date < suggestFrom) return false
+      if (suggestTo && s.date > suggestTo) return false
+      if (suggestMin && s.amount < Number(suggestMin)) return false
+      if (suggestMax && s.amount > Number(suggestMax)) return false
+      return true
+    })
+  }, [
+    suggestions,
+    suggestSearch,
+    suggestType,
+    suggestFrom,
+    suggestTo,
+    suggestMin,
+    suggestMax,
+  ])
+
+  const visibleSuggestions = React.useMemo(() => {
+    return filteredSuggestions.slice(0, suggestVisibleCount)
+  }, [filteredSuggestions, suggestVisibleCount])
+
+  const handleSuggestScroll = (e: React.UIEvent<HTMLDivElement>) => {
+    const { scrollTop, scrollHeight, clientHeight } = e.currentTarget
+    if (scrollTop + clientHeight >= scrollHeight - 30) {
+      setSuggestVisibleCount((prev) =>
+        Math.min(prev + SUGGEST_PAGE_SIZE, filteredSuggestions.length),
+      )
+    }
+  }
+
   // Khớp giao dịch ảnh hưởng sao kê, phiếu thu/chi, công nợ và khế ước vay
   const refresh = () => queryClient.invalidateQueries()
   const matchLine = useMutation({
@@ -224,6 +315,9 @@ function ReconcilePage() {
     debit: number
     credit: number
   } | null>(null)
+  const [viewingMatchLine, setViewingMatchLine] = React.useState<any | null>(
+    null,
+  )
 
   const handleSaveLine = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -454,10 +548,15 @@ function ReconcilePage() {
                             {isMatched ? (
                               <Badge
                                 variant="outline"
-                                className="bg-emerald-50 text-emerald-800 border-emerald-300 text-[11px] gap-1"
+                                onClick={() => setViewingMatchLine(l)}
+                                className="bg-emerald-50 text-emerald-800 border-emerald-300 text-[11px] gap-1 cursor-pointer hover:bg-emerald-100 transition-colors"
+                                title="Bấm để xem chi tiết khớp"
                               >
                                 <CheckCircle2 className="size-3 text-emerald-600" />
-                                Đã khớp ({l.matchedType})
+                                Đã khớp ·{' '}
+                                {MATCH_LABELS[
+                                  l.matchedType as keyof typeof MATCH_LABELS
+                                ] ?? 'Chứng từ'}
                               </Badge>
                             ) : (
                               <Badge
@@ -480,20 +579,35 @@ function ReconcilePage() {
                                 Tìm khớp
                               </Button>
                             ) : (
-                              <Button
-                                variant="ghost"
-                                size="sm"
-                                className="h-7 gap-1 text-xs text-slate-400 hover:text-rose-600"
-                                disabled={setLineStatus.isPending}
-                                onClick={() => handleUnmatch(l.id)}
-                              >
-                                {cancellingLineId === l.id && (
-                                  <Loader2 className="size-3 animate-spin" />
-                                )}
-                                {cancellingLineId === l.id
-                                  ? 'Đang hủy...'
-                                  : 'Hủy khớp'}
-                              </Button>
+                              <div className="inline-flex items-center gap-1.5">
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  className="h-7 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1 px-2 font-medium"
+                                  onClick={() => setViewingMatchLine(l)}
+                                  title="Xem chi tiết chứng từ đã khớp"
+                                >
+                                  <Eye className="size-3" />
+                                  Xem khớp
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-7 gap-1 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 px-2"
+                                  disabled={setLineStatus.isPending}
+                                  onClick={() => handleUnmatch(l.id)}
+                                  title="Gỡ liên kết khớp"
+                                >
+                                  {cancellingLineId === l.id ? (
+                                    <Loader2 className="size-3 animate-spin" />
+                                  ) : (
+                                    <Unlink className="size-3" />
+                                  )}
+                                  {cancellingLineId === l.id
+                                    ? 'Đang gỡ...'
+                                    : 'Gỡ khớp'}
+                                </Button>
+                              </div>
                             )}
                             <Can permission="reconcile.manage">
                               <Button
@@ -685,18 +799,87 @@ function ReconcilePage() {
           open={matchingLineId !== null}
           onOpenChange={(open) => !open && setMatchingLineId(null)}
         >
-          <DialogContent className="sm:max-w-4xl">
-            <DialogHeader>
+          <DialogContent className="max-h-[85vh] sm:max-w-4xl flex flex-col p-6 overflow-hidden">
+            <DialogHeader className="shrink-0">
               <DialogTitle className="text-base font-bold text-slate-900">
                 Gợi Ý Chứng Từ Khớp Với Giao Dịch Sao Kê
               </DialogTitle>
               <DialogDescription className="text-xs">
                 Tự động tìm kiếm các Phiếu thu, Phiếu chi hoặc Khoản trả nợ khế
-                ước có cùng số tiền và trong phạm vi &plusmn;5 ngày.
+                ước có cùng số tiền và ngày giao dịch gần đây.
               </DialogDescription>
             </DialogHeader>
 
-            <div className="py-2">
+            {/* Search and filters toolbar */}
+            <div className="space-y-2 pt-1 shrink-0">
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
+                <div className="relative flex-1">
+                  <Search className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                  <Input
+                    value={suggestSearch}
+                    onChange={(e) => {
+                      setSuggestSearch(e.target.value)
+                      setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+                    }}
+                    placeholder="Tìm theo tên đối tác, số hợp đồng/chứng từ, ghi chú..."
+                    className="h-9 pl-9 pr-8 text-xs rounded-lg"
+                  />
+                  {suggestSearch && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setSuggestSearch('')
+                        setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+                      }}
+                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 size-4 flex items-center justify-center text-xs"
+                      title="Xóa tìm kiếm"
+                    >
+                      ×
+                    </button>
+                  )}
+                </div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowSuggestFilters(true)}
+                  className="h-9 text-xs gap-1.5 shrink-0"
+                >
+                  <SlidersHorizontal className="size-3.5" />
+                  Bộ lọc
+                  {suggestActiveFilterCount > 0 && (
+                    <span className="ml-0.5 px-1.5 py-0.2 rounded-full text-[10px] font-bold bg-emerald-600 text-white">
+                      {suggestActiveFilterCount}
+                    </span>
+                  )}
+                </Button>
+
+                {suggestActiveFilterCount > 0 && (
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    onClick={clearSuggestFilters}
+                    className="h-9 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 px-2.5 gap-1 shrink-0"
+                  >
+                    <RotateCcw className="size-3" />
+                    Xóa lọc
+                  </Button>
+                )}
+
+                <div className="text-[11px] text-slate-500 whitespace-nowrap self-center shrink-0">
+                  Hiển thị <strong>{visibleSuggestions.length}</strong> / {filteredSuggestions.length} chứng từ
+                </div>
+              </div>
+            </div>
+
+            {/* List with infinite scroll */}
+            <div
+              ref={suggestScrollRef}
+              onScroll={handleSuggestScroll}
+              className="py-2 overflow-y-auto max-h-[50vh] min-h-[200px] flex-1 my-1 pr-1 space-y-2"
+            >
               {loadingSuggestions ? (
                 <div className="py-8 text-center text-xs text-slate-400">
                   Đang tìm chứng từ phù hợp...
@@ -706,18 +889,31 @@ function ReconcilePage() {
                   Không tìm thấy chứng từ nội bộ nào có cùng số tiền và ngày
                   giao dịch gần đây.
                 </div>
+              ) : filteredSuggestions.length === 0 ? (
+                <div className="py-8 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-dashed flex flex-col items-center justify-center gap-2">
+                  <span>Không tìm thấy chứng từ nào khớp với bộ lọc hiện tại.</span>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={clearSuggestFilters}
+                    className="h-7 text-xs"
+                  >
+                    Xóa bộ lọc
+                  </Button>
+                </div>
               ) : (
-                <div className="space-y-2">
-                  {suggestions.map((s) => (
+                <>
+                  {visibleSuggestions.map((s: any) => (
                     <div
                       key={`${s.type}-${s.id}`}
                       className="p-3 rounded-lg border border-slate-200 hover:border-emerald-300 bg-slate-50/50 flex items-center justify-between gap-3 transition-all"
                     >
-                      <div className="space-y-1">
+                      <div className="space-y-1 min-w-0">
                         <div className="flex items-center gap-2">
                           <Badge
                             variant="outline"
-                            className="text-[10px] font-bold uppercase"
+                            className="text-[10px] font-bold uppercase shrink-0"
                           >
                             {s.type === 'receipt'
                               ? 'Phiếu Thu'
@@ -725,7 +921,7 @@ function ReconcilePage() {
                                 ? 'Phiếu Chi'
                                 : 'Trả Nợ Khế Ước'}
                           </Badge>
-                          <span className="font-medium text-slate-900 text-xs">
+                          <span className="font-medium text-slate-900 text-xs truncate">
                             {s.number}
                           </span>
                         </div>
@@ -735,11 +931,16 @@ function ReconcilePage() {
                             {formatVnd(s.amount)}
                           </strong>
                         </div>
+                        {s.description && (
+                          <div className="text-[11px] text-slate-500 italic truncate max-w-md">
+                            {s.description}
+                          </div>
+                        )}
                       </div>
 
                       <Button
                         size="sm"
-                        className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1"
+                        className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1 shrink-0"
                         disabled={matchLine.isPending}
                         onClick={() => handleMatch(s.type, s.id)}
                       >
@@ -754,11 +955,25 @@ function ReconcilePage() {
                       </Button>
                     </div>
                   ))}
-                </div>
+
+                  {/* Infinite scroll sentinel / loading indicator */}
+                  {suggestVisibleCount < filteredSuggestions.length && (
+                    <div className="py-2.5 text-center text-xs text-slate-500 font-medium flex items-center justify-center gap-2 border-t border-slate-100">
+                      <Loader2 className="size-3.5 animate-spin text-emerald-700" />
+                      Đang cuộn tải thêm chứng từ ({visibleSuggestions.length}/{filteredSuggestions.length})...
+                    </div>
+                  )}
+
+                  {suggestVisibleCount >= filteredSuggestions.length && filteredSuggestions.length > SUGGEST_PAGE_SIZE && (
+                    <div className="py-2 text-center text-[11px] text-slate-400">
+                      Đã hiển thị toàn bộ {filteredSuggestions.length} chứng từ gợi ý
+                    </div>
+                  )}
+                </>
               )}
             </div>
 
-            <DialogFooter>
+            <DialogFooter className="shrink-0 pt-2 border-t border-slate-100">
               <Button
                 type="button"
                 variant="outline"
@@ -767,6 +982,109 @@ function ReconcilePage() {
                 className="h-8 text-xs"
               >
                 Đóng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Suggestion Filter Popup Dialog */}
+        <Dialog
+          open={showSuggestFilters}
+          onOpenChange={setShowSuggestFilters}
+        >
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Bộ Lọc Gợi Ý Chứng Từ
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Thu hẹp danh sách các chứng từ nội bộ cần tìm khớp.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-3 py-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Loại chứng từ</Label>
+                <MultiSearchSelect
+                  className="h-10 w-full text-xs rounded-lg"
+                  placeholder="Tất cả loại chứng từ"
+                  values={suggestType}
+                  onValuesChange={(vals) => {
+                    setSuggestType(vals)
+                    setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+                  }}
+                >
+                  <SearchSelectItem value="receipt" className="text-xs">
+                    Phiếu Thu
+                  </SearchSelectItem>
+                  <SearchSelectItem value="payment" className="text-xs">
+                    Phiếu Chi
+                  </SearchSelectItem>
+                  <SearchSelectItem value="loan_repayment" className="text-xs">
+                    Trả Nợ Khế Ước
+                  </SearchSelectItem>
+                </MultiSearchSelect>
+              </div>
+
+              <div className="grid grid-cols-2 gap-2">
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Từ ngày</Label>
+                  <Input
+                    type="date"
+                    value={suggestFrom}
+                    onChange={(e) => {
+                      setSuggestFrom(e.target.value)
+                      setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+                    }}
+                    className="h-10 text-xs rounded-lg"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Đến ngày</Label>
+                  <Input
+                    type="date"
+                    value={suggestTo}
+                    onChange={(e) => {
+                      setSuggestTo(e.target.value)
+                      setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+                    }}
+                    className="h-10 text-xs rounded-lg"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-1">
+                <PriceRangeFilter
+                  label="Khoảng số tiền chứng từ"
+                  min={suggestMin ? Number(suggestMin) : undefined}
+                  max={suggestMax ? Number(suggestMax) : undefined}
+                  onChange={(lo, hi) => {
+                    setSuggestMin(lo !== undefined ? String(lo) : '')
+                    setSuggestMax(hi !== undefined ? String(hi) : '')
+                    setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
+                  }}
+                />
+              </div>
+            </div>
+
+            <DialogFooter className="flex items-center justify-between sm:justify-between">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={suggestActiveFilterCount === 0}
+                onClick={clearSuggestFilters}
+                className="h-8 text-xs text-slate-500"
+              >
+                Xóa lọc
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setShowSuggestFilters(false)}
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                Xong
               </Button>
             </DialogFooter>
           </DialogContent>
@@ -805,7 +1123,7 @@ function ReconcilePage() {
                 </Label>
                 <Textarea
                   rows={3}
-                  className="text-xs resize-y"
+                  className="min-h-[4.75rem] text-xs resize-y"
                   value={editLine.description}
                   onChange={(e) =>
                     setEditLine({ ...editLine, description: e.target.value })
@@ -867,6 +1185,157 @@ function ReconcilePage() {
               </DialogFooter>
             </form>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* View matched details Dialog */}
+      <Dialog
+        open={viewingMatchLine !== null}
+        onOpenChange={(o) => !o && setViewingMatchLine(null)}
+      >
+        <DialogContent className="sm:max-w-xl">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-2">
+              <CheckCircle2 className="size-5 text-emerald-600" />
+              Chi Tiết Khớp Đối Chiếu
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Thông tin liên kết giữa giao dịch sao kê ngân hàng và chứng từ nội bộ hệ thống.
+            </DialogDescription>
+          </DialogHeader>
+
+          {viewingMatchLine && (
+            <div className="space-y-4 py-2">
+              {/* Bank transaction box */}
+              <div className="rounded-lg border border-slate-200 bg-slate-50/70 p-3 space-y-2">
+                <div className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center justify-between">
+                  <span>Giao dịch sao kê</span>
+                  <Badge variant="outline" className="text-[10px] bg-white text-slate-700">
+                    {formatDate(viewingMatchLine.transactionDate)}
+                  </Badge>
+                </div>
+                <div className="text-xs text-slate-800">
+                  <span className="text-slate-500">Nội dung diễn giải: </span>
+                  <strong>{viewingMatchLine.description || '—'}</strong>
+                </div>
+                <div className="flex items-center gap-4 text-xs">
+                  {viewingMatchLine.debit > 0 && (
+                    <div>
+                      <span className="text-slate-500">Tiền ra (ghi nợ): </span>
+                      <strong className="text-rose-700 font-bold">
+                        {formatVnd(viewingMatchLine.debit)}
+                      </strong>
+                    </div>
+                  )}
+                  {viewingMatchLine.credit > 0 && (
+                    <div>
+                      <span className="text-slate-500">Tiền vào (ghi có): </span>
+                      <strong className="text-emerald-700 font-bold">
+                        {formatVnd(viewingMatchLine.credit)}
+                      </strong>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Matched Voucher Box */}
+              <div className="rounded-lg border border-emerald-200 bg-emerald-50/40 p-3 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="text-xs font-bold text-emerald-950 uppercase tracking-wider">
+                    Chứng từ nội bộ đã khớp
+                  </div>
+                  <Badge className="bg-emerald-700 text-white text-[11px] font-semibold">
+                    {viewingMatchLine.matchedInfo?.typeLabel ??
+                      MATCH_LABELS[
+                        viewingMatchLine.matchedType as keyof typeof MATCH_LABELS
+                      ] ??
+                      'Chứng từ'}
+                  </Badge>
+                </div>
+
+                {viewingMatchLine.matchedInfo ? (
+                  <div className="space-y-2 text-xs">
+                    <div className="flex justify-between items-start gap-2 border-b border-emerald-100 pb-2">
+                      <span className="text-slate-500">Đối tượng liên quan:</span>
+                      <span className="font-semibold text-slate-900 text-right">
+                        {viewingMatchLine.matchedInfo.party}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-emerald-100 pb-2">
+                      <span className="text-slate-500">Ngày lập chứng từ:</span>
+                      <span className="font-medium text-slate-800">
+                        {formatDate(viewingMatchLine.matchedInfo.date)}
+                      </span>
+                    </div>
+                    <div className="flex justify-between items-center border-b border-emerald-100 pb-2">
+                      <span className="text-slate-500">Số tiền chứng từ:</span>
+                      <span className="font-bold text-emerald-800 text-sm">
+                        {formatVnd(viewingMatchLine.matchedInfo.amount)}
+                      </span>
+                    </div>
+                    {viewingMatchLine.matchedInfo.details && (
+                      <div className="flex justify-between items-start gap-2 border-b border-emerald-100 pb-2">
+                        <span className="text-slate-500">Ghi chú / Diễn giải:</span>
+                        <span className="text-slate-800 text-right font-medium">
+                          {viewingMatchLine.matchedInfo.details}
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                ) : (
+                  <div className="text-xs text-slate-600">
+                    Khớp với {MATCH_LABELS[viewingMatchLine.matchedType as keyof typeof MATCH_LABELS] ?? viewingMatchLine.matchedType} #{viewingMatchLine.matchedId}
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
+
+          <DialogFooter className="flex items-center justify-between sm:justify-between pt-2">
+            {viewingMatchLine?.matchedInfo?.targetUrl ? (
+              <Link
+                to={viewingMatchLine.matchedInfo.targetUrl}
+                preload="intent"
+                target="_blank"
+                rel="noreferrer"
+                className="inline-flex items-center gap-1.5 text-xs text-emerald-700 hover:text-emerald-800 font-semibold underline"
+              >
+                <ExternalLink className="size-3.5" />
+                Mở trang chứng từ
+              </Link>
+            ) : (
+              <span />
+            )}
+
+            <div className="flex items-center gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setViewingMatchLine(null)}
+                className="h-8 text-xs"
+              >
+                Đóng
+              </Button>
+              {viewingMatchLine && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 gap-1"
+                  disabled={setLineStatus.isPending}
+                  onClick={async () => {
+                    const id = viewingMatchLine.id
+                    setViewingMatchLine(null)
+                    await handleUnmatch(id)
+                  }}
+                >
+                  <Unlink className="size-3.5" />
+                  Gỡ khớp
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </AppLayout>

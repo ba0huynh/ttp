@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, desc, eq, sql } from 'drizzle-orm'
+import { asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -41,6 +41,7 @@ import {
   getPayablesSummary,
   getReceivablesSummary,
 } from '#/server/services/reports.ts'
+import { formatVnd } from '#/lib/business.ts'
 import { requirePermission } from './middleware.ts'
 
 /* -------------------------------------------------------------------------- */
@@ -379,14 +380,168 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
         asc(bankStatementLines.id),
       )
 
+    const receiptIds = lines
+      .filter(
+        (l) =>
+          l.status === 'matched' &&
+          l.matchedType === 'receipt' &&
+          l.matchedId !== null,
+      )
+      .map((l) => l.matchedId as number)
+    const paymentIds = lines
+      .filter(
+        (l) =>
+          l.status === 'matched' &&
+          l.matchedType === 'payment' &&
+          l.matchedId !== null,
+      )
+      .map((l) => l.matchedId as number)
+    const loanIds = lines
+      .filter(
+        (l) =>
+          l.status === 'matched' &&
+          l.matchedType === 'loan_repayment' &&
+          l.matchedId !== null,
+      )
+      .map((l) => l.matchedId as number)
+
+    const [receiptRows, paymentRows, loanRows] = await Promise.all([
+      receiptIds.length > 0
+        ? db
+            .select({
+              id: receiptVouchers.id,
+              date: receiptVouchers.receiptDate,
+              amount: receiptVouchers.amount,
+              customerName: customers.name,
+              branchName: posBranches.name,
+              salesOrderId: receiptVouchers.salesOrderId,
+            })
+            .from(receiptVouchers)
+            .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+            .leftJoin(posBranches, eq(posBranches.id, receiptVouchers.branchId))
+            .where(inArray(receiptVouchers.id, receiptIds))
+        : [],
+      paymentIds.length > 0
+        ? db
+            .select({
+              id: paymentVouchers.id,
+              date: paymentVouchers.paymentDate,
+              amount: paymentVouchers.amount,
+              payeeType: paymentVouchers.payeeType,
+              supplierName: suppliers.name,
+              payeeName: paymentVouchers.payeeName,
+              description: paymentVouchers.description,
+            })
+            .from(paymentVouchers)
+            .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
+            .where(inArray(paymentVouchers.id, paymentIds))
+        : [],
+      loanIds.length > 0
+        ? db
+            .select({
+              id: loanRepayments.id,
+              date: loanRepayments.paymentDate,
+              principalAmount: loanRepayments.principalAmount,
+              interestAmount: loanRepayments.interestAmount,
+              note: loanRepayments.note,
+              contractNumber: loanContracts.contractNumber,
+              bankName: banks.name,
+              loanContractId: loanContracts.id,
+            })
+            .from(loanRepayments)
+            .innerJoin(
+              loanContracts,
+              eq(loanContracts.id, loanRepayments.loanContractId),
+            )
+            .innerJoin(banks, eq(banks.id, loanContracts.bankId))
+            .where(inArray(loanRepayments.id, loanIds))
+        : [],
+    ])
+
+    const receiptMap = new Map(receiptRows.map((r) => [r.id, r]))
+    const paymentMap = new Map(paymentRows.map((p) => [p.id, p]))
+    const loanMap = new Map(loanRows.map((m) => [m.id, m]))
+
     return {
       statement,
-      lines: lines.map((l) => ({
-        ...l,
-        debit: num(l.debit),
-        credit: num(l.credit),
-        balance: l.balance !== null ? num(l.balance) : null,
-      })),
+      lines: lines.map((l) => {
+        let matchedInfo: {
+          type: 'receipt' | 'payment' | 'loan_repayment'
+          typeLabel: string
+          id: number
+          date: string
+          party: string
+          amount: number
+          principalAmount?: number
+          interestAmount?: number
+          details: string
+          targetUrl: string
+        } | null = null
+
+        if (l.status === 'matched' && l.matchedId) {
+          if (l.matchedType === 'receipt') {
+            const r = receiptMap.get(l.matchedId)
+            if (r) {
+              matchedInfo = {
+                type: 'receipt',
+                typeLabel: 'Phiếu thu',
+                id: r.id,
+                date: r.date,
+                party: r.branchName
+                  ? `${r.customerName} (${r.branchName})`
+                  : r.customerName,
+                amount: num(r.amount),
+                details: r.salesOrderId
+                  ? `Đơn hàng #${r.salesOrderId}`
+                  : 'Thu công nợ khách hàng',
+                targetUrl: '/finance?tab=receipts',
+              }
+            }
+          } else if (l.matchedType === 'payment') {
+            const p = paymentMap.get(l.matchedId)
+            if (p) {
+              matchedInfo = {
+                type: 'payment',
+                typeLabel: 'Phiếu chi',
+                id: p.id,
+                date: p.date,
+                party: p.supplierName || p.payeeName || 'Khác',
+                amount: num(p.amount),
+                details: p.description || 'Chi thanh toán',
+                targetUrl: '/finance?tab=payments',
+              }
+            }
+          } else if (l.matchedType === 'loan_repayment') {
+            const m = loanMap.get(l.matchedId)
+            if (m) {
+              const principal = num(m.principalAmount)
+              const interest = num(m.interestAmount)
+              matchedInfo = {
+                type: 'loan_repayment',
+                typeLabel: 'Trả nợ khế ước',
+                id: m.id,
+                date: m.date,
+                party: `HĐ ${m.contractNumber} · ${m.bankName}`,
+                amount: principal + interest,
+                principalAmount: principal,
+                interestAmount: interest,
+                details:
+                  m.note ||
+                  `Gốc: ${formatVnd(principal)} · Lãi: ${formatVnd(interest)}`,
+                targetUrl: '/loans',
+              }
+            }
+          }
+        }
+
+        return {
+          ...l,
+          debit: num(l.debit),
+          credit: num(l.credit),
+          balance: l.balance !== null ? num(l.balance) : null,
+          matchedInfo,
+        }
+      }),
     }
   })
 

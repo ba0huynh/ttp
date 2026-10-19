@@ -264,8 +264,8 @@ export function ImportStatementDialog({
                           }
                           onPaste={handlePaste}
                           placeholder="Nội dung giao dịch"
-                          rows={2}
-                          className="min-h-11 text-xs px-3 py-2 rounded-lg resize-y"
+                          rows={3}
+                          className="min-h-[4.75rem] text-xs px-3 py-2 rounded-lg resize-y"
                         />
                       </TableCell>
                       <TableCell>

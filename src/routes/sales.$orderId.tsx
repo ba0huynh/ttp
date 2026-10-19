@@ -231,7 +231,7 @@ function SalesOrderPage() {
           description={
             <>
               Khách hàng: <strong>{order.customerName}</strong> · Điểm bán:{' '}
-              <strong>{order.branchName ?? 'Trực tiếp KH mẹ'}</strong> · Ngày
+              <strong>{order.branchName ?? 'Công ty mẹ (Trực tiếp)'}</strong> · Ngày
               bán: {formatDate(order.orderDate)}
             </>
           }

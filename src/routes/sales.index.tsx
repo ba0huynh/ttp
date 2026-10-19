@@ -170,7 +170,7 @@ function SalesPage() {
   // Every customer / receiving branch, not only those already on an order
   const customerOptions = customers.map((c) => [c.id, c.name] as const)
   const branchOptions = [
-    [DIRECT_BRANCH, 'Trực tiếp KH mẹ'] as const,
+    [DIRECT_BRANCH, 'Công ty mẹ (Trực tiếp)'] as const,
     ...customers.flatMap((c) =>
       c.branches.map((b) => [String(b.id), `${b.name} (${c.name})`] as const),
     ),
@@ -403,7 +403,7 @@ function SalesPage() {
                           </span>
                         ) : (
                           <span className="text-slate-500">
-                            Trực tiếp KH mẹ
+                            Công ty mẹ (Trực tiếp)
                           </span>
                         )}
                       </TableCell>
