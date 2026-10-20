@@ -11,6 +11,7 @@ import {
   CheckCircle2,
   ExternalLink,
   Eye,
+  Landmark,
   Loader2,
   Pencil,
   RotateCcw,
@@ -23,9 +24,10 @@ import * as React from 'react'
 import { z } from 'zod'
 
 import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
-import { BankLabel } from '#/components/finance/BankLabel.tsx'
+import { BankLabel, BankLogo } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import { cn } from '#/lib/utils.ts'
 import {
   confirmDialog,
   showErrorDialog,
@@ -74,9 +76,8 @@ import {
 import { Textarea } from '#/components/ui/textarea.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
 import {
-  bankStatementDetailQuery,
-  bankStatementsQuery,
   currentUserQuery,
+  reconciliationLinesQuery,
 } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import {
@@ -97,6 +98,7 @@ export const Route = createFileRoute('/reconcile')({
   // Filters live in the URL so a reload or shared link keeps them
   validateSearch: z.object({
     q: z.string().optional().catch(undefined),
+    account: z.number().optional().catch(undefined),
     from: z.string().optional().catch(undefined),
     to: z.string().optional().catch(undefined),
     flow: z.array(z.enum(['in', 'out'])).optional().catch(undefined),
@@ -115,27 +117,28 @@ export const Route = createFileRoute('/reconcile')({
     return { user }
   },
   loader: async ({ context: { queryClient } }) => {
-    await queryClient.query(bankStatementsQuery())
+    await queryClient.query(reconciliationLinesQuery())
   },
   component: ReconcilePage,
 })
 
 function ReconcilePage() {
   const { user } = Route.useRouteContext()
-  const { data: statements } = useSuspenseQuery(bankStatementsQuery())
+  const { data: reconciliationData } = useSuspenseQuery(
+    reconciliationLinesQuery(),
+  )
   const queryClient = useQueryClient()
-
-  const [selectedStatementId, setSelectedStatementId] = React.useState<
-    number | null
-  >(statements[0]?.id ?? null)
-  const [importOpen, setImportOpen] = React.useState(false)
-  const { data: statementDetail, isLoading: loadingLines } = useQuery({
-    ...bankStatementDetailQuery(selectedStatementId ?? 0),
-    enabled: selectedStatementId !== null,
-  })
 
   const searchParams = Route.useSearch()
   const navigate = Route.useNavigate()
+  const selectedAccountId = searchParams.account ?? null
+  const setSelectedAccountId = (accId: number | null) =>
+    navigate({
+      search: (prev) => ({ ...prev, account: accId ?? undefined }),
+      replace: true,
+    })
+
+  const [importOpen, setImportOpen] = React.useState(false)
   const [showFilters, setShowFilters] = React.useState(false)
   const { from, to, flow, status, type, min, max } = searchParams
   // The box filters instantly; the URL follows once typing pauses
@@ -160,11 +163,26 @@ function ReconcilePage() {
     min !== undefined || max !== undefined,
   ].filter(Boolean).length
 
-  const allLines: any[] = statementDetail?.lines ?? []
+  const allLines: any[] = reconciliationData?.lines ?? []
+  const accounts: any[] = reconciliationData?.accounts ?? []
+  const selectedAccount = accounts.find((a: any) => a.id === selectedAccountId)
+
   const filteredLines = allLines.filter((l) => {
-    const q = descSearch.trim().toLowerCase()
-    if (q && !String(l.description ?? '').toLowerCase().includes(q))
+    if (
+      selectedAccountId !== null &&
+      l.companyBankAccountId !== selectedAccountId
+    ) {
       return false
+    }
+    const q = descSearch.trim().toLowerCase()
+    if (q) {
+      const matchDesc = String(l.description ?? '').toLowerCase().includes(q)
+      const matchAcc = String(l.accountNumber ?? '').toLowerCase().includes(q)
+      const matchBank = String(
+        l.bankShortName || l.bankName || '',
+      ).toLowerCase().includes(q)
+      if (!matchDesc && !matchAcc && !matchBank) return false
+    }
     const date = String(l.transactionDate).slice(0, 10)
     if (from && date < from) return false
     if (to && date > to) return false
@@ -180,10 +198,23 @@ function ReconcilePage() {
     if (max !== undefined && amount > max) return false
     return true
   })
+
   const linesPg = usePagination<any>(
     filteredLines,
-    `${selectedStatementId}|${descSearch}|${from}|${to}|${flow?.join()}|${status?.join()}|${type?.join()}|${min}|${max}`,
+    `${selectedAccountId}|${descSearch}|${from}|${to}|${flow?.join()}|${status?.join()}|${type?.join()}|${min}|${max}`,
   )
+
+  const totalUnmatched = accounts.reduce(
+    (sum: number, a: any) => sum + (a.unmatchedLines || 0),
+    0,
+  )
+  const inScopeLines = selectedAccountId
+    ? allLines.filter((l) => l.companyBankAccountId === selectedAccountId)
+    : allLines
+  const inScopeUnmatched = inScopeLines.filter(
+    (l) => l.status === 'unmatched',
+  ).length
+  const inScopeMatched = inScopeLines.filter((l) => l.status === 'matched').length
 
   // Matching suggestions
   const [matchingLineId, setMatchingLineId] = React.useState<number | null>(
@@ -418,87 +449,209 @@ function ReconcilePage() {
         <ImportStatementDialog
           open={importOpen}
           onOpenChange={setImportOpen}
-          onImported={setSelectedStatementId}
+          onImported={async () => {
+            await queryClient.invalidateQueries()
+          }}
         />
 
-        {statements.length === 0 && (
-          <div className="py-10 text-center text-xs text-slate-500 bg-slate-50 rounded-lg border border-dashed">
-            Chưa có sao kê nào. Bấm <strong>Nhập Sao Kê</strong> để bắt đầu đối
-            chiếu.
+        {allLines.length === 0 && (
+          <div className="py-12 text-center text-xs text-slate-500 bg-slate-50 rounded-xl border border-dashed flex flex-col items-center justify-center gap-2">
+            <Landmark className="size-8 text-slate-300" />
+            <p className="font-semibold text-slate-700">
+              Chưa có giao dịch sao kê nào trong hệ thống
+            </p>
+            <p className="text-slate-500">
+              Bấm <strong>Nhập Sao Kê</strong> ở góc phải trên để tải lên sao kê từ ngân hàng.
+            </p>
           </div>
         )}
 
-        {/* Statement picker */}
-        {statements.length > 0 && (
-          <div className="max-w-2xl space-y-1.5">
-            <Label className="text-xs font-semibold">Sao kê</Label>
-            <SearchSelect
-              className="h-11 w-full bg-card text-sm rounded-lg"
-              placeholder="Chọn sao kê"
-              value={selectedStatementId ? String(selectedStatementId) : ''}
-              onValueChange={(v) => setSelectedStatementId(Number(v))}
-            >
-              {statements.map((s) => {
-                const bankLabel = s.bankShortName || s.bankCode || s.bankName
+        {/* Bank Account Switcher */}
+        {accounts.length > 0 && (
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-semibold text-slate-600 uppercase tracking-wider">
+                Tài Khoản Ngân Hàng
+              </span>
+              {totalUnmatched > 0 && (
+                <span className="text-xs text-amber-800 bg-amber-50 px-2.5 py-0.5 rounded-full border border-amber-200 font-medium">
+                  Còn <strong>{totalUnmatched}</strong> giao dịch cần đối soát
+                </span>
+              )}
+            </div>
+            <div className="flex flex-wrap items-center gap-2">
+              <button
+                type="button"
+                onClick={() => setSelectedAccountId(null)}
+                className={cn(
+                  'inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all border cursor-pointer',
+                  selectedAccountId === null
+                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs font-semibold'
+                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300',
+                )}
+              >
+                <Landmark className="size-3.5" />
+                <span>Tất cả tài khoản</span>
+                <Badge
+                  variant="secondary"
+                  className={cn(
+                    'py-0 px-1.5 text-[10px] ml-0.5',
+                    selectedAccountId === null
+                      ? 'bg-slate-800 text-slate-200'
+                      : 'bg-slate-100 text-slate-700',
+                  )}
+                >
+                  {allLines.length}
+                </Badge>
+              </button>
+
+              {accounts.map((acc: any) => {
+                const isSelected = selectedAccountId === acc.id
+                const bankLabel =
+                  acc.bankShortName || acc.bankCode || acc.bankName
                 return (
-                  <SearchSelectItem
-                    key={s.id}
-                    value={String(s.id)}
-                    keywords={`${s.bankName} ${s.bankShortName ?? ''} ${s.bankCode ?? ''} ${s.accountNumber}`}
+                  <button
+                    key={acc.id}
+                    type="button"
+                    onClick={() => setSelectedAccountId(acc.id)}
+                    className={cn(
+                      'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer',
+                      isSelected
+                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs font-semibold'
+                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300',
+                    )}
                   >
-                    <span className="flex items-center gap-3">
-                      <BankLabel image={s.bankImage} name={bankLabel}>
-                        {bankLabel} ({s.accountNumber})
-                      </BankLabel>
-                      <span className="text-xs text-slate-400">#{s.id}</span>
-                      <Badge
-                        variant="secondary"
-                        className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"
-                      >
-                        Khớp {s.matchedCount}/{s.lineCount}
-                      </Badge>
+                    <BankLogo
+                      src={acc.bankImage}
+                      name={bankLabel}
+                      className="h-4 w-7 shrink-0"
+                    />
+                    <span>{bankLabel}</span>
+                    <span
+                      className={cn(
+                        'text-[11px] font-mono',
+                        isSelected ? 'text-emerald-100' : 'text-slate-500',
+                      )}
+                    >
+                      • {acc.accountNumber.slice(-4)}
                     </span>
-                  </SearchSelectItem>
+                    {acc.unmatchedLines > 0 ? (
+                      <Badge
+                        className={cn(
+                          'py-0 px-1.5 text-[10px] ml-0.5 font-bold',
+                          isSelected
+                            ? 'bg-amber-400 text-slate-950'
+                            : 'bg-amber-100 text-amber-900 border-amber-200',
+                        )}
+                      >
+                        {acc.unmatchedLines} chưa khớp
+                      </Badge>
+                    ) : (
+                      <Badge
+                        variant="outline"
+                        className={cn(
+                          'py-0 px-1 text-[10px] ml-0.5',
+                          isSelected
+                            ? 'border-emerald-500 text-emerald-100'
+                            : 'text-slate-400 border-slate-200',
+                        )}
+                      >
+                        {acc.totalLines}
+                      </Badge>
+                    )}
+                  </button>
                 )
               })}
-            </SearchSelect>
+            </div>
           </div>
         )}
 
         {/* Transactions Table */}
         <Card className="border-slate-200 shadow-xs">
-          <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
+          <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-sm font-bold text-slate-800">
-                Giao Dịch Trong Kỳ Sao Kê:{' '}
-                <span className="font-semibold text-emerald-800">
-                  {statementDetail?.statement?.bankShortName ||
-                    statementDetail?.statement?.bankCode ||
-                    statementDetail?.statement?.bankName}{' '}
-                  &bull; {statementDetail?.statement?.accountNumber}
-                </span>
+                {selectedAccount ? (
+                  <>
+                    Sổ Phụ Giao Dịch:{' '}
+                    <span className="font-semibold text-emerald-800">
+                      {selectedAccount.bankShortName ||
+                        selectedAccount.bankCode ||
+                        selectedAccount.bankName}{' '}
+                      &bull; {selectedAccount.accountNumber}
+                    </span>
+                  </>
+                ) : (
+                  'Tất Cả Giao Dịch Sao Kê Ngân Hàng'
+                )}
               </CardTitle>
               <CardDescription className="text-xs">
-                Hiển thị số dư biến động & trạng thái đối chiếu
+                Hiển thị số dư biến động & trạng thái đối chiếu thực tế với chứng từ
               </CardDescription>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="text-xs text-slate-500">
+            <div className="flex flex-wrap items-center gap-2 sm:gap-3">
+              {/* Quick Status Filters */}
+              <div className="inline-flex rounded-lg border border-slate-200 bg-slate-50/70 p-0.5 text-xs">
+                <button
+                  type="button"
+                  onClick={() => setFilter('status', undefined)}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md transition-colors cursor-pointer font-medium',
+                    !status?.length
+                      ? 'bg-white text-slate-900 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-slate-900',
+                  )}
+                >
+                  Tất cả ({inScopeLines.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter('status', ['unmatched'])}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 font-medium',
+                    status?.includes('unmatched') && !status?.includes('matched')
+                      ? 'bg-amber-500 text-slate-950 shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-amber-800',
+                  )}
+                >
+                  <span>Chưa đối soát</span>
+                  <span className="text-[10px] px-1 rounded-full bg-black/10">
+                    {inScopeUnmatched}
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setFilter('status', ['matched'])}
+                  className={cn(
+                    'px-2.5 py-1 rounded-md transition-colors cursor-pointer flex items-center gap-1 font-medium',
+                    status?.includes('matched') && !status?.includes('unmatched')
+                      ? 'bg-emerald-700 text-white shadow-xs font-semibold'
+                      : 'text-slate-600 hover:text-emerald-800',
+                  )}
+                >
+                  <span>Đã khớp</span>
+                  <span className="text-[10px] px-1 rounded-full bg-white/20">
+                    {inScopeMatched}
+                  </span>
+                </button>
+              </div>
+
+              <div className="text-xs text-slate-500 hidden sm:block">
                 {activeFilterCount > 0
-                  ? `${filteredLines.length}/${allLines.length} dòng`
-                  : `Tổng ${allLines.length} dòng`}
+                  ? `${filteredLines.length}/${inScopeLines.length} dòng`
+                  : `Tổng ${filteredLines.length} dòng`}
               </div>
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => setShowFilters(true)}
                 aria-haspopup="dialog"
-                className={`gap-1.5 ${activeFilterCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
+                className={`gap-1.5 ${activeFilterCount > 0 ? 'border-emerald-600 text-emerald-800 font-semibold' : ''}`}
               >
-                <SlidersHorizontal className="size-4" />
+                <SlidersHorizontal className="size-3.5" />
                 Bộ lọc
                 {activeFilterCount > 0 && (
-                  <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                  <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5 font-bold">
                     {activeFilterCount}
                   </span>
                 )}
@@ -506,53 +659,67 @@ function ReconcilePage() {
             </div>
           </CardHeader>
           <CardContent className="p-0">
-            {loadingLines ? (
-              <div className="py-12 text-center text-xs text-slate-400">
-                Đang tải dòng sao kê...
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                {/* Fixed layout + explicit widths: the columns keep their size whether
-                    lines are matched (long badge, "Hủy khớp") or not ("Tìm khớp") */}
-                <Table className="table-fixed min-w-[960px]">
-                  <TableHeader>
-                    <TableRow className="text-xs bg-slate-50/70">
-                      <TableHead className="w-28">Ngày GD</TableHead>
-                      <TableHead>Nội Dung Diễn Giải</TableHead>
-                      <TableHead className="w-44 text-right">
-                        Tiền Ra (Ghi Nợ)
-                      </TableHead>
-                      <TableHead className="w-44 text-right">
-                        Tiền Vào (Ghi Có)
-                      </TableHead>
-                      <TableHead className="w-56 text-center">
-                        Đối Chiếu
-                      </TableHead>
-                      <TableHead className="w-52 text-center">
-                        Thao tác
-                      </TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody className="text-xs">
-                    {linesPg.pageItems.map((l: any) => {
-                      const isMatched = l.status === 'matched'
-                      return (
-                        <TableRow key={l.id} className="hover:bg-slate-50/80">
-                          <TableCell className="text-slate-500">
-                            {formatDate(l.transactionDate)}
-                          </TableCell>
-                          <TableCell
-                            className="truncate font-medium text-slate-900"
-                            title={l.description}
+            <div className="overflow-x-auto">
+              <Table className="table-fixed min-w-[1080px]">
+                <TableHeader>
+                  <TableRow className="text-xs bg-slate-50/70">
+                    <TableHead className="w-24">Ngày GD</TableHead>
+                    <TableHead className="w-44">Tài Khoản</TableHead>
+                    <TableHead>Nội Dung Diễn Giải</TableHead>
+                    <TableHead className="w-36 text-right">
+                      Tiền Ra (Ghi Nợ)
+                    </TableHead>
+                    <TableHead className="w-36 text-right">
+                      Tiền Vào (Ghi Có)
+                    </TableHead>
+                    <TableHead className="w-44 text-center">
+                      Đối Chiếu
+                    </TableHead>
+                    <TableHead className="w-60 text-center">
+                      Thao tác
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody className="text-xs">
+                  {linesPg.pageItems.map((l: any) => {
+                    const isMatched = l.status === 'matched'
+                    return (
+                      <TableRow key={l.id} className="hover:bg-slate-50/80">
+                        <TableCell className="text-slate-500 font-mono text-[11px]">
+                          {formatDate(l.transactionDate)}
+                        </TableCell>
+                        <TableCell className="max-w-[176px]">
+                          <div
+                            className="flex items-center gap-2 min-w-0"
+                            title={`${l.bankName} - ${l.accountNumber}`}
                           >
-                            {l.description}
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-rose-900">
-                            {l.debit > 0 ? formatVnd(l.debit) : '—'}
-                          </TableCell>
-                          <TableCell className="text-right font-medium text-emerald-900">
-                            {l.credit > 0 ? formatVnd(l.credit) : '—'}
-                          </TableCell>
+                            <BankLogo
+                              src={l.bankImage}
+                              name={l.bankName}
+                              className="h-4 w-7 shrink-0"
+                            />
+                            <div className="truncate">
+                              <span className="font-semibold text-slate-900 leading-tight block truncate">
+                                {l.bankShortName || l.bankCode || l.bankName}
+                              </span>
+                              <span className="text-[10px] text-slate-500 font-mono leading-tight block">
+                                • {l.accountNumber.slice(-4)}
+                              </span>
+                            </div>
+                          </div>
+                        </TableCell>
+                        <TableCell
+                          className="truncate font-medium text-slate-900"
+                          title={l.description}
+                        >
+                          <div className="truncate">{l.description}</div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-rose-900 font-mono">
+                          {l.debit > 0 ? formatVnd(l.debit) : '—'}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-emerald-900 font-mono">
+                          {l.credit > 0 ? formatVnd(l.credit) : '—'}
+                        </TableCell>
                           <TableCell className="text-center">
                             {isMatched ? (
                               <Badge
@@ -665,7 +832,6 @@ function ReconcilePage() {
                 </Table>
                 <TablePagination pagination={linesPg} />
               </div>
-            )}
           </CardContent>
         </Card>
 
@@ -683,6 +849,34 @@ function ReconcilePage() {
             </DialogHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">
+                  Tài khoản ngân hàng
+                </Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Tất cả tài khoản"
+                  value={selectedAccountId ? String(selectedAccountId) : 'all'}
+                  onValueChange={(v) =>
+                    setSelectedAccountId(v === 'all' ? null : Number(v))
+                  }
+                >
+                  <SearchSelectItem value="all">
+                    Tất cả tài khoản ({allLines.length} giao dịch)
+                  </SearchSelectItem>
+                  {accounts.map((acc: any) => {
+                    const bankLabel =
+                      acc.bankShortName || acc.bankCode || acc.bankName
+                    return (
+                      <SearchSelectItem key={acc.id} value={String(acc.id)}>
+                        <BankLabel image={acc.bankImage} name={bankLabel}>
+                          {bankLabel} ({acc.accountNumber})
+                        </BankLabel>
+                      </SearchSelectItem>
+                    )
+                  })}
+                </SearchSelect>
+              </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label className="text-xs font-semibold">Nội dung diễn giải</Label>
                 <Input

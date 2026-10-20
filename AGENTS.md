@@ -1459,4 +1459,23 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - Removed address state, input field, and display from `SupplierDetailDialog.tsx` (view mode now cleanly shows logo and supplier name only).
   - Removed address column and search filter from `/master-data` (Suppliers tab) and pruned unused `Textarea` import.
 
-_(Next Agent: Append Lesson 134, 135,... above this line upon completing tasks)_
+### Lesson 134: Unified Account-Centric Bank Reconciliation Table (`/reconcile`)
+
+- **Context & Architecture Decision**:
+  - Previously, bank reconciliation required picking individual uploaded statement batches (`#1`, `#2`, `#3`, ... `#8`) one by one via a dropdown. Over months of operations, this file-based picker becomes excessively fragmented and unwieldy, making it difficult to monitor unreconciled cash flow across multiple corporate bank accounts.
+  - Aligned the module with real-world enterprise accounting standards (QuickBooks, Xero, MISA AMIS): **all statement transactions live in a single consolidated master ledger**, filtered by bank account and reconciliation status.
+- **Implementation**:
+  - **Server Function** (`src/server/fns/finance.ts`):
+    - Added `listReconciliationLinesFn` which queries active company bank accounts alongside aggregate transaction & unreconciled counts (`unreconciledCount`).
+    - Fetches statement lines across all uploaded statements (or filtered by `accountId`), joining bank details and enriched matched entities (`matchedReceipt`, `matchedPayment`, `matchedLoanRepayment`).
+  - **Client Query Hook** (`src/lib/queries.ts`):
+    - Added `reconciliationLinesQuery(accountId?: number)` to fetch and cache unified reconciliation lines and account metadata.
+  - **UI / UX Overhaul** (`src/routes/reconcile.tsx`):
+    - Replaced the single-statement selector with horizontal Bank Account Switcher pills (`Tất cả tài khoản`, `Vietcombank`, `DBS`, etc.) featuring bank logos, short names, account number suffixes, and real-time unreconciled badges.
+    - Synchronized account filtering with URL search params (`?account=...`) for shareable, bookmarkable deep links.
+    - Added quick status filter tabs (`Tất cả`, `Chưa đối soát`, `Đã khớp`) directly inside the table header.
+    - Added a dedicated "Tài Khoản" column in the table displaying bank logo, short name, and account number for each transaction.
+    - Sized the action column to `w-60` (240px) and table to `min-w-[1080px]` to ensure dual action buttons (`Xem khớp` and `Gỡ khớp`) have generous breathing room without touching or overflowing the right table border.
+    - Preserved zero-latency in-memory filtering and seamless integration with existing manual match, auto-match, and statement upload dialogs.
+
+_(Next Agent: Append Lesson 135, 136,... above this line upon completing tasks)_

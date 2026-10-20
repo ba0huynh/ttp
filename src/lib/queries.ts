@@ -17,6 +17,7 @@ import {
   listLoansFn,
   listPaymentVouchersFn,
   listReceiptVouchersFn,
+  listReconciliationLinesFn,
 } from '#/server/fns/finance.ts'
 import {
   getAvailableVehiclesFn,
@@ -116,6 +117,12 @@ export const bankStatementDetailQuery = (id: number) =>
   queryOptions({
     queryKey: ['bank-statements', id],
     queryFn: () => getBankStatementDetailFn({ data: { id } }),
+  })
+
+export const reconciliationLinesQuery = (accountId?: number) =>
+  queryOptions({
+    queryKey: ['reconciliation', 'lines', accountId ?? 'all'],
+    queryFn: () => listReconciliationLinesFn({ data: { accountId } }),
   })
 
 export const inventorySummaryQuery = () =>
