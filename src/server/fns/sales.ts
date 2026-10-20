@@ -23,6 +23,8 @@ import {
   createSalesOrder,
   recordDelivery,
   recordInvoice,
+  updateDeliveryNote,
+  revertDeliveryNote,
 } from '#/server/services/sales.ts'
 import { requirePermission } from './middleware.ts'
 
@@ -108,11 +110,20 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         invoicedAt: vehicles.invoicedAt,
         modelName: sql<string>`coalesce(${motorcycleModels.name}, '')`,
         colorName: colors.name,
+        colorHex: colors.hex,
+        deliveryNoteId: deliveryNotes.id,
+        deliveryNoteNumber: deliveryNotes.noteNumber,
+        deliveryDate: deliveryNotes.deliveryDate,
+        receiverName: deliveryNotes.receiverName,
+        transportInfo: deliveryNotes.transportInfo,
+        deliveryNoteContent: deliveryNotes.note,
       })
       .from(salesOrderItems)
       .innerJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
       .leftJoin(motorcycleModels, eq(motorcycleModels.id, vehicles.modelId))
       .innerJoin(colors, eq(colors.id, vehicles.colorId))
+      .leftJoin(deliveryNoteItems, eq(deliveryNoteItems.vehicleId, vehicles.id))
+      .leftJoin(deliveryNotes, eq(deliveryNotes.id, deliveryNoteItems.deliveryNoteId))
       .where(eq(salesOrderItems.salesOrderId, data.id))
       .orderBy(salesOrderItems.id)
 
@@ -216,6 +227,37 @@ export const recordDeliveryFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const id = await recordDelivery(data, context.user.id)
     return { id }
+  })
+
+export const updateDeliveryNoteFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('sales.deliver')])
+  .validator(
+    z.object({
+      salesOrderId: z.number().int(),
+      deliveryNoteId: z.number().int(),
+      deliveryDate: z.string().min(10, 'Ngày giao hàng không hợp lệ'),
+      receiverName: z.string().trim().nullable().optional(),
+      transportInfo: z.string().trim().nullable().optional(),
+      note: z.string().trim().nullable().optional(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    await updateDeliveryNote(data, context.user.id)
+    return { ok: true }
+  })
+
+export const revertDeliveryNoteFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('sales.deliver')])
+  .validator(
+    z.object({
+      salesOrderId: z.number().int(),
+      deliveryNoteId: z.number().int().optional().nullable(),
+      vehicleId: z.number().int().optional().nullable(),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    await revertDeliveryNote(data, context.user.id)
+    return { ok: true }
   })
 
 export const recordInvoiceFn = createServerFn({ method: 'POST' })

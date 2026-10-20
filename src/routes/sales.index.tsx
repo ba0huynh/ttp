@@ -18,7 +18,10 @@ import { z } from 'zod'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { Badge } from '#/components/ui/badge.tsx'
+import {
+  SalesDeliveryBadge,
+  SalesInvoiceBadge,
+} from '#/components/sales/SalesWarehouseBadges.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -170,7 +173,7 @@ function SalesPage() {
   // Every customer / receiving branch, not only those already on an order
   const customerOptions = customers.map((c) => [c.id, c.name] as const)
   const branchOptions = [
-    [DIRECT_BRANCH, 'Công ty mẹ (Trực tiếp)'] as const,
+    [DIRECT_BRANCH, 'Trực tiếp'] as const,
     ...customers.flatMap((c) =>
       c.branches.map((b) => [String(b.id), `${b.name} (${c.name})`] as const),
     ),
@@ -403,7 +406,7 @@ function SalesPage() {
                           </span>
                         ) : (
                           <span className="text-slate-500">
-                            Công ty mẹ (Trực tiếp)
+                            Trực tiếp
                           </span>
                         )}
                       </TableCell>
@@ -414,32 +417,16 @@ function SalesPage() {
                         {o.vehicleCount} xe
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            o.deliveredCount === o.vehicleCount
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                              : 'bg-amber-50 text-amber-700 border-amber-300'
-                          }`}
-                        >
-                          {o.deliveredCount === o.vehicleCount
-                            ? 'Đã giao đủ'
-                            : `Đã giao ${o.deliveredCount}/${o.vehicleCount}`}
-                        </Badge>
+                        <SalesDeliveryBadge
+                          deliveredCount={o.deliveredCount}
+                          vehicleCount={o.vehicleCount}
+                        />
                       </TableCell>
                       <TableCell className="text-center">
-                        <Badge
-                          variant="outline"
-                          className={`text-xs ${
-                            o.invoicedCount === o.vehicleCount
-                              ? 'bg-blue-50 text-blue-700 border-blue-300'
-                              : 'bg-slate-100 text-slate-600 border-slate-200'
-                          }`}
-                        >
-                          {o.invoicedCount === o.vehicleCount
-                            ? 'Đã lập HĐ'
-                            : `Đã ra HĐ ${o.invoicedCount}/${o.vehicleCount}`}
-                        </Badge>
+                        <SalesInvoiceBadge
+                          invoicedCount={o.invoicedCount}
+                          vehicleCount={o.vehicleCount}
+                        />
                       </TableCell>
                       <TableCell className="text-center whitespace-nowrap">
                         <Button

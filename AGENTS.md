@@ -36,6 +36,12 @@ All AI Agents working on this repository **MUST STRICTLY ADHERE** to the followi
    - Whenever completing a new feature, fixing a complex bug, discovering a technical gotcha, or changing database schema/routes:
    - The Agent **MUST IMMEDIATELY** record that lesson into **Section 5: Living Knowledge Log & Lessons Learned** at the bottom of this file before handing back to the user.
 
+6. **MANDATORY COLOR CIRCLE SWATCH DISPLAY (CRITICAL UI PROTOCOL)**:
+   - **Whenever displaying vehicle colors in UI tables, select dropdowns, search filters, or preview cards, ALWAYS render the round color swatch preview circle alongside the color name.**
+   - Use `#/components/ui/color-label.tsx` (`<ColorLabel name={colorName} hex={colorHex} />`) or an inline rounded color dot (`size-2.5` to `size-3.5`, `rounded-full border border-slate-300`, `style={{ backgroundColor: colorHex || 'transparent' }}`).
+   - **Never render raw color text alone without its color swatch circle.**
+   - Backend queries and endpoints returning vehicle items must always select and return `colorHex: colors.hex` so UI components have the hex value available.
+
 ---
 
 ## 2. PROJECT OVERVIEW & CORE BUSINESS RULES
@@ -1476,6 +1482,227 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - Added quick status filter tabs (`Tất cả`, `Chưa đối soát`, `Đã khớp`) directly inside the table header.
     - Added a dedicated "Tài Khoản" column in the table displaying bank logo, short name, and account number for each transaction.
     - Sized the action column to `w-60` (240px) and table to `min-w-[1080px]` to ensure dual action buttons (`Xem khớp` and `Gỡ khớp`) have generous breathing room without touching or overflowing the right table border.
-    - Preserved zero-latency in-memory filtering and seamless integration with existing manual match, auto-match, and statement upload dialogs.
+### Lesson 135: Single-Vehicle Delivery vs. Batch Invoicing (`/sales/$orderId`)
 
-_(Next Agent: Append Lesson 135, 136,... above this line upon completing tasks)_
+- **Context & Business Workflow**:
+  - In B2B wholesale motorcycle sales, clients or logistics trucks frequently pick up individual vehicles one at a time across multiple trips. However, internal commercial invoices / financial receipts are issued once in full for all uninvoiced vehicles in the order.
+- **Implementation**:
+  - **Table Action Column** (`src/routes/sales.$orderId.tsx`):
+    - Added a `Thao tác` column (`w-28`) with an individual `[🚚 Giao xe]` button for each undelivered vehicle.
+    - Omitted row-level invoice buttons; invoicing retains only the top-level batch action `[📋 Xuất hóa đơn nội bộ]`.
+  - **Delivery Modal**:
+    - Clicking `Giao xe` on a row opens the delivery modal scoped directly to that single vehicle, featuring a preview card with model name, chassis number, and color.
+    - Top-level `Giao xe thực tế` button allows checking/unchecking vehicles to dispatch any combination.
+### Lesson 136: In-Order Vehicle Filter Dialog (`/sales/$orderId`)
+
+- **Context & Request**:
+  - In sales orders containing multiple motorcycles, users requested search and filtering tools to quickly locate vehicles by chassis number, model, or color, and filter by dual-inventory state (delivered vs. undelivered physical stock, invoiced vs. uninvoiced commercial status).
+- **Implementation**:
+  - **Toolbar & CardHeader** (`src/routes/sales.$orderId.tsx`):
+    - Added a quick search bar with a magnifying glass icon for immediate query matching.
+    - Added a "Bộ lọc" button with an active filter badge counter.
+  - **Filter Dialog (`Bộ Lọc Danh Sách Xe`)**:
+    - Dialog includes text search, dual inventory status dropdowns (Kho thực tế & Kho hóa đơn), distinct motorcycle model select, and exterior color select.
+### Lesson 137: Select Mode for Batch Vehicle Delivery from Inventory (`/sales/$orderId`)
+
+- **Context & Request**:
+  - In sales orders with multiple motorcycles, users needed a dedicated "Select Mode" to pick a specific subset of vehicles directly in the table to export/deliver them from warehouse inventory ("Giao xe / Xuất kho thực tế").
+- **Implementation**:
+  - **Select Mode Toggle** (`src/routes/sales.$orderId.tsx`):
+    - Added a `[Chế độ chọn]` / `[Thoát chọn]` button in the card header toolbar (visible when undelivered vehicles exist).
+  - **Interactive Checkboxes & Action Banner**:
+    - Activating select mode inserts a checkbox column into the table with a master header checkbox for all pending vehicles.
+    - Clicking anywhere on an undelivered vehicle row toggles selection with row-level emerald highlighting.
+    - Displays an action banner above the table indicating the count of selected vehicles and a `[🚚 Xuất kho (X) xe đã chọn]` button.
+    - Clicking the action button opens the delivery modal pre-scoped to the selected vehicle IDs.
+
+### Lesson 138: Streamlining Sales Order Vehicle Table by Removing Redundant Invoiced Stock Column (`/sales/$orderId`)
+
+- **Context & Request**:
+  - In `/sales/$orderId`, commercial invoicing is strictly an order-level batch action issued via the top header button `[Xuất hóa đơn nội bộ]` (or receipt creation). Users noted that displaying a repetitive `Kho Hóa Đơn` badge column across each individual vehicle row was unnecessary visual clutter.
+- **Implementation**:
+  - **Table Layout** (`src/routes/sales.$orderId.tsx`):
+    - Removed the `Kho Hóa Đơn` column from `TableHeader` and `TableBody`.
+    - Adjusted empty state `colSpan` dynamically (`selectMode ? 6 : 5`).
+    - Retained the top-level `[Xuất hóa đơn nội bộ]` action button in `PageHeader.actions` for issuing internal commercial invoices/receipts.
+  - **Filter Dialog Simplification**:
+    - Streamlined the Filter Dialog (`Bộ Lọc Danh Sách Xe`) by removing the unused `Kho Hóa Đơn` filter select, focusing on `Kho Thực Tế`, search query, model, and color.
+
+### Lesson 139: Clean Invoice Status Badge Formatting on Sales Order List (`/sales`)
+
+- **Context & Bug**:
+  - In `/sales` (sales orders list), the `Kho Hóa Đơn` badge previously used the fallback template `` `Đã ra HĐ ${o.invoicedCount}/${o.vehicleCount}` `` when `o.invoicedCount !== o.vehicleCount`. When `invoicedCount` was 0 (no vehicles invoiced yet), it produced the confusing badge `Đã ra HĐ 0/1`.
+- **Implementation**:
+  - In `src/routes/sales.index.tsx`, updated the badge label logic:
+    - `o.invoicedCount === o.vehicleCount ? 'Đã lập HĐ' : o.invoicedCount === 0 ? 'Chưa ra HĐ' : 'Ra HĐ một phần'`
+    - Eliminates fractional counts (`0/1`) for uninvoiced orders and aligns with the filter option label `Chưa ra HĐ`.
+
+### Lesson 140: Populating Vehicle Filter Options from Master Data & Batches (`/sales/new`)
+
+- **Context & User Request**:
+  - In `/sales/new`, the "Bộ Lọc Xe" modal previously extracted filter dropdown options (`Dòng xe`, `Màu xe`, `Lô nhập`) solely from currently available vehicles in inventory. When there were 0 available vehicles (or no unsold vehicles for specific models), the dropdowns showed `(0)` options and prevented users from browsing or filtering catalog items.
+- **Implementation**:
+  - Updated `src/server/fns/batches.ts`:
+    - Adjusted `listBatchesFn` middleware to accept `'sales.create'` in addition to `'batches.view'`.
+  - Updated `src/routes/sales.new.tsx`:
+    - Included `masterDataQuery()` and `batchesQuery()` in the route loader and component.
+### Lesson 141: Mandatory Color Swatch Circles Across UI & sales.$orderId
+
+- **Context & User Request**:
+  - The user explicitly requested to mandate in `AGENTS.md` that vehicle colors must ALWAYS be accompanied by the circular color swatch (`ColorLabel` or color dot).
+  - In `/sales/$orderId`, the table row, delivery modal preview card, checklist items, and the Filter Dialog's "Màu xe" dropdown were displaying plain text color names without the round color swatch circle.
+- **Implementation**:
+  - Added Rule 6 to **Section 1: MANDATORY AGENT PROTOCOLS & INSTRUCTIONS** in `AGENTS.md`: "MANDATORY COLOR CIRCLE SWATCH DISPLAY".
+  - Updated `src/server/fns/sales.ts`:
+    - `getSalesOrderDetailFn` now selects `colorHex: colors.hex`.
+  - Updated `src/routes/sales.$orderId.tsx`:
+    - Imported `<ColorLabel />` from `#/components/ui/color-label.tsx`.
+    - `distinctColors` now maps both `name` and `hex`.
+    - Replaced raw text in table rows with `<ColorLabel name={i.colorName} hex={i.colorHex} />`.
+    - Replaced raw text in delivery modal preview and checklist with `<ColorLabel />`.
+    - Replaced dropdown items in Filter Dialog with `<ColorLabel name={c.name} hex={c.hex} />`.
+
+### Lesson 142: Page-Scoped Select All / Deselect All in Table Header (`/sales/$orderId`)
+
+- **Context & User Request**:
+  - In `/sales/$orderId` select mode, clicking the master checkbox previously toggled selection across all vehicles in the order across all pages simultaneously. If a user had selections on page 1 and navigated to page 2 (where nothing had been selected), the header checkbox appeared checked or deselecting it cleared everything across all pages.
+- **Implementation**:
+  - In `src/routes/sales.$orderId.tsx`:
+    - Scoped the table header checkbox strictly to `pageUndelivered = itemsPg.pageItems.filter(i => !i.isDelivered)`.
+    - Computed `pageAllChecked` and `pageSomeChecked` based solely on the current page's visible items.
+    - `toggleSelectPage()` toggles only the current page's vehicles:
+      - Deselecting on the current page preserves selections made on other pages.
+      - Selecting on the current page adds the current page items into `selectedForDelivery` without losing selections from other pages.
+    - When navigating to another page where nothing is selected, the header checkbox accurately reflects an unchecked state (`false`).
+    - Added dedicated banner action links: "Bỏ chọn tất cả" (to clear all pages) and "Chọn tất cả X xe trong phiếu" (to batch select across all pages when multi-page orders exist).
+
+### Lesson 143: Hiding Already Exported Vehicles in Select Mode (`/sales/$orderId`)
+
+- **Context & User Request**:
+  - In `/sales/$orderId`, activating select mode is specifically intended for selecting vehicles to deliver / export from the warehouse (`Giao xe thực tế`). Displaying already exported / delivered vehicles (`isDelivered === true`) with disabled labels cluttered the table and confused users.
+- **Implementation**:
+  - In `src/routes/sales.$orderId.tsx`:
+    - Updated `filteredItems` to exclude delivered vehicles when `selectMode === true` (`if (selectMode && i.isDelivered) return false`).
+    - Added `selectMode` to `usePagination` reset key, returning to page 1 upon toggling mode.
+    - Updated card title in select mode: `Chọn xe chưa xuất kho (${filteredItems.length})`.
+    - Every row rendered in select mode is an undelivered vehicle that can be directly selected via checkbox or row click.
+
+### Lesson 144: Hiding Single-Export Button in Select Mode (`/sales/$orderId`)
+
+- **Context & User Request**:
+  - In `/sales/$orderId`, when select mode is active to multi-select vehicles for batch dispatch, displaying the individual `[Giao xe]` button in the "Thao tác" column created visual noise and conflicting actions.
+- **Implementation**:
+  - In `src/routes/sales.$orderId.tsx`:
+    - Wrapped `<TableHead>Thao tác</TableHead>` and the action `<TableCell>` with `{!selectMode && ...}`.
+    - When select mode is active, the action column is hidden and replaced cleanly by the leading checkbox selection column.
+    - Set empty state table `colSpan` to 5 consistently across both modes.
+
+### Lesson 145: Simplifying Delivery Modal by Removing Redundant In-Modal Vehicle Checklist (`/sales/$orderId`)
+
+- **Context & User Request**:
+  - In `/sales/$orderId`, vehicles to be delivered are already selected either from the table (via single-vehicle `[Giao xe]` or multi-vehicle `[Chế độ chọn]`) or via the top-level dispatch action. The delivery modal previously rendered an additional inner scrollable checklist of vehicles, adding unnecessary clicks and visual clutter.
+- **Implementation**:
+  - In `src/routes/sales.$orderId.tsx`:
+    - Removed the inner scrollable checklist of individual vehicles from `deliveryDialogOpen`.
+    - Modal now directly focuses on delivery details (`Ngày Giao Hàng`, `Tên Người/Tài Xế Nhận Xe`, `Thông Tin Phương Tiện`) and displays the count of vehicles being dispatched (`Số lượng xe xuất kho thực tế: X chiếc`).
+    - Aligns the physical delivery modal design with the commercial invoice modal.
+
+### Lesson 146: View/Edit Delivery Details and Un-exporting (Revert Delivery) in Sales Order (`/sales/$orderId`)
+
+- **Context & User Request**:
+  - For vehicles that have already been dispatched (`isDelivered === true`), replace the empty placeholder dash (`—`) in the "Thao tác" column with an Eye icon button (`[👁️ Xem]`).
+  - Clicking this Eye button allows users to view the delivery note, edit delivery details (date, receiver/driver name, truck/transport details, and notes), and un-export the vehicle (reverting it back to physical inventory stock).
+- **Architecture & Implementation**:
+  - **Backend Services & Functions (`src/server/services/sales.ts` & `src/server/fns/sales.ts`)**:
+    - Enhanced `getSalesOrderDetailFn` to left join `deliveryNoteItems` and `deliveryNotes`, returning `deliveryNoteId`, `deliveryNoteNumber`, `deliveryDate`, `receiverName`, `transportInfo`, and `deliveryNoteContent` directly on each vehicle item.
+    - Added `updateDeliveryNote`: updates delivery metadata on `delivery_notes` and synchronizes `vehicles.deliveredAt` across associated vehicles.
+    - Added `revertDeliveryNote`: handles single-vehicle and batch delivery un-exporting. Sets `isDelivered = false, deliveredAt = null`, deletes corresponding `delivery_note_items` entry, and deletes the `delivery_notes` row if no items remain. Includes fallback support for legacy unlinked records.
+    - Exposed `updateDeliveryNoteFn` and `revertDeliveryNoteFn` guarded by `sales.deliver` permission.
+  - **Frontend UI (`src/routes/sales.$orderId.tsx`)**:
+    - In `Thao tác` column: rendered `[👁️ Xem]` button with blue outline when `canDeliver && i.isDelivered`.
+    - Added `viewDeliveryDialogOpen`: displays vehicle summary card with `<ColorLabel name={item.colorName} hex={item.colorHex} />` (Rule 6 compliant), associated delivery note number, and other vehicles sharing the same dispatch note (if batch).
+    - Form inputs allow editing `Ngày Giao Hàng`, `Tên Người/Tài Xế Nhận Xe`, `Thông Tin Phương Tiện / Biển Số Xe Tải`, and `Ghi Chú`.
+    - Integrated "Hủy xuất kho" / "Hủy xuất xe này" with `confirmDialog` prompting confirmation before reverting the vehicle back to warehouse inventory. If multiple vehicles share the dispatch note, users can choose to revert only this vehicle or the entire delivery note.
+
+### Lesson 147: Simplifying Direct Receiving Branch Display to "Trực tiếp"
+
+- **Context & User Request**:
+  - In sales order listings, detail views, and finance modules, orders or receivables without a sub-branch were displayed as "Công ty mẹ (Trực tiếp)". The user requested simplifying this label to just "Trực tiếp".
+- **Implementation**:
+  - Updated `src/routes/sales.index.tsx`:
+    - Changed filter option `[DIRECT_BRANCH, 'Trực tiếp']`.
+    - Changed table cell fallback `o.branchName ?? 'Trực tiếp'`.
+  - Updated `src/routes/sales.$orderId.tsx`:
+    - Changed description fallback `order.branchName ?? 'Trực tiếp'`.
+  - Updated `src/routes/finance.tsx`:
+    - Changed filter option, receivables table cell, and receipt branch select item to "Trực tiếp".
+
+### Lesson 148: Bank Account Multi-Select Dropdown in Reconciliation (`/reconcile`)
+
+- **Context & User Request**:
+  - In `/reconcile`, the bank account filter previously used single-select button switcher tabs on the page and a single `SearchSelect` dropdown in the filter dialog. The user requested changing the bank account filter into a multi-select dropdown.
+- **Architecture & Implementation**:
+  - In `src/routes/reconcile.tsx`:
+    - Updated `validateSearch` schema:
+      `account: z.union([z.number().int(), z.array(z.number().int())]).transform(v => Array.isArray(v) ? v : v !== undefined ? [v] : undefined).optional().catch(undefined)`.
+      This cleanly supports multi-select arrays in URL query parameters while remaining backwards compatible with single `account=2` query links.
+    - Updated state to `selectedAccountIds: number[]` with `setSelectedAccountIds: (accIds: number[]) => void`.
+    - Filtered statement lines across multiple bank accounts via `selectedAccountIds.includes(l.companyBankAccountId)`.
+    - In the top "TÀI KHOẢN NGÂN HÀNG" section: replaced the row of button pills with `<MultiSearchSelect>`, including searchable bank logos, account numbers, and unmatched transaction badges, plus a quick "Bỏ chọn" link when accounts are filtered.
+    - In the `[Bộ lọc]` dialog: replaced `SearchSelect` with `<MultiSearchSelect>`.
+    - Updated transaction table header to display selected account names or count when multiple accounts are chosen.
+
+### Lesson 149: Streamlining View/Edit Delivery Modal by Removing Note Field (`/sales/$orderId`)
+
+- **Context & User Request**:
+  - In `/sales/$orderId`, inside the "Chi Tiết Phiếu Giao Xe Thực Tế" modal, the "Ghi Chú" field was deemed unnecessary by the user. The initial delivery creation dialog only collected delivery date, receiver/driver, and transport vehicle info.
+- **Implementation**:
+  - In `src/routes/sales.$orderId.tsx`:
+    - Removed the "Ghi Chú" label and input from `viewDeliveryDialogOpen`.
+    - Pruned unused `editDeliveryNote` state and handler assignments.
+    - Modal now compactly presents: `Ngày Giao Hàng *`, `Tên Người/Tài Xế Nhận Xe`, and `Thông Tin Phương Tiện / Biển Số Xe Tải`, aligning directly with the initial creation modal.
+
+### Lesson 150: Dashboard Table Alignment with Inventory & Sales Components (`/`)
+
+- **Context & User Request**:
+  - In `/` (Dashboard / Tổng quan), the bottom two overview tables previously had non-standard combined badge columns:
+    1. Left table ("Xe Mới Nhập & Trạng Thái 2 Kho"): Used a single combined `KHO KÉP` badge (`<DualInventoryBadge>`).
+    2. Right table ("Đơn Bán Gần Đây"): Used a single combined `TIẾN ĐỘ` column with stacked miniature badges ("Giao X/Y", "HĐ A/B").
+  - The user requested using the same exact separate components and visual column structure from the respective full pages (`/inventory` and `/sales`).
+- **Implementation**:
+  - Created reusable badge components in `src/components/sales/SalesWarehouseBadges.tsx`:
+    - `SalesDeliveryBadge`: Handles delivery progress (`Đã giao đủ` in emerald vs `Đã giao X/Y` in amber).
+    - `SalesInvoiceBadge`: Handles internal invoicing progress (`Đã lập HĐ` in blue vs `Chưa ra HĐ` / `Ra HĐ một phần`).
+  - Refactored `src/routes/sales.index.tsx` to use `SalesDeliveryBadge` and `SalesInvoiceBadge`.
+  - Updated `src/routes/index.tsx`:
+    - **Left Table ("Xe Mới Nhập & Trạng Thái 2 Kho")**:
+      - Replaced `Kho Kép` with two distinct columns: `Trạng Thái` (`<DeliveryStatusBadge />`) and `Trạng Thái HĐ` (`<InvoiceStatusBadge />`) from `#/components/inventory/DualInventoryBadge.tsx`, matching `/inventory`.
+      - Added mandatory color circle swatch preview (`style={{ backgroundColor: v.colorHex }}`) alongside `v.colorName` adhering to Rule 6.
+    - **Right Table ("Đơn Bán Gần Đây")**:
+      - Replaced `Tiến Độ` with two distinct columns: `Kho Thực Tế` (`<SalesDeliveryBadge />`) and `Kho Hóa Đơn` (`<SalesInvoiceBadge />`), matching `/sales`.
+      - Updated direct branch fallback label to `"Trực tiếp"`.
+
+### Lesson 151: Correcting "Ngày Bán" Column Header on Dashboard Recent Orders (`/`)
+
+- **Context & Symptom**:
+  - In `src/routes/index.tsx`, the recent wholesale orders table ("Đơn Bán Gần Đây") previously titled its first column "Mã Phiếu", but displayed sale dates (`formatDate(o.orderDate)` e.g. `20/10/2026`).
+  - The user flagged "this is not Mã Phiếu" because `20/10/2026` represents the sale date (`Ngày Bán`), directly corresponding to the `Ngày Bán` column on the main `/sales` page.
+- **Implementation**:
+  - Updated `src/routes/index.tsx`:
+    - Changed `<TableHead>Mã Phiếu</TableHead>` to `<TableHead>Ngày Bán</TableHead>`.
+    - Enhanced the date link target from generic `/sales` to the specific sales order detail page `/sales/$orderId` (`params={{ orderId: String(o.id) }}`).
+
+_(Next Agent: Append Lesson 152, 153,... above this line upon completing tasks)_
+
+
+
+
+
+
+
+
+
+
+
+
+

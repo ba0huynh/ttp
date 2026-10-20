@@ -57,10 +57,7 @@ import { Label } from '#/components/ui/label.tsx'
 import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
 import { PriceRangeFilter } from '#/components/ui/price-range-filter.tsx'
 import { useUrlText } from '#/lib/use-url-text.ts'
-import {
-  SearchSelect,
-  SearchSelectItem,
-} from '#/components/ui/search-select.tsx'
+import { SearchSelectItem } from '#/components/ui/search-select.tsx'
 import {
   Table,
   TableBody,
@@ -98,7 +95,13 @@ export const Route = createFileRoute('/reconcile')({
   // Filters live in the URL so a reload or shared link keeps them
   validateSearch: z.object({
     q: z.string().optional().catch(undefined),
-    account: z.number().optional().catch(undefined),
+    account: z
+      .union([z.number().int(), z.array(z.number().int())])
+      .transform((v) =>
+        Array.isArray(v) ? v : v !== undefined ? [v] : undefined,
+      )
+      .optional()
+      .catch(undefined),
     from: z.string().optional().catch(undefined),
     to: z.string().optional().catch(undefined),
     flow: z.array(z.enum(['in', 'out'])).optional().catch(undefined),
@@ -131,10 +134,13 @@ function ReconcilePage() {
 
   const searchParams = Route.useSearch()
   const navigate = Route.useNavigate()
-  const selectedAccountId = searchParams.account ?? null
-  const setSelectedAccountId = (accId: number | null) =>
+  const selectedAccountIds = searchParams.account ?? []
+  const setSelectedAccountIds = (accIds: number[]) =>
     navigate({
-      search: (prev) => ({ ...prev, account: accId ?? undefined }),
+      search: (prev) => ({
+        ...prev,
+        account: accIds.length ? accIds : undefined,
+      }),
       replace: true,
     })
 
@@ -155,6 +161,7 @@ function ReconcilePage() {
     navigate({ search: (prev) => ({ ...prev, [key]: value }), replace: true })
 
   const activeFilterCount = [
+    selectedAccountIds.length > 0,
     Boolean(descSearch.trim()),
     Boolean(from || to),
     Boolean(flow?.length),
@@ -165,12 +172,11 @@ function ReconcilePage() {
 
   const allLines: any[] = reconciliationData?.lines ?? []
   const accounts: any[] = reconciliationData?.accounts ?? []
-  const selectedAccount = accounts.find((a: any) => a.id === selectedAccountId)
 
   const filteredLines = allLines.filter((l) => {
     if (
-      selectedAccountId !== null &&
-      l.companyBankAccountId !== selectedAccountId
+      selectedAccountIds.length > 0 &&
+      !selectedAccountIds.includes(l.companyBankAccountId)
     ) {
       return false
     }
@@ -201,16 +207,19 @@ function ReconcilePage() {
 
   const linesPg = usePagination<any>(
     filteredLines,
-    `${selectedAccountId}|${descSearch}|${from}|${to}|${flow?.join()}|${status?.join()}|${type?.join()}|${min}|${max}`,
+    `${selectedAccountIds.join()}|${descSearch}|${from}|${to}|${flow?.join()}|${status?.join()}|${type?.join()}|${min}|${max}`,
   )
 
   const totalUnmatched = accounts.reduce(
     (sum: number, a: any) => sum + (a.unmatchedLines || 0),
     0,
   )
-  const inScopeLines = selectedAccountId
-    ? allLines.filter((l) => l.companyBankAccountId === selectedAccountId)
-    : allLines
+  const inScopeLines =
+    selectedAccountIds.length > 0
+      ? allLines.filter((l) =>
+          selectedAccountIds.includes(l.companyBankAccountId),
+        )
+      : allLines
   const inScopeUnmatched = inScopeLines.filter(
     (l) => l.status === 'unmatched',
   ).length
@@ -466,7 +475,7 @@ function ReconcilePage() {
           </div>
         )}
 
-        {/* Bank Account Switcher */}
+        {/* Bank Account Multi-Select Filter */}
         {accounts.length > 0 && (
           <div className="space-y-2">
             <div className="flex items-center justify-between">
@@ -479,89 +488,60 @@ function ReconcilePage() {
                 </span>
               )}
             </div>
-            <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                onClick={() => setSelectedAccountId(null)}
-                className={cn(
-                  'inline-flex items-center gap-2 px-3.5 py-2 rounded-lg text-xs font-medium transition-all border cursor-pointer',
-                  selectedAccountId === null
-                    ? 'bg-slate-900 text-white border-slate-900 shadow-xs font-semibold'
-                    : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300',
-                )}
-              >
-                <Landmark className="size-3.5" />
-                <span>Tất cả tài khoản</span>
-                <Badge
-                  variant="secondary"
-                  className={cn(
-                    'py-0 px-1.5 text-[10px] ml-0.5',
-                    selectedAccountId === null
-                      ? 'bg-slate-800 text-slate-200'
-                      : 'bg-slate-100 text-slate-700',
-                  )}
+            <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+              <div className="w-full sm:w-96">
+                <MultiSearchSelect
+                  className="h-10 w-full text-xs rounded-lg bg-white shadow-xs"
+                  placeholder="Tất cả tài khoản ngân hàng"
+                  searchPlaceholder="Tìm kiếm tài khoản..."
+                  values={selectedAccountIds.map(String)}
+                  onValuesChange={(vals) =>
+                    setSelectedAccountIds(vals.map(Number))
+                  }
                 >
-                  {allLines.length}
-                </Badge>
-              </button>
+                  {accounts.map((acc: any) => {
+                    const bankLabel =
+                      acc.bankShortName || acc.bankCode || acc.bankName
+                    return (
+                      <SearchSelectItem
+                        key={acc.id}
+                        value={String(acc.id)}
+                        keywords={`${bankLabel} ${acc.accountNumber}`}
+                      >
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <BankLabel image={acc.bankImage} name={bankLabel}>
+                            <span className="font-medium text-slate-800">
+                              {bankLabel}
+                            </span>
+                            <span className="text-slate-400 font-mono text-xs">
+                              ({acc.accountNumber})
+                            </span>
+                          </BankLabel>
+                          {acc.unmatchedLines > 0 ? (
+                            <Badge className="py-0 px-1.5 text-[10px] font-bold bg-amber-100 text-amber-900 border-amber-200">
+                              {acc.unmatchedLines} chưa khớp
+                            </Badge>
+                          ) : (
+                            <span className="text-[10px] text-slate-400">
+                              {acc.totalLines || 0} dòng
+                            </span>
+                          )}
+                        </div>
+                      </SearchSelectItem>
+                    )
+                  })}
+                </MultiSearchSelect>
+              </div>
 
-              {accounts.map((acc: any) => {
-                const isSelected = selectedAccountId === acc.id
-                const bankLabel =
-                  acc.bankShortName || acc.bankCode || acc.bankName
-                return (
-                  <button
-                    key={acc.id}
-                    type="button"
-                    onClick={() => setSelectedAccountId(acc.id)}
-                    className={cn(
-                      'inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium transition-all border cursor-pointer',
-                      isSelected
-                        ? 'bg-emerald-700 text-white border-emerald-700 shadow-xs font-semibold'
-                        : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:border-slate-300',
-                    )}
-                  >
-                    <BankLogo
-                      src={acc.bankImage}
-                      name={bankLabel}
-                      className="h-4 w-7 shrink-0"
-                    />
-                    <span>{bankLabel}</span>
-                    <span
-                      className={cn(
-                        'text-[11px] font-mono',
-                        isSelected ? 'text-emerald-100' : 'text-slate-500',
-                      )}
-                    >
-                      • {acc.accountNumber.slice(-4)}
-                    </span>
-                    {acc.unmatchedLines > 0 ? (
-                      <Badge
-                        className={cn(
-                          'py-0 px-1.5 text-[10px] ml-0.5 font-bold',
-                          isSelected
-                            ? 'bg-amber-400 text-slate-950'
-                            : 'bg-amber-100 text-amber-900 border-amber-200',
-                        )}
-                      >
-                        {acc.unmatchedLines} chưa khớp
-                      </Badge>
-                    ) : (
-                      <Badge
-                        variant="outline"
-                        className={cn(
-                          'py-0 px-1 text-[10px] ml-0.5',
-                          isSelected
-                            ? 'border-emerald-500 text-emerald-100'
-                            : 'text-slate-400 border-slate-200',
-                        )}
-                      >
-                        {acc.totalLines}
-                      </Badge>
-                    )}
-                  </button>
-                )
-              })}
+              {selectedAccountIds.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setSelectedAccountIds([])}
+                  className="text-xs text-slate-500 hover:text-slate-800 underline font-medium self-start sm:self-center cursor-pointer"
+                >
+                  Bỏ chọn ({allLines.length} giao dịch)
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -571,14 +551,30 @@ function ReconcilePage() {
           <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <CardTitle className="text-sm font-bold text-slate-800">
-                {selectedAccount ? (
+                {selectedAccountIds.length === 1 ? (
+                  (() => {
+                    const acc = accounts.find(
+                      (a: any) => a.id === selectedAccountIds[0],
+                    )
+                    return acc ? (
+                      <>
+                        Sổ Phụ Giao Dịch:{' '}
+                        <span className="font-semibold text-emerald-800">
+                          {acc.bankShortName ||
+                            acc.bankCode ||
+                            acc.bankName}{' '}
+                          &bull; {acc.accountNumber}
+                        </span>
+                      </>
+                    ) : (
+                      'Tất Cả Giao Dịch Sao Kê Ngân Hàng'
+                    )
+                  })()
+                ) : selectedAccountIds.length > 1 ? (
                   <>
                     Sổ Phụ Giao Dịch:{' '}
                     <span className="font-semibold text-emerald-800">
-                      {selectedAccount.bankShortName ||
-                        selectedAccount.bankCode ||
-                        selectedAccount.bankName}{' '}
-                      &bull; {selectedAccount.accountNumber}
+                      {selectedAccountIds.length} tài khoản đã chọn
                     </span>
                   </>
                 ) : (
@@ -853,29 +849,41 @@ function ReconcilePage() {
                 <Label className="text-xs font-semibold">
                   Tài khoản ngân hàng
                 </Label>
-                <SearchSelect
+                <MultiSearchSelect
                   className="h-11 w-full text-sm rounded-lg"
                   placeholder="Tất cả tài khoản"
-                  value={selectedAccountId ? String(selectedAccountId) : 'all'}
-                  onValueChange={(v) =>
-                    setSelectedAccountId(v === 'all' ? null : Number(v))
+                  searchPlaceholder="Tìm kiếm tài khoản..."
+                  values={selectedAccountIds.map(String)}
+                  onValuesChange={(vals) =>
+                    setSelectedAccountIds(vals.map(Number))
                   }
                 >
-                  <SearchSelectItem value="all">
-                    Tất cả tài khoản ({allLines.length} giao dịch)
-                  </SearchSelectItem>
                   {accounts.map((acc: any) => {
                     const bankLabel =
                       acc.bankShortName || acc.bankCode || acc.bankName
                     return (
-                      <SearchSelectItem key={acc.id} value={String(acc.id)}>
-                        <BankLabel image={acc.bankImage} name={bankLabel}>
-                          {bankLabel} ({acc.accountNumber})
-                        </BankLabel>
+                      <SearchSelectItem
+                        key={acc.id}
+                        value={String(acc.id)}
+                        keywords={`${bankLabel} ${acc.accountNumber}`}
+                      >
+                        <div className="flex items-center justify-between w-full gap-2">
+                          <BankLabel image={acc.bankImage} name={bankLabel}>
+                            <span>{bankLabel}</span>
+                            <span className="text-slate-400 font-mono text-xs">
+                              ({acc.accountNumber})
+                            </span>
+                          </BankLabel>
+                          {acc.unmatchedLines > 0 && (
+                            <Badge className="py-0 px-1 text-[10px] font-bold bg-amber-100 text-amber-900 border-amber-200">
+                              {acc.unmatchedLines} chưa khớp
+                            </Badge>
+                          )}
+                        </div>
                       </SearchSelectItem>
                     )
                   })}
-                </SearchSelect>
+                </MultiSearchSelect>
               </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label className="text-xs font-semibold">Nội dung diễn giải</Label>

@@ -66,8 +66,10 @@ import {
 import { formatVnd, todayIso, batchLabel } from '#/lib/business.ts'
 import {
   availableVehiclesQuery,
+  batchesQuery,
   customerOptionsQuery,
   currentUserQuery,
+  masterDataQuery,
 } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { createSalesOrderFn } from '#/server/fns/sales.ts'
@@ -83,6 +85,8 @@ export const Route = createFileRoute('/sales/new')({
     await Promise.all([
       queryClient.query(customerOptionsQuery()),
       queryClient.query(availableVehiclesQuery()),
+      queryClient.query(masterDataQuery()),
+      queryClient.query(batchesQuery()),
     ])
   },
   component: NewSalesOrderPage,
@@ -92,6 +96,8 @@ function NewSalesOrderPage() {
   const { user } = Route.useRouteContext()
   const { data: customers } = useSuspenseQuery(customerOptionsQuery())
   const { data: availableVehicles } = useSuspenseQuery(availableVehiclesQuery())
+  const { data: masterData } = useSuspenseQuery(masterDataQuery())
+  const { data: batches } = useSuspenseQuery(batchesQuery())
   const queryClient = useQueryClient()
   const createOrder = useMutation({ mutationFn: createSalesOrderFn })
   const navigate = useNavigate()
@@ -123,9 +129,14 @@ function NewSalesOrderPage() {
   const [filterBatchIds, setFilterBatchIds] = React.useState<number[]>([])
   const [filtersOpen, setFiltersOpen] = React.useState(false)
 
-  // Unique filter options extracted from available vehicles
+  // Filter options: populated from master data / batches and available vehicles
   const modelOptions = React.useMemo(() => {
     const map = new Map<number, string>()
+    for (const m of masterData.models) {
+      if (m.id && m.name) {
+        map.set(m.id, m.name)
+      }
+    }
     for (const v of availableVehicles) {
       if (v.modelId && v.modelName) {
         map.set(v.modelId, v.modelName)
@@ -134,10 +145,15 @@ function NewSalesOrderPage() {
     return Array.from(map.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
-  }, [availableVehicles])
+  }, [masterData.models, availableVehicles])
 
   const colorOptions = React.useMemo(() => {
     const map = new Map<number, { name: string; hex: string | null }>()
+    for (const c of masterData.colors) {
+      if (c.id && c.name) {
+        map.set(c.id, { name: c.name, hex: c.hex ?? null })
+      }
+    }
     for (const v of availableVehicles) {
       if (v.colorId && v.colorName) {
         map.set(v.colorId, { name: v.colorName, hex: v.colorHex ?? null })
@@ -146,10 +162,15 @@ function NewSalesOrderPage() {
     return Array.from(map.entries())
       .map(([id, c]) => ({ id, ...c }))
       .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
-  }, [availableVehicles])
+  }, [masterData.colors, availableVehicles])
 
   const batchOptions = React.useMemo(() => {
     const map = new Map<number, string>()
+    for (const b of batches) {
+      if (b.id) {
+        map.set(b.id, batchLabel(b))
+      }
+    }
     for (const v of availableVehicles) {
       if (v.batchId) {
         map.set(v.batchId, batchLabel(v))
@@ -158,7 +179,7 @@ function NewSalesOrderPage() {
     return Array.from(map.entries())
       .map(([id, label]) => ({ id, label }))
       .sort((a, b) => a.label.localeCompare(b.label, 'vi'))
-  }, [availableVehicles])
+  }, [batches, availableVehicles])
 
   const hasActiveFilters =
     pickerSearch.trim() !== '' ||

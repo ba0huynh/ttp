@@ -31,7 +31,7 @@ import { num } from '#/server/services/common.ts'
 import { requirePermission } from './middleware.ts'
 
 export const listBatchesFn = createServerFn({ method: 'GET' })
-  .middleware([requirePermission('batches.view')])
+  .middleware([requirePermission('batches.view', 'sales.create')])
   .handler(async () => {
     const rows = await db
       .select({

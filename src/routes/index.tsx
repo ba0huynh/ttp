@@ -8,10 +8,16 @@ import {
   Warehouse,
 } from 'lucide-react'
 
-import { DualInventoryBadge } from '#/components/inventory/DualInventoryBadge.tsx'
+import {
+  DeliveryStatusBadge,
+  InvoiceStatusBadge,
+} from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader, StatCard } from '#/components/layout/StatCard.tsx'
-import { Badge } from '#/components/ui/badge.tsx'
+import {
+  SalesDeliveryBadge,
+  SalesInvoiceBadge,
+} from '#/components/sales/SalesWarehouseBadges.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -167,7 +173,8 @@ function DashboardPage() {
                       <TableHead>Số Khung</TableHead>
                       <TableHead>Dòng xe / Màu</TableHead>
                       <TableHead className="text-right">Giá Vốn</TableHead>
-                      <TableHead className="text-center">Kho Kép</TableHead>
+                      <TableHead className="text-center">Trạng Thái</TableHead>
+                      <TableHead className="text-center">Trạng Thái HĐ</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -180,7 +187,13 @@ function DashboardPage() {
                           <div className="font-medium text-slate-900">
                             {v.modelName}
                           </div>
-                          <div className="text-[11px] text-slate-500">
+                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
+                            {v.colorHex && (
+                              <span
+                                className="size-2.5 rounded-full border border-slate-300 inline-block shrink-0"
+                                style={{ backgroundColor: v.colorHex }}
+                              />
+                            )}
                             {v.colorName}
                           </div>
                         </TableCell>
@@ -188,10 +201,16 @@ function DashboardPage() {
                           {formatVnd(v.costPrice)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <DualInventoryBadge
+                          <DeliveryStatusBadge
                             isDelivered={v.isDelivered}
                             isInvoiced={v.isInvoiced}
                             deliveredAt={v.deliveredAt}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <InvoiceStatusBadge
+                            isDelivered={v.isDelivered}
+                            isInvoiced={v.isInvoiced}
                             invoicedAt={v.invoicedAt}
                           />
                         </TableCell>
@@ -230,10 +249,11 @@ function DashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50/50">
-                      <TableHead>Mã Phiếu</TableHead>
+                      <TableHead>Ngày Bán</TableHead>
                       <TableHead>Khách Hàng & Điểm Bán</TableHead>
                       <TableHead className="text-right">Tổng Tiền</TableHead>
-                      <TableHead className="text-center">Tiến Độ</TableHead>
+                      <TableHead className="text-center">Kho Thực Tế</TableHead>
+                      <TableHead className="text-center">Kho Hóa Đơn</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -241,7 +261,8 @@ function DashboardPage() {
                       <TableRow key={o.id} className="hover:bg-slate-50/80">
                         <TableCell>
                           <Link
-                            to="/sales"
+                            to="/sales/$orderId"
+                            params={{ orderId: String(o.id) }}
                             className="font-medium text-emerald-700 hover:underline"
                           >
                             {formatDate(o.orderDate)}
@@ -254,40 +275,23 @@ function DashboardPage() {
                           <div className="text-[11px] text-slate-500 truncate max-w-[180px]">
                             {o.branchName
                               ? `ĐB: ${o.branchName}`
-                              : 'Khách hàng mẹ'}
+                              : 'Trực tiếp'}
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(o.totalAmount)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <div className="flex flex-col gap-1 items-center">
-                            <span className="text-[11px] font-medium text-slate-500">
-                              Xe: {o.vehicleCount}
-                            </span>
-                            <div className="flex items-center gap-1 text-[10px]">
-                              <Badge
-                                variant="outline"
-                                className={`py-0 px-1 ${
-                                  o.deliveredCount === o.vehicleCount
-                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
-                                    : 'bg-slate-50 text-slate-600'
-                                }`}
-                              >
-                                Giao {o.deliveredCount}/{o.vehicleCount}
-                              </Badge>
-                              <Badge
-                                variant="outline"
-                                className={`py-0 px-1 ${
-                                  o.invoicedCount === o.vehicleCount
-                                    ? 'bg-blue-50 text-blue-700 border-blue-300'
-                                    : 'bg-slate-50 text-slate-600'
-                                }`}
-                              >
-                                HĐ {o.invoicedCount}/{o.vehicleCount}
-                              </Badge>
-                            </div>
-                          </div>
+                          <SalesDeliveryBadge
+                            deliveredCount={o.deliveredCount}
+                            vehicleCount={o.vehicleCount}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <SalesInvoiceBadge
+                            invoicedCount={o.invoicedCount}
+                            vehicleCount={o.vehicleCount}
+                          />
                         </TableCell>
                       </TableRow>
                     ))}

@@ -190,6 +190,140 @@ export async function recordDelivery(
   }
 }
 
+/** Updates delivery note details (date, driver, transport, note) and synchronizes vehicle deliveredAt */
+export async function updateDeliveryNote(
+  input: {
+    deliveryNoteId: number
+    deliveryDate: string
+    receiverName?: string | null
+    transportInfo?: string | null
+    note?: string | null
+  },
+  _userId?: number,
+) {
+  return await db.transaction(async (tx) => {
+    const [note] = await tx
+      .select({ id: deliveryNotes.id })
+      .from(deliveryNotes)
+      .where(eq(deliveryNotes.id, input.deliveryNoteId))
+      .limit(1)
+    if (!note) throw new BusinessError('Không tìm thấy phiếu giao xe')
+
+    await tx
+      .update(deliveryNotes)
+      .set({
+        deliveryDate: input.deliveryDate,
+        receiverName: input.receiverName ?? null,
+        transportInfo: input.transportInfo ?? null,
+        note: input.note ?? null,
+      })
+      .where(eq(deliveryNotes.id, input.deliveryNoteId))
+
+    // Update deliveredAt on all vehicles belonging to this delivery note
+    const items = await tx
+      .select({ vehicleId: deliveryNoteItems.vehicleId })
+      .from(deliveryNoteItems)
+      .where(eq(deliveryNoteItems.deliveryNoteId, input.deliveryNoteId))
+
+    const vehicleIds = items.map((i) => i.vehicleId)
+    if (vehicleIds.length > 0) {
+      await tx
+        .update(vehicles)
+        .set({ deliveredAt: input.deliveryDate })
+        .where(inArray(vehicles.id, vehicleIds))
+    }
+  })
+}
+
+/** Reverts delivery (un-exports), returning vehicles back to physical inventory */
+export async function revertDeliveryNote(
+  input: {
+    deliveryNoteId?: number | null
+    vehicleId?: number | null
+  },
+  _userId?: number,
+) {
+  if (!input.deliveryNoteId && !input.vehicleId) {
+    throw new BusinessError('Cần cung cấp mã phiếu giao hoặc mã xe để hủy xuất kho')
+  }
+
+  return await db.transaction(async (tx) => {
+    let noteId = input.deliveryNoteId
+
+    if (!noteId && input.vehicleId) {
+      const [dni] = await tx
+        .select({ deliveryNoteId: deliveryNoteItems.deliveryNoteId })
+        .from(deliveryNoteItems)
+        .where(eq(deliveryNoteItems.vehicleId, input.vehicleId))
+        .limit(1)
+
+      if (dni) {
+        noteId = dni.deliveryNoteId
+      } else {
+        await tx
+          .update(vehicles)
+          .set({ isDelivered: false, deliveredAt: null })
+          .where(eq(vehicles.id, input.vehicleId))
+        return
+      }
+    }
+
+    if (!noteId) return
+
+    const [note] = await tx
+      .select({ id: deliveryNotes.id })
+      .from(deliveryNotes)
+      .where(eq(deliveryNotes.id, noteId))
+      .limit(1)
+    if (!note) throw new BusinessError('Không tìm thấy phiếu giao xe')
+
+    const items = await tx
+      .select({ vehicleId: deliveryNoteItems.vehicleId })
+      .from(deliveryNoteItems)
+      .where(eq(deliveryNoteItems.deliveryNoteId, noteId))
+
+    if (input.vehicleId) {
+      const exists = items.some((i) => i.vehicleId === input.vehicleId)
+      if (!exists) {
+        throw new BusinessError('Xe không nằm trong phiếu giao này')
+      }
+
+      await tx
+        .delete(deliveryNoteItems)
+        .where(
+          and(
+            eq(deliveryNoteItems.deliveryNoteId, noteId),
+            eq(deliveryNoteItems.vehicleId, input.vehicleId),
+          ),
+        )
+
+      await tx
+        .update(vehicles)
+        .set({ isDelivered: false, deliveredAt: null })
+        .where(eq(vehicles.id, input.vehicleId))
+
+      // If no items remain in this delivery note, delete the delivery note
+      if (items.length <= 1) {
+        await tx
+          .delete(deliveryNotes)
+          .where(eq(deliveryNotes.id, noteId))
+      }
+    } else {
+      const vehicleIds = items.map((i) => i.vehicleId)
+      if (vehicleIds.length > 0) {
+        await tx
+          .update(vehicles)
+          .set({ isDelivered: false, deliveredAt: null })
+          .where(inArray(vehicles.id, vehicleIds))
+      }
+
+      await tx
+        .delete(deliveryNotes)
+        .where(eq(deliveryNotes.id, noteId))
+    }
+  })
+}
+
 /** INTERNAL INVOICING — only modifies is_invoiced flag (DOES NOT touch is_delivered) */
 export async function recordInvoice(
   input: {

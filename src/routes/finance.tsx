@@ -379,7 +379,7 @@ function FinancePage() {
   // Filter dropdown options: every customer / branch / supplier / account
   const customerOptions = customers.map((c) => [c.id, c.name] as const)
   const filterBranchOptions = [
-    [DIRECT_BRANCH, 'Công ty mẹ (Trực tiếp)'] as const,
+    [DIRECT_BRANCH, 'Trực tiếp'] as const,
     ...customers.flatMap((c) =>
       c.branches.map((b) => [String(b.id), `${b.name} (${c.name})`] as const),
     ),
@@ -731,7 +731,7 @@ function FinancePage() {
                           </Link>
                         </TableCell>
                         <TableCell className="text-slate-900">
-                          {r.branchName ?? 'Công ty mẹ (Trực tiếp)'}
+                          {r.branchName ?? 'Trực tiếp'}
                         </TableCell>
                         <TableCell className="text-right text-emerald-900">
                           {formatVnd(r.amount)}
@@ -1296,7 +1296,7 @@ function FinancePage() {
                   }
                 >
                   <SearchSelectItem value="none">
-                    Công ty mẹ (Trực tiếp)
+                    Trực tiếp
                   </SearchSelectItem>
                   {branchOptions.map((b) => (
                     <SearchSelectItem
