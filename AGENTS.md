@@ -1298,7 +1298,17 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Update 2 — navy sidebar (supersedes the blue sidebar below)**: a solid `#6b9ace` sidebar was too bright ("blinding"), so `ink-*` and `--sidebar` are now a deep navy of the same hue (`ink-900` = `#1e2c3f`); this also applies to the auth brand panel. `#6b9ace` stays the accent there: the active nav item is a `bg-emerald-500` (`#6b9ace`) pill with white text, other items `text-slate-200` with `slate-400` icons and a `white/7` hover, group titles `slate-400`, the logo caption and the auth panel icons `emerald-400`, the logo border `ring-1 ring-white/20`. Buttons and accents in the content area are unchanged (exact `#6b9ace`).
 - **Update — exact colour, never darkened (client request)**: `#6b9ace` is now used as-is, not as a darker shade: `emerald-500/600/700`, `--primary`, `--ring`, chart-1 and all `ink-*` are exactly `#6b9ace`, so primary buttons (`bg-emerald-700`), the left menu and the auth brand panel (`bg-ink-900`) are the brand blue. `emerald-800` (`#5f8fc4`) is only the button hover. Text and icons on those blue panels are white / `white/70–90` (grey, brass and `emerald-300` were unreadable there); the active nav item is a solid white pill with `text-ink-900` (blue) text and icon (no side marker), other items are full white with a `white/16` hover, group titles `white/70`. The logo and favicon are a flat `#6b9ace` tile with a white "T" and a white rim (`ring-2 ring-white/70`) so the logo stays visible on the blue menu. Trade-off accepted by the client: white text on `#6b9ace` has low contrast (~2.9:1). `text-emerald-700` labels are now the same light blue.
 
-_(Next Agent: Append Lesson 115, 116,... above this line upon completing tasks)_
+### Lesson 115: Full-Width Layout on Large Screens & ERP Terminology Polish
+
+- **Context & Bug**:
+  - Reviewer noted: `@huynhtanbao hiện cái main content của các trang, khi ở 1 màn hình lớn thì trang nó không tự động rộng ra full` (with a screenshot of `/settings?tab=users` showing the table restricted to a narrow box in the center with huge empty gutters on wide monitors).
+  - Cause: In [src/components/layout/AppLayout.tsx](file:///c:/Users/huynh/OneDrive/Documents/github/PH%E1%BA%A6N%20M%E1%BB%80M%20QU%E1%BA%A2N%20L%C3%9D%20XE%20M%C3%81Y%20TR%C6%AF%E1%BB%9CNG%20TH%E1%BB%8ANH%20PH%C3%81T/src/components/layout/AppLayout.tsx), `<main>` had hardcoded `max-w-[1400px] w-full mx-auto`.
+  - Fix: Removed `max-w-[1400px] mx-auto` and added `min-w-0` (`<main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full min-w-0">`), and synchronized `<header>` gutters with `lg:px-8`. Across the entire website, tables, forms, and cards now fluidly expand to 100% of the available width on high-resolution and ultrawide displays.
+- **Terminology & Reconciliation UI Polish**:
+  - Renamed "Bàn làm việc" to "Tổng quan" in navigation, breadcrumbs, page header, and permissions catalogue (`dashboard.view`).
+  - Balanced the `/reconcile` table action buttons by setting "Gỡ khớp" to `variant="outline"` (`border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 font-medium`) and removing disabled edit/delete buttons from matched rows, ensuring smooth vertical alignment without layout jumps.
+
+_(Next Agent: Append Lesson 116, 117,... above this line upon completing tasks)_
 
 
 

@@ -65,7 +65,7 @@ const NAV_GROUPS: { group: string; items: NavItem[] }[] = [
     group: 'Điều hành',
     items: [
       {
-        title: 'Bàn làm việc',
+        title: 'Tổng quan',
         href: '/',
         icon: LayoutDashboard,
         permission: 'dashboard.view',
@@ -336,7 +336,7 @@ export function AppLayout({ children, user }: AppLayoutProps) {
         }`}
       >
         {/* Top bar */}
-        <header className="h-14 sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur-md px-4 sm:px-6 flex items-center justify-between gap-3">
+        <header className="h-14 sticky top-0 z-20 border-b border-border bg-card/85 backdrop-blur-md px-4 sm:px-6 lg:px-8 flex items-center justify-between gap-3">
           {isLoading && (
             <div className="absolute top-0 left-0 right-0 h-0.5 overflow-hidden">
               <div className="h-full bg-gradient-to-r from-emerald-500 via-brass-400 to-emerald-600 animate-top-loading-bar" />
@@ -385,7 +385,7 @@ export function AppLayout({ children, user }: AppLayoutProps) {
           <ProfileMenu user={user} />
         </header>
 
-        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 max-w-[1400px] w-full mx-auto">
+        <main className="flex-1 px-4 py-6 sm:px-6 lg:px-8 w-full min-w-0">
           {isLoading ? <PageSkeleton /> : children}
         </main>
       </div>

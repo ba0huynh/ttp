@@ -73,7 +73,7 @@ function DashboardPage() {
       <div className="space-y-6">
         <PageHeader
           eyebrow={`Xin chào, ${user.fullName} · ${user.roleName}`}
-          title="Bàn làm việc"
+          title="Tổng quan"
           description="Dòng tiền, tồn kho 2 lớp (thực tế và hóa đơn) và dư nợ khế ước vay — cập nhật theo thời gian thực."
         />
 

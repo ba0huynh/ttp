@@ -12,7 +12,7 @@ export const PERMISSION_GROUPS = [
     key: 'overview',
     label: 'Điều hành',
     items: [
-      { key: 'dashboard.view', label: 'Xem bàn làm việc' },
+      { key: 'dashboard.view', label: 'Xem tổng quan' },
       { key: 'reports.view', label: 'Xem báo cáo & phân tích' },
     ],
   },

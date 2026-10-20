@@ -568,83 +568,86 @@ function ReconcilePage() {
                             )}
                           </TableCell>
                           <TableCell className="text-center whitespace-nowrap">
-                            {!isMatched ? (
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                className="h-7 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1"
-                                onClick={() => openSuggestModal(l.id)}
-                              >
-                                <ArrowRightLeft className="size-3" />
-                                Tìm khớp
-                              </Button>
-                            ) : (
-                              <div className="inline-flex items-center gap-1.5">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  className="h-7 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1 px-2 font-medium"
-                                  onClick={() => setViewingMatchLine(l)}
-                                  title="Xem chi tiết chứng từ đã khớp"
-                                >
-                                  <Eye className="size-3" />
-                                  Xem khớp
-                                </Button>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  className="h-7 gap-1 text-xs text-slate-500 hover:text-rose-600 hover:bg-rose-50 px-2"
-                                  disabled={setLineStatus.isPending}
-                                  onClick={() => handleUnmatch(l.id)}
-                                  title="Gỡ liên kết khớp"
-                                >
-                                  {cancellingLineId === l.id ? (
-                                    <Loader2 className="size-3 animate-spin" />
-                                  ) : (
-                                    <Unlink className="size-3" />
-                                  )}
-                                  {cancellingLineId === l.id
-                                    ? 'Đang gỡ...'
-                                    : 'Gỡ khớp'}
-                                </Button>
-                              </div>
-                            )}
-                            <Can permission="reconcile.manage">
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={isMatched}
-                                onClick={() =>
-                                  setEditLine({
-                                    id: l.id,
-                                    date: l.transactionDate,
-                                    description: l.description ?? '',
-                                    debit: l.debit,
-                                    credit: l.credit,
-                                  })
-                                }
-                                className="size-7 text-slate-400 hover:text-emerald-700"
-                                aria-label="Sửa"
-                                title={
-                                  isMatched ? 'Hủy khớp trước khi sửa' : 'Sửa'
-                                }
-                              >
-                                <Pencil className="size-3.5" />
-                              </Button>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                disabled={isMatched || isBusy(`line:${l.id}`)}
-                                onClick={() => handleDeleteLine(l)}
-                                className="size-7 text-slate-400 hover:text-rose-600"
-                                aria-label="Xóa"
-                                title={
-                                  isMatched ? 'Hủy khớp trước khi xóa' : 'Xóa'
-                                }
-                              >
-                                <BusyTrash busy={isBusy(`line:${l.id}`)} />
-                              </Button>
-                            </Can>
+                            <div className="inline-flex items-center justify-center gap-1.5">
+                              {!isMatched ? (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1 font-medium"
+                                    onClick={() => openSuggestModal(l.id)}
+                                  >
+                                    <ArrowRightLeft className="size-3" />
+                                    Tìm khớp
+                                  </Button>
+                                  <Can permission="reconcile.manage">
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      onClick={() =>
+                                        setEditLine({
+                                          id: l.id,
+                                          date: l.transactionDate,
+                                          description: l.description ?? '',
+                                          debit: l.debit,
+                                          credit: l.credit,
+                                        })
+                                      }
+                                      className="size-7 text-slate-400 hover:text-emerald-700"
+                                      aria-label="Sửa"
+                                      title="Sửa dòng giao dịch"
+                                    >
+                                      <Pencil className="size-3.5" />
+                                    </Button>
+                                    <Button
+                                      variant="ghost"
+                                      size="icon"
+                                      disabled={isBusy(`line:${l.id}`)}
+                                      onClick={() => handleDeleteLine(l)}
+                                      className="size-7 text-slate-400 hover:text-rose-600"
+                                      aria-label="Xóa"
+                                      title="Xóa dòng giao dịch"
+                                    >
+                                      <BusyTrash
+                                        busy={isBusy(`line:${l.id}`)}
+                                      />
+                                    </Button>
+                                  </Can>
+                                </>
+                              ) : (
+                                <>
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    className="h-7 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1 px-2 font-medium"
+                                    onClick={() => setViewingMatchLine(l)}
+                                    title="Xem chi tiết chứng từ đã khớp"
+                                  >
+                                    <Eye className="size-3" />
+                                    Xem khớp
+                                  </Button>
+                                  <Can permission="reconcile.manage">
+                                    <Button
+                                      variant="outline"
+                                      size="sm"
+                                      className="h-7 gap-1 text-xs border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 px-2 font-medium"
+                                      disabled={setLineStatus.isPending}
+                                      onClick={() => handleUnmatch(l.id)}
+                                      title="Gỡ liên kết khớp"
+                                    >
+                                      {cancellingLineId === l.id ? (
+                                        <Loader2 className="size-3 animate-spin" />
+                                      ) : (
+                                        <Unlink className="size-3" />
+                                      )}
+                                      {cancellingLineId === l.id
+                                        ? 'Đang gỡ...'
+                                        : 'Gỡ khớp'}
+                                    </Button>
+                                  </Can>
+                                </>
+                              )}
+                            </div>
                           </TableCell>
                         </TableRow>
                       )
@@ -1320,9 +1323,9 @@ function ReconcilePage() {
               {viewingMatchLine && (
                 <Button
                   type="button"
-                  variant="ghost"
+                  variant="outline"
                   size="sm"
-                  className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 gap-1"
+                  className="h-8 text-xs border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 gap-1 font-medium"
                   disabled={setLineStatus.isPending}
                   onClick={async () => {
                     const id = viewingMatchLine.id
