@@ -147,6 +147,8 @@ export const suppliers = mysqlTable('suppliers', {
   address: varchar('address', { length: 255 }),
   email: varchar('email', { length: 191 }),
   note: text('note'),
+  /** Logo: https address or an upload key ("suppliers/<uuid>.png") */
+  image: varchar('image', { length: 500 }),
   ...timestamps,
 })
 

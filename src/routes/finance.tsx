@@ -671,7 +671,14 @@ function FinancePage() {
                         className="hover:bg-slate-50/80"
                       >
                         <TableCell className="font-medium text-slate-900">
-                          {p.supplierName}
+                          <Link
+                            to="/suppliers/$supplierId"
+                            params={{ supplierId: String(p.supplierId) }}
+                            preload="intent"
+                            className="hover:text-emerald-700 hover:underline"
+                          >
+                            {p.supplierName}
+                          </Link>
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(p.purchased)}
@@ -810,7 +817,18 @@ function FinancePage() {
                           {formatDate(p.paymentDate)}
                         </TableCell>
                         <TableCell className="font-medium text-slate-900">
-                          {p.supplierName ?? p.payeeName}
+                          {p.supplierId && p.supplierName ? (
+                            <Link
+                              to="/suppliers/$supplierId"
+                              params={{ supplierId: String(p.supplierId) }}
+                              preload="intent"
+                              className="hover:text-emerald-700 hover:underline"
+                            >
+                              {p.supplierName}
+                            </Link>
+                          ) : (
+                            (p.supplierName ?? p.payeeName)
+                          )}
                         </TableCell>
                         <TableCell className="text-right text-rose-900">
                           {formatVnd(p.amount)}

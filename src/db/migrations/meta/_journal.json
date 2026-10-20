@@ -253,6 +253,13 @@
       "when": 1792161223588,
       "tag": "0035_drop_batch_loan_link",
       "breakpoints": true
+    },
+    {
+      "idx": 36,
+      "version": "5",
+      "when": 1792247000000,
+      "tag": "0036_supplier_image",
+      "breakpoints": true
     }
   ]
 }

@@ -22,7 +22,7 @@ const MIME_BY_EXT: Record<string, string> = {
 }
 
 /** Subfolders an upload may go to (the first part of the stored key) */
-export const UPLOAD_FOLDERS = ['banks'] as const
+export const UPLOAD_FOLDERS = ['banks', 'suppliers'] as const
 
 /** Saves an uploaded image and returns its key ("banks/<uuid>.png") */
 export async function saveImage(

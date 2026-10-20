@@ -122,7 +122,7 @@ export function MultiSearchSelect({
           onWheel={(e) => e.stopPropagation()}
         >
           {filtered.length === 0 ? (
-            <div className="px-2 py-4 text-center text-xs text-slate-400">
+            <div className="px-2 py-4 text-center text-sm text-slate-400">
               Không tìm thấy kết quả
             </div>
           ) : (
@@ -136,7 +136,7 @@ export function MultiSearchSelect({
                   aria-selected={on}
                   onClick={() => toggle(o.value)}
                   className={cn(
-                    'flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs outline-hidden hover:bg-accent hover:text-accent-foreground',
+                    'flex w-full items-center gap-2 rounded-sm px-2 py-2 text-left text-sm outline-hidden hover:bg-accent hover:text-accent-foreground',
                     on && 'font-medium',
                   )}
                 >
@@ -159,7 +159,7 @@ export function MultiSearchSelect({
           )}
         </div>
         {chosen.length > 0 && (
-          <div className="flex items-center justify-between border-t px-3 py-2 text-[11px] text-slate-500">
+          <div className="flex items-center justify-between border-t px-3 py-2 text-xs text-slate-500">
             <span>Đã chọn {chosen.length}</span>
             <button
               type="button"

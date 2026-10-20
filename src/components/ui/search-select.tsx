@@ -192,14 +192,14 @@ export function SearchSelect({
                 setOpen(false)
                 createAction.onClick()
               }}
-              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-xs font-semibold text-emerald-700 outline-hidden hover:bg-accent"
+              className="flex w-full items-center gap-2 rounded-sm px-2 py-1.5 text-left text-sm font-semibold text-emerald-700 outline-hidden hover:bg-accent"
             >
               <PlusIcon className="size-3.5" />
               {createAction.label}
             </button>
           )}
           {filtered.length === 0 ? (
-            <div className="px-2 py-4 text-center text-xs text-slate-400">
+            <div className="px-2 py-4 text-center text-sm text-slate-400">
               Không tìm thấy kết quả
             </div>
           ) : (
@@ -212,7 +212,7 @@ export function SearchSelect({
                 onClick={() => choose(o.value)}
                 onMouseMove={() => setActive(i)}
                 className={cn(
-                  'relative flex w-full items-center gap-2 rounded-sm py-1.5 pr-8 pl-2 text-left text-xs outline-hidden',
+                  'relative flex w-full items-center gap-2 rounded-sm py-2 pr-8 pl-2 text-left text-sm outline-hidden',
                   i === current && 'bg-accent text-accent-foreground',
                   o.className,
                 )}
@@ -230,7 +230,7 @@ export function SearchSelect({
             <button
               type="button"
               onClick={loadMore}
-              className="w-full py-2 text-center text-[11px] text-slate-500 hover:text-slate-800"
+              className="w-full py-2 text-center text-xs text-slate-500 hover:text-slate-800"
             >
               Cuộn xuống hoặc bấm để tải thêm ({shown.length}/{filtered.length})
             </button>

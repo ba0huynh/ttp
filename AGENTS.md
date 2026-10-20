@@ -1308,7 +1308,16 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - Renamed "Bàn làm việc" to "Tổng quan" in navigation, breadcrumbs, page header, and permissions catalogue (`dashboard.view`).
   - Balanced the `/reconcile` table action buttons by setting "Gỡ khớp" to `variant="outline"` (`border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 font-medium`) and removing disabled edit/delete buttons from matched rows, ensuring smooth vertical alignment without layout jumps.
 
-_(Next Agent: Append Lesson 116, 117,... above this line upon completing tasks)_
+### Lesson 116: Supplier Image and Supplier Page (`/suppliers/$supplierId`)
+
+- **Client request** (review chat on `/finance?tab=payables` and `?tab=payments`): the supplier column must link to a detail page, suppliers get an **image**, and the detail page shows **only the name and the image**.
+- **Data**: `suppliers.image` (varchar 500, nullable; migration `0036_supplier_image.sql`, applied). Same storage rule as bank logos (Lesson 70): an https address or an upload key `suppliers/<uuid>.png`; `'suppliers'` was added to `UPLOAD_FOLDERS`. `saveSupplierFn` accepts `image` (shared `imageField` validator) and deletes the old file when the logo is replaced or removed; `deleteMasterDataFn` deletes the file of a deleted bank **or supplier**. **`getMasterDataFn` selects every supplier column, so the app fails until `npm run migration:run` has applied 0036.**
+- **UI**: `/master-data?tab=suppliers` shows the logo next to each name and the supplier dialog has an image field. It uses the new reusable `LogoField` / `uploadImage` (`src/components/ui/logo-field.tsx`: preview stays in the browser, the file is sent to `/api/uploads` only on save) and `SupplierLogo` (`supplier-logo.tsx`, building icon fallback). The bank dialog still has its own inline copy of this logic; use `LogoField` for new image fields.
+- **Page**: `src/routes/suppliers.$supplierId.tsx` (name + large image, "Về công nợ nhà cung cấp" back button, not-found state, numeric-id guard) reads `getSupplierDetailFn` / `supplierDetailQuery`. It is open to users with `finance.view` **or** `master-data.view`. It has no sidebar item, so no menu entry highlights while it is open.
+- **Links**: the supplier name is a `Link` in `/finance` → "Công Nợ Nhà Cung Cấp" and "Lịch Sử Phiếu Chi" (a payment to a non-supplier payee stays plain text).
+- **Not done**: no extra supplier details (tax code, address, email, note) on the page, as requested.
+
+_(Next Agent: Append Lesson 117, 118,... above this line upon completing tasks)_
 
 
 

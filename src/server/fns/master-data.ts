@@ -20,6 +20,15 @@ import { authMiddleware, requirePermission } from './middleware.ts'
 
 const opt = z.string().trim().nullable().optional()
 
+// https address or a key path made by the upload route
+const imageField = z
+  .string()
+  .trim()
+  .max(500)
+  .refine((v) => /^https?:\/\//i.test(v) || isUploadKey(v), 'Ảnh không hợp lệ')
+  .nullable()
+  .optional()
+
 const wrapDup = async <T>(fn: () => Promise<T>) => {
   try {
     return await fn()
@@ -77,17 +86,7 @@ export const saveBankFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       name: z.string().trim().min(1),
-      // https address or a key path made by the upload route
-      image: z
-        .string()
-        .trim()
-        .max(500)
-        .refine(
-          (v) => /^https?:\/\//i.test(v) || isUploadKey(v),
-          'Ảnh không hợp lệ',
-        )
-        .nullable()
-        .optional(),
+      image: imageField,
     }),
   )
   .handler(({ data: { id, ...v } }) =>
@@ -144,18 +143,39 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
       address: opt,
       email: opt,
       note: opt,
+      image: imageField,
     }),
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
       if (id) {
+        const [old] = await db
+          .select({ image: suppliers.image })
+          .from(suppliers)
+          .where(eq(suppliers.id, id))
         await db.update(suppliers).set(v).where(eq(suppliers.id, id))
+        // A replaced or removed logo no longer needs its file
+        if (old?.image && old.image !== (v.image ?? null))
+          await deleteImage(old.image)
         return { ok: true, id }
       }
       const [res] = await db.insert(suppliers).values(v)
       return { ok: true, id: Number(res.insertId) }
     }),
   )
+
+/** One supplier (name + image) for the supplier page linked from /finance */
+export const getSupplierDetailFn = createServerFn({ method: 'GET' })
+  .middleware([requirePermission('finance.view', 'master-data.view')])
+  .validator(z.object({ id: z.number() }))
+  .handler(async ({ data }) => {
+    const [supplier] = await db
+      .select({ id: suppliers.id, name: suppliers.name, image: suppliers.image })
+      .from(suppliers)
+      .where(eq(suppliers.id, data.id))
+    if (!supplier) throw new Error('Không tìm thấy nhà cung cấp')
+    return { supplier }
+  })
 
 /* ----------------------------- Motorcycle Models ----------------------------- */
 export const saveModelFn = createServerFn({ method: 'POST' })
@@ -252,16 +272,21 @@ export const deleteMasterDataFn = createServerFn({ method: 'POST' })
   .handler(({ data }) =>
     wrapDup(async () => {
       const t = deletable[data.entity]
-      // A deleted bank takes its uploaded logo with it
-      const [bank] =
+      // A deleted bank or supplier takes its uploaded logo with it
+      const [owner] =
         data.entity === 'banks'
           ? await db
               .select({ image: banks.image })
               .from(banks)
               .where(eq(banks.id, data.id))
-          : []
+          : data.entity === 'suppliers'
+            ? await db
+                .select({ image: suppliers.image })
+                .from(suppliers)
+                .where(eq(suppliers.id, data.id))
+            : []
       await db.delete(t).where(eq(t.id, data.id))
-      await deleteImage(bank?.image)
+      await deleteImage(owner?.image)
       return { ok: true }
     }),
   )

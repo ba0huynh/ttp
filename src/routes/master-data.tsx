@@ -34,6 +34,13 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import {
+  EMPTY_LOGO,
+  LogoField,
+  uploadImage,
+} from '#/components/ui/logo-field.tsx'
+import type { LogoValue } from '#/components/ui/logo-field.tsx'
+import { SupplierLogo } from '#/components/ui/supplier-logo.tsx'
 import { SearchBox } from '#/components/ui/search-box.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
@@ -214,6 +221,8 @@ function MasterDataPage() {
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
   const [sName, setSName] = React.useState('')
+  const [sLogo, setSLogo] = React.useState<LogoValue>(EMPTY_LOGO)
+  const [supplierSaving, setSupplierSaving] = React.useState(false)
 
   // Modal Bank
   const [bankOpen, setBankOpen] = React.useState(false)
@@ -324,13 +333,20 @@ function MasterDataPage() {
 
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault()
+    setSupplierSaving(true)
     try {
+      // The file only reaches the server now, when the supplier is saved
+      const image = sLogo.file
+        ? await uploadImage(sLogo.file, 'suppliers')
+        : sLogo.image || null
       await saveSupplier.mutateAsync({
-        data: { id: sId ?? undefined, name: sName },
+        data: { id: sId ?? undefined, name: sName, image },
       })
       setSupplierOpen(false)
     } catch (err: unknown) {
       await showErrorDialog(err, 'Lỗi khi lưu nhà cung cấp')
+    } finally {
+      setSupplierSaving(false)
     }
   }
 
@@ -650,6 +666,7 @@ function MasterDataPage() {
                     onClick={() => {
                       setSId(null)
                       setSName('')
+                      setSLogo(EMPTY_LOGO)
                       setSupplierOpen(true)
                     }}
                     className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -671,7 +688,10 @@ function MasterDataPage() {
                     {suppliersPg.pageItems.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="font-medium text-slate-900">
-                          {s.name}
+                          <span className="inline-flex max-w-full min-w-0 items-center gap-2">
+                            <SupplierLogo src={s.image} name={s.name} />
+                            <span className="truncate">{s.name}</span>
+                          </span>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -682,6 +702,7 @@ function MasterDataPage() {
                                 onClick={() => {
                                   setSId(s.id)
                                   setSName(s.name)
+                                  setSLogo({ image: s.image ?? '', file: null })
                                   setSupplierOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -1127,6 +1148,12 @@ function MasterDataPage() {
                   placeholder="Thai Honda Co., Ltd"
                 />
               </div>
+              <LogoField
+                value={sLogo}
+                onChange={setSLogo}
+                name={sName}
+                label="Hình Ảnh"
+              />
               <DialogFooter className="pt-2">
                 <Button
                   type="button"
@@ -1139,11 +1166,13 @@ function MasterDataPage() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={saveSupplier.isPending}
+                  disabled={saveSupplier.isPending || supplierSaving}
                   size="sm"
                   className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
-                  {saveSupplier.isPending ? 'Đang lưu...' : 'Lưu Nhà Cung Cấp'}
+                  {saveSupplier.isPending || supplierSaving
+                    ? 'Đang lưu...'
+                    : 'Lưu Nhà Cung Cấp'}
                 </Button>
               </DialogFooter>
             </form>
