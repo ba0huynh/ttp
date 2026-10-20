@@ -195,12 +195,11 @@ export const formatDate = (d: string | Date | null | undefined) => {
   return `${day}/${m}/${y}`
 }
 
-/** Display name of a motorcycle model: "Honda SH 150i 2025" */
+/** Display name of a motorcycle model: "Honda SH 150i" */
 export const modelLabel = (m: {
   brand?: string | null
   name: string
-  modelYear?: string | null
-}) => [m.brand, m.name, m.modelYear].filter(Boolean).join(' ')
+}) => [m.brand, m.name].filter(Boolean).join(' ')
 
 /** Display name of an import batch: "Lô 20/02/2026 · PT Astra Honda Motor" */
 export const batchLabel = (b: {

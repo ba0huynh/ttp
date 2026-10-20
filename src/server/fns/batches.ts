@@ -41,6 +41,7 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
         pricingMethod: importBatches.pricingMethod,
         pricingValue: importBatches.pricingValue,
         note: importBatches.note,
+        supplierId: importBatches.supplierId,
         supplierName: suppliers.name,
         vehicleCount: sql<number>`count(distinct ${vehicles.id})`,
         totalImport: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
@@ -56,6 +57,7 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
         importBatches.pricingMethod,
         importBatches.pricingValue,
         importBatches.note,
+        importBatches.supplierId,
         suppliers.name,
       )
       .orderBy(desc(importBatches.importDate), desc(importBatches.id))

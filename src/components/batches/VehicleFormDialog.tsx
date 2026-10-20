@@ -82,7 +82,6 @@ export function VehicleFormDialog({
   // Quick-create a model the same way
   const [modelOpen, setModelOpen] = React.useState(false)
   const [mName, setMName] = React.useState('')
-  const [mYear, setMYear] = React.useState('')
   const [mError, setMError] = React.useState<string | null>(null)
   const [mPending, setMPending] = React.useState(false)
 
@@ -95,7 +94,6 @@ export function VehicleFormDialog({
       const res = await saveModelFn({
         data: {
           name: mName.trim(),
-          modelYear: mYear.trim() || null,
         },
       })
       await queryClient.invalidateQueries({ queryKey: ['master-data'] })
@@ -178,7 +176,6 @@ export function VehicleFormDialog({
                       label: 'Thêm dòng xe mới',
                       onClick: () => {
                         setMName('')
-                        setMYear('')
                         setMError(null)
                         setModelOpen(true)
                       },
@@ -297,14 +294,6 @@ export function VehicleFormDialog({
                 value={mName}
                 onChange={(e) => setMName(e.target.value)}
                 placeholder="SH 150i ABS"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Đời Xe</Label>
-              <Input
-                value={mYear}
-                onChange={(e) => setMYear(e.target.value)}
-                placeholder="2025"
               />
             </div>
             {mError && (

@@ -36,7 +36,6 @@ export function ModelSelect({
   const canManage = useCan('master-data.manage')
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState('')
-  const [modelYear, setModelYear] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
   const [pending, setPending] = React.useState(false)
 
@@ -51,7 +50,6 @@ export function ModelSelect({
       const res = await saveModelFn({
         data: {
           name: name.trim(),
-          modelYear: modelYear.trim() || null,
         },
       })
       await queryClient.invalidateQueries({ queryKey: ['master-data'] })
@@ -77,7 +75,6 @@ export function ModelSelect({
                 label: 'Thêm dòng xe mới',
                 onClick: () => {
                   setName('')
-                  setModelYear('')
                   setError(null)
                   setOpen(true)
                 },
@@ -106,14 +103,6 @@ export function ModelSelect({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 placeholder="SH 150i ABS"
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Đời Xe</Label>
-              <Input
-                value={modelYear}
-                onChange={(e) => setModelYear(e.target.value)}
-                placeholder="2025"
               />
             </div>
             {error && (

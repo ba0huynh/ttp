@@ -1017,7 +1017,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   <SearchSelectItem
                     key={m.id}
                     value={String(m.id)}
-                    className="text-xs"
+                   
                   >
                     {m.name}
                   </SearchSelectItem>
@@ -1038,7 +1038,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   <SearchSelectItem
                     key={c.id}
                     value={String(c.id)}
-                    className="text-xs"
+                   
                   >
                     {c.name}
                   </SearchSelectItem>

@@ -95,7 +95,7 @@ export function BankAccountSelect({
         }
       >
         {noneLabel && (
-          <SearchSelectItem value="none" className="text-xs">
+          <SearchSelectItem value="none">
             {noneLabel}
           </SearchSelectItem>
         )}
@@ -106,7 +106,7 @@ export function BankAccountSelect({
               key={a.id}
               value={String(a.id)}
               keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
-              className="text-xs"
+             
             >
               <BankLabel image={a.bankImage} name={a.bankName}>
                 {a.bankName} &bull; {a.accountNumber}
@@ -144,7 +144,7 @@ export function BankAccountSelect({
                     key={b.id}
                     value={String(b.id)}
                     keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
-                    className="text-xs"
+                   
                   >
                     <BankLabel image={b.image} name={b.name}>
                       {b.name}

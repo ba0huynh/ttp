@@ -5,7 +5,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { createFileRoute, redirect } from '@tanstack/react-router'
+import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Pencil, Plus, Upload } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
@@ -42,6 +42,7 @@ import {
 import type { LogoValue } from '#/components/ui/logo-field.tsx'
 import { SupplierLogo } from '#/components/ui/supplier-logo.tsx'
 import { SearchBox } from '#/components/ui/search-box.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   SearchSelect,
@@ -107,7 +108,7 @@ export const Route = createFileRoute('/master-data')({
 const TAB_TITLES = {
   models: {
     title: 'Dòng Xe',
-    description: 'Dòng xe, đời xe và thông tin chi tiết.',
+    description: 'Danh sách dòng xe nhập khẩu.',
   },
   suppliers: {
     title: 'Nhà Cung Cấp',
@@ -146,12 +147,12 @@ function MasterDataPage() {
   )
   const modelsPg = usePagination(
     master.models.filter((m) =>
-      matchesSearch(search, m.brand, m.name, m.modelYear),
+      matchesSearch(search, m.brand, m.name),
     ),
     search,
   )
   const suppliersPg = usePagination(
-    master.suppliers.filter((x) => matchesSearch(search, x.name)),
+    master.suppliers.filter((x) => matchesSearch(search, x.name, x.address)),
     search,
   )
   const banksPg = usePagination(
@@ -208,7 +209,6 @@ function MasterDataPage() {
   // Modal Model
   const [mId, setMId] = React.useState<number | null>(null)
   const [mBrand, setMBrand] = React.useState('')
-  const [mYear, setMYear] = React.useState('')
   const [xId, setXId] = React.useState<number | null>(null)
   const [expenseTypeOpen, setExpenseTypeOpen] = React.useState(false)
   const [xName, setXName] = React.useState('')
@@ -221,6 +221,7 @@ function MasterDataPage() {
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
   const [sName, setSName] = React.useState('')
+  const [sAddress, setSAddress] = React.useState('')
   const [sLogo, setSLogo] = React.useState<LogoValue>(EMPTY_LOGO)
   const [supplierSaving, setSupplierSaving] = React.useState(false)
 
@@ -310,7 +311,6 @@ function MasterDataPage() {
           id: mId ?? undefined,
           brand: mBrand || null,
           name: mName,
-          modelYear: mYear || null,
         },
       })
       setModelOpen(false)
@@ -340,7 +340,12 @@ function MasterDataPage() {
         ? await uploadImage(sLogo.file, 'suppliers')
         : sLogo.image || null
       await saveSupplier.mutateAsync({
-        data: { id: sId ?? undefined, name: sName, image },
+        data: {
+          id: sId ?? undefined,
+          name: sName,
+          address: sAddress.trim() || null,
+          image,
+        },
       })
       setSupplierOpen(false)
     } catch (err: unknown) {
@@ -487,7 +492,6 @@ function MasterDataPage() {
                       setMId(null)
                       setMName('')
                       setMBrand('')
-                      setMYear('')
                       setModelOpen(true)
                     }}
                     className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -502,7 +506,6 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Dòng Xe</TableHead>
-                      <TableHead>Đời Xe</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -511,9 +514,6 @@ function MasterDataPage() {
                       <TableRow key={m.id}>
                         <TableCell className="font-medium text-slate-900">
                           {m.name}
-                        </TableCell>
-                        <TableCell className="text-slate-500">
-                          {m.modelYear}
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -525,7 +525,6 @@ function MasterDataPage() {
                                   setMId(m.id)
                                   setMName(m.name)
                                   setMBrand(m.brand ?? '')
-                                  setMYear(m.modelYear ?? '')
                                   setModelOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -666,6 +665,7 @@ function MasterDataPage() {
                     onClick={() => {
                       setSId(null)
                       setSName('')
+                      setSAddress('')
                       setSLogo(EMPTY_LOGO)
                       setSupplierOpen(true)
                     }}
@@ -681,6 +681,7 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Công Ty Cung Cấp</TableHead>
+                      <TableHead>Địa Chỉ</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -688,10 +689,18 @@ function MasterDataPage() {
                     {suppliersPg.pageItems.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="font-medium text-slate-900">
-                          <span className="inline-flex max-w-full min-w-0 items-center gap-2">
+                          <Link
+                            to="/suppliers/$supplierId"
+                            params={{ supplierId: String(s.id) }}
+                            preload="intent"
+                            className="inline-flex max-w-full min-w-0 items-center gap-2 hover:text-emerald-700 hover:underline"
+                          >
                             <SupplierLogo src={s.image} name={s.name} />
                             <span className="truncate">{s.name}</span>
-                          </span>
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-slate-500">
+                          {s.address || '—'}
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -702,6 +711,7 @@ function MasterDataPage() {
                                 onClick={() => {
                                   setSId(s.id)
                                   setSName(s.name)
+                                  setSAddress(s.address ?? '')
                                   setSLogo({ image: s.image ?? '', file: null })
                                   setSupplierOpen(true)
                                 }}
@@ -1049,15 +1059,6 @@ function MasterDataPage() {
                   placeholder="SH 150i ABS"
                 />
               </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Đời Xe</Label>
-                <Input
-                  value={mYear}
-                  onChange={(e) => setMYear(e.target.value)}
-                  className="h-11 text-sm px-4 rounded-lg"
-                  placeholder="2025"
-                />
-              </div>
               <DialogFooter className="pt-2">
                 <Button
                   type="button"
@@ -1146,6 +1147,15 @@ function MasterDataPage() {
                   onChange={(e) => setSName(e.target.value)}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Thai Honda Co., Ltd"
+                />
+              </div>
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Địa Chỉ</Label>
+                <Textarea
+                  value={sAddress}
+                  onChange={(e) => setSAddress(e.target.value)}
+                  rows={2}
+                  placeholder="Số nhà, đường, quận / huyện, tỉnh / thành phố, quốc gia"
                 />
               </div>
               <LogoField
@@ -1301,7 +1311,7 @@ function MasterDataPage() {
                       key={b.id}
                       value={String(b.id)}
                       keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
-                      className="text-xs"
+                     
                     >
                       <BankLabel image={b.image} name={b.name}>
                         {b.name}

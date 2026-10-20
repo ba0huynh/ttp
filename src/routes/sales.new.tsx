@@ -10,7 +10,16 @@ import {
   redirect,
   useNavigate,
 } from '@tanstack/react-router'
-import { AlertCircle, ArrowLeft, Check, Plus, RotateCcw, Search, Trash2 } from 'lucide-react'
+import {
+  AlertCircle,
+  ArrowLeft,
+  Check,
+  Plus,
+  RotateCcw,
+  Search,
+  SlidersHorizontal,
+  Trash2,
+} from 'lucide-react'
 import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -24,6 +33,7 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
+import { ColorLabel } from '#/components/ui/color-label.tsx'
 import {
   Dialog,
   DialogContent,
@@ -107,6 +117,7 @@ function NewSalesOrderPage() {
   const [filterModelIds, setFilterModelIds] = React.useState<number[]>([])
   const [filterColorIds, setFilterColorIds] = React.useState<number[]>([])
   const [filterBatchIds, setFilterBatchIds] = React.useState<number[]>([])
+  const [filtersOpen, setFiltersOpen] = React.useState(false)
   const [visibleCount, setVisibleCount] = React.useState(PICKER_PAGE_SIZE)
   const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
   const sentinelRef = React.useRef<HTMLDivElement | null>(null)
@@ -125,14 +136,14 @@ function NewSalesOrderPage() {
   }, [availableVehicles])
 
   const colorOptions = React.useMemo(() => {
-    const map = new Map<number, string>()
+    const map = new Map<number, { name: string; hex: string | null }>()
     for (const v of availableVehicles) {
       if (v.colorId && v.colorName) {
-        map.set(v.colorId, v.colorName)
+        map.set(v.colorId, { name: v.colorName, hex: v.colorHex ?? null })
       }
     }
     return Array.from(map.entries())
-      .map(([id, name]) => ({ id, name }))
+      .map(([id, c]) => ({ id, ...c }))
       .sort((a, b) => a.name.localeCompare(b.name, 'vi'))
   }, [availableVehicles])
 
@@ -153,6 +164,20 @@ function NewSalesOrderPage() {
     filterModelIds.length > 0 ||
     filterColorIds.length > 0 ||
     filterBatchIds.length > 0
+
+  // The three dropdown filters (the search box is separate): each counts once
+  const dropdownFilterCount =
+    (filterModelIds.length > 0 ? 1 : 0) +
+    (filterColorIds.length > 0 ? 1 : 0) +
+    (filterBatchIds.length > 0 ? 1 : 0)
+
+  // A changed filter returns the list to the top of its first page
+  const resetPickerScroll = () => {
+    setVisibleCount(PICKER_PAGE_SIZE)
+    if (scrollContainerRef.current) {
+      scrollContainerRef.current.scrollTop = 0
+    }
+  }
 
   const clearAllFilters = () => {
     setPickerSearch('')
@@ -557,7 +582,7 @@ function NewSalesOrderPage() {
                       <SearchSelectItem
                         key={c.id}
                         value={String(c.id)}
-                        className="text-xs"
+                       
                       >
                         {c.name}
                       </SearchSelectItem>
@@ -577,14 +602,14 @@ function NewSalesOrderPage() {
                       setBranchId(val === 'none' ? null : Number(val))
                     }
                   >
-                    <SearchSelectItem value="none" className="text-xs">
+                    <SearchSelectItem value="none">
                       Trực tiếp khách hàng (không qua điểm bán)
                     </SearchSelectItem>
                     {branches.map((b) => (
                       <SearchSelectItem
                         key={b.id}
                         value={String(b.id)}
-                        className="text-xs"
+                       
                       >
                         {b.name}
                       </SearchSelectItem>
@@ -612,117 +637,61 @@ function NewSalesOrderPage() {
               </DialogDescription>
             </DialogHeader>
 
-            {/* Search and filters bar */}
-            <div className="space-y-2 pt-1 shrink-0">
-              <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
-                <div className="relative flex-1">
-                  <Search className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-                  <Input
-                    value={pickerSearch}
-                    onChange={(e) => handleSearchChange(e.target.value)}
-                    placeholder="Tìm theo số khung, số máy, dòng xe, màu, lô nhập..."
-                    className="h-9 pl-9 pr-8 text-xs rounded-lg"
-                  />
-                  {pickerSearch && (
-                    <button
-                      type="button"
-                      onClick={() => handleSearchChange('')}
-                      className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 size-4 flex items-center justify-center text-xs"
-                      title="Xóa tìm kiếm"
-                    >
-                      ×
-                    </button>
-                  )}
-                </div>
-
-                {hasActiveFilters && (
-                  <Button
+            {/* Search bar; the dropdown filters live in their own dialog */}
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 pt-1 shrink-0">
+              <div className="relative flex-1">
+                <Search className="size-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <Input
+                  value={pickerSearch}
+                  onChange={(e) => handleSearchChange(e.target.value)}
+                  placeholder="Tìm theo số khung, số máy, dòng xe, màu, lô nhập..."
+                  className="h-9 pl-9 pr-8 rounded-lg"
+                />
+                {pickerSearch && (
+                  <button
                     type="button"
-                    variant="ghost"
-                    size="sm"
-                    onClick={clearAllFilters}
-                    className="h-9 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 px-2.5 gap-1 shrink-0"
+                    onClick={() => handleSearchChange('')}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 size-4 flex items-center justify-center text-xs"
+                    title="Xóa tìm kiếm"
                   >
-                    <RotateCcw className="size-3" />
-                    Xóa lọc
-                  </Button>
+                    ×
+                  </button>
                 )}
-
-                <div className="text-[11px] text-slate-500 whitespace-nowrap self-center shrink-0">
-                  Hiển thị <strong>{visibleVehicles.length}</strong> / {filteredAvailableVehicles.length} xe
-                </div>
               </div>
 
-              {/* Filter dropdowns row with MultiSearchSelect */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-                <MultiSearchSelect
-                  className="h-9 w-full text-xs rounded-lg"
-                  placeholder={`Tất cả dòng xe (${modelOptions.length})`}
-                  values={filterModelIds.map(String)}
-                  onValuesChange={(vals) => {
-                    setFilterModelIds(vals.map(Number))
-                    setVisibleCount(PICKER_PAGE_SIZE)
-                    if (scrollContainerRef.current) {
-                      scrollContainerRef.current.scrollTop = 0
-                    }
-                  }}
-                >
-                  {modelOptions.map((m) => (
-                    <SearchSelectItem
-                      key={m.id}
-                      value={String(m.id)}
-                      className="text-xs"
-                    >
-                      {m.name}
-                    </SearchSelectItem>
-                  ))}
-                </MultiSearchSelect>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => setFiltersOpen(true)}
+                aria-haspopup="dialog"
+                className={`h-9 gap-1.5 shrink-0 ${dropdownFilterCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
+              >
+                <SlidersHorizontal className="size-4" />
+                Bộ lọc
+                {dropdownFilterCount > 0 && (
+                  <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                    {dropdownFilterCount}
+                  </span>
+                )}
+              </Button>
 
-                <MultiSearchSelect
-                  className="h-9 w-full text-xs rounded-lg"
-                  placeholder={`Tất cả màu xe (${colorOptions.length})`}
-                  values={filterColorIds.map(String)}
-                  onValuesChange={(vals) => {
-                    setFilterColorIds(vals.map(Number))
-                    setVisibleCount(PICKER_PAGE_SIZE)
-                    if (scrollContainerRef.current) {
-                      scrollContainerRef.current.scrollTop = 0
-                    }
-                  }}
+              {hasActiveFilters && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearAllFilters}
+                  className="h-9 text-rose-600 hover:bg-rose-50 hover:text-rose-700 px-2.5 gap-1 shrink-0"
                 >
-                  {colorOptions.map((c) => (
-                    <SearchSelectItem
-                      key={c.id}
-                      value={String(c.id)}
-                      className="text-xs"
-                    >
-                      {c.name}
-                    </SearchSelectItem>
-                  ))}
-                </MultiSearchSelect>
+                  <RotateCcw className="size-3.5" />
+                  Xóa lọc
+                </Button>
+              )}
 
-                <MultiSearchSelect
-                  className="h-9 w-full text-xs rounded-lg"
-                  placeholder={`Tất cả lô nhập (${batchOptions.length})`}
-                  values={filterBatchIds.map(String)}
-                  onValuesChange={(vals) => {
-                    setFilterBatchIds(vals.map(Number))
-                    setVisibleCount(PICKER_PAGE_SIZE)
-                    if (scrollContainerRef.current) {
-                      scrollContainerRef.current.scrollTop = 0
-                    }
-                  }}
-                >
-                  {batchOptions.map((b) => (
-                    <SearchSelectItem
-                      key={b.id}
-                      value={String(b.id)}
-                      className="text-xs truncate"
-                    >
-                      {b.label}
-                    </SearchSelectItem>
-                  ))}
-                </MultiSearchSelect>
+              <div className="text-xs text-slate-500 whitespace-nowrap self-center shrink-0">
+                Hiển thị <strong>{visibleVehicles.length}</strong> /{' '}
+                {filteredAvailableVehicles.length} xe
               </div>
             </div>
 
@@ -777,7 +746,7 @@ function NewSalesOrderPage() {
                             {v.modelName}
                           </div>
                           <div className="text-[11px] text-slate-500">
-                            {v.colorName}
+                            <ColorLabel name={v.colorName} hex={v.colorHex} />
                           </div>
                         </TableCell>
                         <TableCell className="text-slate-900">
@@ -856,6 +825,114 @@ function NewSalesOrderPage() {
                   Xác Nhận Thêm ({tempChecked.size} xe)
                 </Button>
               </div>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Filter dialog for the vehicle picker (model / colour / batch) */}
+        <Dialog open={filtersOpen} onOpenChange={setFiltersOpen}>
+          <DialogContent className="sm:max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Bộ Lọc Xe
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Thu hẹp danh sách xe trong kho theo dòng xe, màu xe và lô nhập.
+              </DialogDescription>
+            </DialogHeader>
+
+            <div className="grid gap-3 py-2">
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Dòng xe</Label>
+                <MultiSearchSelect
+                  className="w-full"
+                  placeholder={`Tất cả dòng xe (${modelOptions.length})`}
+                  values={filterModelIds.map(String)}
+                  onValuesChange={(vals) => {
+                    setFilterModelIds(vals.map(Number))
+                    resetPickerScroll()
+                  }}
+                >
+                  {modelOptions.map((m) => (
+                    <SearchSelectItem key={m.id} value={String(m.id)}>
+                      {m.name}
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Màu xe</Label>
+                <MultiSearchSelect
+                  className="w-full"
+                  placeholder={`Tất cả màu xe (${colorOptions.length})`}
+                  values={filterColorIds.map(String)}
+                  onValuesChange={(vals) => {
+                    setFilterColorIds(vals.map(Number))
+                    resetPickerScroll()
+                  }}
+                >
+                  {colorOptions.map((c) => (
+                    <SearchSelectItem
+                      key={c.id}
+                      value={String(c.id)}
+                      keywords={c.name}
+                    >
+                      <ColorLabel name={c.name} hex={c.hex} />
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Lô nhập</Label>
+                <MultiSearchSelect
+                  className="w-full"
+                  placeholder={`Tất cả lô nhập (${batchOptions.length})`}
+                  values={filterBatchIds.map(String)}
+                  onValuesChange={(vals) => {
+                    setFilterBatchIds(vals.map(Number))
+                    resetPickerScroll()
+                  }}
+                >
+                  {batchOptions.map((b) => (
+                    <SearchSelectItem
+                      key={b.id}
+                      value={String(b.id)}
+                      className="truncate"
+                    >
+                      {b.label}
+                    </SearchSelectItem>
+                  ))}
+                </MultiSearchSelect>
+              </div>
+            </div>
+
+            <DialogFooter className="pt-2">
+              <Button
+                type="button"
+                variant="ghost"
+                size="sm"
+                disabled={dropdownFilterCount === 0}
+                onClick={() => {
+                  setFilterModelIds([])
+                  setFilterColorIds([])
+                  setFilterBatchIds([])
+                  resetPickerScroll()
+                }}
+                className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 gap-1"
+              >
+                <RotateCcw className="size-3.5" />
+                Xóa lọc
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                onClick={() => setFiltersOpen(false)}
+                className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
+              >
+                Xem {filteredAvailableVehicles.length} xe
+              </Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>

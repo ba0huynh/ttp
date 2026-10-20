@@ -711,10 +711,10 @@ function ReconcilePage() {
                     setFilter('flow', v.length ? v : undefined)
                   }
                 >
-                  <SearchSelectItem value="in" className="text-xs">
+                  <SearchSelectItem value="in">
                     Tiền vào (ghi có)
                   </SearchSelectItem>
-                  <SearchSelectItem value="out" className="text-xs">
+                  <SearchSelectItem value="out">
                     Tiền ra (ghi nợ)
                   </SearchSelectItem>
                 </MultiSearchSelect>
@@ -729,10 +729,10 @@ function ReconcilePage() {
                     setFilter('status', v.length ? v : undefined)
                   }
                 >
-                  <SearchSelectItem value="matched" className="text-xs">
+                  <SearchSelectItem value="matched">
                     Đã khớp
                   </SearchSelectItem>
-                  <SearchSelectItem value="unmatched" className="text-xs">
+                  <SearchSelectItem value="unmatched">
                     Chưa đối soát
                   </SearchSelectItem>
                 </MultiSearchSelect>
@@ -749,7 +749,7 @@ function ReconcilePage() {
                 >
                   {(Object.keys(MATCH_LABELS) as (keyof typeof MATCH_LABELS)[]).map(
                     (k) => (
-                      <SearchSelectItem key={k} value={k} className="text-xs">
+                      <SearchSelectItem key={k} value={k}>
                         {MATCH_LABELS[k]}
                       </SearchSelectItem>
                     ),
@@ -1017,13 +1017,13 @@ function ReconcilePage() {
                     setSuggestVisibleCount(SUGGEST_PAGE_SIZE)
                   }}
                 >
-                  <SearchSelectItem value="receipt" className="text-xs">
+                  <SearchSelectItem value="receipt">
                     Phiếu Thu
                   </SearchSelectItem>
-                  <SearchSelectItem value="payment" className="text-xs">
+                  <SearchSelectItem value="payment">
                     Phiếu Chi
                   </SearchSelectItem>
-                  <SearchSelectItem value="loan_repayment" className="text-xs">
+                  <SearchSelectItem value="loan_repayment">
                     Trả Nợ Khế Ước
                   </SearchSelectItem>
                 </MultiSearchSelect>

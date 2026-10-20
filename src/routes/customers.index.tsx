@@ -414,11 +414,11 @@ function CustomersPage() {
                     })
                   }
                 >
-                  <SearchSelectItem value="default" className="text-xs">
+                  <SearchSelectItem value="default">
                     Mặc định
                   </SearchSelectItem>
                   {SORT_KEYS.map((k) => (
-                    <SearchSelectItem key={k} value={k} className="text-xs">
+                    <SearchSelectItem key={k} value={k}>
                       {SORT_LABELS[k]}
                     </SearchSelectItem>
                   ))}
@@ -440,10 +440,10 @@ function CustomersPage() {
                     })
                   }
                 >
-                  <SearchSelectItem value="asc" className="text-xs">
+                  <SearchSelectItem value="asc">
                     Tăng dần (A → Z, thấp → cao)
                   </SearchSelectItem>
-                  <SearchSelectItem value="desc" className="text-xs">
+                  <SearchSelectItem value="desc">
                     Giảm dần (Z → A, cao → thấp)
                   </SearchSelectItem>
                 </SearchSelect>
@@ -474,7 +474,7 @@ function CustomersPage() {
                   }
                 >
                   {DEBT.map((k) => (
-                    <SearchSelectItem key={k} value={k} className="text-xs">
+                    <SearchSelectItem key={k} value={k}>
                       {DEBT_LABELS[k]}
                     </SearchSelectItem>
                   ))}

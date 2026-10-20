@@ -1313,11 +1313,30 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Client request** (review chat on `/finance?tab=payables` and `?tab=payments`): the supplier column must link to a detail page, suppliers get an **image**, and the detail page shows **only the name and the image**.
 - **Data**: `suppliers.image` (varchar 500, nullable; migration `0036_supplier_image.sql`, applied). Same storage rule as bank logos (Lesson 70): an https address or an upload key `suppliers/<uuid>.png`; `'suppliers'` was added to `UPLOAD_FOLDERS`. `saveSupplierFn` accepts `image` (shared `imageField` validator) and deletes the old file when the logo is replaced or removed; `deleteMasterDataFn` deletes the file of a deleted bank **or supplier**. **`getMasterDataFn` selects every supplier column, so the app fails until `npm run migration:run` has applied 0036.**
 - **UI**: `/master-data?tab=suppliers` shows the logo next to each name and the supplier dialog has an image field. It uses the new reusable `LogoField` / `uploadImage` (`src/components/ui/logo-field.tsx`: preview stays in the browser, the file is sent to `/api/uploads` only on save) and `SupplierLogo` (`supplier-logo.tsx`, building icon fallback). The bank dialog still has its own inline copy of this logic; use `LogoField` for new image fields.
-- **Page**: `src/routes/suppliers.$supplierId.tsx` (name + large image, "Về công nợ nhà cung cấp" back button, not-found state, numeric-id guard) reads `getSupplierDetailFn` / `supplierDetailQuery`. It is open to users with `finance.view` **or** `master-data.view`. It has no sidebar item, so no menu entry highlights while it is open.
+- **Page**: `src/routes/suppliers.$supplierId.tsx` (name + address + large image, "Về công nợ nhà cung cấp" back button, not-found state, numeric-id guard) reads `getSupplierDetailFn` / `supplierDetailQuery`. It is open to users with `finance.view` **or** `master-data.view`. It has no sidebar item, so no menu entry highlights while it is open.
 - **Links**: the supplier name is a `Link` in `/finance` → "Công Nợ Nhà Cung Cấp" and "Lịch Sử Phiếu Chi" (a payment to a non-supplier payee stays plain text).
-- **Not done**: no extra supplier details (tax code, address, email, note) on the page, as requested.
+- **Address (follow-up)**: the existing `suppliers.address` column is now editable ("Địa Chỉ" textarea in the supplier dialog, a column in the `/master-data` table, included in the search) and shown under the name on the supplier page ("Chưa có địa chỉ" when empty). No migration needed. Tax code, email and note are still not shown anywhere.
+- **Links to the supplier page** are now in: `/finance` (payables, payment history), `/batches` list ("Nhà Cung Cấp" column; `listBatchesFn` now returns `supplierId`), the `/batches/$batchId` header, and the name in the `/master-data` supplier table. Other screens only show a supplier inside a text label (e.g. the lot label "Lô dd/mm/yyyy · supplier" in inventory, which links to the batch). A new screen with a supplier column should link the name the same way and return `supplierId` from its query.
 
-_(Next Agent: Append Lesson 117, 118,... above this line upon completing tasks)_
+### Lesson 117: Dropdown Options Use the Same Text Size as the Selected Value
+
+- **Client feedback**: in dropdowns (e.g. "Điểm Bán Thanh Toán") the option list text was smaller than the selected value in the box ("font chữ không đối xứng").
+- **Cause**: triggers are `text-sm` (Lesson 67) but `SearchSelect` / `MultiSearchSelect` options, their empty-state line and the "create" action were `text-xs`, and 81 `SelectItem` / `SearchSelectItem` usages across routes passed `className="text-xs"`.
+- **Fix**: options in `search-select.tsx` and `multi-search-select.tsx` are `text-sm py-2` (footers `text-xs`); all `text-xs` / `text-[Npx]` classes were removed from item `className`s (`SelectItem`, `SearchSelectItem`, `MultiSearchSelect` children, including the page-size select in `table-pagination.tsx`).
+- **Rule**: never put a font-size class on a dropdown item; options inherit `text-sm` from the component so they always match the trigger.
+
+### Lesson 118: Vehicle Picker (`/sales/new`) — Filters in Their Own Dialog, Colour Swatches
+
+- **Client feedback** ("fix UI"): the three dropdown filters sat in a row under the search box of "Chọn Xe Từ Kho Để Bán", which looked crowded. They now live in a separate **"Bộ Lọc Xe"** dialog (same pattern as Lessons 91 and 113): the picker keeps only the search box, a "Bộ lọc" button with a count badge (number of active dropdown filters: model / colour / batch), "Xóa lọc" (clears search and filters) and the "Hiển thị x / y xe" counter. The dialog has labelled `MultiSearchSelect`s for Dòng xe, Màu xe and Lô nhập, "Xóa lọc" and a primary button "Xem N xe" that closes it. Changing a filter resets the list to the top (`resetPickerScroll`). State is local (`filtersOpen`), not in the URL, because the picker is a dialog.
+- **Colour swatch**: the colour filter options use `ColorLabel` (swatch of `colors.hex`, Lesson 62) with `keywords={name}` so search by name still works, and the colour under the model in the picker table shows the swatch too. The hex comes from `listVehicles` (`colorHex`), no server change. The already-added vehicles list (`items` state) does not store the hex, so it still shows plain text.
+
+### Lesson 119: Motorcycle Model Has No Year (`model_year` dropped)
+
+- **Client request**: remove "Đời xe" at the database level. `motorcycle_models.model_year` is gone (migration `0037_drop_model_year.sql`, applied; its down section re-adds an empty `varchar(20)`, the data cannot come back). The only model at the time (`SH`) had no year, so nothing was lost.
+- **Code**: removed from the schema, `saveModelFn`, the `/master-data` model dialog, table column and search, the quick-create dialogs (`ModelSelect`, `VehicleFormDialog`), `ModelOption` and `modelLabel` (now "Hãng Dòng", e.g. "Honda SH 150i"). The models tab subtitle is "Danh sách dòng xe nhập khẩu." This supersedes the "Đời xe" parts of Lessons 69 and 73; a model is now just a name (plus the optional brand and suggested colour columns).
+- **Gotcha**: the migrations 0036 / 0037 were written by hand and have no drizzle snapshot in `src/db/migrations/meta/`; the custom runner does not need one, but `npm run db:generate` would diff against the 0035 snapshot and re-emit those two changes.
+
+_(Next Agent: Append Lesson 120, 121,... above this line upon completing tasks)_
 
 
 

@@ -1,6 +1,6 @@
 import { useSuspenseQuery } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { ArrowLeft } from 'lucide-react'
+import { ArrowLeft, MapPin } from 'lucide-react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -72,9 +72,17 @@ function SupplierDetailPage() {
               name={supplier.name}
               className="h-40 w-64"
             />
-            <h1 className="text-center text-2xl font-bold tracking-tight text-slate-900">
-              {supplier.name}
-            </h1>
+            <div className="space-y-2 text-center">
+              <h1 className="text-2xl font-bold tracking-tight text-slate-900">
+                {supplier.name}
+              </h1>
+              <p className="flex items-start justify-center gap-1.5 text-sm text-slate-500">
+                <MapPin className="mt-0.5 size-4 shrink-0" />
+                <span className="max-w-xl whitespace-pre-line">
+                  {supplier.address || 'Chưa có địa chỉ'}
+                </span>
+              </p>
+            </div>
           </CardContent>
         </Card>
       </div>

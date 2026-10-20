@@ -535,11 +535,11 @@ function SalesPage() {
                   })
                 }
               >
-                <SearchSelectItem value="default" className="text-xs">
+                <SearchSelectItem value="default">
                   Mặc định (mới nhất trước)
                 </SearchSelectItem>
                 {SORT_KEYS.map((k) => (
-                  <SearchSelectItem key={k} value={k} className="text-xs">
+                  <SearchSelectItem key={k} value={k}>
                     {SORT_LABELS[k]}
                   </SearchSelectItem>
                 ))}
@@ -553,10 +553,10 @@ function SalesPage() {
                 disabled={!sort}
                 onValueChange={(val) => setFilter('dir', val)}
               >
-                <SearchSelectItem value="asc" className="text-xs">
+                <SearchSelectItem value="asc">
                   Tăng dần (A → Z, thấp → cao, cũ → mới)
                 </SearchSelectItem>
-                <SearchSelectItem value="desc" className="text-xs">
+                <SearchSelectItem value="desc">
                   Giảm dần (Z → A, cao → thấp, mới → cũ)
                 </SearchSelectItem>
               </SearchSelect>
@@ -575,7 +575,7 @@ function SalesPage() {
                   <SearchSelectItem
                     key={id}
                     value={String(id)}
-                    className="text-xs"
+                   
                   >
                     {name}
                   </SearchSelectItem>
@@ -593,7 +593,7 @@ function SalesPage() {
                 }
               >
                 {branchOptions.map(([id, name]) => (
-                  <SearchSelectItem key={id} value={id} className="text-xs">
+                  <SearchSelectItem key={id} value={id}>
                     {name}
                   </SearchSelectItem>
                 ))}
@@ -628,7 +628,7 @@ function SalesPage() {
                 }
               >
                 {PROGRESS.map((p) => (
-                  <SearchSelectItem key={p} value={p} className="text-xs">
+                  <SearchSelectItem key={p} value={p}>
                     {progressLabels[p][0]}
                   </SearchSelectItem>
                 ))}
@@ -645,7 +645,7 @@ function SalesPage() {
                 }
               >
                 {PROGRESS.map((p) => (
-                  <SearchSelectItem key={p} value={p} className="text-xs">
+                  <SearchSelectItem key={p} value={p}>
                     {progressLabels[p][1]}
                   </SearchSelectItem>
                 ))}

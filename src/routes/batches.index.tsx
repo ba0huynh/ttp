@@ -364,7 +364,18 @@ function BatchesPage() {
                         {formatDate(b.importDate)}
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
-                        {b.supplierName}
+                        {b.supplierId && b.supplierName ? (
+                          <Link
+                            to="/suppliers/$supplierId"
+                            params={{ supplierId: String(b.supplierId) }}
+                            preload="intent"
+                            className="hover:text-emerald-700 hover:underline"
+                          >
+                            {b.supplierName}
+                          </Link>
+                        ) : (
+                          b.supplierName
+                        )}
                       </TableCell>
                       <TableCell className="text-center font-medium text-slate-900">
                         {b.vehicleCount} xe
@@ -461,11 +472,11 @@ function BatchesPage() {
                   })
                 }
               >
-                <SearchSelectItem value="default" className="text-xs">
+                <SearchSelectItem value="default">
                   Mặc định (mới nhất trước)
                 </SearchSelectItem>
                 {SORT_KEYS.map((k) => (
-                  <SearchSelectItem key={k} value={k} className="text-xs">
+                  <SearchSelectItem key={k} value={k}>
                     {SORT_LABELS[k]}
                   </SearchSelectItem>
                 ))}
@@ -481,10 +492,10 @@ function BatchesPage() {
                   setFilter('dir', val)
                 }
               >
-                <SearchSelectItem value="asc" className="text-xs">
+                <SearchSelectItem value="asc">
                   Tăng dần (A → Z, thấp → cao, cũ → mới)
                 </SearchSelectItem>
-                <SearchSelectItem value="desc" className="text-xs">
+                <SearchSelectItem value="desc">
                   Giảm dần (Z → A, cao → thấp, mới → cũ)
                 </SearchSelectItem>
               </SearchSelect>
@@ -500,7 +511,7 @@ function BatchesPage() {
                 }
               >
                 {supplierOptions.map((name) => (
-                  <SearchSelectItem key={name} value={name} className="text-xs">
+                  <SearchSelectItem key={name} value={name}>
                     {name === NO_SUPPLIER ? '(Không có nhà cung cấp)' : name}
                   </SearchSelectItem>
                 ))}
@@ -533,13 +544,13 @@ function BatchesPage() {
                   setFilter('base', val === 'all' ? undefined : val)
                 }
               >
-                <SearchSelectItem value="all" className="text-xs">
+                <SearchSelectItem value="all">
                   Tất cả
                 </SearchSelectItem>
-                <SearchSelectItem value="import_price" className="text-xs">
+                <SearchSelectItem value="import_price">
                   Trên Giá Nhập
                 </SearchSelectItem>
-                <SearchSelectItem value="cost_price" className="text-xs">
+                <SearchSelectItem value="cost_price">
                   Trên Giá Vốn
                 </SearchSelectItem>
               </SearchSelect>
@@ -558,7 +569,7 @@ function BatchesPage() {
                   <SearchSelectItem
                     key={id}
                     value={String(id)}
-                    className="text-xs"
+                   
                   >
                     {name}
                   </SearchSelectItem>

@@ -534,11 +534,11 @@ function LoansPage() {
                     })
                   }
                 >
-                  <SearchSelectItem value="default" className="text-xs">
+                  <SearchSelectItem value="default">
                     Mặc định (mới giải ngân trước)
                   </SearchSelectItem>
                   {SORT_KEYS.map((k) => (
-                    <SearchSelectItem key={k} value={k} className="text-xs">
+                    <SearchSelectItem key={k} value={k}>
                       {SORT_LABELS[k]}
                     </SearchSelectItem>
                   ))}
@@ -552,10 +552,10 @@ function LoansPage() {
                   disabled={!sort}
                   onValueChange={(val) => setFilter('dir', val)}
                 >
-                  <SearchSelectItem value="asc" className="text-xs">
+                  <SearchSelectItem value="asc">
                     Tăng dần (A → Z, thấp → cao)
                   </SearchSelectItem>
-                  <SearchSelectItem value="desc" className="text-xs">
+                  <SearchSelectItem value="desc">
                     Giảm dần (Z → A, cao → thấp)
                   </SearchSelectItem>
                 </SearchSelect>
@@ -584,7 +584,7 @@ function LoansPage() {
                       key={b.id}
                       value={String(b.id)}
                       keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
-                      className="text-xs"
+                     
                     >
                       <BankLabel image={b.image} name={b.name}>
                         {b.name}
@@ -603,10 +603,10 @@ function LoansPage() {
                     setFilter('status', vals.length ? vals : undefined)
                   }
                 >
-                  <SearchSelectItem value="active" className="text-xs">
+                  <SearchSelectItem value="active">
                     {STATUS_LABELS.active}
                   </SearchSelectItem>
-                  <SearchSelectItem value="settled" className="text-xs">
+                  <SearchSelectItem value="settled">
                     {STATUS_LABELS.settled}
                   </SearchSelectItem>
                 </MultiSearchSelect>
@@ -733,7 +733,7 @@ function LoansPage() {
                       key={b.id}
                       value={String(b.id)}
                       keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
-                      className="text-xs"
+                     
                     >
                       <BankLabel image={b.image} name={b.name}>
                         {b.name}
@@ -796,7 +796,7 @@ function LoansPage() {
                       <SearchSelectItem
                         key={n}
                         value={String(n)}
-                        className="text-xs"
+                       
                       >
                         {n} tháng
                       </SearchSelectItem>

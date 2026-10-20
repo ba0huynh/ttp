@@ -65,8 +65,20 @@ function BatchDetailPage() {
           title={`Lô nhập ${formatDate(data.batch.importDate)}`}
           description={
             <>
-              Nhà cung cấp: <strong>{data.batch.supplierName}</strong> · Ngày
-              nhập: {formatDate(data.batch.importDate)}
+              Nhà cung cấp:{' '}
+              {data.batch.supplierId && data.batch.supplierName ? (
+                <Link
+                  to="/suppliers/$supplierId"
+                  params={{ supplierId: String(data.batch.supplierId) }}
+                  preload="intent"
+                  className="font-semibold hover:text-emerald-700 hover:underline"
+                >
+                  {data.batch.supplierName}
+                </Link>
+              ) : (
+                <strong>{data.batch.supplierName}</strong>
+              )}{' '}
+              · Ngày nhập: {formatDate(data.batch.importDate)}
             </>
           }
         />

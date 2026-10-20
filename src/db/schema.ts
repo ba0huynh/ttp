@@ -158,8 +158,6 @@ export const motorcycleModels = mysqlTable('motorcycle_models', {
   brand: varchar('brand', { length: 100 }),
   /** Dòng xe (the model line, e.g. "SH 150i") */
   name: varchar('name', { length: 150 }).notNull(),
-  /** Đời xe (model year / generation) */
-  modelYear: varchar('model_year', { length: 20 }),
   description: text('description'),
   ...timestamps,
 })

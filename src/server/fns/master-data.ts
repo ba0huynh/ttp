@@ -170,7 +170,12 @@ export const getSupplierDetailFn = createServerFn({ method: 'GET' })
   .validator(z.object({ id: z.number() }))
   .handler(async ({ data }) => {
     const [supplier] = await db
-      .select({ id: suppliers.id, name: suppliers.name, image: suppliers.image })
+      .select({
+        id: suppliers.id,
+        name: suppliers.name,
+        address: suppliers.address,
+        image: suppliers.image,
+      })
       .from(suppliers)
       .where(eq(suppliers.id, data.id))
     if (!supplier) throw new Error('Không tìm thấy nhà cung cấp')
@@ -185,7 +190,6 @@ export const saveModelFn = createServerFn({ method: 'POST' })
       id: z.number().optional(),
       brand: opt,
       name: z.string().trim().min(1),
-      modelYear: opt,
       description: opt,
     }),
   )

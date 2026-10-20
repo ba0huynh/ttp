@@ -349,19 +349,19 @@ function InventoryPage() {
                         setFilterStock(vals as (typeof STOCK_FILTERS)[number][])
                       }
                     >
-                      <SearchSelectItem value="physical" className="text-xs">
+                      <SearchSelectItem value="physical">
                         Tồn thực tế ({summary.physical})
                       </SearchSelectItem>
-                      <SearchSelectItem value="invoiced" className="text-xs">
+                      <SearchSelectItem value="invoiced">
                         Tồn hóa đơn ({summary.invoiced})
                       </SearchSelectItem>
-                      <SearchSelectItem value="mismatch" className="text-xs">
+                      <SearchSelectItem value="mismatch">
                         Xe đang lệch 2 kho (
                         {summary.invoicedNotDelivered +
                           summary.deliveredNotInvoiced}
                         )
                       </SearchSelectItem>
-                      <SearchSelectItem value="available" className="text-xs">
+                      <SearchSelectItem value="available">
                         Chưa bán ({summary.unsold})
                       </SearchSelectItem>
                     </MultiSearchSelect>
@@ -383,7 +383,7 @@ function InventoryPage() {
                   <SearchSelectItem
                     key={id}
                     value={String(id)}
-                    className="text-xs"
+                   
                   >
                     {label}
                   </SearchSelectItem>
@@ -401,7 +401,7 @@ function InventoryPage() {
                 }
               >
                 {modelOptions.map((m) => (
-                  <SearchSelectItem key={m} value={m} className="text-xs">
+                  <SearchSelectItem key={m} value={m}>
                     {m}
                   </SearchSelectItem>
                 ))}
@@ -418,7 +418,7 @@ function InventoryPage() {
                 }
               >
                 {colorOptions.map((c) => (
-                  <SearchSelectItem key={c} value={c} className="text-xs">
+                  <SearchSelectItem key={c} value={c}>
                     {colorHexByName.get(c) && (
                       <span
                         className="size-2.5 shrink-0 rounded-full inline-block border border-slate-300"
@@ -445,10 +445,10 @@ function InventoryPage() {
                         )
                       }
                     >
-                      <SearchSelectItem value="yes" className="text-xs">
+                      <SearchSelectItem value="yes">
                         Đã giao xe
                       </SearchSelectItem>
-                      <SearchSelectItem value="no" className="text-xs">
+                      <SearchSelectItem value="no">
                         Chưa giao xe
                       </SearchSelectItem>
                     </MultiSearchSelect>
@@ -466,10 +466,10 @@ function InventoryPage() {
                         )
                       }
                     >
-                      <SearchSelectItem value="yes" className="text-xs">
+                      <SearchSelectItem value="yes">
                         Đã có hóa đơn
                       </SearchSelectItem>
-                      <SearchSelectItem value="no" className="text-xs">
+                      <SearchSelectItem value="no">
                         Chưa có hóa đơn
                       </SearchSelectItem>
                     </MultiSearchSelect>
@@ -488,10 +488,10 @@ function InventoryPage() {
                         )
                       }
                     >
-                      <SearchSelectItem value="import" className="text-xs">
+                      <SearchSelectItem value="import">
                         Đơn giá nhập (giá nhập thực tế)
                       </SearchSelectItem>
-                      <SearchSelectItem value="cost" className="text-xs">
+                      <SearchSelectItem value="cost">
                         Giá vốn xe (đã gồm chi phí)
                       </SearchSelectItem>
                     </SearchSelect>

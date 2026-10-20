@@ -111,7 +111,7 @@ export function TablePagination<T>({
             </SelectTrigger>
             <SelectContent>
               {PAGE_SIZE_OPTIONS.map((n) => (
-                <SelectItem key={n} value={String(n)} className="text-xs">
+                <SelectItem key={n} value={String(n)}>
                   {n}
                 </SelectItem>
               ))}

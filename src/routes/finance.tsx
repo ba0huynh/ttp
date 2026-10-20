@@ -916,7 +916,7 @@ function FinancePage() {
                         <SearchSelectItem
                           key={id}
                           value={String(id)}
-                          className="text-xs"
+                         
                         >
                           {name}
                         </SearchSelectItem>
@@ -937,7 +937,7 @@ function FinancePage() {
                         <SearchSelectItem
                           key={id}
                           value={id}
-                          className="text-xs"
+                         
                         >
                           {name}
                         </SearchSelectItem>
@@ -952,10 +952,10 @@ function FinancePage() {
                       values={rcvF.status ?? []}
                       onValuesChange={(v) => setTabFilter('rcv', { status: v })}
                     >
-                      <SearchSelectItem value="owing" className="text-xs">
+                      <SearchSelectItem value="owing">
                         Còn nợ
                       </SearchSelectItem>
-                      <SearchSelectItem value="cleared" className="text-xs">
+                      <SearchSelectItem value="cleared">
                         Đã thanh toán đủ
                       </SearchSelectItem>
                     </MultiSearchSelect>
@@ -987,7 +987,7 @@ function FinancePage() {
                         <SearchSelectItem
                           key={id}
                           value={String(id)}
-                          className="text-xs"
+                         
                         >
                           {name}
                         </SearchSelectItem>
@@ -1002,10 +1002,10 @@ function FinancePage() {
                       values={payF.status ?? []}
                       onValuesChange={(v) => setTabFilter('pay', { status: v })}
                     >
-                      <SearchSelectItem value="owing" className="text-xs">
+                      <SearchSelectItem value="owing">
                         Còn nợ NCC
                       </SearchSelectItem>
-                      <SearchSelectItem value="cleared" className="text-xs">
+                      <SearchSelectItem value="cleared">
                         Đã thanh toán đủ
                       </SearchSelectItem>
                     </MultiSearchSelect>
@@ -1037,7 +1037,7 @@ function FinancePage() {
                         <SearchSelectItem
                           key={id}
                           value={String(id)}
-                          className="text-xs"
+                         
                         >
                           {name}
                         </SearchSelectItem>
@@ -1058,7 +1058,7 @@ function FinancePage() {
                         <SearchSelectItem
                           key={id}
                           value={id}
-                          className="text-xs"
+                         
                         >
                           {name}
                         </SearchSelectItem>
@@ -1078,7 +1078,7 @@ function FinancePage() {
                           key={a.id}
                           value={a.id}
                           keywords={a.keywords}
-                          className="text-xs"
+                         
                         >
                           {a.image ? (
                             <BankLabel image={a.image} name={a.name}>
@@ -1151,7 +1151,7 @@ function FinancePage() {
                         <SearchSelectItem
                           key={id}
                           value={String(id)}
-                          className="text-xs"
+                         
                         >
                           {name}
                         </SearchSelectItem>
@@ -1171,7 +1171,7 @@ function FinancePage() {
                           key={a.id}
                           value={a.id}
                           keywords={a.keywords}
-                          className="text-xs"
+                         
                         >
                           {a.image ? (
                             <BankLabel image={a.image} name={a.name}>
@@ -1282,7 +1282,7 @@ function FinancePage() {
                     <SearchSelectItem
                       key={c.id}
                       value={String(c.id)}
-                      className="text-xs"
+                     
                     >
                       {c.name}
                     </SearchSelectItem>
@@ -1302,14 +1302,14 @@ function FinancePage() {
                     setReceiptBranchId(val === 'none' ? null : Number(val))
                   }
                 >
-                  <SearchSelectItem value="none" className="text-xs">
+                  <SearchSelectItem value="none">
                     Công ty mẹ (Trực tiếp)
                   </SearchSelectItem>
                   {branchOptions.map((b) => (
                     <SearchSelectItem
                       key={b.id}
                       value={String(b.id)}
-                      className="text-xs"
+                     
                     >
                       {b.name}
                     </SearchSelectItem>
@@ -1418,7 +1418,7 @@ function FinancePage() {
                     <SearchSelectItem
                       key={s.id}
                       value={String(s.id)}
-                      className="text-xs"
+                     
                     >
                       {s.name}
                     </SearchSelectItem>
