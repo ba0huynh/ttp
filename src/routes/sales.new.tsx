@@ -43,6 +43,10 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
+import {
+  TablePagination,
+  usePagination,
+} from '#/components/ui/table-pagination.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
@@ -109,8 +113,7 @@ function NewSalesOrderPage() {
     }[]
   >([])
 
-  // Modal to select vehicles from inventory with infinite scroll & search & filters
-  const PICKER_PAGE_SIZE = 15
+  // Modal to select vehicles from inventory with pagination, search & filters
   const [pickerOpen, setPickerOpen] = React.useState(false)
   const [tempChecked, setTempChecked] = React.useState<Set<number>>(new Set())
   const [pickerSearch, setPickerSearch] = React.useState('')
@@ -118,9 +121,6 @@ function NewSalesOrderPage() {
   const [filterColorIds, setFilterColorIds] = React.useState<number[]>([])
   const [filterBatchIds, setFilterBatchIds] = React.useState<number[]>([])
   const [filtersOpen, setFiltersOpen] = React.useState(false)
-  const [visibleCount, setVisibleCount] = React.useState(PICKER_PAGE_SIZE)
-  const scrollContainerRef = React.useRef<HTMLDivElement | null>(null)
-  const sentinelRef = React.useRef<HTMLDivElement | null>(null)
 
   // Unique filter options extracted from available vehicles
   const modelOptions = React.useMemo(() => {
@@ -171,23 +171,11 @@ function NewSalesOrderPage() {
     (filterColorIds.length > 0 ? 1 : 0) +
     (filterBatchIds.length > 0 ? 1 : 0)
 
-  // A changed filter returns the list to the top of its first page
-  const resetPickerScroll = () => {
-    setVisibleCount(PICKER_PAGE_SIZE)
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0
-    }
-  }
-
   const clearAllFilters = () => {
     setPickerSearch('')
     setFilterModelIds([])
     setFilterColorIds([])
     setFilterBatchIds([])
-    setVisibleCount(PICKER_PAGE_SIZE)
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0
-    }
   }
 
   const filteredAvailableVehicles = React.useMemo(() => {
@@ -231,53 +219,33 @@ function NewSalesOrderPage() {
     filterBatchIds,
   ])
 
-  const visibleVehicles = React.useMemo(() => {
-    return filteredAvailableVehicles.slice(0, visibleCount)
-  }, [filteredAvailableVehicles, visibleCount])
-
-  const handlePickerScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    const target = e.currentTarget
-    if (
-      target.scrollTop + target.clientHeight >= target.scrollHeight - 120 &&
-      visibleCount < filteredAvailableVehicles.length
-    ) {
-      setVisibleCount((prev) =>
-        Math.min(filteredAvailableVehicles.length, prev + PICKER_PAGE_SIZE),
-      )
-    }
-  }
-
-  React.useEffect(() => {
-    if (!pickerOpen) return
-    const el = sentinelRef.current
-    if (!el) return
-    const observer = new IntersectionObserver(
-      (entries) => {
-        if (entries[0]?.isIntersecting) {
-          setVisibleCount((prev) => {
-            if (prev < filteredAvailableVehicles.length) {
-              return Math.min(
-                filteredAvailableVehicles.length,
-                prev + PICKER_PAGE_SIZE,
-              )
-            }
-            return prev
-          })
-        }
-      },
-      { root: scrollContainerRef.current, rootMargin: '120px' },
-    )
-    observer.observe(el)
-    return () => observer.disconnect()
-  }, [pickerOpen, filteredAvailableVehicles.length])
+  // 10 per page; any change of search / filter (or reopening) returns to page 1
+  const pickerPg = usePagination(
+    filteredAvailableVehicles,
+    `${pickerOpen}|${pickerSearch}|${filterModelIds.join()}|${filterColorIds.join()}|${filterBatchIds.join()}`,
+  )
 
   const allFilteredChecked =
     filteredAvailableVehicles.length > 0 &&
     filteredAvailableVehicles.every((v) => tempChecked.has(v.id))
-  const someFilteredChecked =
-    filteredAvailableVehicles.some((v) => tempChecked.has(v.id)) &&
-    !allFilteredChecked
 
+  // The header checkbox works on the page in view
+  const pageAllChecked =
+    pickerPg.pageItems.length > 0 &&
+    pickerPg.pageItems.every((v) => tempChecked.has(v.id))
+  const pageSomeChecked =
+    pickerPg.pageItems.some((v) => tempChecked.has(v.id)) && !pageAllChecked
+
+  const toggleSelectPage = () => {
+    const next = new Set(tempChecked)
+    for (const v of pickerPg.pageItems) {
+      if (pageAllChecked) next.delete(v.id)
+      else next.add(v.id)
+    }
+    setTempChecked(next)
+  }
+
+  // Selects every vehicle matching the search / filters, across all pages
   const toggleSelectAllFiltered = () => {
     const next = new Set(tempChecked)
     if (allFilteredChecked) {
@@ -305,16 +273,11 @@ function NewSalesOrderPage() {
     setFilterModelIds([])
     setFilterColorIds([])
     setFilterBatchIds([])
-    setVisibleCount(PICKER_PAGE_SIZE)
     setPickerOpen(true)
   }
 
   const handleSearchChange = (val: string) => {
     setPickerSearch(val)
-    setVisibleCount(PICKER_PAGE_SIZE)
-    if (scrollContainerRef.current) {
-      scrollContainerRef.current.scrollTop = 0
-    }
   }
 
   const toggleCheck = (vId: number) => {
@@ -579,11 +542,7 @@ function NewSalesOrderPage() {
                     }}
                   >
                     {customers.map((c) => (
-                      <SearchSelectItem
-                        key={c.id}
-                        value={String(c.id)}
-                       
-                      >
+                      <SearchSelectItem key={c.id} value={String(c.id)}>
                         {c.name}
                       </SearchSelectItem>
                     ))}
@@ -606,11 +565,7 @@ function NewSalesOrderPage() {
                       Trực tiếp khách hàng (không qua điểm bán)
                     </SearchSelectItem>
                     {branches.map((b) => (
-                      <SearchSelectItem
-                        key={b.id}
-                        value={String(b.id)}
-                       
-                      >
+                      <SearchSelectItem key={b.id} value={String(b.id)}>
                         {b.name}
                       </SearchSelectItem>
                     ))}
@@ -690,105 +645,86 @@ function NewSalesOrderPage() {
               )}
 
               <div className="text-xs text-slate-500 whitespace-nowrap self-center shrink-0">
-                Hiển thị <strong>{visibleVehicles.length}</strong> /{' '}
-                {filteredAvailableVehicles.length} xe
+                <strong>{filteredAvailableVehicles.length}</strong> xe
               </div>
             </div>
 
-            {/* Table container with infinite scroll */}
-            <div
-              ref={scrollContainerRef}
-              onScroll={handlePickerScroll}
-              className="border border-slate-200 rounded-lg overflow-y-auto max-h-[50vh] min-h-[220px] flex-1 my-2"
-            >
-              <Table>
-                <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-xs">
-                  <TableRow className="text-xs bg-slate-50">
-                    <TableHead className="w-10">
-                      <Checkbox
-                        checked={
-                          allFilteredChecked
-                            ? true
-                            : someFilteredChecked
-                              ? 'indeterminate'
-                              : false
-                        }
-                        onCheckedChange={toggleSelectAllFiltered}
-                        aria-label="Chọn tất cả"
-                      />
-                    </TableHead>
-                    <TableHead>Số Khung</TableHead>
-                    <TableHead>Dòng xe / Màu</TableHead>
-                    <TableHead>Lô Nhập</TableHead>
-                    <TableHead className="text-right">Giá Bán Lô</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody className="text-xs">
-                  {visibleVehicles.map((v) => {
-                    const checked = tempChecked.has(v.id)
-                    return (
-                      <TableRow
-                        key={v.id}
-                        className={`cursor-pointer ${checked ? 'bg-emerald-50/60' : 'hover:bg-slate-50'}`}
-                        onClick={() => toggleCheck(v.id)}
-                      >
-                        <TableCell onClick={(e) => e.stopPropagation()}>
-                          <Checkbox
-                            checked={checked}
-                            onCheckedChange={() => toggleCheck(v.id)}
-                          />
-                        </TableCell>
-                        <TableCell className="font-medium text-slate-900">
-                          {v.chassisNumber}
-                        </TableCell>
-                        <TableCell>
-                          <div className="font-medium text-slate-900">
-                            {v.modelName}
-                          </div>
-                          <div className="text-[11px] text-slate-500">
-                            <ColorLabel name={v.colorName} hex={v.colorHex} />
-                          </div>
-                        </TableCell>
-                        <TableCell className="text-slate-900">
-                          {batchLabel(v)}
-                        </TableCell>
-                        <TableCell className="text-right font-medium text-emerald-900">
-                          {formatVnd(v.sellingPrice)}
+            {/* Table with a page-number footer */}
+            <div className="border border-slate-200 rounded-lg flex flex-col overflow-hidden flex-1 my-2">
+              <div className="overflow-y-auto max-h-[45vh] min-h-[220px] flex-1">
+                <Table>
+                  <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-xs">
+                    <TableRow className="text-xs bg-slate-50">
+                      <TableHead className="w-10">
+                        <Checkbox
+                          checked={
+                            pageAllChecked
+                              ? true
+                              : pageSomeChecked
+                                ? 'indeterminate'
+                                : false
+                          }
+                          onCheckedChange={toggleSelectPage}
+                          aria-label="Chọn tất cả xe trong trang"
+                        />
+                      </TableHead>
+                      <TableHead>Số Khung</TableHead>
+                      <TableHead>Dòng xe / Màu</TableHead>
+                      <TableHead>Lô Nhập</TableHead>
+                      <TableHead className="text-right">Giá Bán Lô</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody className="text-xs">
+                    {pickerPg.pageItems.map((v) => {
+                      const checked = tempChecked.has(v.id)
+                      return (
+                        <TableRow
+                          key={v.id}
+                          className={`cursor-pointer ${checked ? 'bg-emerald-50/60' : 'hover:bg-slate-50'}`}
+                          onClick={() => toggleCheck(v.id)}
+                        >
+                          <TableCell onClick={(e) => e.stopPropagation()}>
+                            <Checkbox
+                              checked={checked}
+                              onCheckedChange={() => toggleCheck(v.id)}
+                            />
+                          </TableCell>
+                          <TableCell className="font-medium text-slate-900">
+                            {v.chassisNumber}
+                          </TableCell>
+                          <TableCell>
+                            <div className="font-medium text-slate-900">
+                              {v.modelName}
+                            </div>
+                            <div className="text-[11px] text-slate-500">
+                              <ColorLabel name={v.colorName} hex={v.colorHex} />
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-slate-900">
+                            {batchLabel(v)}
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-emerald-900">
+                            {formatVnd(v.sellingPrice)}
+                          </TableCell>
+                        </TableRow>
+                      )
+                    })}
+                    {filteredAvailableVehicles.length === 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={5}
+                          className="py-8 text-center text-xs text-slate-400 italic"
+                        >
+                          {pickerSearch
+                            ? 'Không tìm thấy xe phù hợp với từ khóa'
+                            : 'Kho không còn xe nào chưa bán'}
                         </TableCell>
                       </TableRow>
-                    )
-                  })}
-                  {filteredAvailableVehicles.length === 0 && (
-                    <TableRow>
-                      <TableCell
-                        colSpan={5}
-                        className="py-8 text-center text-xs text-slate-400 italic"
-                      >
-                        {pickerSearch
-                          ? 'Không tìm thấy xe phù hợp với từ khóa'
-                          : 'Kho không còn xe nào chưa bán'}
-                      </TableCell>
-                    </TableRow>
-                  )}
-                </TableBody>
-              </Table>
-
-              {/* Infinite scroll loader / sentinel */}
-              {visibleCount < filteredAvailableVehicles.length && (
-                <div
-                  ref={sentinelRef}
-                  className="py-3 text-center text-xs text-slate-500 font-medium flex items-center justify-center gap-2 border-t border-slate-100"
-                >
-                  <div className="size-3.5 border-2 border-emerald-600 border-t-transparent rounded-full animate-spin" />
-                  Đang cuộn tải thêm xe ({visibleVehicles.length}/{filteredAvailableVehicles.length})...
-                </div>
-              )}
-              {visibleCount >= filteredAvailableVehicles.length &&
-                filteredAvailableVehicles.length > 0 && (
-                  <div className="py-2.5 text-center text-[11px] text-slate-400 border-t border-slate-100">
-                    Đã hiển thị toàn bộ {filteredAvailableVehicles.length} xe
-                  </div>
-                )}
+                    )}
+                  </TableBody>
+                </Table>
+              </div>
+              <TablePagination pagination={pickerPg} />
             </div>
 
             <DialogFooter className="flex items-center justify-between sm:justify-between shrink-0 pt-2 border-t border-slate-100">
@@ -796,6 +732,16 @@ function NewSalesOrderPage() {
                 <span className="text-xs font-semibold text-slate-700">
                   Đã chọn: <strong>{tempChecked.size} xe</strong>
                 </span>
+                {filteredAvailableVehicles.length > pickerPg.pageItems.length &&
+                  !allFilteredChecked && (
+                    <button
+                      type="button"
+                      onClick={toggleSelectAllFiltered}
+                      className="text-[11px] text-emerald-700 hover:underline font-medium"
+                    >
+                      Chọn tất cả {filteredAvailableVehicles.length} xe
+                    </button>
+                  )}
                 {tempChecked.size > 0 && (
                   <button
                     type="button"
@@ -850,7 +796,6 @@ function NewSalesOrderPage() {
                   values={filterModelIds.map(String)}
                   onValuesChange={(vals) => {
                     setFilterModelIds(vals.map(Number))
-                    resetPickerScroll()
                   }}
                 >
                   {modelOptions.map((m) => (
@@ -869,7 +814,6 @@ function NewSalesOrderPage() {
                   values={filterColorIds.map(String)}
                   onValuesChange={(vals) => {
                     setFilterColorIds(vals.map(Number))
-                    resetPickerScroll()
                   }}
                 >
                   {colorOptions.map((c) => (
@@ -892,7 +836,6 @@ function NewSalesOrderPage() {
                   values={filterBatchIds.map(String)}
                   onValuesChange={(vals) => {
                     setFilterBatchIds(vals.map(Number))
-                    resetPickerScroll()
                   }}
                 >
                   {batchOptions.map((b) => (
@@ -918,7 +861,6 @@ function NewSalesOrderPage() {
                   setFilterModelIds([])
                   setFilterColorIds([])
                   setFilterBatchIds([])
-                  resetPickerScroll()
                 }}
                 className="h-8 text-xs text-rose-600 hover:bg-rose-50 hover:text-rose-700 gap-1"
               >

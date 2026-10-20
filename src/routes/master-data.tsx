@@ -5,7 +5,7 @@ import {
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
-import { Link, createFileRoute, redirect } from '@tanstack/react-router'
+import { createFileRoute, redirect } from '@tanstack/react-router'
 import { Pencil, Plus, Upload } from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
@@ -13,6 +13,7 @@ import { z } from 'zod'
 import { BankLabel, BankLogo } from '#/components/finance/BankLabel.tsx'
 import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import { Can } from '#/components/auth/Can.tsx'
+import { SupplierLink } from '#/components/suppliers/SupplierDetailDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -689,15 +690,10 @@ function MasterDataPage() {
                     {suppliersPg.pageItems.map((s) => (
                       <TableRow key={s.id}>
                         <TableCell className="font-medium text-slate-900">
-                          <Link
-                            to="/suppliers/$supplierId"
-                            params={{ supplierId: String(s.id) }}
-                            preload="intent"
-                            className="inline-flex max-w-full min-w-0 items-center gap-2 hover:text-emerald-700 hover:underline"
-                          >
+                          <SupplierLink supplierId={s.id} className="inline-flex max-w-full min-w-0 items-center gap-2 hover:text-emerald-700 hover:underline">
                             <SupplierLogo src={s.image} name={s.name} />
                             <span className="truncate">{s.name}</span>
-                          </Link>
+                          </SupplierLink>
                         </TableCell>
                         <TableCell className="text-slate-500">
                           {s.address || '—'}
@@ -1294,6 +1290,7 @@ function MasterDataPage() {
                   required
                   value={accName}
                   onChange={(e) => setAccName(e.target.value)}
+                  maxLength={255}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="CÔNG TY TNHH TM DV TRƯỜNG THỊNH PHÁT"
                 />
@@ -1326,6 +1323,7 @@ function MasterDataPage() {
                   required
                   value={accNumber}
                   onChange={(e) => setAccNumber(e.target.value)}
+                  maxLength={50}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="0071001234567"
                 />
@@ -1335,6 +1333,7 @@ function MasterDataPage() {
                 <Input
                   value={accBranch}
                   onChange={(e) => setAccBranch(e.target.value)}
+                  maxLength={150}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Chi nhánh TP. Hồ Chí Minh"
                 />

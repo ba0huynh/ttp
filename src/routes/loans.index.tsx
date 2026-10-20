@@ -88,14 +88,6 @@ const SORT_KEYS = [
   'outstanding',
 ] as const
 type SortKey = (typeof SORT_KEYS)[number]
-const SORT_LABELS: Record<SortKey, string> = {
-  contract: 'Số khế ước',
-  bank: 'Ngân hàng',
-  rate: 'Lãi suất',
-  term: 'Kỳ hạn',
-  paid: 'Gốc đã trả',
-  outstanding: 'Dư nợ còn lại',
-}
 const SORT_VALUE: Record<
   SortKey,
   (l: {
@@ -114,20 +106,16 @@ const SORT_VALUE: Record<
   paid: (l) => l.principalPaid,
   outstanding: (l) => l.outstanding,
 }
-const STATUS_LABELS = { active: 'Đang vay', settled: 'Đã tất toán' } as const
 
 export const Route = createFileRoute('/loans/')({
   // Filters and sort live in the URL so a reload or shared link keeps them
   validateSearch: z.object({
     q: z.string().optional().catch(undefined),
     bank: z.array(z.number().int()).optional().catch(undefined),
-    status: z.array(z.enum(['active', 'settled'])).optional().catch(undefined),
     from: z.string().optional().catch(undefined),
     to: z.string().optional().catch(undefined),
     minPrincipal: z.number().optional().catch(undefined),
     maxPrincipal: z.number().optional().catch(undefined),
-    minOutstanding: z.number().optional().catch(undefined),
-    maxOutstanding: z.number().optional().catch(undefined),
     sort: z.enum(SORT_KEYS).optional().catch(undefined),
     dir: z.enum(['asc', 'desc']).optional().catch(undefined),
   }),
@@ -156,13 +144,10 @@ function LoansPage() {
   const [showFilters, setShowFilters] = React.useState(false)
   const {
     bank,
-    status,
     from,
     to,
     minPrincipal,
     maxPrincipal,
-    minOutstanding,
-    maxOutstanding,
     sort,
     dir,
   } = searchParams
@@ -176,7 +161,7 @@ function LoansPage() {
       }),
   )
   const setFilter = (
-    key: 'bank' | 'status' | 'from' | 'to' | 'dir',
+    key: 'bank' | 'from' | 'to',
     value: string | string[] | number[] | undefined,
   ) =>
     navigate({ search: (prev) => ({ ...prev, [key]: value }), replace: true })
@@ -184,27 +169,20 @@ function LoansPage() {
   const activeFilterCount = [
     Boolean(contractSearch.trim()),
     Boolean(bank?.length),
-    Boolean(status?.length),
     Boolean(from || to),
     minPrincipal !== undefined || maxPrincipal !== undefined,
-    minOutstanding !== undefined || maxOutstanding !== undefined,
   ].filter(Boolean).length
 
   const filtered = loans.filter((l) => {
     const q = contractSearch.trim().toLowerCase()
     if (q && !l.contractNumber.toLowerCase().includes(q)) return false
     if (bank?.length && !bank.includes(l.bankId)) return false
-    if (status?.length && !status.includes(l.status)) return false
     const date = String(l.disbursementDate).slice(0, 10)
     if (from && date < from) return false
     if (to && date > to) return false
     if (minPrincipal !== undefined && l.principalAmount < minPrincipal)
       return false
     if (maxPrincipal !== undefined && l.principalAmount > maxPrincipal)
-      return false
-    if (minOutstanding !== undefined && l.outstanding < minOutstanding)
-      return false
-    if (maxOutstanding !== undefined && l.outstanding > maxOutstanding)
       return false
     return true
   })
@@ -222,7 +200,7 @@ function LoansPage() {
     : filtered
   const loansPg = usePagination(
     sorted,
-    `${contractSearch}|${bank?.join()}|${status?.join()}|${from}|${to}|${minPrincipal}|${maxPrincipal}|${minOutstanding}|${maxOutstanding}|${sort}|${dir}`,
+    `${contractSearch}|${bank?.join()}|${from}|${to}|${minPrincipal}|${maxPrincipal}|${sort}|${dir}`,
   )
 
   // Header click: ascending, then descending, then back to the default order
@@ -510,56 +488,11 @@ function LoansPage() {
                 Bộ Lọc Khế Ước
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Kết quả được lọc ngay khi thay đổi ({filtered.length} khế ước
-                phù hợp)
+                Tìm theo số khế ước, ngân hàng, ngày giải ngân và số tiền vay ({filtered.length} khế ước phù hợp)
               </DialogDescription>
             </DialogHeader>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Sắp xếp theo</Label>
-                <SearchSelect
-                  className="h-11 w-full text-sm rounded-lg"
-                  placeholder="Mặc định (mới giải ngân trước)"
-                  value={sort ?? 'default'}
-                  onValueChange={(val) =>
-                    navigate({
-                      search: (prev) => ({
-                        ...prev,
-                        sort: val === 'default' ? undefined : (val as SortKey),
-                        dir:
-                          val === 'default' ? undefined : (prev.dir ?? 'desc'),
-                      }),
-                      replace: true,
-                    })
-                  }
-                >
-                  <SearchSelectItem value="default">
-                    Mặc định (mới giải ngân trước)
-                  </SearchSelectItem>
-                  {SORT_KEYS.map((k) => (
-                    <SearchSelectItem key={k} value={k}>
-                      {SORT_LABELS[k]}
-                    </SearchSelectItem>
-                  ))}
-                </SearchSelect>
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Thứ tự</Label>
-                <SearchSelect
-                  className="h-11 w-full text-sm rounded-lg"
-                  value={dir ?? 'desc'}
-                  disabled={!sort}
-                  onValueChange={(val) => setFilter('dir', val)}
-                >
-                  <SearchSelectItem value="asc">
-                    Tăng dần (A → Z, thấp → cao)
-                  </SearchSelectItem>
-                  <SearchSelectItem value="desc">
-                    Giảm dần (Z → A, cao → thấp)
-                  </SearchSelectItem>
-                </SearchSelect>
-              </div>
               <div className="space-y-1 sm:col-span-2">
                 <Label className="text-xs font-semibold">Số khế ước</Label>
                 <Input
@@ -593,24 +526,6 @@ function LoansPage() {
                   ))}
                 </MultiSearchSelect>
               </div>
-              <div className="space-y-1 sm:col-span-2">
-                <Label className="text-xs font-semibold">Trạng thái</Label>
-                <MultiSearchSelect
-                  className="h-11 w-full text-sm rounded-lg"
-                  placeholder="Tất cả trạng thái"
-                  values={status ?? []}
-                  onValuesChange={(vals) =>
-                    setFilter('status', vals.length ? vals : undefined)
-                  }
-                >
-                  <SearchSelectItem value="active">
-                    {STATUS_LABELS.active}
-                  </SearchSelectItem>
-                  <SearchSelectItem value="settled">
-                    {STATUS_LABELS.settled}
-                  </SearchSelectItem>
-                </MultiSearchSelect>
-              </div>
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">Giải ngân từ</Label>
                 <Input
@@ -642,23 +557,6 @@ function LoansPage() {
                         ...prev,
                         minPrincipal: lo,
                         maxPrincipal: hi,
-                      }),
-                      replace: true,
-                    })
-                  }
-                />
-              </div>
-              <div className="sm:col-span-2">
-                <PriceRangeFilter
-                  label="Dư nợ còn lại"
-                  min={minOutstanding}
-                  max={maxOutstanding}
-                  onChange={(lo, hi) =>
-                    navigate({
-                      search: (prev) => ({
-                        ...prev,
-                        minOutstanding: lo,
-                        maxOutstanding: hi,
                       }),
                       replace: true,
                     })

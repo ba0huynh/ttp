@@ -56,6 +56,13 @@ function mysqlCodes(e: unknown): { code?: string; errno?: number }[] {
   return out
 }
 
+/** A value longer than its column allows (MySQL 1406) */
+export function isTooLongError(e: unknown) {
+  return mysqlCodes(e).some(
+    (c) => c.errno === 1406 || c.code === 'ER_DATA_TOO_LONG',
+  )
+}
+
 /** Deleting / changing a row that other rows still point to (MySQL 1451) */
 export function isReferencedError(e: unknown) {
   return mysqlCodes(e).some(

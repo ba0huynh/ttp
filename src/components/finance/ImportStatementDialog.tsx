@@ -97,10 +97,25 @@ export function ImportStatementDialog({
     setError(null)
   }
 
+  const tableScrollRef = React.useRef<HTMLDivElement>(null)
+
+  const scrollToBottom = () => {
+    setTimeout(() => {
+      if (tableScrollRef.current) {
+        tableScrollRef.current.scrollTo({
+          top: tableScrollRef.current.scrollHeight,
+          behavior: 'smooth',
+        })
+      }
+    }, 50)
+  }
+
   const update = (key: number, patch: Partial<Row>) =>
     setRows((rs) => rs.map((r) => (r.key === key ? { ...r, ...patch } : r)))
-  const addRow = () =>
+  const addRow = () => {
     setRows((rs) => [...rs, newRow({ date: rs[rs.length - 1]?.date })])
+    scrollToBottom()
+  }
   const removeRow = (key: number) =>
     setRows((rs) => {
       const left = rs.filter((r) => r.key !== key)
@@ -127,6 +142,7 @@ export function ImportStatementDialog({
         }),
       ),
     ])
+    scrollToBottom()
   }
 
   const importStatement = useMutation({
@@ -134,7 +150,8 @@ export function ImportStatementDialog({
     onSuccess: () => queryClient.invalidateQueries(),
   })
 
-  const handleSubmit = async () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    e?.preventDefault()
     setError(null)
     if (!effectiveAccountId) return setError('Chưa chọn tài khoản ngân hàng')
     if (filled.length === 0) return setError('Chưa có dòng giao dịch nào')
@@ -173,19 +190,20 @@ export function ImportStatementDialog({
       }}
     >
       <DialogContent className="max-h-[92vh] overflow-x-hidden overflow-y-auto sm:max-w-5xl">
-        <DialogHeader>
-          <DialogTitle className="text-base font-bold text-slate-900">
-            Nhập Sao Kê Ngân Hàng
-          </DialogTitle>
-          <DialogDescription className="text-xs">
-            Nhập từng dòng giao dịch vào bảng. Mỗi dòng chỉ có{' '}
-            <strong>Ghi nợ (tiền ra)</strong> hoặc{' '}
-            <strong>Ghi có (tiền vào)</strong>. Có thể dán nhiều dòng copy từ
-            Excel vào bất kỳ ô nào.
-          </DialogDescription>
-        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold text-slate-900">
+              Nhập Sao Kê Ngân Hàng
+            </DialogTitle>
+            <DialogDescription className="text-xs">
+              Nhập từng dòng giao dịch vào bảng. Mỗi dòng chỉ có{' '}
+              <strong>Ghi nợ (tiền ra)</strong> hoặc{' '}
+              <strong>Ghi có (tiền vào)</strong>. Có thể dán nhiều dòng copy từ
+              Excel vào bất kỳ ô nào.
+            </DialogDescription>
+          </DialogHeader>
 
-        <div className="space-y-4 py-1">
+          <div className="space-y-4 py-1">
           {error && (
             <Alert
               variant="destructive"
@@ -220,7 +238,10 @@ export function ImportStatementDialog({
           </div>
 
           <div className="space-y-2">
-            <div className="max-h-[42vh] overflow-auto rounded-md border border-slate-200">
+            <div
+              ref={tableScrollRef}
+              className="max-h-[42vh] overflow-auto rounded-md border border-slate-200"
+            >
               <Table>
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="text-xs">
@@ -262,6 +283,12 @@ export function ImportStatementDialog({
                           onChange={(e) =>
                             update(r.key, { description: e.target.value })
                           }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              handleSubmit()
+                            }
+                          }}
                           onPaste={handlePaste}
                           placeholder="Nội dung giao dịch"
                           rows={3}
@@ -348,29 +375,29 @@ export function ImportStatementDialog({
           </div>
         </div>
 
-        <DialogFooter>
-          <Button
-            type="button"
-            variant="outline"
-            size="sm"
-            className="h-8 text-xs"
-            onClick={() => onOpenChange(false)}
-          >
-            Hủy
-          </Button>
-          <Button
-            type="button"
-            size="sm"
-            disabled={importStatement.isPending || filled.length === 0}
-            onClick={handleSubmit}
-            className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
-          >
-            <Upload className="size-3.5" />
-            {importStatement.isPending
-              ? 'Đang nhập...'
-              : `Nhập ${filled.length} dòng`}
-          </Button>
-        </DialogFooter>
+          <DialogFooter>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="h-8 text-xs"
+              onClick={() => onOpenChange(false)}
+            >
+              Hủy
+            </Button>
+            <Button
+              type="submit"
+              size="sm"
+              disabled={importStatement.isPending || filled.length === 0}
+              className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
+            >
+              <Upload className="size-3.5" />
+              {importStatement.isPending
+                ? 'Đang nhập...'
+                : `Nhập ${filled.length} dòng`}
+            </Button>
+          </DialogFooter>
+        </form>
       </DialogContent>
     </Dialog>
   )

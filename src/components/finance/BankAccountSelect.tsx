@@ -4,6 +4,7 @@ import * as React from 'react'
 import { useCan } from '#/components/auth/Can.tsx'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import {
   Dialog,
   DialogContent,
@@ -25,12 +26,15 @@ export function BankAccountSelect({
   value,
   onChange,
   noneLabel,
+  compact = false,
   className = 'h-11 w-full text-sm rounded-lg',
 }: {
   value: number | null
   onChange: (id: number | null) => void
   /** When set, adds an option for "no account" (e.g. cash) */
   noneLabel?: string
+  /** Shows the logo and account number only (no bank name), for narrow table cells */
+  compact?: boolean
   className?: string
 }) {
   const { data: master } = useQuery(masterDataQuery())
@@ -66,7 +70,7 @@ export function BankAccountSelect({
       onChange(res.id)
       setOpen(false)
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Không lưu được tài khoản')
+      setError(formatErrorMessage(err, 'Không lưu được tài khoản'))
     } finally {
       setPending(false)
     }
@@ -105,11 +109,13 @@ export function BankAccountSelect({
             <SearchSelectItem
               key={a.id}
               value={String(a.id)}
-              keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
+              keywords={`${a.bankName} ${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
              
             >
               <BankLabel image={a.bankImage} name={a.bankName}>
-                {a.bankName} &bull; {a.accountNumber}
+                {compact
+                  ? a.accountNumber
+                  : `${a.bankName} • ${a.accountNumber}`}
               </BankLabel>
             </SearchSelectItem>
           ))}
@@ -128,6 +134,7 @@ export function BankAccountSelect({
                 autoFocus
                 value={name}
                 onChange={(e) => setName(e.target.value)}
+                maxLength={255}
                 placeholder="CÔNG TY TNHH TM DV TRƯỜNG THỊNH PHÁT"
               />
             </div>
@@ -158,6 +165,7 @@ export function BankAccountSelect({
               <Input
                 value={number}
                 onChange={(e) => setNumber(e.target.value)}
+                maxLength={50}
                 placeholder="0071001234567"
               />
             </div>
@@ -166,11 +174,14 @@ export function BankAccountSelect({
               <Input
                 value={branch}
                 onChange={(e) => setBranch(e.target.value)}
+                maxLength={150}
                 placeholder="Chi nhánh TP. Hồ Chí Minh"
               />
             </div>
             {error && (
-              <p className="text-[11px] font-medium text-rose-600">{error}</p>
+              <p className="text-[11px] font-medium text-rose-600 whitespace-pre-line break-words">
+                {error}
+              </p>
             )}
             <DialogFooter className="pt-2">
               <Button

@@ -10,7 +10,10 @@ import { z } from 'zod'
 
 import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
 import { useCan } from '#/components/auth/Can.tsx'
-import { DualInventoryBadge } from '#/components/inventory/DualInventoryBadge.tsx'
+import {
+  DeliveryStatusBadge,
+  InvoiceStatusBadge,
+} from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -594,9 +597,8 @@ function InventoryPage() {
                     <TableHead>Lô Nhập</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>
                     <TableHead className="text-right">Giá Vốn Xe</TableHead>
-                    <TableHead className="text-center">
-                      Kho Kép (2 Kho)
-                    </TableHead>
+                    <TableHead className="text-center">Trạng Thái</TableHead>
+                    <TableHead className="text-center">Trạng Thái HĐ</TableHead>
                     <TableHead>Đơn Bán</TableHead>
                     {canManage && (
                       <TableHead className="text-center">Thao tác</TableHead>
@@ -607,7 +609,7 @@ function InventoryPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={canManage ? 9 : 8}
+                        colSpan={canManage ? 10 : 9}
                         className="text-center py-8 text-slate-500"
                       >
                         Không tìm thấy chiếc xe nào phù hợp bộ lọc
@@ -653,10 +655,16 @@ function InventoryPage() {
                           {formatVnd(v.costPrice)}
                         </TableCell>
                         <TableCell className="text-center">
-                          <DualInventoryBadge
+                          <DeliveryStatusBadge
                             isDelivered={v.isDelivered}
                             isInvoiced={v.isInvoiced}
                             deliveredAt={v.deliveredAt}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <InvoiceStatusBadge
+                            isDelivered={v.isDelivered}
+                            isInvoiced={v.isInvoiced}
                             invoicedAt={v.invoicedAt}
                           />
                         </TableCell>

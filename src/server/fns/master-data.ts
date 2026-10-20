@@ -14,6 +14,7 @@ import {
 import {
   isDuplicateError,
   isReferencedError,
+  isTooLongError,
 } from '#/server/services/common.ts'
 import { deleteImage, isUploadKey } from '#/server/services/uploads.ts'
 import { authMiddleware, requirePermission } from './middleware.ts'
@@ -34,6 +35,8 @@ const wrapDup = async <T>(fn: () => Promise<T>) => {
     return await fn()
   } catch (e) {
     if (isDuplicateError(e)) throw new Error('Dữ liệu này đã tồn tại')
+    if (isTooLongError(e))
+      throw new Error('Nội dung nhập quá dài, vui lòng rút gọn lại')
     if (isReferencedError(e))
       throw new Error(
         'Không thể xóa vì đang được sử dụng ở lô nhập, phiếu bán hoặc chứng từ khác',
@@ -112,9 +115,10 @@ export const saveBankAccountFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       bankId: z.number(),
-      accountNumber: z.string().trim().min(1),
-      accountName: z.string().trim().min(1),
-      branch: opt,
+      // Same limits as the columns (50 / 255 / 150)
+      accountNumber: z.string().trim().min(1).max(50),
+      accountName: z.string().trim().min(1).max(255),
+      branch: z.string().trim().max(150).nullable().optional(),
       isActive: z.boolean(),
     }),
   )
@@ -138,9 +142,10 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      name: z.string().trim().min(1),
+      // Same limits as the columns (255 / 255)
+      name: z.string().trim().min(1).max(255),
       taxCode: opt,
-      address: opt,
+      address: z.string().trim().max(255).nullable().optional(),
       email: opt,
       note: opt,
       image: imageField,
@@ -163,24 +168,6 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
       return { ok: true, id: Number(res.insertId) }
     }),
   )
-
-/** One supplier (name + image) for the supplier page linked from /finance */
-export const getSupplierDetailFn = createServerFn({ method: 'GET' })
-  .middleware([requirePermission('finance.view', 'master-data.view')])
-  .validator(z.object({ id: z.number() }))
-  .handler(async ({ data }) => {
-    const [supplier] = await db
-      .select({
-        id: suppliers.id,
-        name: suppliers.name,
-        address: suppliers.address,
-        image: suppliers.image,
-      })
-      .from(suppliers)
-      .where(eq(suppliers.id, data.id))
-    if (!supplier) throw new Error('Không tìm thấy nhà cung cấp')
-    return { supplier }
-  })
 
 /* ----------------------------- Motorcycle Models ----------------------------- */
 export const saveModelFn = createServerFn({ method: 'POST' })

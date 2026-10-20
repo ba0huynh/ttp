@@ -34,7 +34,6 @@ import { Route as LoansLoanIdRouteImport } from './routes/loans.$loanId'
 import { Route as SalesIndexRouteImport } from './routes/sales.index'
 import { Route as SalesOrderIdRouteImport } from './routes/sales.$orderId'
 import { Route as SalesNewRouteImport } from './routes/sales.new'
-import { Route as SuppliersSupplierIdRouteImport } from './routes/suppliers.$supplierId'
 import { Route as UploadsSplatRouteImport } from './routes/uploads.$'
 
 const IndexRoute = IndexRouteImport.update({
@@ -162,11 +161,6 @@ const SalesNewRoute = SalesNewRouteImport.update({
   path: '/new',
   getParentRoute: () => SalesRoute,
 } as any)
-const SuppliersSupplierIdRoute = SuppliersSupplierIdRouteImport.update({
-  id: '/suppliers/$supplierId',
-  path: '/suppliers/$supplierId',
-  getParentRoute: () => rootRouteImport,
-} as any)
 const UploadsSplatRoute = UploadsSplatRouteImport.update({
   id: '/uploads/$',
   path: '/uploads/$',
@@ -195,7 +189,6 @@ export interface FileRoutesByFullPath {
   '/loans/$loanId': typeof LoansLoanIdRoute
   '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
-  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/batches/': typeof BatchesIndexRoute
   '/customers/': typeof CustomersIndexRoute
@@ -220,7 +213,6 @@ export interface FileRoutesByTo {
   '/loans/$loanId': typeof LoansLoanIdRoute
   '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
-  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/batches': typeof BatchesIndexRoute
   '/customers': typeof CustomersIndexRoute
@@ -250,7 +242,6 @@ export interface FileRoutesById {
   '/loans/$loanId': typeof LoansLoanIdRoute
   '/sales/$orderId': typeof SalesOrderIdRoute
   '/sales/new': typeof SalesNewRoute
-  '/suppliers/$supplierId': typeof SuppliersSupplierIdRoute
   '/uploads/$': typeof UploadsSplatRoute
   '/batches/': typeof BatchesIndexRoute
   '/customers/': typeof CustomersIndexRoute
@@ -281,7 +272,6 @@ export interface FileRouteTypes {
     | '/loans/$loanId'
     | '/sales/$orderId'
     | '/sales/new'
-    | '/suppliers/$supplierId'
     | '/uploads/$'
     | '/batches/'
     | '/customers/'
@@ -306,7 +296,6 @@ export interface FileRouteTypes {
     | '/loans/$loanId'
     | '/sales/$orderId'
     | '/sales/new'
-    | '/suppliers/$supplierId'
     | '/uploads/$'
     | '/batches'
     | '/customers'
@@ -335,7 +324,6 @@ export interface FileRouteTypes {
     | '/loans/$loanId'
     | '/sales/$orderId'
     | '/sales/new'
-    | '/suppliers/$supplierId'
     | '/uploads/$'
     | '/batches/'
     | '/customers/'
@@ -359,7 +347,6 @@ export interface RootRouteChildren {
   SalesRoute: typeof SalesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
   ApiUploadsRoute: typeof ApiUploadsRoute
-  SuppliersSupplierIdRoute: typeof SuppliersSupplierIdRoute
   UploadsSplatRoute: typeof UploadsSplatRoute
 }
 
@@ -540,13 +527,6 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof SalesNewRouteImport
       parentRoute: typeof SalesRoute
     }
-    '/suppliers/$supplierId': {
-      id: '/suppliers/$supplierId'
-      path: '/suppliers/$supplierId'
-      fullPath: '/suppliers/$supplierId'
-      preLoaderRoute: typeof SuppliersSupplierIdRouteImport
-      parentRoute: typeof rootRouteImport
-    }
     '/uploads/$': {
       id: '/uploads/$'
       path: '/uploads/$'
@@ -628,7 +608,6 @@ const rootRouteChildren: RootRouteChildren = {
   SalesRoute: SalesRouteWithChildren,
   SettingsRoute: SettingsRoute,
   ApiUploadsRoute: ApiUploadsRoute,
-  SuppliersSupplierIdRoute: SuppliersSupplierIdRoute,
   UploadsSplatRoute: UploadsSplatRoute,
 }
 export const routeTree = rootRouteImport

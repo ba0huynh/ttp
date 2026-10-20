@@ -16,6 +16,7 @@ import * as React from 'react'
 import { z } from 'zod'
 
 import { Can } from '#/components/auth/Can.tsx'
+import { SupplierLink } from '#/components/suppliers/SupplierDetailDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -365,14 +366,9 @@ function BatchesPage() {
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
                         {b.supplierId && b.supplierName ? (
-                          <Link
-                            to="/suppliers/$supplierId"
-                            params={{ supplierId: String(b.supplierId) }}
-                            preload="intent"
-                            className="hover:text-emerald-700 hover:underline"
-                          >
+                          <SupplierLink supplierId={b.supplierId} className="hover:text-emerald-700 hover:underline">
                             {b.supplierName}
-                          </Link>
+                          </SupplierLink>
                         ) : (
                           b.supplierName
                         )}

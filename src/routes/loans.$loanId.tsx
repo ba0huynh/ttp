@@ -99,7 +99,17 @@ function LoanDetailPage() {
   const { data: loanDetail } = useSuspenseQuery(loanDetailQuery(id))
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const canManage = hasPermission(user, 'loans.manage')
-  const repaymentsPg = usePagination<any>(loanDetail.repayments)
+  // Newest payment first (same day: the one recorded last)
+  const sortedRepayments = React.useMemo(
+    () =>
+      [...loanDetail.repayments].sort(
+        (a, b) =>
+          String(b.paymentDate).localeCompare(String(a.paymentDate)) ||
+          b.id - a.id,
+      ),
+    [loanDetail.repayments],
+  )
+  const repaymentsPg = usePagination<any>(sortedRepayments)
   const queryClient = useQueryClient()
 
   const repayLoan = useMutation({
@@ -446,6 +456,7 @@ function LoanDetailPage() {
         </TableCell>
         <TableCell className="p-2 align-middle">
           <BankAccountSelect
+            compact
             className="w-full h-8 text-xs bg-white rounded-lg"
             value={rDraft.companyBankAccountId}
             onChange={(val) =>

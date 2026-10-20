@@ -17,6 +17,7 @@ import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BankAccountSelect } from '#/components/finance/BankAccountSelect.tsx'
 import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
+import { SupplierLink } from '#/components/suppliers/SupplierDetailDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
@@ -671,14 +672,9 @@ function FinancePage() {
                         className="hover:bg-slate-50/80"
                       >
                         <TableCell className="font-medium text-slate-900">
-                          <Link
-                            to="/suppliers/$supplierId"
-                            params={{ supplierId: String(p.supplierId) }}
-                            preload="intent"
-                            className="hover:text-emerald-700 hover:underline"
-                          >
+                          <SupplierLink supplierId={p.supplierId} className="hover:text-emerald-700 hover:underline">
                             {p.supplierName}
-                          </Link>
+                          </SupplierLink>
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(p.purchased)}
@@ -818,14 +814,9 @@ function FinancePage() {
                         </TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {p.supplierId && p.supplierName ? (
-                            <Link
-                              to="/suppliers/$supplierId"
-                              params={{ supplierId: String(p.supplierId) }}
-                              preload="intent"
-                              className="hover:text-emerald-700 hover:underline"
-                            >
+                            <SupplierLink supplierId={p.supplierId} className="hover:text-emerald-700 hover:underline">
                               {p.supplierName}
-                            </Link>
+                            </SupplierLink>
                           ) : (
                             (p.supplierName ?? p.payeeName)
                           )}

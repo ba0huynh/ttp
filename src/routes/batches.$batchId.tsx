@@ -3,6 +3,7 @@ import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { ArrowLeft } from 'lucide-react'
 
 import { BatchEditor } from '#/components/batches/BatchEditor.tsx'
+import { SupplierLink } from '#/components/suppliers/SupplierDetailDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -67,14 +68,9 @@ function BatchDetailPage() {
             <>
               Nhà cung cấp:{' '}
               {data.batch.supplierId && data.batch.supplierName ? (
-                <Link
-                  to="/suppliers/$supplierId"
-                  params={{ supplierId: String(data.batch.supplierId) }}
-                  preload="intent"
-                  className="font-semibold hover:text-emerald-700 hover:underline"
-                >
+                <SupplierLink supplierId={data.batch.supplierId} className="font-semibold hover:text-emerald-700 hover:underline">
                   {data.batch.supplierName}
-                </Link>
+                </SupplierLink>
               ) : (
                 <strong>{data.batch.supplierName}</strong>
               )}{' '}

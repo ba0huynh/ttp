@@ -23,10 +23,7 @@ import {
   getInventorySummaryFn,
   listVehiclesFn,
 } from '#/server/fns/inventory.ts'
-import {
-  getMasterDataFn,
-  getSupplierDetailFn,
-} from '#/server/fns/master-data.ts'
+import { getMasterDataFn } from '#/server/fns/master-data.ts'
 import { getReportsFn } from '#/server/fns/reports.ts'
 import { getSalesOrderDetailFn, listSalesOrdersFn } from '#/server/fns/sales.ts'
 import {
@@ -50,12 +47,6 @@ export const masterDataQuery = () =>
     queryKey: ['master-data'],
     queryFn: () => getMasterDataFn(),
     staleTime: 5 * 60_000, // danh mục ít thay đổi
-  })
-
-export const supplierDetailQuery = (id: number) =>
-  queryOptions({
-    queryKey: ['suppliers', id],
-    queryFn: () => getSupplierDetailFn({ data: { id } }),
   })
 
 export const batchesQuery = () =>

@@ -1308,15 +1308,15 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - Renamed "Bàn làm việc" to "Tổng quan" in navigation, breadcrumbs, page header, and permissions catalogue (`dashboard.view`).
   - Balanced the `/reconcile` table action buttons by setting "Gỡ khớp" to `variant="outline"` (`border-rose-200 text-rose-600 hover:bg-rose-50 hover:border-rose-300 font-medium`) and removing disabled edit/delete buttons from matched rows, ensuring smooth vertical alignment without layout jumps.
 
-### Lesson 116: Supplier Image and Supplier Page (`/suppliers/$supplierId`)
+### Lesson 116: Supplier Image, Address and Supplier Popup (`SupplierDetailDialog`)
 
 - **Client request** (review chat on `/finance?tab=payables` and `?tab=payments`): the supplier column must link to a detail page, suppliers get an **image**, and the detail page shows **only the name and the image**.
 - **Data**: `suppliers.image` (varchar 500, nullable; migration `0036_supplier_image.sql`, applied). Same storage rule as bank logos (Lesson 70): an https address or an upload key `suppliers/<uuid>.png`; `'suppliers'` was added to `UPLOAD_FOLDERS`. `saveSupplierFn` accepts `image` (shared `imageField` validator) and deletes the old file when the logo is replaced or removed; `deleteMasterDataFn` deletes the file of a deleted bank **or supplier**. **`getMasterDataFn` selects every supplier column, so the app fails until `npm run migration:run` has applied 0036.**
 - **UI**: `/master-data?tab=suppliers` shows the logo next to each name and the supplier dialog has an image field. It uses the new reusable `LogoField` / `uploadImage` (`src/components/ui/logo-field.tsx`: preview stays in the browser, the file is sent to `/api/uploads` only on save) and `SupplierLogo` (`supplier-logo.tsx`, building icon fallback). The bank dialog still has its own inline copy of this logic; use `LogoField` for new image fields.
-- **Page**: `src/routes/suppliers.$supplierId.tsx` (name + address + large image, "Về công nợ nhà cung cấp" back button, not-found state, numeric-id guard) reads `getSupplierDetailFn` / `supplierDetailQuery`. It is open to users with `finance.view` **or** `master-data.view`. It has no sidebar item, so no menu entry highlights while it is open.
-- **Links**: the supplier name is a `Link` in `/finance` → "Công Nợ Nhà Cung Cấp" and "Lịch Sử Phiếu Chi" (a payment to a non-supplier payee stays plain text).
+- **Popup (replaces the page)**: the first version was a page `/suppliers/$supplierId`; it was removed (route file, `getSupplierDetailFn`, `supplierDetailQuery`) in favour of `src/components/suppliers/SupplierDetailDialog.tsx`. `SupplierLink` (a button styled as a link that opens the dialog) is used wherever a supplier name is shown; `SupplierDetailDialog` reads the supplier from the cached master data (`masterDataQuery`, which already returns image and address). View mode shows image, name and address with "Đóng" and, inside `<Can permission="master-data.manage">`, a **"Chỉnh sửa"** button that switches the same dialog to edit mode (name, address, image via `LogoField`; "Hủy" returns to view, "Lưu Nhà Cung Cấp" saves with `saveSupplierFn` and invalidates all queries). It always reopens in view mode. `saveSupplierFn` caps name and address at 255 characters (Lesson 124).
+- **Where the popup opens from**: the supplier name in `/finance` → "Công Nợ Nhà Cung Cấp" and "Lịch Sử Phiếu Chi" (a payment to a non-supplier payee stays plain text), the `/batches` list, the `/batches/$batchId` header and the `/master-data` supplier table.
 - **Address (follow-up)**: the existing `suppliers.address` column is now editable ("Địa Chỉ" textarea in the supplier dialog, a column in the `/master-data` table, included in the search) and shown under the name on the supplier page ("Chưa có địa chỉ" when empty). No migration needed. Tax code, email and note are still not shown anywhere.
-- **Links to the supplier page** are now in: `/finance` (payables, payment history), `/batches` list ("Nhà Cung Cấp" column; `listBatchesFn` now returns `supplierId`), the `/batches/$batchId` header, and the name in the `/master-data` supplier table. Other screens only show a supplier inside a text label (e.g. the lot label "Lô dd/mm/yyyy · supplier" in inventory, which links to the batch). A new screen with a supplier column should link the name the same way and return `supplierId` from its query.
+- **Rule**: a new screen with a supplier column should render the name with `<SupplierLink supplierId={...}>` and return `supplierId` from its query (`listBatchesFn` now does). Other screens only show a supplier inside a text label (e.g. the lot label "Lô dd/mm/yyyy · supplier" in inventory, which links to the batch).
 
 ### Lesson 117: Dropdown Options Use the Same Text Size as the Selected Value
 
@@ -1336,7 +1336,40 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Code**: removed from the schema, `saveModelFn`, the `/master-data` model dialog, table column and search, the quick-create dialogs (`ModelSelect`, `VehicleFormDialog`), `ModelOption` and `modelLabel` (now "Hãng Dòng", e.g. "Honda SH 150i"). The models tab subtitle is "Danh sách dòng xe nhập khẩu." This supersedes the "Đời xe" parts of Lessons 69 and 73; a model is now just a name (plus the optional brand and suggested colour columns).
 - **Gotcha**: the migrations 0036 / 0037 were written by hand and have no drizzle snapshot in `src/db/migrations/meta/`; the custom runner does not need one, but `npm run db:generate` would diff against the 0035 snapshot and re-emit those two changes.
 
-_(Next Agent: Append Lesson 120, 121,... above this line upon completing tasks)_
+### Lesson 120: Loan Pages — Compact Bank Account Select, Newest Repayment First, Slim `/loans` Filter
+
+- **Client feedback** (review chat on `/loans/3` and `/loans`):
+  1. The bank account select in the inline repayment row showed the long bank name and overlapped the neighbouring cells. `BankAccountSelect` has a new `compact` prop (logo + account number only, no bank name); the repayment row uses it. Search still finds the account by bank name, code and short name (they are in `keywords`). Other screens (receipt / payment dialogs) keep the full "bank • number" label.
+  2. "Lịch Sử Các Đợt Đã Trả Nợ" is sorted by payment date descending (same day: highest id first) through `sortedRepayments` before pagination; the order has no effect on the interest maths.
+  3. The `/loans` filter dialog now has only: contract number search, bank (multi), disbursement date from / to and loan amount min / max (`PriceRangeFilter`). The status filter, the outstanding-balance range and the "Sắp xếp theo / Thứ tự" selects were removed (search params `status`, `minOutstanding`, `maxOutstanding` are gone). Sorting is still available by clicking the column headers (Lesson 91).
+
+### Lesson 121: `/inventory` Splits the Dual-Stock Column Into Two (Trạng Thái / Trạng Thái HĐ)
+
+- **Client feedback**: the single "Kho Kép (2 Kho)" column was confusing, so it became two columns: **"Trạng Thái"** (physical warehouse: `Đã giao` / `Chưa giao`, from `is_delivered`) and **"Trạng Thái HĐ"** (invoiced stock: `Đã HĐ` / `Chưa HĐ`, from `is_invoiced`). The flags stay independent (Core Domain Rule 4): each badge is built from its own flag; the other flag only decides the colour.
+- **Components** (`DualInventoryBadge.tsx`): new `DeliveryStatusBadge` and `InvoiceStatusBadge` (shared `StatusChip`, tooltips with the delivery / invoice date). Colours: `Đã giao` emerald, `Đã HĐ` blue, `Chưa …` slate, and a pulsing **amber** when the stocks disagree (invoiced but still in the warehouse → "Chưa giao" amber; delivered but not invoiced → "Chưa HĐ" amber), so the normal "invoiced, awaiting pickup" case stays visible without being treated as a bug. The combined `DualInventoryBadge` (the four "Đã giao · Chưa HĐ" chips of Lesson 107) is still used on the dashboard's "Kho Kép" column; switch it to the two badges if the client wants the same split there.
+- The empty-state `colSpan` on `/inventory` is now 10 (9 without the actions column).
+
+### Lesson 122: Form Submission on Enter & Auto-Scroll on New Row (`ImportStatementDialog`)
+
+- **Context & Bug**:
+  - In `ImportStatementDialog` ("Nhập Sao Kê Ngân Hàng"), pressing `Enter` on the keyboard after entering transaction data (e.g. into the credit / debit money inputs or description textarea) did not submit the form.
+  - Adding rows in the scrollable table left the newly created row below the fold, forcing users to manually scroll down to see it.
+  - Cause: The dialog body was not wrapped in an HTML `<form>` element, the submit button had `type="button"`, the textarea didn't capture unshifted `Enter`, and the table container lacked a scroll ref.
+  - Fix: Wrapped dialog contents inside `<form onSubmit={handleSubmit}>`, changed submit button to `type="submit"`, updated `handleSubmit` to prevent default form submission, added `onKeyDown` to the description `<Textarea>` so pressing `Enter` without `Shift` also submits the form, and added `tableScrollRef` with smooth auto-scroll to the bottom on `addRow` and `handlePaste`.
+
+### Lesson 123: Vehicle Picker (`/sales/new`) Is Paginated Instead of Infinite Scroll
+
+- **Client request**: the "Chọn Xe Từ Kho Để Bán" dialog uses page numbers like every other list. This replaces the infinite scroll of Lesson 105 (`PICKER_PAGE_SIZE`, `visibleCount`, scroll handler, `IntersectionObserver` sentinel and the "Đang cuộn tải thêm xe" loader are gone).
+- **How**: `usePagination(filteredAvailableVehicles, key)` + `<TablePagination>` (Lesson 39; 10 per page, "Hiển thị 1–7 / 7", rows-per-page select, numbered buttons). The key holds `pickerOpen` and the search / filter values, so a new search, a filter change or reopening the dialog returns to page 1. The table scrolls inside `max-h-[45vh]` with a sticky header and the pagination bar sits below it.
+- **Selection** (`tempChecked`) still survives page and filter changes. The header checkbox now selects / clears **the current page**; a footer link "Chọn tất cả N xe" (shown when the filtered list is longer than the page) selects every vehicle matching the search / filters across pages, and "Bỏ chọn tất cả" clears everything.
+
+### Lesson 124: Over-Long Values Never Reach the Database (bank account quick-create)
+
+- **Bug** (screenshot from `/loans/2`): typing very long text in the "Thêm Tài Khoản Ngân Hàng" quick-create dialog (`BankAccountSelect`) made MySQL reject the insert, and the raw `Failed query: insert into company_bank_accounts ... params: ...` text was printed inside the dialog, overflowing it (the dialog used `err.message` directly, against Lesson 64).
+- **Fix**: (1) `saveBankAccountFn` validates the column limits (account number ≤ 50, account name ≤ 255, branch ≤ 150) so the user sees "Số tài khoản: Tối đa 50 ký tự"; the new field names are in `FIELD_TRANSLATIONS`. (2) The inputs in `BankAccountSelect` and in the `/master-data` bank account dialog have `maxLength`. (3) The dialog error goes through `formatErrorMessage` and wraps (`whitespace-pre-line break-words`). (4) Safety net: `isTooLongError` (MySQL 1406 / `ER_DATA_TOO_LONG`, `services/common.ts`) makes `wrapDup` in `server/fns/master-data.ts` answer "Nội dung nhập quá dài, vui lòng rút gọn lại" for every master-data save, whatever its field.
+- **Rule**: a `varchar(N)` column needs `.max(N)` in its validator and `maxLength={N}` on its input; other save functions (suppliers, banks, models…) still rely only on the `wrapDup` safety net.
+
+_(Next Agent: Append Lesson 125, 126,... above this line upon completing tasks)_
 
 
 
