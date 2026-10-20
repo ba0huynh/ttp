@@ -145,7 +145,6 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
       // Same limits as the columns (255 / 255)
       name: z.string().trim().min(1).max(255),
       taxCode: opt,
-      address: z.string().trim().max(255).nullable().optional(),
       email: opt,
       note: opt,
       image: imageField,

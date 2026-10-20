@@ -105,20 +105,20 @@ export function BankAccountSelect({
         )}
         {(master?.bankAccounts ?? [])
           .filter((a) => a.isActive)
-          .map((a) => (
-            <SearchSelectItem
-              key={a.id}
-              value={String(a.id)}
-              keywords={`${a.bankName} ${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
-             
-            >
-              <BankLabel image={a.bankImage} name={a.bankName}>
-                {compact
-                  ? a.accountNumber
-                  : `${a.bankName} • ${a.accountNumber}`}
-              </BankLabel>
-            </SearchSelectItem>
-          ))}
+          .map((a) => {
+            const bankLabel = a.bankShortName || a.bankCode || a.bankName
+            return (
+              <SearchSelectItem
+                key={a.id}
+                value={String(a.id)}
+                keywords={`${a.bankName} ${a.bankCode ?? ''} ${a.bankShortName ?? ''} ${a.accountNumber}`}
+              >
+                <BankLabel image={a.bankImage} name={bankLabel}>
+                  {compact ? a.accountNumber : `${bankLabel} • ${a.accountNumber}`}
+                </BankLabel>
+              </SearchSelectItem>
+            )
+          })}
       </SearchSelect>
       <Dialog open={open} onOpenChange={setOpen}>
         <DialogContent className="max-w-md" aria-describedby={undefined}>

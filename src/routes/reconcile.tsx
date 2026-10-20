@@ -438,22 +438,29 @@ function ReconcilePage() {
               value={selectedStatementId ? String(selectedStatementId) : ''}
               onValueChange={(v) => setSelectedStatementId(Number(v))}
             >
-              {statements.map((s) => (
-                <SearchSelectItem key={s.id} value={String(s.id)}>
-                  <span className="flex items-center gap-3">
-                    <BankLabel image={s.bankImage} name={s.bankName}>
-                      {s.bankName} ({s.accountNumber})
-                    </BankLabel>
-                    <span className="text-xs text-slate-400">#{s.id}</span>
-                    <Badge
-                      variant="secondary"
-                      className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"
-                    >
-                      Khớp {s.matchedCount}/{s.lineCount}
-                    </Badge>
-                  </span>
-                </SearchSelectItem>
-              ))}
+              {statements.map((s) => {
+                const bankLabel = s.bankShortName || s.bankCode || s.bankName
+                return (
+                  <SearchSelectItem
+                    key={s.id}
+                    value={String(s.id)}
+                    keywords={`${s.bankName} ${s.bankShortName ?? ''} ${s.bankCode ?? ''} ${s.accountNumber}`}
+                  >
+                    <span className="flex items-center gap-3">
+                      <BankLabel image={s.bankImage} name={bankLabel}>
+                        {bankLabel} ({s.accountNumber})
+                      </BankLabel>
+                      <span className="text-xs text-slate-400">#{s.id}</span>
+                      <Badge
+                        variant="secondary"
+                        className="py-0 px-1.5 text-[10px] bg-slate-200/80 text-slate-800"
+                      >
+                        Khớp {s.matchedCount}/{s.lineCount}
+                      </Badge>
+                    </span>
+                  </SearchSelectItem>
+                )
+              })}
             </SearchSelect>
           </div>
         )}
@@ -465,8 +472,10 @@ function ReconcilePage() {
               <CardTitle className="text-sm font-bold text-slate-800">
                 Giao Dịch Trong Kỳ Sao Kê:{' '}
                 <span className="font-semibold text-emerald-800">
-                  {statementDetail?.statement?.bankName} &bull;{' '}
-                  {statementDetail?.statement?.accountNumber}
+                  {statementDetail?.statement?.bankShortName ||
+                    statementDetail?.statement?.bankCode ||
+                    statementDetail?.statement?.bankName}{' '}
+                  &bull; {statementDetail?.statement?.accountNumber}
                 </span>
               </CardTitle>
               <CardDescription className="text-xs">

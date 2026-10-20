@@ -8,8 +8,8 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
+  Loader2,
   Plus,
-  Trash2,
   X,
 } from 'lucide-react'
 import * as React from 'react'
@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 import { BankAccountSelect } from '#/components/finance/BankAccountSelect.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
+import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { confirmDialog, showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Card, CardContent } from '#/components/ui/card.tsx'
@@ -50,6 +51,7 @@ import {
 import { hasPermission } from '#/lib/permissions.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { cn, handleRowArrowNavigation } from '#/lib/utils.ts'
+import { useBusyKeys } from '#/lib/use-busy.ts'
 import {
   deleteLoanPaymentFn,
   recordLoanPaymentFn,
@@ -111,6 +113,7 @@ function LoanDetailPage() {
   )
   const repaymentsPg = usePagination<any>(sortedRepayments)
   const queryClient = useQueryClient()
+  const { isBusy, setBusy } = useBusyKeys()
 
   const repayLoan = useMutation({
     mutationFn: recordLoanPaymentFn,
@@ -124,6 +127,8 @@ function LoanDetailPage() {
     mutationFn: deleteLoanPaymentFn,
     onSuccess: () => queryClient.invalidateQueries(),
   })
+  const isSaving = repayLoan.isPending || updateRepayment.isPending
+  const savingRef = React.useRef(false)
 
   // Inline repayment edit / create state
   const [editingRepaymentId, setEditingRepaymentId] = React.useState<
@@ -193,27 +198,13 @@ function LoanDetailPage() {
   )
 
   const startAddRepayment = () => {
+    if (isSaving) return
     const today = todayIso()
-    const result = calculateLoanInterest({
-      principal: loan.principalAmount,
-      annualRatePercent: loan.interestRate,
-      disbursementDate: loan.disbursementDate,
-      asOf: today,
-      principalRepayments: loanDetail.repayments.map((r) => ({
-        date: r.paymentDate,
-        amount: Number(r.principalAmount) || 0,
-      })),
-    })
-    const paid = loanDetail.repayments.reduce(
-      (s, r) => s + (Number(r.interestAmount) || 0),
-      0,
-    )
-    const maxToday = Math.max(0, result.totalInterest - paid)
 
     setRDraft({
       paymentDate: today,
       principalAmount: 0,
-      interestAmount: maxToday,
+      interestAmount: 0,
       companyBankAccountId:
         master.bankAccounts.find((a) => a.isActive)?.id ?? null,
     })
@@ -222,6 +213,7 @@ function LoanDetailPage() {
   }
 
   const startEditRepayment = (r: (typeof loanDetail.repayments)[number]) => {
+    if (isSaving) return
     setRDraft({
       paymentDate: r.paymentDate,
       principalAmount: Number(r.principalAmount) || 0,
@@ -233,11 +225,14 @@ function LoanDetailPage() {
   }
 
   const cancelRepaymentEdit = () => {
+    if (isSaving) return
     setEditingRepaymentId(null)
     setRSubmitted(false)
   }
 
   const saveRepaymentInline = async () => {
+    if (isSaving || savingRef.current) return
+    savingRef.current = true
     setRSubmitted(true)
     if (!rDraft.paymentDate) {
       toast.error('Vui lòng chọn ngày thanh toán (viền đỏ)')
@@ -306,6 +301,8 @@ function LoanDetailPage() {
       setRSubmitted(false)
     } catch (err: unknown) {
       await showErrorDialog(err, 'Lỗi khi lưu đợt trả nợ')
+    } finally {
+      savingRef.current = false
     }
   }
 
@@ -321,51 +318,31 @@ function LoanDetailPage() {
       destructive: true,
     })
     if (!ok) return
+    const busyKey = `repayment:${r.id}`
+    setBusy(busyKey, true)
     try {
       await deleteRepayment.mutateAsync({ data: { id: r.id } })
       toast.success('Đã xóa đợt trả nợ')
     } catch (err: unknown) {
       await showErrorDialog(err, 'Lỗi khi xóa đợt trả nợ')
+    } finally {
+      setBusy(busyKey, false)
     }
-  }
-
-  const handleRepaymentRowBlur = (
-    e: React.FocusEvent<HTMLTableRowElement>,
-  ) => {
-    const currentTarget = e.currentTarget
-    setTimeout(() => {
-      const active = document.activeElement
-      if (currentTarget && currentTarget.contains(active)) return
-      if (
-        active?.closest(
-          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
-        )
-      )
-        return
-      if (
-        editingRepaymentId === 'new' &&
-        !rDraft.paymentDate &&
-        rDraft.principalAmount <= 0 &&
-        rDraft.interestAmount <= 0
-      ) {
-        setEditingRepaymentId(null)
-        setRSubmitted(false)
-        return
-      }
-      saveRepaymentInline()
-    }, 120)
   }
 
   const handleRepaymentKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      const active = document.activeElement
+      const active = document.activeElement as HTMLElement | null
       if (
         active?.closest(
-          '[data-radix-popper-content-wrapper], [role="dialog"]',
-        )
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-popover-content]',
+        ) ||
+        active?.getAttribute('aria-haspopup') === 'dialog' ||
+        active?.getAttribute('data-state') === 'open'
       )
         return
       e.preventDefault()
+      e.stopPropagation()
       saveRepaymentInline()
       return
     }
@@ -378,12 +355,12 @@ function LoanDetailPage() {
       )
         return
       e.preventDefault()
+      e.stopPropagation()
       cancelRepaymentEdit()
       return
     }
     handleRowArrowNavigation(e)
   }
-
 
   const hasZeroError =
     rSubmitted && rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0
@@ -395,23 +372,21 @@ function LoanDetailPage() {
     rDraft.principalAmount > maxPrincipalAllowed + 0.5
 
   const renderEditingRow = (key: string | number) => {
-
     return (
       <TableRow
         key={key}
         className="bg-purple-50/50 border-y border-purple-300"
-        onBlur={handleRepaymentRowBlur}
         onKeyDown={handleRepaymentKeyDown}
       >
         <TableCell className="p-2 align-middle">
           <Input
             type="date"
             required
+            disabled={isSaving}
             value={rDraft.paymentDate}
             onChange={(e) =>
               setRDraft({ ...rDraft, paymentDate: e.target.value })
             }
-            onKeyDown={handleRepaymentKeyDown}
             className={cn(
               'h-8 text-xs bg-white',
               rSubmitted &&
@@ -423,12 +398,12 @@ function LoanDetailPage() {
         <TableCell className="p-2 align-middle text-right">
           <MoneyInput
             value={rDraft.principalAmount}
+            disabled={isSaving}
             onValueChange={(val: number) =>
               setRDraft((prev) => ({ ...prev, principalAmount: val }))
             }
             blankZero
             placeholder="Tiền gốc"
-            onKeyDown={handleRepaymentKeyDown}
             title={`Tối đa có thể trả: ${formatVnd(maxPrincipalAllowed)}`}
             className={cn(
               'h-8 text-xs text-right bg-white',
@@ -440,12 +415,12 @@ function LoanDetailPage() {
         <TableCell className="p-2 align-middle text-right">
           <MoneyInput
             value={rDraft.interestAmount}
+            disabled={isSaving}
             onValueChange={(val: number) =>
               setRDraft((prev) => ({ ...prev, interestAmount: val }))
             }
             blankZero
             placeholder="Tiền lãi"
-            onKeyDown={handleRepaymentKeyDown}
             title={`Tối đa có thể trả đến ngày này: ${formatVnd(maxInterestAllowed)}`}
             className={cn(
               'h-8 text-xs text-right bg-white',
@@ -482,9 +457,15 @@ function LoanDetailPage() {
               className="size-7 text-purple-700 hover:text-purple-800 hover:bg-purple-100/60"
               onMouseDown={(ev) => ev.preventDefault()}
               onClick={saveRepaymentInline}
+              disabled={isSaving}
+              aria-label="Lưu đợt trả nợ"
               title="Lưu (Enter)"
             >
-              <Check className="size-4" />
+              {isSaving ? (
+                <Loader2 className="size-4 animate-spin text-purple-700" />
+              ) : (
+                <Check className="size-4" />
+              )}
             </Button>
             <Button
               type="button"
@@ -493,6 +474,8 @@ function LoanDetailPage() {
               className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
               onMouseDown={(ev) => ev.preventDefault()}
               onClick={cancelRepaymentEdit}
+              disabled={isSaving}
+              aria-label="Hủy chỉnh sửa"
               title="Hủy (Esc)"
             >
               <X className="size-4" />
@@ -631,7 +614,7 @@ function LoanDetailPage() {
                     variant="outline"
                     className="h-8 gap-1.5 rounded-lg bg-white text-xs border-purple-300 text-purple-900 hover:bg-purple-50 shrink-0"
                     onClick={startAddRepayment}
-                    disabled={editingRepaymentId !== null}
+                    disabled={editingRepaymentId !== null || isSaving}
                   >
                     <Plus className="size-3.5" />
                     Thêm đợt trả nợ
@@ -726,7 +709,11 @@ function LoanDetailPage() {
                                 'cursor-pointer hover:bg-purple-50/40 transition-colors group',
                             )}
                             onClick={() => {
-                              if (canManage && editingRepaymentId !== r.id) {
+                              if (
+                                canManage &&
+                                editingRepaymentId !== r.id &&
+                                !isSaving
+                              ) {
                                 startEditRepayment(r)
                               }
                             }}
@@ -761,11 +748,17 @@ function LoanDetailPage() {
                                     size="icon"
                                     className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                                     onClick={() => handleDeleteRepayment(r)}
-                                    disabled={editingRepaymentId !== null}
+                                    disabled={
+                                      editingRepaymentId !== null ||
+                                      isSaving ||
+                                      isBusy(`repayment:${r.id}`)
+                                    }
                                     aria-label="Xóa đợt trả nợ"
                                     title="Xóa đợt trả nợ"
                                   >
-                                    <Trash2 className="size-3.5" />
+                                    <BusyTrash
+                                      busy={isBusy(`repayment:${r.id}`)}
+                                    />
                                   </Button>
                                 </div>
                               )}

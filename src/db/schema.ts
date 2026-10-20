@@ -144,7 +144,6 @@ export const suppliers = mysqlTable('suppliers', {
   id: int('id').primaryKey().autoincrement(),
   name: varchar('name', { length: 255 }).notNull(),
   taxCode: varchar('tax_code', { length: 30 }),
-  address: varchar('address', { length: 255 }),
   email: varchar('email', { length: 191 }),
   note: text('note'),
   /** Logo: https address or an upload key ("suppliers/<uuid>.png") */

@@ -223,17 +223,20 @@ export function ImportStatementDialog({
               value={effectiveAccountId ? String(effectiveAccountId) : ''}
               onValueChange={(val) => setAccountId(Number(val))}
             >
-              {accounts.map((a) => (
-                <SearchSelectItem
-                  key={a.id}
-                  value={String(a.id)}
-                  keywords={`${a.bankCode ?? ''} ${a.bankShortName ?? ''}`}
-                >
-                  <BankLabel image={a.bankImage} name={a.bankName}>
-                    {a.bankName} — {a.accountNumber}
-                  </BankLabel>
-                </SearchSelectItem>
-              ))}
+              {accounts.map((a) => {
+                const bankLabel = a.bankShortName || a.bankCode || a.bankName
+                return (
+                  <SearchSelectItem
+                    key={a.id}
+                    value={String(a.id)}
+                    keywords={`${a.bankName} ${a.bankCode ?? ''} ${a.bankShortName ?? ''} ${a.accountNumber}`}
+                  >
+                    <BankLabel image={a.bankImage} name={bankLabel}>
+                      {bankLabel} — {a.accountNumber}
+                    </BankLabel>
+                  </SearchSelectItem>
+                )
+              })}
             </SearchSelect>
           </div>
 

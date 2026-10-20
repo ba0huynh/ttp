@@ -1369,7 +1369,94 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Fix**: (1) `saveBankAccountFn` validates the column limits (account number ≤ 50, account name ≤ 255, branch ≤ 150) so the user sees "Số tài khoản: Tối đa 50 ký tự"; the new field names are in `FIELD_TRANSLATIONS`. (2) The inputs in `BankAccountSelect` and in the `/master-data` bank account dialog have `maxLength`. (3) The dialog error goes through `formatErrorMessage` and wraps (`whitespace-pre-line break-words`). (4) Safety net: `isTooLongError` (MySQL 1406 / `ER_DATA_TOO_LONG`, `services/common.ts`) makes `wrapDup` in `server/fns/master-data.ts` answer "Nội dung nhập quá dài, vui lòng rút gọn lại" for every master-data save, whatever its field.
 - **Rule**: a `varchar(N)` column needs `.max(N)` in its validator and `maxLength={N}` on its input; other save functions (suppliers, banks, models…) still rely only on the `wrapDup` safety net.
 
-_(Next Agent: Append Lesson 125, 126,... above this line upon completing tasks)_
+### Lesson 125: Loading State on Repayment Deletion (`/loans/$loanId`)
 
+- **Context & Request**:
+  - On the loan contract detail page (`/loans/$loanId`), in the "Lịch Sử Các Đợt Đã Trả Nợ" table, clicking the trash icon to delete a repayment transaction showed no visual feedback while the server mutation `deleteRepayment` was processing.
+- **Fix**:
+  - Replaced `<Trash2>` with `<BusyTrash busy={isBusy(`repayment:${r.id}`)} />` from `#/components/ui/busy-trash.tsx`.
+  - Added `useBusyKeys()` hook tracking `repayment:${r.id}` throughout `handleDeleteRepayment` execution (`setBusy(busyKey, true)` in `try`, `setBusy(busyKey, false)` in `finally`).
+  - Disabled the button when `isBusy(`repayment:${r.id}`)` is true to prevent duplicate clicks during deletion.
 
+### Lesson 126: Loading Indicators on Saving Inline Edits (`/loans/$loanId`, `BatchEditor`, etc.)
 
+- **Context & Request**:
+  - When saving an inline repayment row on the loan detail page (`/loans/$loanId`), the checkmark icon (`<Check>`) remained static with no visual feedback while the server mutations (`repayLoan` / `updateRepayment`) were in flight.
+- **Fix**:
+  - In `loans.$loanId.tsx`, defined `isSaving = repayLoan.isPending || updateRepayment.isPending`.
+  - Replaced the check icon with `{isSaving ? <Loader2 className="size-4 animate-spin text-purple-700" /> : <Check className="size-4" />}`.
+  - Disabled the save and cancel buttons as well as input controls while `isSaving` is true, guarding `saveRepaymentInline`, `startAddRepayment`, `startEditRepayment`, and blur events against duplicate triggers.
+  - Also updated inline editing save buttons in `BatchEditor.tsx` (batch expenses and vehicles) to render `<Loader2 className="size-4 animate-spin text-emerald-700" />` when `isSaving` is true, and added spinners to form submit actions in `sales.new.tsx` and `batches.new.tsx`.
+
+### Lesson 127: Save On Enter / Button Only — No Auto-Save On Unfocus (`/loans/$loanId`)
+
+- **Context & Bug**:
+  - In `loans.$loanId.tsx` ("Lịch Sử Các Đợt Đã Trả Nợ"), `handleRepaymentRowBlur` triggered `saveRepaymentInline()` after a 120ms timeout whenever focus left the table row.
+  - This caused accidental premature saves and validation errors whenever users clicked between controls, opened the `BankAccountSelect` dropdown, or clicked outside before completing all inputs.
+- **Fix**:
+  - Removed `handleRepaymentRowBlur` and the `onBlur` listener from the editing `<TableRow>`.
+  - Saves now only occur explicitly when the user presses `Enter` on the keyboard (or clicks the checkmark save button).
+  - Preserved escape key (`Escape`) and cancel button (`X`) to cancel edits.
+  - In `handleRepaymentKeyDown`, checked that `Enter` does not trigger row saving when selecting items within dropdown popovers / dialogs.
+
+### Lesson 128: Empty Default Interest When Adding Repayment Row (`/loans/$loanId`)
+
+- **Context & Request**:
+  - When clicking "Thêm đợt trả nợ", `startAddRepayment` calculated and prefilled the maximum accrued interest (`maxToday`) into `rDraft.interestAmount`.
+  - The client preferred the interest field ("Tiền Lãi") to start empty (0 with placeholder `Tiền lãi`), matching the principal input ("Tiền Gốc").
+- **Fix**:
+  - Initialized `interestAmount: 0` in `startAddRepayment` and removed unused interest calculation in the handler. With `blankZero` enabled on `MoneyInput`, it displays empty with placeholder text until typed.
+  - The maximum allowed interest calculation (`maxInterestAllowed`) continues to run dynamically for ceiling validation and tooltips.
+
+### Lesson 129: Prevent Double-Submit on Keyboard Enter (`/loans/$loanId`)
+
+- **Context & Bug**:
+  - Pressing `Enter` to save an inline repayment row occasionally created two identical database records ("i save once but it create 2 transaction row").
+  - Root Cause:
+    1. Both `<TableRow>` and child `<Input>` / `<MoneyInput>` components attached `onKeyDown={handleRepaymentKeyDown}` without `e.stopPropagation()`. When pressing `Enter` on an input, the handler executed on the input, then bubbled up to the table row and executed a second time in the exact same event tick.
+    2. Because `isSaving` relied only on React mutation state (`repayLoan.isPending`), which updates asynchronously on the next render, both synchronous invocations passed the `if (isSaving) return` check and sent dual `mutateAsync` requests.
+- **Fix**:
+  - Removed redundant `onKeyDown={handleRepaymentKeyDown}` from child `<Input>` and `<MoneyInput>` controls, leaving single responsibility to `<TableRow>`.
+  - Added `e.stopPropagation()` in `handleRepaymentKeyDown`.
+  - Added a synchronous reference lock (`const savingRef = React.useRef(false)`) inside `saveRepaymentInline` to guarantee immediate blocking of any rapid duplicate calls before React's state loop.
+
+### Lesson 130: Remove Blur Auto-Save on Batch Expenses & Vehicles (`/batches/new`, `/batches/$batchId`)
+
+- **Context & Bug**:
+  - In `batches.new.tsx` and `BatchEditor.tsx`, clicking outside an expense or vehicle editing row fired `handleExpenseRowBlur` or `handleVehicleRowBlur`, attempting to save immediately.
+  - If required fields (e.g. "Số tiền *", "Số khung *", "Đơn giá nhập *") were not yet typed, clicking away or opening dropdowns triggered premature validation toasts and red borders.
+- **Fix**:
+  - Removed `handleExpenseRowBlur` and `handleVehicleRowBlur` and their `onBlur` listeners from `<TableRow>` across `batches.new.tsx` and `BatchEditor.tsx`.
+  - Rows now only save when hitting `Enter` on the keyboard (with popover/combobox open guards) or clicking the Checkmark button.
+  - Added `e.stopPropagation()` on keyboard handlers and pruned redundant child input `onKeyDown` bindings.
+
+### Lesson 131: Omit Redundant Bank Name in Receipt Vouchers Table (`/finance?tab=receipts`)
+
+- **Context & Request**:
+  - In `src/routes/finance.tsx` on the "Lịch Sử Phiếu Thu Tiền Bán Xe" table, the "Tài Khoản Nhận" column rendered `{r.bankName} ({r.accountNumber})` alongside the bank logo.
+  - For banks with long legal corporate names (e.g., Vietcombank Neo Limited), this created significant horizontal overflow and clutter.
+- **Fix**:
+  - Replaced `{r.bankName} ({r.accountNumber})` with `{r.accountNumber}` inside `<BankLabel>`. The bank logo continues to provide instant visual recognition, and the full bank name is accessible via `title` attribute tooltip on hover.
+
+### Lesson 132: Prefer Bank Short Name in Bank Reconciliation & Account Selects (`/reconcile`)
+
+- **Context & Problem**:
+  - On `/reconcile` (Bank Statement Reconciliation page), the "Sao kê" select dropdown and the card header "Giao Dịch Trong Kỳ Sao Kê" rendered the full legal name of the bank (e.g. `Ngân hàng Thương mại trách nhiệm hữu hạn một thành viên Ngoại thương Công nghệ số (Vietcombank Neo Limited)`).
+  - This excessively long string caused text truncation in the trigger (`... #5 Khớp 0/1`) and crowded the card title.
+- **Fix**:
+  - Updated `listBankStatementsFn` and `getBankStatementDetailFn` in `src/server/fns/finance.ts` to select `bankShortName: banks.shortName` and `bankCode: banks.code` (and grouped by them).
+  - In `src/routes/reconcile.tsx`, computed `bankLabel = s.bankShortName || s.bankCode || s.bankName`, using it in both the statement picker `<SearchSelectItem>` label and the `<CardTitle>` header.
+  - Also updated `ImportStatementDialog.tsx` and `BankAccountSelect.tsx` to prefer `bankShortName || bankCode || bankName` for clean, consistent formatting without truncation.
+
+### Lesson 133: Drop Supplier Address Column (`suppliers.address`)
+
+- **Context & Request**:
+  - The business does not require physical address tracking for wholesale import motorcycle suppliers.
+  - The supplier address field in the popup dialog (`SupplierDetailDialog.tsx`) and the Master Data suppliers table was extraneous and displayed `Chưa có địa chỉ`.
+- **Fix**:
+  - Created migration `0038_drop_supplier_address.sql` (`ALTER TABLE suppliers DROP COLUMN address;`) and executed it via `npm run migration:run`.
+  - Removed `address` from `suppliers` table in `src/db/schema.ts` and from validator in `saveSupplierFn` (`src/server/fns/master-data.ts`).
+  - Removed address state, input field, and display from `SupplierDetailDialog.tsx` (view mode now cleanly shows logo and supplier name only).
+  - Removed address column and search filter from `/master-data` (Suppliers tab) and pruned unused `Textarea` import.
+
+_(Next Agent: Append Lesson 134, 135,... above this line upon completing tasks)_

@@ -43,7 +43,6 @@ import {
 import type { LogoValue } from '#/components/ui/logo-field.tsx'
 import { SupplierLogo } from '#/components/ui/supplier-logo.tsx'
 import { SearchBox } from '#/components/ui/search-box.tsx'
-import { Textarea } from '#/components/ui/textarea.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import {
   SearchSelect,
@@ -153,7 +152,7 @@ function MasterDataPage() {
     search,
   )
   const suppliersPg = usePagination(
-    master.suppliers.filter((x) => matchesSearch(search, x.name, x.address)),
+    master.suppliers.filter((x) => matchesSearch(search, x.name)),
     search,
   )
   const banksPg = usePagination(
@@ -222,7 +221,6 @@ function MasterDataPage() {
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
   const [sName, setSName] = React.useState('')
-  const [sAddress, setSAddress] = React.useState('')
   const [sLogo, setSLogo] = React.useState<LogoValue>(EMPTY_LOGO)
   const [supplierSaving, setSupplierSaving] = React.useState(false)
 
@@ -344,7 +342,6 @@ function MasterDataPage() {
         data: {
           id: sId ?? undefined,
           name: sName,
-          address: sAddress.trim() || null,
           image,
         },
       })
@@ -666,7 +663,6 @@ function MasterDataPage() {
                     onClick={() => {
                       setSId(null)
                       setSName('')
-                      setSAddress('')
                       setSLogo(EMPTY_LOGO)
                       setSupplierOpen(true)
                     }}
@@ -682,7 +678,6 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Công Ty Cung Cấp</TableHead>
-                      <TableHead>Địa Chỉ</TableHead>
                       <TableHead className="w-10"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -695,9 +690,6 @@ function MasterDataPage() {
                             <span className="truncate">{s.name}</span>
                           </SupplierLink>
                         </TableCell>
-                        <TableCell className="text-slate-500">
-                          {s.address || '—'}
-                        </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             <Can permission="master-data.manage">
@@ -707,7 +699,6 @@ function MasterDataPage() {
                                 onClick={() => {
                                   setSId(s.id)
                                   setSName(s.name)
-                                  setSAddress(s.address ?? '')
                                   setSLogo({ image: s.image ?? '', file: null })
                                   setSupplierOpen(true)
                                 }}
@@ -1143,15 +1134,6 @@ function MasterDataPage() {
                   onChange={(e) => setSName(e.target.value)}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Thai Honda Co., Ltd"
-                />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Địa Chỉ</Label>
-                <Textarea
-                  value={sAddress}
-                  onChange={(e) => setSAddress(e.target.value)}
-                  rows={2}
-                  placeholder="Số nhà, đường, quận / huyện, tỉnh / thành phố, quốc gia"
                 />
               </div>
               <LogoField

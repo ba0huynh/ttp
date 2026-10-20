@@ -267,6 +267,13 @@
       "when": 1792300000000,
       "tag": "0037_drop_model_year",
       "breakpoints": true
+    },
+    {
+      "idx": 38,
+      "version": "5",
+      "when": 1792400000000,
+      "tag": "0038_drop_supplier_address",
+      "breakpoints": true
     }
   ]
 }

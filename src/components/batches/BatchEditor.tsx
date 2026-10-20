@@ -6,7 +6,7 @@ import { toast } from 'sonner'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { Check, Copy, Plus, RotateCcw, Save, Search, X } from 'lucide-react'
+import { Check, Copy, Loader2, Plus, RotateCcw, Save, Search, X } from 'lucide-react'
 import * as React from 'react'
 
 import { cn, handleRowArrowNavigation } from '#/lib/utils.ts'
@@ -377,36 +377,19 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
     }
   }
 
-  const handleExpenseRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
-    const currentTarget = e.currentTarget
-    setTimeout(() => {
-      const active = document.activeElement
-      if (currentTarget && currentTarget.contains(active)) return
-      if (
-        active?.closest(
-          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
-        )
-      )
-        return
-      if (
-        editingExpenseId === 'new' &&
-        !eDraft.expenseTypeId &&
-        eDraft.amount <= 0 &&
-        !eDraft.description
-      ) {
-        setEditingExpenseId(null)
-        setESubmitted(false)
-        return
-      }
-      void saveExpenseInline()
-    }, 120)
-  }
-
   const handleExpenseKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      const active = document.activeElement
-      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      const active = document.activeElement as HTMLElement | null
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-popover-content]',
+        ) ||
+        active?.getAttribute('aria-haspopup') === 'dialog' ||
+        active?.getAttribute('data-state') === 'open'
+      )
+        return
       e.preventDefault()
+      e.stopPropagation()
       void saveExpenseInline()
       return
     }
@@ -414,6 +397,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
       const active = document.activeElement
       if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
       e.preventDefault()
+      e.stopPropagation()
       cancelExpenseEdit()
       return
     }
@@ -470,7 +454,6 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
                     <TableRow
                       key={e.id}
                       className="bg-emerald-50/40 border-y border-emerald-200"
-                      onBlur={handleExpenseRowBlur}
                       onKeyDown={handleExpenseKeyDown}
                     >
                       <TableCell className="p-2 align-middle">
@@ -531,9 +514,14 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
                             onMouseDown={(ev) => ev.preventDefault()}
                             onClick={() => void saveExpenseInline()}
                             disabled={isSaving}
+                            aria-label="Lưu (Enter)"
                             title="Lưu (Enter)"
                           >
-                            <Check className="size-4" />
+                            {isSaving ? (
+                              <Loader2 className="size-4 animate-spin text-emerald-700" />
+                            ) : (
+                              <Check className="size-4" />
+                            )}
                           </Button>
                           <Button
                             type="button"
@@ -611,7 +599,6 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
               {editingExpenseId === 'new' && (
                 <TableRow
                   className="bg-emerald-50/40 border-y border-emerald-200"
-                  onBlur={handleExpenseRowBlur}
                   onKeyDown={handleExpenseKeyDown}
                 >
                   <TableCell className="p-2 align-middle">
@@ -673,9 +660,14 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
                         onMouseDown={(ev) => ev.preventDefault()}
                         onClick={() => void saveExpenseInline()}
                         disabled={isSaving}
+                        aria-label="Lưu (Enter)"
                         title="Lưu (Enter)"
                       >
-                        <Check className="size-4" />
+                        {isSaving ? (
+                          <Loader2 className="size-4 animate-spin text-emerald-700" />
+                        ) : (
+                          <Check className="size-4" />
+                        )}
                       </Button>
                       <Button
                         type="button"
@@ -922,36 +914,19 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     }
   }
 
-  const handleVehicleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
-    const currentTarget = e.currentTarget
-    setTimeout(() => {
-      const active = document.activeElement
-      if (currentTarget && currentTarget.contains(active)) return
-      if (
-        active?.closest(
-          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
-        )
-      )
-        return
-      if (
-        editingVehicleId === 'new' &&
-        !vDraft.chassisNumber.trim() &&
-        !vDraft.engineNumber.trim() &&
-        vDraft.importPrice <= 0
-      ) {
-        setEditingVehicleId(null)
-        setVSubmitted(false)
-        return
-      }
-      void saveVehicleInline()
-    }, 120)
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      const active = document.activeElement
-      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      const active = document.activeElement as HTMLElement | null
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-popover-content]',
+        ) ||
+        active?.getAttribute('aria-haspopup') === 'dialog' ||
+        active?.getAttribute('data-state') === 'open'
+      )
+        return
       e.preventDefault()
+      e.stopPropagation()
       void saveVehicleInline()
       return
     }
@@ -959,6 +934,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       const active = document.activeElement
       if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
       e.preventDefault()
+      e.stopPropagation()
       cancelVehicleEdit()
       return
     }
@@ -1094,7 +1070,6 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   <TableRow
                     key={v.id}
                     className="bg-emerald-50/40 border-y border-emerald-200"
-                    onBlur={handleVehicleRowBlur}
                     onKeyDown={handleKeyDown}
                   >
                     <TableCell className="p-2 align-middle">
@@ -1203,9 +1178,14 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                           className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
                           onMouseDown={(ev) => ev.preventDefault()}
                           onClick={() => void saveVehicleInline()}
+                          aria-label="Lưu (Enter)"
                           title="Lưu (Enter)"
                         >
-                          <Check className="size-4" />
+                          {isSaving ? (
+                            <Loader2 className="size-4 animate-spin text-emerald-700" />
+                          ) : (
+                            <Check className="size-4" />
+                          )}
                         </Button>
                         <Button
                           type="button"
@@ -1341,7 +1321,6 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
             {editingVehicleId === 'new' && (
               <TableRow
                 className="bg-emerald-50/40 border-y border-emerald-200"
-                onBlur={handleVehicleRowBlur}
                 onKeyDown={handleKeyDown}
               >
                 <TableCell className="p-2 align-middle">
@@ -1450,9 +1429,14 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                       className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
                       onMouseDown={(ev) => ev.preventDefault()}
                       onClick={() => void saveVehicleInline()}
+                      aria-label="Lưu (Enter)"
                       title="Lưu (Enter)"
                     >
-                      <Check className="size-4" />
+                      {isSaving ? (
+                        <Loader2 className="size-4 animate-spin text-emerald-700" />
+                      ) : (
+                        <Check className="size-4" />
+                      )}
                     </Button>
                     <Button
                       type="button"

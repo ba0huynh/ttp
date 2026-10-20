@@ -736,11 +736,13 @@ function FinancePage() {
                         <TableCell className="text-right text-emerald-900">
                           {formatVnd(r.amount)}
                         </TableCell>
-                        <TableCell className="text-slate-500 text-[11px]">
+                        <TableCell className="text-slate-700 text-xs">
                           {r.accountNumber ? (
-                            <BankLabel image={r.bankImage} name={r.bankName}>
-                              {r.bankName} ({r.accountNumber})
-                            </BankLabel>
+                            <div title={`${r.bankName} - ${r.accountNumber}`}>
+                              <BankLabel image={r.bankImage} name={r.bankName}>
+                                {r.accountNumber}
+                              </BankLabel>
+                            </div>
                           ) : (
                             '—'
                           )}

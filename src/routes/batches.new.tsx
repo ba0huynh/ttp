@@ -23,6 +23,7 @@ import {
   ArrowLeft,
   Check,
   Copy,
+  Loader2,
   Plus,
   Trash2,
   X,
@@ -211,36 +212,19 @@ function NewBatchPage() {
     setESubmitted(false)
   }
 
-  const handleExpenseRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
-    const currentTarget = e.currentTarget
-    setTimeout(() => {
-      const active = document.activeElement
-      if (currentTarget && currentTarget.contains(active)) return
-      if (
-        active?.closest(
-          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
-        )
-      )
-        return
-      if (
-        editingExpenseId === 'new' &&
-        !eDraft.expenseTypeId &&
-        eDraft.amount <= 0 &&
-        !eDraft.description
-      ) {
-        setEditingExpenseId(null)
-        setESubmitted(false)
-        return
-      }
-      saveExpenseInline()
-    }, 120)
-  }
-
   const handleExpenseKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      const active = document.activeElement
-      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      const active = document.activeElement as HTMLElement | null
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-popover-content]',
+        ) ||
+        active?.getAttribute('aria-haspopup') === 'dialog' ||
+        active?.getAttribute('data-state') === 'open'
+      )
+        return
       e.preventDefault()
+      e.stopPropagation()
       saveExpenseInline()
       return
     }
@@ -248,6 +232,7 @@ function NewBatchPage() {
       const active = document.activeElement
       if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
       e.preventDefault()
+      e.stopPropagation()
       cancelExpenseEdit()
       return
     }
@@ -384,36 +369,19 @@ function NewBatchPage() {
     setVSubmitted(false)
   }
 
-  const handleVehicleRowBlur = (e: React.FocusEvent<HTMLTableRowElement>) => {
-    const currentTarget = e.currentTarget
-    setTimeout(() => {
-      const active = document.activeElement
-      if (currentTarget && currentTarget.contains(active)) return
-      if (
-        active?.closest(
-          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-focus-guard]',
-        )
-      )
-        return
-      if (
-        editingVehicleId === 'new' &&
-        !vDraft.chassisNumber.trim() &&
-        !vDraft.engineNumber.trim() &&
-        vDraft.importPrice <= 0
-      ) {
-        setEditingVehicleId(null)
-        setVSubmitted(false)
-        return
-      }
-      saveVehicleInline()
-    }, 120)
-  }
-
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === 'Enter') {
-      const active = document.activeElement
-      if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
+      const active = document.activeElement as HTMLElement | null
+      if (
+        active?.closest(
+          '[data-radix-popper-content-wrapper], [role="dialog"], [data-radix-popover-content]',
+        ) ||
+        active?.getAttribute('aria-haspopup') === 'dialog' ||
+        active?.getAttribute('data-state') === 'open'
+      )
+        return
       e.preventDefault()
+      e.stopPropagation()
       saveVehicleInline()
       return
     }
@@ -421,6 +389,7 @@ function NewBatchPage() {
       const active = document.activeElement
       if (active?.closest('[data-radix-popper-content-wrapper], [role="dialog"]')) return
       e.preventDefault()
+      e.stopPropagation()
       cancelVehicleEdit()
       return
     }
@@ -542,7 +511,11 @@ function NewBatchPage() {
             disabled={submitting}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs h-9 px-4 gap-1.5"
           >
-            <Check className="size-4" />
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
+            )}
             {submitting ? 'Đang lưu...' : 'Hoàn Tất Nhập Lô'}
           </Button>
         </div>
@@ -710,7 +683,6 @@ function NewBatchPage() {
                         <TableRow
                           key={e.id}
                           className="bg-emerald-50/40 border-y border-emerald-200"
-                          onBlur={handleExpenseRowBlur}
                           onKeyDown={handleExpenseKeyDown}
                         >
                           <TableCell className="p-2 align-middle">
@@ -739,7 +711,6 @@ function NewBatchPage() {
                                   description: ev.target.value,
                                 })
                               }
-                              onKeyDown={handleExpenseKeyDown}
                               placeholder="Diễn giải (tùy chọn)"
                               className="h-8 text-xs bg-white"
                             />
@@ -751,7 +722,6 @@ function NewBatchPage() {
                                 setEDraft({ ...eDraft, amount: val })
                               }
                               blankZero
-                              onKeyDown={handleExpenseKeyDown}
                               placeholder="Số tiền *"
                               className={cn(
                                 'h-8 text-xs text-right bg-white',
@@ -837,7 +807,6 @@ function NewBatchPage() {
                   {editingExpenseId === 'new' && (
                     <TableRow
                       className="bg-emerald-50/40 border-y border-emerald-200"
-                      onBlur={handleExpenseRowBlur}
                       onKeyDown={handleExpenseKeyDown}
                     >
                       <TableCell className="p-2 align-middle">
@@ -867,7 +836,6 @@ function NewBatchPage() {
                               description: ev.target.value,
                             })
                           }
-                          onKeyDown={handleExpenseKeyDown}
                           placeholder="Diễn giải (tùy chọn)"
                           className="h-8 text-xs bg-white"
                         />
@@ -879,7 +847,6 @@ function NewBatchPage() {
                             setEDraft({ ...eDraft, amount: val })
                           }
                           blankZero
-                          onKeyDown={handleExpenseKeyDown}
                           placeholder="Số tiền *"
                           className={cn(
                             'h-8 text-xs text-right bg-white',
@@ -987,7 +954,6 @@ function NewBatchPage() {
                         <TableRow
                           key={v.id}
                           className="bg-emerald-50/40 border-y border-emerald-200"
-                          onBlur={handleVehicleRowBlur}
                           onKeyDown={handleKeyDown}
                         >
                           <TableCell className="p-2 align-middle">
@@ -1000,7 +966,6 @@ function NewBatchPage() {
                                   chassisNumber: e.target.value,
                                 })
                               }
-                              onKeyDown={handleKeyDown}
                               placeholder="Số khung *"
                               className={cn(
                                 'h-8 text-xs font-mono uppercase bg-white',
@@ -1019,7 +984,6 @@ function NewBatchPage() {
                                   engineNumber: e.target.value,
                                 })
                               }
-                              onKeyDown={handleKeyDown}
                               placeholder="Số máy *"
                               className={cn(
                                 'h-8 text-xs font-mono uppercase bg-white',
@@ -1070,7 +1034,6 @@ function NewBatchPage() {
                                 setVDraft({ ...vDraft, importPrice: val })
                               }
                               blankZero
-                              onKeyDown={handleKeyDown}
                               placeholder="Đơn giá nhập *"
                               className={cn(
                                 'h-8 text-xs text-right bg-white',
@@ -1206,7 +1169,6 @@ function NewBatchPage() {
                   {editingVehicleId === 'new' && (
                     <TableRow
                       className="bg-emerald-50/40 border-y border-emerald-200"
-                      onBlur={handleVehicleRowBlur}
                       onKeyDown={handleKeyDown}
                     >
                       <TableCell className="p-2 align-middle">
@@ -1219,7 +1181,6 @@ function NewBatchPage() {
                               chassisNumber: e.target.value,
                             })
                           }
-                          onKeyDown={handleKeyDown}
                           placeholder="Số khung *"
                           className={cn(
                             'h-8 text-xs font-mono uppercase bg-white',
@@ -1238,7 +1199,6 @@ function NewBatchPage() {
                               engineNumber: e.target.value,
                             })
                           }
-                          onKeyDown={handleKeyDown}
                           placeholder="Số máy *"
                           className={cn(
                             'h-8 text-xs font-mono uppercase bg-white',
@@ -1283,7 +1243,6 @@ function NewBatchPage() {
                             setVDraft({ ...vDraft, importPrice: val })
                           }
                           blankZero
-                          onKeyDown={handleKeyDown}
                           placeholder="Đơn giá nhập *"
                           className={cn(
                             'h-8 text-xs text-right bg-white',

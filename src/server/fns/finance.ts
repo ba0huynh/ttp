@@ -320,6 +320,8 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
         fileName: bankStatements.fileName,
         accountNumber: companyBankAccounts.accountNumber,
         bankName: banks.name,
+        bankShortName: banks.shortName,
+        bankCode: banks.code,
         bankImage: banks.image,
         lineCount: sql<number>`count(${bankStatementLines.id})`,
         matchedCount: sql<number>`sum(case when ${bankStatementLines.status} = 'matched' then 1 else 0 end)`,
@@ -339,6 +341,9 @@ export const listBankStatementsFn = createServerFn({ method: 'GET' })
         bankStatements.fileName,
         companyBankAccounts.accountNumber,
         banks.name,
+        banks.shortName,
+        banks.code,
+        banks.image,
       )
       .orderBy(desc(bankStatements.id))
 
@@ -359,6 +364,8 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
         fileName: bankStatements.fileName,
         accountNumber: companyBankAccounts.accountNumber,
         bankName: banks.name,
+        bankShortName: banks.shortName,
+        bankCode: banks.code,
         bankImage: banks.image,
       })
       .from(bankStatements)

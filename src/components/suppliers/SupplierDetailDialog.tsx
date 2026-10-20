@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { MapPin, Pencil } from 'lucide-react'
+import { Pencil } from 'lucide-react'
 import * as React from 'react'
 
 import { Can } from '#/components/auth/Can.tsx'
@@ -21,12 +21,11 @@ import {
 } from '#/components/ui/logo-field.tsx'
 import type { LogoValue } from '#/components/ui/logo-field.tsx'
 import { SupplierLogo } from '#/components/ui/supplier-logo.tsx'
-import { Textarea } from '#/components/ui/textarea.tsx'
 import { masterDataQuery } from '#/lib/queries.ts'
 import { saveSupplierFn } from '#/server/fns/master-data.ts'
 
 /**
- * Supplier popup: name, image and address, with a button that switches the same
+ * Supplier popup: name and image, with a button that switches the same
  * dialog to edit mode. The data comes from the cached master data.
  */
 export function SupplierDetailDialog({
@@ -44,7 +43,6 @@ export function SupplierDetailDialog({
 
   const [editing, setEditing] = React.useState(false)
   const [name, setName] = React.useState('')
-  const [address, setAddress] = React.useState('')
   const [logo, setLogo] = React.useState<LogoValue>(EMPTY_LOGO)
   const [error, setError] = React.useState<string | null>(null)
   const [saving, setSaving] = React.useState(false)
@@ -62,7 +60,6 @@ export function SupplierDetailDialog({
   const startEdit = () => {
     if (!supplier) return
     setName(supplier.name)
-    setAddress(supplier.address ?? '')
     setLogo({ image: supplier.image ?? '', file: null })
     setError(null)
     setEditing(true)
@@ -82,7 +79,6 @@ export function SupplierDetailDialog({
         data: {
           id: supplier.id,
           name,
-          address: address.trim() || null,
           image,
         },
       })
@@ -118,16 +114,6 @@ export function SupplierDetailDialog({
                 value={name}
                 onChange={(e) => setName(e.target.value)}
                 maxLength={255}
-              />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Địa Chỉ</Label>
-              <Textarea
-                value={address}
-                onChange={(e) => setAddress(e.target.value)}
-                maxLength={255}
-                rows={2}
-                placeholder="Số nhà, đường, quận / huyện, tỉnh / thành phố, quốc gia"
               />
             </div>
             <LogoField
@@ -175,12 +161,6 @@ export function SupplierDetailDialog({
                 <h2 className="text-xl font-bold tracking-tight text-slate-900 break-words">
                   {supplier.name}
                 </h2>
-                <p className="flex items-start justify-center gap-1.5 text-sm text-slate-500">
-                  <MapPin className="mt-0.5 size-4 shrink-0" />
-                  <span className="whitespace-pre-line break-words">
-                    {supplier.address || 'Chưa có địa chỉ'}
-                  </span>
-                </p>
               </div>
             </div>
             <DialogFooter className="pt-2">

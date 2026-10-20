@@ -14,6 +14,7 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
+  Loader2,
   Plus,
   RotateCcw,
   Search,
@@ -376,7 +377,11 @@ function NewSalesOrderPage() {
             disabled={submitting}
             className="bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs h-9 px-4 gap-1.5"
           >
-            <Check className="size-4" />
+            {submitting ? (
+              <Loader2 className="size-4 animate-spin" />
+            ) : (
+              <Check className="size-4" />
+            )}
             {submitting ? 'Đang lưu...' : 'Xác Nhận Lập Phiếu'}
           </Button>
         </div>
