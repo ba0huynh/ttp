@@ -1714,7 +1714,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Five banks only**: ACB, Bản Việt (`VCCB`), Vietcombank (`VCB`), HDBank (`HDB`), Eximbank (`EIB`). `seedBanks()` filters the VietQR catalogue by `ALLOWED_BANK_CODES`; migration `0040_keep_five_banks` deletes every other bank that no loan contract or company bank account uses (its down is a no-op: re-run `npm run seed` to bring banks back). Gotcha: `BVB` is Bảo Việt, not Bản Việt.
 - **Deploy**: run `npm run migration:run` (applies `0039`–`0042`).
 
-_(Next Agent: Append Lesson 154, 155,... above this line upon completing tasks)_
+### Lesson 154: Select Mode Covers Export and Invoice (`/sales/$orderId`)
+
+- Select mode now lists vehicles that are not yet exported **or** not yet invoiced (hidden only when both are done) and every listed row is selectable; a `Kho Hóa Đơn` badge column appears in select mode. The bar has two bulk actions: `Xuất kho (n)` (selected vehicles not yet delivered) and `Xuất hóa đơn (n)` (selected vehicles not yet invoiced; one invoice per vehicle, see Lesson 153). Supersedes the "hide already exported vehicles" part of Lesson 143. `Kho Hóa Đơn` is a permanent column. Clicking the `Kho Hóa Đơn` badge of a row issues (opens the invoice dialog) or cancels (confirm dialog) that vehicle's invoice; cancel is (`revertInvoiceFn` → `revertInvoice`): removes that vehicle's invoice line (deletes the invoice if empty, otherwise lowers its total), sets `is_invoiced = false`, leaves physical stock alone. Every row has `Xem` (column `Thao tác`) opening a vehicle detail dialog: export details (delivery note no., date, receiver, vehicle) with `Xuất kho` / `Sửa phiếu giao` / `Hủy xuất kho`, and invoice details (invoice no., date, amount) with `Xuất hóa đơn` / `Hủy hóa đơn`. The order detail items now carry `invoiceId` / `invoiceNumber` / `invoiceDate`.
+
+_(Next Agent: Append Lesson 155, 156,... above this line upon completing tasks)_
 
 
 

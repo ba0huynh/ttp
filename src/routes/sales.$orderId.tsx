@@ -79,6 +79,7 @@ import {
   recordInvoiceFn,
   updateDeliveryNoteFn,
   revertDeliveryNoteFn,
+  revertInvoiceFn,
 } from '#/server/fns/sales.ts'
 
 export const Route = createFileRoute('/sales/$orderId')({
@@ -153,8 +154,8 @@ function SalesOrderPage() {
 
   const filteredItems = React.useMemo(() => {
     return items.filter((i) => {
-      // In select mode, only show cars that have not been exported / delivered yet
-      if (selectMode && i.isDelivered) return false
+      // In select mode, only show cars not yet exported OR not yet invoiced
+      if (selectMode && i.isDelivered && i.isInvoiced) return false
 
       if (searchQuery.trim()) {
         const q = searchQuery.toLowerCase().trim()
@@ -190,25 +191,27 @@ function SalesOrderPage() {
     `${selectMode}|${searchQuery}|${deliveryFilter}|${modelFilter}|${colorFilter}`,
   )
 
-  // All undelivered vehicles matching active filters
-  const undeliveredFiltered = React.useMemo(
-    () => filteredItems.filter((i) => !i.isDelivered),
-    [filteredItems],
-  )
-  const allUndeliveredChecked =
-    undeliveredFiltered.length > 0 &&
-    undeliveredFiltered.every((i) => selectedForDelivery.includes(i.vehicleId))
+  // In select mode every listed vehicle is selectable (it still needs export and/or invoice)
+  const selectableFiltered = filteredItems
+  const allSelectableChecked =
+    selectableFiltered.length > 0 &&
+    selectableFiltered.every((i) => selectedForDelivery.includes(i.vehicleId))
 
-  // Selectable (undelivered) vehicles on the CURRENT view page
-  const pageUndelivered = React.useMemo(
-    () => itemsPg.pageItems.filter((i) => !i.isDelivered),
-    [itemsPg.pageItems],
-  )
+  // Selectable vehicles on the CURRENT view page
+  const pageSelectable = itemsPg.pageItems
+
+  // What the selection can still be used for
+  const selectedDeliverable = items
+    .filter((i) => selectedForDelivery.includes(i.vehicleId) && !i.isDelivered)
+    .map((i) => i.vehicleId)
+  const selectedInvoiceable = items
+    .filter((i) => selectedForDelivery.includes(i.vehicleId) && !i.isInvoiced)
+    .map((i) => i.vehicleId)
   const pageAllChecked =
-    pageUndelivered.length > 0 &&
-    pageUndelivered.every((i) => selectedForDelivery.includes(i.vehicleId))
+    pageSelectable.length > 0 &&
+    pageSelectable.every((i) => selectedForDelivery.includes(i.vehicleId))
   const pageSomeChecked =
-    pageUndelivered.some((i) => selectedForDelivery.includes(i.vehicleId)) &&
+    pageSelectable.some((i) => selectedForDelivery.includes(i.vehicleId)) &&
     !pageAllChecked
 
   const toggleSelectVehicle = (vehicleId: number) => {
@@ -223,11 +226,11 @@ function SalesOrderPage() {
   const toggleSelectPage = () => {
     if (pageAllChecked) {
       // Deselect only the vehicles on the current page
-      const pageIds = new Set(pageUndelivered.map((i) => i.vehicleId))
+      const pageIds = new Set(pageSelectable.map((i) => i.vehicleId))
       setSelectedForDelivery((prev) => prev.filter((id) => !pageIds.has(id)))
     } else {
       // Select all undelivered vehicles on the current page (merging with existing selections)
-      const pageIds = pageUndelivered.map((i) => i.vehicleId)
+      const pageIds = pageSelectable.map((i) => i.vehicleId)
       setSelectedForDelivery((prev) =>
         Array.from(new Set([...prev, ...pageIds])),
       )
@@ -235,7 +238,7 @@ function SalesOrderPage() {
   }
 
   const selectAllAcrossPages = () => {
-    setSelectedForDelivery(undeliveredFiltered.map((i) => i.vehicleId))
+    setSelectedForDelivery(selectableFiltered.map((i) => i.vehicleId))
   }
 
   const deselectAll = () => {
@@ -274,6 +277,10 @@ function SalesOrderPage() {
     mutationFn: updateDeliveryNoteFn,
     onSuccess: onSettled,
   })
+  const revertInvoiceMutation = useMutation({
+    mutationFn: revertInvoiceFn,
+    onSuccess: onSettled,
+  })
   const revertDeliveryMutation = useMutation({
     mutationFn: revertDeliveryNoteFn,
     onSuccess: onSettled,
@@ -300,7 +307,8 @@ function SalesOrderPage() {
     deliveryMutation.isPending ||
     invoiceMutation.isPending ||
     updateDeliveryMutation.isPending ||
-    revertDeliveryMutation.isPending
+    revertDeliveryMutation.isPending ||
+    revertInvoiceMutation.isPending
 
   const canDeliver = hasPermission(user, 'sales.deliver')
   const canInvoice = hasPermission(user, 'sales.invoice')
@@ -402,13 +410,22 @@ function SalesOrderPage() {
   }
 
   const openBatchDeliveryModal = () => {
-    if (selectedForDelivery.length === 0) return
-    setSelectedVehicles(selectedForDelivery)
+    if (selectedDeliverable.length === 0) return
+    setSelectedVehicles(selectedDeliverable)
     setDeliveryDate(todayIso())
     setReceiverName('')
     setTransportInfo('')
     setActionError(null)
     setDeliveryDialogOpen(true)
+  }
+
+  const openBatchInvoiceModal = () => {
+    if (selectedInvoiceable.length === 0) return
+    setSelectedVehicles(selectedInvoiceable)
+    setInvoiceDate(todayIso())
+    setInvoiceNumber('')
+    setActionError(null)
+    setInvoiceDialogOpen(true)
   }
 
   const openInvoiceModal = () => {
@@ -469,6 +486,61 @@ function SalesOrderPage() {
       setInvoiceDialogOpen(false)
     } catch (err: unknown) {
       setActionError(formatErrorMessage(err, 'Lỗi khi lập hóa đơn'))
+    }
+  }
+
+  // Vehicle detail dialog: export + invoice details with their actions
+  const [detailVehicleId, setDetailVehicleId] = React.useState<number | null>(
+    null,
+  )
+  const detailItem = items.find((i) => i.vehicleId === detailVehicleId) ?? null
+
+  const handleRevertDeliveryOf = async (v: OrderItem) => {
+    const sameNote = v.deliveryNoteId
+      ? items.filter((it) => it.deliveryNoteId === v.deliveryNoteId).length
+      : 1
+    if (
+      !(await confirmDialog({
+        title: `Hủy xuất kho xe ${v.chassisNumber}?`,
+        description:
+          'Xe sẽ được hoàn trả về trạng thái tồn kho thực tế. Hóa đơn của xe (nếu có) không đổi.',
+        confirmLabel: 'Hủy xuất kho',
+        cancelLabel: 'Giữ lại',
+        destructive: true,
+      }))
+    )
+      return
+    try {
+      await revertDeliveryMutation.mutateAsync({
+        data: {
+          salesOrderId: order.id,
+          deliveryNoteId: v.deliveryNoteId ?? undefined,
+          vehicleId: sameNote > 1 || !v.deliveryNoteId ? v.vehicleId : undefined,
+        },
+      })
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể hủy xuất kho')
+    }
+  }
+
+  const handleRevertInvoice = async (v: OrderItem) => {
+    if (
+      !(await confirmDialog({
+        title: `Hủy hóa đơn xe ${v.chassisNumber}?`,
+        description:
+          'Xe sẽ trở lại trạng thái chưa xuất hóa đơn và hóa đơn của xe này bị xóa. Kho thực tế không đổi.',
+        confirmLabel: 'Hủy hóa đơn',
+        cancelLabel: 'Giữ lại',
+        destructive: true,
+      }))
+    )
+      return
+    try {
+      await revertInvoiceMutation.mutateAsync({
+        data: { salesOrderId: order.id, vehicleId: v.vehicleId },
+      })
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể hủy hóa đơn')
     }
   }
 
@@ -556,7 +628,7 @@ function SalesOrderPage() {
             <div>
               <CardTitle className="text-sm font-bold text-slate-800">
                 {selectMode
-                  ? `Chọn xe chưa xuất kho (${filteredItems.length})`
+                  ? `Chọn xe chưa xuất kho hoặc chưa xuất hóa đơn (${filteredItems.length})`
                   : `Danh sách xe trong phiếu (${items.length})`}
               </CardTitle>
               {activeFilterCount > 0 && (
@@ -590,7 +662,8 @@ function SalesOrderPage() {
                   </span>
                 )}
               </Button>
-              {canDeliver && items.some((i) => !i.isDelivered) && (
+              {(canDeliver || canInvoice) &&
+                items.some((i) => !i.isDelivered || !i.isInvoiced) && (
                 <Button
                   size="sm"
                   variant={selectMode ? 'default' : 'outline'}
@@ -619,7 +692,7 @@ function SalesOrderPage() {
           {selectMode && (
             <div className="bg-emerald-50 border-b border-emerald-200 px-4 py-2 flex flex-wrap items-center justify-between gap-2 text-xs">
               <div className="flex items-center gap-2 text-emerald-950">
-                <span className="font-semibold">Đang chọn xe xuất kho:</span>
+                <span className="font-semibold">Đang chọn xe:</span>
                 <Badge
                   variant="outline"
                   className="bg-emerald-100 text-emerald-800 border-emerald-300 font-bold text-[11px]"
@@ -635,31 +708,48 @@ function SalesOrderPage() {
                     Bỏ chọn tất cả
                   </button>
                 )}
-                {undeliveredFiltered.length > pageUndelivered.length &&
-                  !allUndeliveredChecked && (
+                {selectableFiltered.length > pageSelectable.length &&
+                  !allSelectableChecked && (
                     <button
                       type="button"
                       onClick={selectAllAcrossPages}
                       className="text-emerald-700 hover:underline font-medium ml-2 cursor-pointer"
                     >
-                      Chọn tất cả {undeliveredFiltered.length} xe trong phiếu
+                      Chọn tất cả {selectableFiltered.length} xe trong phiếu
                     </button>
                   )}
               </div>
               <div className="flex items-center gap-2">
+                {canInvoice && (
+                  <Button
+                    size="sm"
+                    disabled={selectedInvoiceable.length === 0}
+                    onClick={openBatchInvoiceModal}
+                    className="h-7 text-xs bg-blue-700 hover:bg-blue-800 text-white font-semibold gap-1.5"
+                  >
+                    <FileCheck className="size-3.5" />
+                    Xuất hóa đơn{' '}
+                    {selectedInvoiceable.length > 0
+                      ? `(${selectedInvoiceable.length})`
+                      : ''}{' '}
+                    xe đã chọn
+                  </Button>
+                )}
+                {canDeliver && (
                 <Button
                   size="sm"
-                  disabled={selectedForDelivery.length === 0}
+                  disabled={selectedDeliverable.length === 0}
                   onClick={openBatchDeliveryModal}
                   className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1.5"
                 >
                   <Truck className="size-3.5" />
                   Xuất kho{' '}
-                  {selectedForDelivery.length > 0
-                    ? `(${selectedForDelivery.length})`
+                  {selectedDeliverable.length > 0
+                    ? `(${selectedDeliverable.length})`
                     : ''}{' '}
                   xe đã chọn
                 </Button>
+                )}
                 <Button
                   size="sm"
                   variant="ghost"
@@ -687,7 +777,7 @@ function SalesOrderPage() {
                                 : false
                           }
                           onCheckedChange={toggleSelectPage}
-                          disabled={pageUndelivered.length === 0}
+                          disabled={pageSelectable.length === 0}
                           aria-label="Chọn tất cả xe trên trang này"
                         />
                       </TableHead>
@@ -696,8 +786,9 @@ function SalesOrderPage() {
                     <TableHead>Dòng xe / Màu</TableHead>
                     <TableHead className="text-right">Đơn Giá Bán Đã VAT</TableHead>
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
+                    <TableHead className="text-center">Kho Hóa Đơn</TableHead>
                     {!selectMode && (
-                      <TableHead className="w-56 text-center">Thao tác</TableHead>
+                      <TableHead className="w-28 text-center">Thao tác</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
@@ -748,73 +839,90 @@ function SalesOrderPage() {
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(i.unitPrice)}
                         </TableCell>
-                        <TableCell className="text-center">
-                          {i.isDelivered ? (
+                        <TableCell
+                          className="text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Click: deliver this vehicle, or open its delivery (view / edit / cancel) */}
+                          <button
+                            type="button"
+                            disabled={!canDeliver || actionLoading}
+                            onClick={() =>
+                              i.isDelivered
+                                ? openViewDeliveryModal(i)
+                                : openSingleDeliveryModal(i.vehicleId)
+                            }
+                            title={
+                              !canDeliver
+                                ? undefined
+                                : i.isDelivered
+                                  ? `Bấm để xem / sửa / hủy xuất kho xe ${i.chassisNumber}`
+                                  : `Bấm để xuất kho xe ${i.chassisNumber}`
+                            }
+                            className={canDeliver ? 'cursor-pointer' : ''}
+                          >
                             <Badge
                               variant="outline"
-                              className="bg-emerald-50 text-emerald-700 border-emerald-300 text-[11px]"
+                              className={`text-[11px] ${
+                                i.isDelivered
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                                  : 'bg-amber-50 text-amber-700 border-amber-300'
+                              } ${canDeliver ? 'hover:ring-2 hover:ring-emerald-200' : ''}`}
                             >
-                              Đã giao ({formatDate(i.deliveredAt)})
+                              {i.isDelivered
+                                ? `Đã giao (${formatDate(i.deliveredAt)})`
+                                : 'Còn trong kho thực tế'}
                             </Badge>
-                          ) : (
+                          </button>
+                        </TableCell>
+                        <TableCell
+                          className="text-center"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {/* Click toggles the invoice: issue one / cancel it */}
+                          <button
+                            type="button"
+                            disabled={!canInvoice || actionLoading}
+                            onClick={() =>
+                              i.isInvoiced
+                                ? handleRevertInvoice(i)
+                                : openSingleInvoiceModal(i.vehicleId)
+                            }
+                            title={
+                              !canInvoice
+                                ? undefined
+                                : i.isInvoiced
+                                  ? `Bấm để hủy hóa đơn xe ${i.chassisNumber}`
+                                  : `Bấm để xuất hóa đơn xe ${i.chassisNumber}`
+                            }
+                            className={canInvoice ? 'cursor-pointer' : ''}
+                          >
                             <Badge
                               variant="outline"
-                              className="bg-amber-50 text-amber-700 border-amber-300 text-[11px]"
+                              className={`text-[11px] ${
+                                i.isInvoiced
+                                  ? 'bg-blue-50 text-blue-700 border-blue-300'
+                                  : 'bg-slate-100 text-slate-600 border-slate-200'
+                              } ${canInvoice ? 'hover:ring-2 hover:ring-blue-200' : ''}`}
                             >
-                              Còn trong kho thực tế
+                              {i.isInvoiced
+                                ? `Đã xuất HĐ (${formatDate(i.invoicedAt)})`
+                                : 'Chưa xuất HĐ'}
                             </Badge>
-                          )}
+                          </button>
                         </TableCell>
                         {!selectMode && (
                           <TableCell className="text-center whitespace-nowrap">
-                            <div className="inline-flex items-center justify-center gap-1.5">
-                            {canDeliver && !i.isDelivered ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs border-emerald-300 text-emerald-800 hover:bg-emerald-50 gap-1.5 font-medium px-2.5"
-                                onClick={() => openSingleDeliveryModal(i.vehicleId)}
-                                title={`Lập phiếu giao cho xe ${i.chassisNumber}`}
-                              >
-                                <Truck className="size-3 text-emerald-600" />
-                                Giao xe
-                              </Button>
-                            ) : canDeliver && i.isDelivered ? (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs border-blue-300 text-blue-800 hover:bg-blue-50 gap-1.5 font-medium px-2.5"
-                                onClick={() => openViewDeliveryModal(i)}
-                                title={`Xem / Sửa phiếu xuất xe ${i.chassisNumber}`}
-                              >
-                                <Eye className="size-3.5 text-blue-600" />
-                                Xem
-                              </Button>
-                            ) : null}
-                            {canInvoice && !i.isInvoiced && (
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs border-blue-300 text-blue-800 hover:bg-blue-50 gap-1.5 font-medium px-2.5"
-                                onClick={() => openSingleInvoiceModal(i.vehicleId)}
-                                title={`Xuất hóa đơn riêng cho xe ${i.chassisNumber}`}
-                              >
-                                <FileCheck className="size-3 text-blue-600" />
-                                Xuất HĐ
-                              </Button>
-                            )}
-                            {i.isInvoiced && (
-                              <Badge
-                                variant="outline"
-                                className="bg-blue-50 text-blue-700 border-blue-300 text-[11px]"
-                              >
-                                Đã xuất HĐ
-                              </Badge>
-                            )}
-                            {!(canDeliver || canInvoice || i.isInvoiced) && (
-                              <span className="text-slate-400 text-xs">—</span>
-                            )}
-                            </div>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 text-xs border-blue-300 text-blue-800 hover:bg-blue-50 gap-1.5 font-medium px-2.5"
+                              onClick={() => setDetailVehicleId(i.vehicleId)}
+                              title={`Xem chi tiết xuất kho / hóa đơn xe ${i.chassisNumber}`}
+                            >
+                              <Eye className="size-3.5 text-blue-600" />
+                              Xem
+                            </Button>
                           </TableCell>
                         )}
                       </TableRow>
@@ -823,11 +931,11 @@ function SalesOrderPage() {
                   {filteredItems.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={5}
+                        colSpan={6}
                         className="py-10 text-center text-xs text-slate-400 italic"
                       >
                         {selectMode
-                          ? 'Tất cả các xe trong phiếu đã được xuất kho thực tế.'
+                          ? 'Tất cả các xe trong phiếu đã được xuất kho và xuất hóa đơn.'
                           : 'Không tìm thấy xe nào phù hợp với bộ lọc hiện tại.'}
                         {!selectMode && activeFilterCount > 0 && (
                           <button
@@ -932,6 +1040,195 @@ function SalesOrderPage() {
             </form>
           </DialogContent>
         </Dialog>
+
+        {/* Vehicle detail: export + invoice, with actions. Stays open underneath the
+            export / invoice / edit dialogs opened from it */}
+        {detailItem !== null && (
+        <Dialog
+          open={detailItem !== null}
+          onOpenChange={(o) => !o && setDetailVehicleId(null)}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900">
+                Chi Tiết Xe {detailItem?.chassisNumber}
+              </DialogTitle>
+              <DialogDescription className="text-xs">
+                Xuất kho và hóa đơn của xe là 2 nghiệp vụ độc lập.
+              </DialogDescription>
+            </DialogHeader>
+            {detailItem && (
+              <div className="space-y-3 text-xs">
+                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-900">
+                      Số khung: {detailItem.chassisNumber}
+                    </span>
+                    <ColorLabel
+                      name={detailItem.colorName}
+                      hex={detailItem.colorHex}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-slate-600">
+                    <span>Dòng xe: {detailItem.modelName || '—'}</span>
+                    <span>Số máy: {detailItem.engineNumber || '—'}</span>
+                  </div>
+                  <div className="text-slate-600">
+                    Đơn giá bán đã VAT:{' '}
+                    <strong className="text-slate-900">
+                      {formatVnd(detailItem.unitPrice)}
+                    </strong>
+                  </div>
+                </div>
+
+                {/* Export */}
+                <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                      <Truck className="size-3.5 text-emerald-600" />
+                      Xuất kho thực tế
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[11px] ${
+                        detailItem.isDelivered
+                          ? 'bg-emerald-50 text-emerald-700 border-emerald-300'
+                          : 'bg-amber-50 text-amber-700 border-amber-300'
+                      }`}
+                    >
+                      {detailItem.isDelivered ? 'Đã xuất kho' : 'Chưa xuất kho'}
+                    </Badge>
+                  </div>
+                  {detailItem.isDelivered && (
+                    <dl className="grid grid-cols-[110px_1fr] gap-y-1 text-slate-600">
+                      <dt>Mã phiếu giao</dt>
+                      <dd className="font-medium text-slate-900">
+                        {detailItem.deliveryNoteNumber || '—'}
+                      </dd>
+                      <dt>Ngày giao</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatDate(detailItem.deliveryDate || detailItem.deliveredAt)}
+                      </dd>
+                      <dt>Người nhận</dt>
+                      <dd className="font-medium text-slate-900">
+                        {detailItem.receiverName || '—'}
+                      </dd>
+                      <dt>Phương tiện</dt>
+                      <dd className="font-medium text-slate-900">
+                        {detailItem.transportInfo || '—'}
+                      </dd>
+                    </dl>
+                  )}
+                  {canDeliver && (
+                    <div className="flex flex-wrap justify-end gap-2 pt-1">
+                      {detailItem.isDelivered ? (
+                        <>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-8 text-xs"
+                            onClick={() => openViewDeliveryModal(detailItem)}
+                          >
+                            Sửa phiếu giao
+                          </Button>
+                          <Button
+                            size="sm"
+                            disabled={actionLoading}
+                            className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
+                            onClick={() => handleRevertDeliveryOf(detailItem)}
+                          >
+                            <RotateCcw className="size-3.5" />
+                            Hủy xuất kho
+                          </Button>
+                        </>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
+                          onClick={() => openSingleDeliveryModal(detailItem.vehicleId)}
+                        >
+                          <Truck className="size-3.5" />
+                          Xuất kho
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                {/* Invoice */}
+                <div className="rounded-lg border border-slate-200 p-3 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-semibold text-slate-800 flex items-center gap-1.5">
+                      <FileCheck className="size-3.5 text-blue-600" />
+                      Hóa đơn nội bộ
+                    </span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[11px] ${
+                        detailItem.isInvoiced
+                          ? 'bg-blue-50 text-blue-700 border-blue-300'
+                          : 'bg-slate-100 text-slate-600 border-slate-200'
+                      }`}
+                    >
+                      {detailItem.isInvoiced ? 'Đã xuất HĐ' : 'Chưa xuất HĐ'}
+                    </Badge>
+                  </div>
+                  {detailItem.isInvoiced && (
+                    <dl className="grid grid-cols-[110px_1fr] gap-y-1 text-slate-600">
+                      <dt>Số hóa đơn</dt>
+                      <dd className="font-medium text-slate-900">
+                        {detailItem.invoiceNumber || '—'}
+                      </dd>
+                      <dt>Ngày xuất HĐ</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatDate(detailItem.invoiceDate || detailItem.invoicedAt)}
+                      </dd>
+                      <dt>Số tiền</dt>
+                      <dd className="font-medium text-slate-900">
+                        {formatVnd(detailItem.unitPrice)}
+                      </dd>
+                    </dl>
+                  )}
+                  {canInvoice && (
+                    <div className="flex justify-end pt-1">
+                      {detailItem.isInvoiced ? (
+                        <Button
+                          size="sm"
+                          disabled={actionLoading}
+                          className="h-8 text-xs bg-rose-600 hover:bg-rose-700 text-white gap-1.5"
+                          onClick={() => handleRevertInvoice(detailItem)}
+                        >
+                          <RotateCcw className="size-3.5" />
+                          Hủy hóa đơn
+                        </Button>
+                      ) : (
+                        <Button
+                          size="sm"
+                          className="h-8 text-xs bg-blue-700 hover:bg-blue-800 text-white gap-1.5"
+                          onClick={() => openSingleInvoiceModal(detailItem.vehicleId)}
+                        >
+                          <FileCheck className="size-3.5" />
+                          Xuất hóa đơn
+                        </Button>
+                      )}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+            <DialogFooter>
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => setDetailVehicleId(null)}
+              >
+                Đóng
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+        )}
 
         {/* View & Edit Delivery / Un-export Modal */}
         <Dialog

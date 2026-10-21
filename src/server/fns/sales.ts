@@ -23,6 +23,7 @@ import {
   createSalesOrder,
   recordDelivery,
   recordInvoice,
+  revertInvoice,
   updateDeliveryNote,
   revertDeliveryNote,
 } from '#/server/services/sales.ts'
@@ -117,6 +118,9 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         receiverName: deliveryNotes.receiverName,
         transportInfo: deliveryNotes.transportInfo,
         deliveryNoteContent: deliveryNotes.note,
+        invoiceId: invoices.id,
+        invoiceNumber: invoices.invoiceNumber,
+        invoiceDate: invoices.invoiceDate,
       })
       .from(salesOrderItems)
       .innerJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
@@ -124,6 +128,8 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
       .innerJoin(colors, eq(colors.id, vehicles.colorId))
       .leftJoin(deliveryNoteItems, eq(deliveryNoteItems.vehicleId, vehicles.id))
       .leftJoin(deliveryNotes, eq(deliveryNotes.id, deliveryNoteItems.deliveryNoteId))
+      .leftJoin(invoiceItems, eq(invoiceItems.vehicleId, vehicles.id))
+      .leftJoin(invoices, eq(invoices.id, invoiceItems.invoiceId))
       .where(eq(salesOrderItems.salesOrderId, data.id))
       .orderBy(salesOrderItems.id)
 
@@ -274,6 +280,19 @@ export const recordInvoiceFn = createServerFn({ method: 'POST' })
   .handler(async ({ data, context }) => {
     const ids = await recordInvoice(data, context.user.id)
     return { ids }
+  })
+
+export const revertInvoiceFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('sales.invoice')])
+  .validator(
+    z.object({
+      salesOrderId: z.number().int(),
+      vehicleId: z.number().int(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await revertInvoice(data)
+    return { ok: true }
   })
 
 export const cancelSalesOrderFn = createServerFn({ method: 'POST' })

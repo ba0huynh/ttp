@@ -42,8 +42,8 @@ export function SalesInvoiceBadge({
       {isFull
         ? 'Đã lập HĐ'
         : invoicedCount === 0
-          ? 'Chưa ra HĐ'
-          : 'Ra HĐ một phần'}
+          ? `Chưa ra HĐ 0/${vehicleCount}`
+          : `Đã lập HĐ ${invoicedCount}/${vehicleCount}`}
     </Badge>
   )
 }

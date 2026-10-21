@@ -1,4 +1,4 @@
-import { and, eq, inArray } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
@@ -232,6 +232,50 @@ export async function updateDeliveryNote(
         .set({ deliveredAt: input.deliveryDate })
         .where(inArray(vehicles.id, vehicleIds))
     }
+  })
+}
+
+/**
+ * Cancels the invoice of ONE vehicle (un-invoice): the vehicle goes back to
+ * invoiced stock and the receivable shrinks. An invoice holding several
+ * vehicles (created before invoices were split per vehicle) only loses this
+ * vehicle's line; an invoice left empty is deleted. Physical stock is untouched.
+ */
+export async function revertInvoice(input: {
+  salesOrderId: number
+  vehicleId: number
+}) {
+  await db.transaction(async (tx) => {
+    const [row] = await tx
+      .select({
+        itemId: invoiceItems.id,
+        invoiceId: invoiceItems.invoiceId,
+        amount: invoiceItems.amount,
+        orderId: invoices.salesOrderId,
+      })
+      .from(invoiceItems)
+      .innerJoin(invoices, eq(invoices.id, invoiceItems.invoiceId))
+      .where(eq(invoiceItems.vehicleId, input.vehicleId))
+      .limit(1)
+    if (!row || row.orderId !== input.salesOrderId)
+      throw new BusinessError('Xe này chưa có hóa đơn trong phiếu bán')
+
+    await tx.delete(invoiceItems).where(eq(invoiceItems.id, row.itemId))
+    const rest = await tx
+      .select({ id: invoiceItems.id })
+      .from(invoiceItems)
+      .where(eq(invoiceItems.invoiceId, row.invoiceId))
+    if (rest.length === 0)
+      await tx.delete(invoices).where(eq(invoices.id, row.invoiceId))
+    else
+      await tx
+        .update(invoices)
+        .set({ totalAmount: sql`${invoices.totalAmount} - ${num(row.amount)}` })
+        .where(eq(invoices.id, row.invoiceId))
+    await tx
+      .update(vehicles)
+      .set({ isInvoiced: false, invoicedAt: null })
+      .where(eq(vehicles.id, input.vehicleId))
   })
 }
 
