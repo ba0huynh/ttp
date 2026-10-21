@@ -8,7 +8,7 @@ import { seedUsers } from './user.seed.ts'
  * Seeds the minimum a new installation needs, and nothing else:
  *   1. company profile (`company_info`)
  *   2. default roles + the first administrator (`roles`, `users`)
- *   3. the VietQR bank catalogue (`banks`, needs internet access)
+ *   3. the five banks the client uses (`banks`, hardcoded, no internet needed)
  * Customers, suppliers, models, colours, loans, batches, sales and vouchers are
  * entered through the app.
  *
