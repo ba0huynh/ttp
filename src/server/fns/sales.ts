@@ -272,8 +272,8 @@ export const recordInvoiceFn = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data, context }) => {
-    const id = await recordInvoice(data, context.user.id)
-    return { id }
+    const ids = await recordInvoice(data, context.user.id)
+    return { ids }
   })
 
 export const cancelSalesOrderFn = createServerFn({ method: 'POST' })

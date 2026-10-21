@@ -1,3 +1,4 @@
+import { LoanSelect } from '#/components/batches/LoanSelect.tsx'
 import { SupplierSelect } from '#/components/batches/SupplierSelect.tsx'
 import { ModelSelect } from '#/components/batches/ModelSelect.tsx'
 import { ColorSelect } from '#/components/batches/ColorSelect.tsx'
@@ -118,15 +119,22 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
   const [supplierId, setSupplierId] = React.useState(
     detail.batch.supplierId ?? 0,
   )
+  const [loanContractId, setLoanContractId] = React.useState(
+    detail.batch.loanContractId ?? 0,
+  )
   const [importDate, setImportDate] = React.useState(detail.batch.importDate)
   const save = useBatchMutation(updateBatchInfoFn)
 
   return (
     <Section title="Thông Tin Lô">
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-end">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 items-end">
         <div className="space-y-1">
           <Label className="text-[11px]">Nhà cung cấp</Label>
           <SupplierSelect value={supplierId} onChange={setSupplierId} />
+        </div>
+        <div className="space-y-1">
+          <Label className="text-[11px]">Khế ước vay</Label>
+          <LoanSelect value={loanContractId} onChange={setLoanContractId} />
         </div>
         <div className="space-y-1">
           <Label className="text-[11px]">Ngày nhập *</Label>
@@ -149,6 +157,7 @@ function BatchInfoEditor({ detail }: { detail: BatchDetail }) {
               data: {
                 batchId: detail.batch.id,
                 supplierId,
+                loanContractId,
                 importDate,
               },
             })

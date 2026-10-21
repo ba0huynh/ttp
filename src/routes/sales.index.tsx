@@ -82,7 +82,7 @@ const SORT_LABELS: Record<SortKey, string> = {
   date: 'Ngày bán',
   customer: 'Khách hàng',
   branch: 'Điểm bán nhận xe',
-  amount: 'Tổng tiền',
+  amount: 'Tổng tiền đã VAT',
   vehicles: 'Số xe',
 }
 const SORT_VALUE: Record<
@@ -383,7 +383,7 @@ function SalesPage() {
                     {sortHead('date', 'Ngày Bán', '')}
                     {sortHead('customer', 'Khách Hàng', '')}
                     {sortHead('branch', 'Điểm Bán Nhận Xe', '')}
-                    {sortHead('amount', 'Tổng Tiền', 'text-right')}
+                    {sortHead('amount', 'Tổng Tiền Đã VAT', 'text-right')}
                     {sortHead('vehicles', 'Số Xe', 'text-center')}
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
                     <TableHead className="text-center">Kho Hóa Đơn</TableHead>
@@ -640,7 +640,7 @@ function SalesPage() {
             </div>
             <div className="sm:col-span-2">
               <PriceRangeFilter
-                label="Tổng tiền"
+                label="Tổng tiền đã VAT"
                 min={minAmount}
                 max={maxAmount}
                 onChange={(lo, hi) =>

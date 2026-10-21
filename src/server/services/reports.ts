@@ -6,6 +6,7 @@ import {
   batchExpenses,
   expenseTypes,
   colors,
+  companyBankAccounts,
   customers,
   importBatches,
   loanContracts,
@@ -167,6 +168,7 @@ function getInventoryTotals() {
   return db
     .select({
       total: sql<number>`count(*)`,
+      importValue: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
       physical: sql<number>`sum(case when ${vehicles.isDelivered} = 0 then 1 else 0 end)`,
       invoiced: sql<number>`sum(case when ${vehicles.isInvoiced} = 0 then 1 else 0 end)`,
       physicalValue: sql<string>`coalesce(sum(case when ${vehicles.isDelivered} = 0 then ${vehicles.costPrice} else 0 end),0)`,
@@ -198,6 +200,7 @@ function summarizeInventory(
 ) {
   return {
     total: num(totals?.total),
+    importValue: num(totals?.importValue),
     physical: num(totals?.physical),
     invoiced: num(totals?.invoiced),
     physicalValue: num(totals?.physicalValue),
@@ -343,7 +346,11 @@ export async function getReports(from: string, to: string) {
       principalPaid: sql<string>`coalesce((select sum(r.principal_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
     })
     .from(loanContracts)
-    .innerJoin(banks, eq(banks.id, loanContracts.bankId))
+    .leftJoin(
+      companyBankAccounts,
+      eq(companyBankAccounts.id, loanContracts.companyBankAccountId),
+    )
+    .leftJoin(banks, eq(banks.id, companyBankAccounts.bankId))
     .orderBy(asc(loanContracts.disbursementDate))
 
   // All independent: run them concurrently (each is a network round trip)

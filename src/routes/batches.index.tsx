@@ -68,11 +68,12 @@ import { requirePagePermission } from '#/lib/route-guard.ts'
 
 const NO_SUPPLIER = '__none__'
 
-const SORT_KEYS = ['date', 'supplier', 'vehicles', 'import', 'fee', 'cost'] as const
+const SORT_KEYS = ['date', 'supplier', 'loan', 'vehicles', 'import', 'fee', 'cost'] as const
 type SortKey = (typeof SORT_KEYS)[number]
 const SORT_LABELS: Record<SortKey, string> = {
   date: 'Ngày nhập',
   supplier: 'Nhà cung cấp',
+  loan: 'Khế ước vay',
   vehicles: 'Số xe',
   import: 'Tiền hàng',
   fee: 'Chi phí lô',
@@ -83,6 +84,7 @@ const SORT_VALUE: Record<
   (b: {
     importDate: string
     supplierName: string | null
+    loanContractNumber: string | null
     vehicleCount: number
     totalImport: number
     totalExpense: number
@@ -91,6 +93,7 @@ const SORT_VALUE: Record<
 > = {
   date: (b) => String(b.importDate),
   supplier: (b) => b.supplierName ?? '',
+  loan: (b) => b.loanContractNumber ?? '',
   vehicles: (b) => b.vehicleCount,
   import: (b) => b.totalImport,
   fee: (b) => b.totalExpense,
@@ -348,6 +351,7 @@ function BatchesPage() {
                   <TableRow className="text-xs bg-slate-50/70">
                     {sortHead('date', 'Ngày Nhập', '')}
                     {sortHead('supplier', 'Nhà Cung Cấp', '')}
+                    {sortHead('loan', 'Khế Ước Vay', '')}
                     {sortHead('vehicles', 'Số Xe', 'text-center')}
                     {sortHead('import', 'Tiền Hàng', 'text-right')}
                     {sortHead('fee', 'Chi Phí Lô', 'text-right')}
@@ -371,6 +375,19 @@ function BatchesPage() {
                           </SupplierLink>
                         ) : (
                           b.supplierName
+                        )}
+                      </TableCell>
+                      <TableCell className="font-medium">
+                        {b.loanContractId && b.loanContractNumber ? (
+                          <Link
+                            to="/loans/$loanId"
+                            params={{ loanId: String(b.loanContractId) }}
+                            className="text-purple-900 hover:underline"
+                          >
+                            {b.loanContractNumber}
+                          </Link>
+                        ) : (
+                          <span className="text-slate-400">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-center font-medium text-slate-900">

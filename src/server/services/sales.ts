@@ -325,6 +325,12 @@ export async function revertDeliveryNote(
 }
 
 /** INTERNAL INVOICING — only modifies is_invoiced flag (DOES NOT touch is_delivered) */
+/**
+ * Every vehicle gets its OWN invoice (one invoice row per vehicle), also when
+ * several vehicles are invoiced at once. A custom `invoiceNumber` is only
+ * meaningful for a single vehicle; for several vehicles numbers are generated.
+ * Returns the ids of the invoices created, in the order of `vehicleIds`.
+ */
 export async function recordInvoice(
   input: {
     salesOrderId: number
@@ -339,6 +345,10 @@ export async function recordInvoice(
   const priceMap = new Map(items.map((i) => [i.vehicleId, num(i.unitPrice)]))
   if (input.vehicleIds.length === 0)
     throw new BusinessError('Chưa chọn xe để xuất hóa đơn')
+  if (input.invoiceNumber?.trim() && input.vehicleIds.length > 1)
+    throw new BusinessError(
+      'Mỗi xe một hóa đơn riêng: chỉ nhập số hóa đơn khi xuất cho 1 xe',
+    )
   for (const id of input.vehicleIds)
     if (!priceMap.has(id))
       throw new BusinessError('Có xe không thuộc phiếu bán')
@@ -359,43 +369,41 @@ export async function recordInvoice(
           `Xe đã xuất hóa đơn: ${already.map((a) => a.c).join(', ')}`,
         )
 
-      const invoiceNumber =
-        input.invoiceNumber?.trim() ||
-        (await nextDocNumber(
-          tx,
-          invoices,
-          invoices.invoiceNumber,
-          'HD',
-          input.invoiceDate,
-        ))
-      const total = input.vehicleIds.reduce(
-        (s, id) => s + (priceMap.get(id) ?? 0),
-        0,
-      )
-      const [created] = await tx
-        .insert(invoices)
-        .values({
-          invoiceNumber,
-          salesOrderId: order.id,
-          invoiceDate: input.invoiceDate,
-          branchId: order.branchId,
-          totalAmount: total,
-          note: input.note ?? null,
-          createdBy: userId ?? null,
-        })
-        .$returningId()
-      await tx.insert(invoiceItems).values(
-        input.vehicleIds.map((vehicleId) => ({
-          invoiceId: created.id,
-          vehicleId,
-          amount: priceMap.get(vehicleId) ?? 0,
-        })),
-      )
+      const createdIds: number[] = []
+      for (const vehicleId of input.vehicleIds) {
+        // Inserted one by one so each generated number sees the previous one
+        const invoiceNumber =
+          input.invoiceNumber?.trim() ||
+          (await nextDocNumber(
+            tx,
+            invoices,
+            invoices.invoiceNumber,
+            'HD',
+            input.invoiceDate,
+          ))
+        const amount = priceMap.get(vehicleId) ?? 0
+        const [created] = await tx
+          .insert(invoices)
+          .values({
+            invoiceNumber,
+            salesOrderId: order.id,
+            invoiceDate: input.invoiceDate,
+            branchId: order.branchId,
+            totalAmount: amount,
+            note: input.note ?? null,
+            createdBy: userId ?? null,
+          })
+          .$returningId()
+        await tx
+          .insert(invoiceItems)
+          .values({ invoiceId: created.id, vehicleId, amount })
+        createdIds.push(created.id)
+      }
       await tx
         .update(vehicles)
         .set({ isInvoiced: true, invoicedAt: input.invoiceDate })
         .where(inArray(vehicles.id, input.vehicleIds))
-      return created.id
+      return createdIds
     })
   } catch (e) {
     if (isDuplicateError(e))

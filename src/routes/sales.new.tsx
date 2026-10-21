@@ -424,7 +424,7 @@ function NewSalesOrderPage() {
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
                 <div>
                   <CardTitle className="text-sm font-bold text-slate-800">
-                    Xe Chọn Bán ({selectedItems.length} xe &bull; Tổng:{' '}
+                    Xe Chọn Bán ({selectedItems.length} xe &bull; Tổng tiền đã VAT:{' '}
                     <span className="text-emerald-800">
                       {formatVnd(totalAmount)}
                     </span>
@@ -479,7 +479,7 @@ function NewSalesOrderPage() {
                           <TableHead>Dòng xe / Màu</TableHead>
                           <TableHead className="text-right">Giá Vốn</TableHead>
                           <TableHead className="text-right w-44">
-                            Đơn Giá Bán (VNĐ) *
+                            Đơn Giá Bán Đã VAT (VNĐ) *
                           </TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>

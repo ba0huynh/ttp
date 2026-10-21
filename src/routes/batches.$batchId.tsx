@@ -75,6 +75,19 @@ function BatchDetailPage() {
                 <strong>{data.batch.supplierName}</strong>
               )}{' '}
               · Ngày nhập: {formatDate(data.batch.importDate)}
+              {data.batch.loanContractId && data.batch.loanContractNumber && (
+                <>
+                  {' '}
+                  · Khế ước vay:{' '}
+                  <Link
+                    to="/loans/$loanId"
+                    params={{ loanId: String(data.batch.loanContractId) }}
+                    className="font-semibold hover:text-emerald-700 hover:underline"
+                  >
+                    {data.batch.loanContractNumber}
+                  </Link>
+                </>
+              )}
             </>
           }
         />

@@ -1,5 +1,6 @@
 import { Section } from '#/components/batches/BatchEditor.tsx'
 
+import { LoanSelect } from '#/components/batches/LoanSelect.tsx'
 import { SupplierSelect } from '#/components/batches/SupplierSelect.tsx'
 import { ModelSelect } from '#/components/batches/ModelSelect.tsx'
 import { ColorSelect } from '#/components/batches/ColorSelect.tsx'
@@ -107,6 +108,8 @@ function NewBatchPage() {
 
   // General batch information
   const [supplierId, setSupplierId] = React.useState<number>(0)
+  // 0 = not financed by a bank loan
+  const [loanContractId, setLoanContractId] = React.useState<number>(0)
   const [importDate, setImportDate] = React.useState(todayIso())
 
   // Selling price configuration
@@ -448,6 +451,7 @@ function NewBatchPage() {
       await createBatch.mutateAsync({
         data: {
           supplierId,
+          loanContractId,
           importDate,
           pricingBase,
           pricingMethod,
@@ -549,10 +553,14 @@ function NewBatchPage() {
 
         {/* 1. Batch information */}
         <Section title="Thông Tin Lô">
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
             <div className="space-y-1">
               <Label className="text-[11px]">Nhà cung cấp</Label>
               <SupplierSelect value={supplierId} onChange={setSupplierId} />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-[11px]">Khế ước vay</Label>
+              <LoanSelect value={loanContractId} onChange={setLoanContractId} />
             </div>
             <div className="space-y-1">
               <Label className="text-[11px]">Ngày nhập *</Label>

@@ -65,6 +65,7 @@ export async function fetchVietQrBanks() {
   // Keep only what the `banks` table stores; de-duplicate by name
   const byName = new Map<string, BankRow>()
   for (const b of json.data) {
+    if (!b.code || !ALLOWED_BANK_CODES.has(b.code.trim())) continue
     const key = normalizeBankName(b.name ?? '')
     if (key && !byName.has(key))
       byName.set(key, {
@@ -76,6 +77,18 @@ export async function fetchVietQrBanks() {
   }
   return [...byName.values()]
 }
+
+/**
+ * The client works with five banks only (ACB, Bản Việt, Vietcombank, HDBank,
+ * Eximbank), so only those are seeded. Matched by VietQR `code`.
+ */
+export const ALLOWED_BANK_CODES: ReadonlySet<string> = new Set([
+  'ACB',
+  'VCCB',
+  'VCB',
+  'HDB',
+  'EIB',
+])
 
 /**
  * Seeds the Vietnamese bank catalog straight from the VietQR API.

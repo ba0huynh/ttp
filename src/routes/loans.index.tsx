@@ -40,6 +40,7 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { DecimalInput } from '#/components/ui/decimal-input.tsx'
+import { BankAccountSelect } from '#/components/finance/BankAccountSelect.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
@@ -92,7 +93,7 @@ const SORT_VALUE: Record<
   SortKey,
   (l: {
     contractNumber: string
-    bankName: string
+    bankName: string | null
     interestRate: number
     termMonths: number
     principalPaid: number
@@ -100,7 +101,7 @@ const SORT_VALUE: Record<
   }) => number | string
 > = {
   contract: (l) => l.contractNumber,
-  bank: (l) => l.bankName,
+  bank: (l) => l.bankName ?? '',
   rate: (l) => l.interestRate,
   term: (l) => l.termMonths,
   paid: (l) => l.principalPaid,
@@ -176,7 +177,7 @@ function LoansPage() {
   const filtered = loans.filter((l) => {
     const q = contractSearch.trim().toLowerCase()
     if (q && !l.contractNumber.toLowerCase().includes(q)) return false
-    if (bank?.length && !bank.includes(l.bankId)) return false
+    if (bank?.length && (l.bankId === null || !bank.includes(l.bankId))) return false
     const date = String(l.disbursementDate).slice(0, 10)
     if (from && date < from) return false
     if (to && date > to) return false
@@ -248,11 +249,13 @@ function LoansPage() {
   const [contractNumber, setContractNumber] = React.useState(
     `KU-${todayIso().slice(0, 4)}-VCB-01`,
   )
-  const [bankId, setBankId] = React.useState<number>(master.banks[0]?.id ?? 1)
   const [principalAmount, setPrincipalAmount] = React.useState(2_000_000_000)
   const [interestRate, setInterestRate] = React.useState(8.5)
   const [disbursementDate, setDisbursementDate] = React.useState(todayIso())
   const [termMonths, setTermMonths] = React.useState(12)
+  const [companyBankAccountId, setCompanyBankAccountId] = React.useState<
+    number | null
+  >(null)
   // What the user typed so far, shown live under the form
   const estimate = estimateLoanTermInterest(
     principalAmount,
@@ -262,6 +265,7 @@ function LoansPage() {
   const savingLoan = saveLoan.isPending
 
   const { isBusy, setBusy } = useBusyKeys()
+
 
   const handleDelete = async (l: { id: number; contractNumber: string }) => {
     // Used loans show what uses them; unused ones ask for confirmation
@@ -291,37 +295,42 @@ function LoansPage() {
   const openNewLoan = () => {
     setEditId(null)
     setContractNumber(`KU-${todayIso().slice(0, 4)}-VCB-01`)
-    setBankId(master.banks[0]?.id ?? 1)
     setPrincipalAmount(2_000_000_000)
     setInterestRate(8.5)
     setDisbursementDate(todayIso())
     setTermMonths(12)
+    setCompanyBankAccountId(master.bankAccounts.find((a) => a.isActive)?.id ?? null)
     setNewLoanOpen(true)
   }
 
   const openEditLoan = (l: (typeof loans)[number]) => {
     setEditId(l.id)
     setContractNumber(l.contractNumber)
-    setBankId(l.bankId)
     setPrincipalAmount(l.principalAmount)
     setInterestRate(l.interestRate)
     setDisbursementDate(l.disbursementDate)
     setTermMonths(l.termMonths)
+    setCompanyBankAccountId(l.companyBankAccountId ?? null)
     setNewLoanOpen(true)
   }
 
   const handleCreateLoan = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (companyBankAccountId === null)
+      return showErrorDialog(
+        new Error('Vui lòng chọn số tài khoản'),
+        'Lỗi khi lưu khế ước vay',
+      )
     try {
       await saveLoan.mutateAsync({
         data: {
           id: editId ?? undefined,
           contractNumber,
-          bankId,
           principalAmount,
           interestRate,
           disbursementDate,
           termMonths,
+          companyBankAccountId,
         },
       })
       setNewLoanOpen(false)
@@ -390,7 +399,7 @@ function LoansPage() {
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
                     {sortHead('contract', 'Số Khế Ước', '')}
-                    {sortHead('bank', 'Ngân Hàng', '')}
+                    {sortHead('bank', 'Số Tài Khoản', '')}
                     {sortHead('rate', 'Lãi Suất', 'text-center')}
                     {sortHead('term', 'Kỳ Hạn', 'text-center')}
                     {sortHead('paid', 'Gốc Đã Trả', 'text-right')}
@@ -411,9 +420,13 @@ function LoansPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
-                        <BankLabel image={l.bankImage} name={l.bankName}>
-                          {l.bankName}
-                        </BankLabel>
+                        {l.accountNumber ? (
+                          <BankLabel image={l.bankImage} name={l.bankName}>
+                            {l.bankCode || l.bankName} - {l.accountNumber}
+                          </BankLabel>
+                        ) : (
+                          '—'
+                        )}
                       </TableCell>
                       <TableCell className="text-center">
                         <Badge
@@ -618,27 +631,11 @@ function LoansPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">
-                  Ngân Hàng Thương Mại *
-                </Label>
-                <SearchSelect
-                  className="h-11 w-full text-sm rounded-lg"
-                  value={String(bankId)}
-                  onValueChange={(val) => setBankId(Number(val))}
-                >
-                  {master.banks.map((b) => (
-                    <SearchSelectItem
-                      key={b.id}
-                      value={String(b.id)}
-                      keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
-                     
-                    >
-                      <BankLabel image={b.image} name={b.name}>
-                        {b.name}
-                      </BankLabel>
-                    </SearchSelectItem>
-                  ))}
-                </SearchSelect>
+                <Label className="text-xs font-semibold">Số Tài Khoản *</Label>
+                <BankAccountSelect
+                  value={companyBankAccountId}
+                  onChange={setCompanyBankAccountId}
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-2">

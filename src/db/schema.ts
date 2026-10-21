@@ -205,9 +205,6 @@ export const posBranches = mysqlTable(
 export const loanContracts = mysqlTable('loan_contracts', {
   id: int('id').primaryKey().autoincrement(),
   contractNumber: varchar('contract_number', { length: 50 }).notNull().unique(),
-  bankId: int('bank_id')
-    .notNull()
-    .references(() => banks.id),
   principalAmount: money('principal_amount').notNull(),
   /** Annual interest rate %, declining balance basis, 365 days */
   interestRate: decimal('interest_rate', {
@@ -218,8 +215,16 @@ export const loanContracts = mysqlTable('loan_contracts', {
   disbursementDate: date('disbursement_date', { mode: 'string' }).notNull(),
   /** Loan term (kỳ hạn) in months, 1-200 */
   termMonths: int('term_months').default(12).notNull(),
+  /** Company bank account that records the loan (optional) */
+  companyBankAccountId: int('company_bank_account_id'),
   ...timestamps,
-})
+}, (t) => [
+  foreignKey({
+    name: 'loan_contracts_bank_account_fk',
+    columns: [t.companyBankAccountId],
+    foreignColumns: [companyBankAccounts.id],
+  }),
+])
 
 export const loanRepayments = mysqlTable(
   'loan_repayments',
@@ -260,6 +265,10 @@ export const importBatches = mysqlTable(
     id: int('id').primaryKey().autoincrement(),
     /** Optional: a batch may be entered before its supplier is known */
     supplierId: int('supplier_id').references(() => suppliers.id),
+    /** Optional: the bank loan contract financing this batch (a batch may be paid without a loan) */
+    loanContractId: int('loan_contract_id').references(() => loanContracts.id, {
+      onDelete: 'set null',
+    }),
     importDate: date('import_date', { mode: 'string' }).notNull(),
     /** Batch-wide wholesale pricing configuration */
     pricingBase: mysqlEnum('pricing_base', PRICING_BASES)
@@ -273,7 +282,10 @@ export const importBatches = mysqlTable(
     createdBy: int('created_by').references(() => users.id),
     ...timestamps,
   },
-  (t) => [index('import_batches_supplier_idx').on(t.supplierId)],
+  (t) => [
+    index('import_batches_supplier_idx').on(t.supplierId),
+    index('import_batches_loan_idx').on(t.loanContractId),
+  ],
 )
 
 /** Catalogue of batch expense categories (import tax, freight, ...) */
@@ -594,7 +606,6 @@ export const sessionsRelations = relations(sessions, ({ one }) => ({
 
 export const banksRelations = relations(banks, ({ many }) => ({
   accounts: many(companyBankAccounts),
-  loans: many(loanContracts),
 }))
 
 export const companyBankAccountsRelations = relations(
@@ -623,9 +634,9 @@ export const posBranchesRelations = relations(posBranches, ({ one }) => ({
 export const loanContractsRelations = relations(
   loanContracts,
   ({ one, many }) => ({
-    bank: one(banks, {
-      fields: [loanContracts.bankId],
-      references: [banks.id],
+    account: one(companyBankAccounts, {
+      fields: [loanContracts.companyBankAccountId],
+      references: [companyBankAccounts.id],
     }),
     repayments: many(loanRepayments),
     batches: many(importBatches),

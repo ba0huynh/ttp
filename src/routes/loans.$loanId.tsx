@@ -502,6 +502,12 @@ function LoanDetailPage() {
           title={`Khế ước ${loan.contractNumber}`}
           description={
             <>
+              {loan.companyBankAccountId && (
+                <>
+                  Số tài khoản:{' '}
+                  <strong>{accountLabel(loan.companyBankAccountId)}</strong> ·{' '}
+                </>
+              )}
               Lãi suất: <strong>{loan.interestRate}%/năm</strong> · Giải ngân:{' '}
               {formatDate(loan.disbursementDate)} · Kỳ hạn:{' '}
               <strong>{loan.termMonths} tháng</strong> (đáo hạn dự kiến{' '}

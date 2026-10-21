@@ -422,6 +422,15 @@ function SalesOrderPage() {
     setInvoiceDialogOpen(true)
   }
 
+  // One vehicle -> one invoice, so a single row can be invoiced on its own
+  const openSingleInvoiceModal = (vehicleId: number) => {
+    setSelectedVehicles([vehicleId])
+    setInvoiceDate(todayIso())
+    setInvoiceNumber('')
+    setActionError(null)
+    setInvoiceDialogOpen(true)
+  }
+
   const handleDeliverySubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (selectedVehicles.length === 0) return
@@ -452,7 +461,9 @@ function SalesOrderPage() {
           salesOrderId: order.id,
           vehicleIds: selectedVehicles,
           invoiceDate,
-          invoiceNumber: invoiceNumber || undefined,
+          // A custom number only applies when a single vehicle is invoiced
+          invoiceNumber:
+            selectedVehicles.length === 1 ? invoiceNumber || undefined : undefined,
         },
       })
       setInvoiceDialogOpen(false)
@@ -683,10 +694,10 @@ function SalesOrderPage() {
                     )}
                     <TableHead>Số Khung</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
-                    <TableHead className="text-right">Đơn Giá Bán</TableHead>
+                    <TableHead className="text-right">Đơn Giá Bán Đã VAT</TableHead>
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
                     {!selectMode && (
-                      <TableHead className="w-28 text-center">Thao tác</TableHead>
+                      <TableHead className="w-56 text-center">Thao tác</TableHead>
                     )}
                   </TableRow>
                 </TableHeader>
@@ -756,6 +767,7 @@ function SalesOrderPage() {
                         </TableCell>
                         {!selectMode && (
                           <TableCell className="text-center whitespace-nowrap">
+                            <div className="inline-flex items-center justify-center gap-1.5">
                             {canDeliver && !i.isDelivered ? (
                               <Button
                                 size="sm"
@@ -778,9 +790,31 @@ function SalesOrderPage() {
                                 <Eye className="size-3.5 text-blue-600" />
                                 Xem
                               </Button>
-                            ) : (
+                            ) : null}
+                            {canInvoice && !i.isInvoiced && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-blue-300 text-blue-800 hover:bg-blue-50 gap-1.5 font-medium px-2.5"
+                                onClick={() => openSingleInvoiceModal(i.vehicleId)}
+                                title={`Xuất hóa đơn riêng cho xe ${i.chassisNumber}`}
+                              >
+                                <FileCheck className="size-3 text-blue-600" />
+                                Xuất HĐ
+                              </Button>
+                            )}
+                            {i.isInvoiced && (
+                              <Badge
+                                variant="outline"
+                                className="bg-blue-50 text-blue-700 border-blue-300 text-[11px]"
+                              >
+                                Đã xuất HĐ
+                              </Badge>
+                            )}
+                            {!(canDeliver || canInvoice || i.isInvoiced) && (
                               <span className="text-slate-400 text-xs">—</span>
                             )}
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
@@ -1115,7 +1149,12 @@ function SalesOrderPage() {
                   Số Hóa Đơn (Tự sinh nếu để trống)
                 </Label>
                 <Input
-                  placeholder="Ví dụ: HD-260120-001"
+                  placeholder={
+                    selectedVehicles.length > 1
+                      ? 'Mỗi xe một hóa đơn: số hóa đơn tự sinh'
+                      : 'Ví dụ: HD-260120-001'
+                  }
+                  disabled={selectedVehicles.length > 1}
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   className="h-11 text-sm px-4 rounded-lg"
@@ -1125,6 +1164,11 @@ function SalesOrderPage() {
               <div className="text-xs font-semibold text-slate-700 pt-2">
                 Số lượng xe lập hóa đơn:{' '}
                 <strong>{selectedVehicles.length} chiếc</strong>
+                {selectedVehicles.length > 1 && (
+                  <span className="block font-normal text-slate-500 mt-0.5">
+                    Mỗi xe được xuất thành một hóa đơn riêng.
+                  </span>
+                )}
               </div>
 
               <DialogFooter className="pt-2">

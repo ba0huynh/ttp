@@ -10,6 +10,7 @@ import {
   colors,
   expenseTypes,
   importBatches,
+  loanContracts,
   motorcycleModels,
   salesOrderItems,
   suppliers,
@@ -43,12 +44,18 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
         note: importBatches.note,
         supplierId: importBatches.supplierId,
         supplierName: suppliers.name,
+        loanContractId: importBatches.loanContractId,
+        loanContractNumber: loanContracts.contractNumber,
         vehicleCount: sql<number>`count(distinct ${vehicles.id})`,
         totalImport: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
         totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
       })
       .from(importBatches)
       .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+      .leftJoin(
+        loanContracts,
+        eq(loanContracts.id, importBatches.loanContractId),
+      )
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
       .groupBy(
         importBatches.id,
@@ -59,6 +66,8 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
         importBatches.note,
         importBatches.supplierId,
         suppliers.name,
+        importBatches.loanContractId,
+        loanContracts.contractNumber,
       )
       .orderBy(desc(importBatches.importDate), desc(importBatches.id))
 
@@ -115,6 +124,8 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
         id: importBatches.id,
         supplierId: importBatches.supplierId,
         supplierName: suppliers.name,
+        loanContractId: importBatches.loanContractId,
+        loanContractNumber: loanContracts.contractNumber,
         importDate: importBatches.importDate,
         pricingBase: importBatches.pricingBase,
         pricingMethod: importBatches.pricingMethod,
@@ -123,6 +134,10 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
       })
       .from(importBatches)
       .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
+      .leftJoin(
+        loanContracts,
+        eq(loanContracts.id, importBatches.loanContractId),
+      )
       .where(eq(importBatches.id, data.id))
 
     if (!batch) throw new Error('Không tìm thấy lô nhập')
@@ -189,6 +204,8 @@ export const createBatchFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       supplierId: z.number().int(),
+      /** 0 = batch not financed by a loan */
+      loanContractId: z.number().int().min(0).optional(),
       importDate: z.string().min(10),
       pricingBase: z.enum(PRICING_BASES),
       pricingMethod: z.enum(PRICING_METHODS),
@@ -335,13 +352,14 @@ export const updateBatchPricingFn = createServerFn({ method: 'POST' })
     return { ok: true }
   })
 
-/** Edit a batch's supplier and import date */
+/** Edit a batch's supplier, financing loan and import date */
 export const updateBatchInfoFn = createServerFn({ method: 'POST' })
   .middleware([requirePermission('batches.manage')])
   .validator(
     z.object({
       batchId: z.number().int(),
       supplierId: z.number().int().min(0),
+      loanContractId: z.number().int().min(0),
       importDate: z.string().min(10),
     }),
   )

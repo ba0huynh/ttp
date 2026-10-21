@@ -1703,7 +1703,18 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Fix**:
   - Removed `font-mono text-[11px]` from `src/routes/reconcile.tsx` table cells (`formatDate`, `formatVnd`, account labels) to harmonize 100% with `/finance`, `/sales`, and `/inventory`.
 
-_(Next Agent: Append Lesson 153, 154,... above this line upon completing tasks)_
+### Lesson 153: Client Update Round — Loan Account Number, Batch Loan Link, Per-Vehicle Invoices, VAT Labels, Import Total, Five Banks
+
+- **Loan account**: `loan_contracts.company_bank_account_id` (nullable FK to `company_bank_accounts`, migration `0041`; `0039` had first added a free-text `account_number`, which `0041` drops — the client wanted a select of the COMPANY's own accounts, the same `BankAccountSelect` used when repaying). `loan_contracts.bank_id` is gone (migration `0042`, backfilled from an account of the same bank): the bank is now only derived through the account (`listLoansFn` left-joins `company_bank_accounts` → `banks`, so `bankName`/`bankImage`/`bankId` can be `null`). The account is required in the form and the bank dropdown was removed. Shown in the create/edit loan dialog, the `/loans` list ("Số Tài Khoản") and the `/loans/$loanId` header.
+- **Batch ↔ loan link is back (nullable)**: `import_batches.loan_contract_id` (FK `ON DELETE SET NULL`, index `import_batches_loan_idx`) was dropped in `0035` and is re-added in `0039` because a batch may be paid without a loan. `LoanSelect` (`src/components/batches/LoanSelect.tsx`, `0` = "Không vay") is used in `/batches/new` and in the batch info editor (`BatchEditor`); `createBatchFn` / `updateBatchInfoFn` take `loanContractId`, `getBatchDetailFn` returns `loanContractId` + `loanContractNumber` (shown as a link in the `/batches/$batchId` header).
+- **`/inventory`**: a leading `ID` column (`vehicles.id`).
+- **VAT wording**: the prices typed in `/sales/new` are already VAT-inclusive, so labels read "Đơn Giá Bán Đã VAT" (`/sales/new`, `/sales/$orderId`) and "Tổng Tiền Đã VAT" (`/sales` list + filter, dashboard recent orders). Labels only; no VAT is calculated.
+- **One invoice per vehicle**: `recordInvoice` (`src/server/services/sales.ts`) now inserts one `invoices` row + one `invoice_items` row per vehicle, also when several vehicles are invoiced at once (`recordInvoiceFn` returns `{ ids }`). A custom invoice number is only accepted for a single vehicle (server rejects it for several; the dialog disables the box). `/sales/$orderId` has a per-row `Xuất HĐ` button next to `Giao xe` and an `Đã xuất HĐ` badge; the top-level `Xuất hóa đơn nội bộ` button invoices every uninvoiced vehicle as separate invoices. This supersedes the "invoicing retains only the top-level batch action" part of Lesson 135.
+- **Dashboard**: new `Tổng giá nhập` stat card = `sum(vehicles.import_price)` (`getInventorySummary().importValue`).
+- **Five banks only**: ACB, Bản Việt (`VCCB`), Vietcombank (`VCB`), HDBank (`HDB`), Eximbank (`EIB`). `seedBanks()` filters the VietQR catalogue by `ALLOWED_BANK_CODES`; migration `0040_keep_five_banks` deletes every other bank that no loan contract or company bank account uses (its down is a no-op: re-run `npm run seed` to bring banks back). Gotcha: `BVB` is Bảo Việt, not Bản Việt.
+- **Deploy**: run `npm run migration:run` (applies `0039`–`0042`).
+
+_(Next Agent: Append Lesson 154, 155,... above this line upon completing tasks)_
 
 
 

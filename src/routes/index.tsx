@@ -5,6 +5,7 @@ import {
   Banknote,
   FileText,
   Landmark,
+  PackageCheck,
   Warehouse,
 } from 'lucide-react'
 
@@ -83,7 +84,20 @@ function DashboardPage() {
           description="Dòng tiền, tồn kho 2 lớp (thực tế và hóa đơn) và dư nợ khế ước vay — cập nhật theo thời gian thực."
         />
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-5 gap-4">
+          <StatCard
+            label="Tổng giá nhập"
+            icon={PackageCheck}
+            tone="slate"
+            value={formatVnd(inv.importValue)}
+            hint={
+              <>
+                Tổng giá nhập của{' '}
+                <strong className="text-slate-700">{inv.total}</strong> xe đã
+                nhập
+              </>
+            }
+          />
           <StatCard
             label="Tồn kho thực tế"
             icon={Warehouse}
@@ -251,7 +265,7 @@ function DashboardPage() {
                     <TableRow className="text-xs bg-slate-50/50">
                       <TableHead>Ngày Bán</TableHead>
                       <TableHead>Khách Hàng & Điểm Bán</TableHead>
-                      <TableHead className="text-right">Tổng Tiền</TableHead>
+                      <TableHead className="text-right">Tổng Tiền Đã VAT</TableHead>
                       <TableHead className="text-center">Kho Thực Tế</TableHead>
                       <TableHead className="text-center">Kho Hóa Đơn</TableHead>
                     </TableRow>
