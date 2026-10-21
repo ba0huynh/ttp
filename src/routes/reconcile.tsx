@@ -513,7 +513,7 @@ function ReconcilePage() {
                             <span className="font-medium text-slate-800">
                               {bankLabel}
                             </span>
-                            <span className="text-slate-400 font-mono text-xs">
+                            <span className="text-slate-400 text-xs">
                               ({acc.accountNumber})
                             </span>
                           </BankLabel>
@@ -681,7 +681,7 @@ function ReconcilePage() {
                     const isMatched = l.status === 'matched'
                     return (
                       <TableRow key={l.id} className="hover:bg-slate-50/80">
-                        <TableCell className="text-slate-500 font-mono text-[11px]">
+                        <TableCell className="text-slate-500">
                           {formatDate(l.transactionDate)}
                         </TableCell>
                         <TableCell className="max-w-[176px]">
@@ -698,7 +698,7 @@ function ReconcilePage() {
                               <span className="font-semibold text-slate-900 leading-tight block truncate">
                                 {l.bankShortName || l.bankCode || l.bankName}
                               </span>
-                              <span className="text-[10px] text-slate-500 font-mono leading-tight block">
+                              <span className="text-[10px] text-slate-500 leading-tight block">
                                 • {l.accountNumber.slice(-4)}
                               </span>
                             </div>
@@ -710,10 +710,10 @@ function ReconcilePage() {
                         >
                           <div className="truncate">{l.description}</div>
                         </TableCell>
-                        <TableCell className="text-right font-medium text-rose-900 font-mono">
+                        <TableCell className="text-right font-medium text-rose-900">
                           {l.debit > 0 ? formatVnd(l.debit) : '—'}
                         </TableCell>
-                        <TableCell className="text-right font-medium text-emerald-900 font-mono">
+                        <TableCell className="text-right font-medium text-emerald-900">
                           {l.credit > 0 ? formatVnd(l.credit) : '—'}
                         </TableCell>
                           <TableCell className="text-center">
@@ -870,7 +870,7 @@ function ReconcilePage() {
                         <div className="flex items-center justify-between w-full gap-2">
                           <BankLabel image={acc.bankImage} name={bankLabel}>
                             <span>{bankLabel}</span>
-                            <span className="text-slate-400 font-mono text-xs">
+                            <span className="text-slate-400 text-xs">
                               ({acc.accountNumber})
                             </span>
                           </BankLabel>

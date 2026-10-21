@@ -1692,7 +1692,18 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - Changed `<TableHead>Mã Phiếu</TableHead>` to `<TableHead>Ngày Bán</TableHead>`.
     - Enhanced the date link target from generic `/sales` to the specific sales order detail page `/sales/$orderId` (`params={{ orderId: String(o.id) }}`).
 
-_(Next Agent: Append Lesson 152, 153,... above this line upon completing tasks)_
+### Lesson 152: Table Typography Consistency — Standard Sans (`Inter`) vs. `font-mono`
+
+- **Context & Symptom**:
+  - In `src/routes/reconcile.tsx`, dates (`formatDate`), currency amounts (`formatVnd`), and bank account numbers were explicitly tagged with `font-mono` and custom small font sizes (`text-[11px]`).
+  - On client systems (especially Windows), `font-mono` fell back to jagged, pixelated monospaced fonts that visually clashed with all other table screens (`/sales`, `/finance`, `/loans`, `/inventory`).
+- **Standard**:
+  - The design system in `src/styles.css` already enforces `table, .tabular { font-variant-numeric: tabular-nums; }` across all data tables.
+  - Numbers, dates, and amounts in tables must use the standard sans-serif typeface (`Inter`) via `className="text-slate-500"` (for dates) and `className="text-right font-medium text-slate-900"` (or `text-emerald-900` / `text-rose-900` for money flows), preserving crisp tabular alignment without unnatural monospaced glyphs.
+- **Fix**:
+  - Removed `font-mono text-[11px]` from `src/routes/reconcile.tsx` table cells (`formatDate`, `formatVnd`, account labels) to harmonize 100% with `/finance`, `/sales`, and `/inventory`.
+
+_(Next Agent: Append Lesson 153, 154,... above this line upon completing tasks)_
 
 
 
