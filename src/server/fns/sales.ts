@@ -24,6 +24,7 @@ import {
   recordDelivery,
   recordInvoice,
   revertInvoice,
+  updateInvoice,
   updateDeliveryNote,
   revertDeliveryNote,
 } from '#/server/services/sales.ts'
@@ -292,6 +293,21 @@ export const revertInvoiceFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     await revertInvoice(data)
+    return { ok: true }
+  })
+
+export const updateInvoiceFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('sales.invoice')])
+  .validator(
+    z.object({
+      salesOrderId: z.number().int(),
+      vehicleId: z.number().int(),
+      invoiceNumber: z.string().trim().min(1, 'Nhập số hóa đơn'),
+      invoiceDate: z.string().min(10, 'Ngày xuất hóa đơn không hợp lệ'),
+    }),
+  )
+  .handler(async ({ data }) => {
+    await updateInvoice(data)
     return { ok: true }
   })
 

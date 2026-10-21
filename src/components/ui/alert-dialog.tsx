@@ -47,13 +47,16 @@ function AlertDialogOverlay({
 function AlertDialogContent({
   className,
   size = 'default',
+  onOverlayClick,
   ...props
 }: React.ComponentProps<typeof AlertDialogPrimitive.Content> & {
   size?: 'default' | 'sm'
+  /** Radix alert dialogs ignore outside clicks; this lets a caller close on them */
+  onOverlayClick?: () => void
 }) {
   return (
     <AlertDialogPortal>
-      <AlertDialogOverlay />
+      <AlertDialogOverlay onClick={onOverlayClick} />
       <AlertDialogPrimitive.Content
         data-slot="alert-dialog-content"
         data-size={size}

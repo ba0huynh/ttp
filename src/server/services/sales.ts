@@ -279,6 +279,51 @@ export async function revertInvoice(input: {
   })
 }
 
+/** Edits the number / date of the invoice that holds a vehicle */
+export async function updateInvoice(input: {
+  salesOrderId: number
+  vehicleId: number
+  invoiceNumber: string
+  invoiceDate: string
+}) {
+  try {
+    await db.transaction(async (tx) => {
+      const [row] = await tx
+        .select({ invoiceId: invoices.id, orderId: invoices.salesOrderId })
+        .from(invoiceItems)
+        .innerJoin(invoices, eq(invoices.id, invoiceItems.invoiceId))
+        .where(eq(invoiceItems.vehicleId, input.vehicleId))
+        .limit(1)
+      if (!row || row.orderId !== input.salesOrderId)
+        throw new BusinessError('Xe này chưa có hóa đơn trong phiếu bán')
+      await tx
+        .update(invoices)
+        .set({
+          invoiceNumber: input.invoiceNumber,
+          invoiceDate: input.invoiceDate,
+        })
+        .where(eq(invoices.id, row.invoiceId))
+      // The invoiced-stock date follows the invoice date
+      const lines = await tx
+        .select({ vehicleId: invoiceItems.vehicleId })
+        .from(invoiceItems)
+        .where(eq(invoiceItems.invoiceId, row.invoiceId))
+      await tx
+        .update(vehicles)
+        .set({ invoicedAt: input.invoiceDate })
+        .where(
+          inArray(
+            vehicles.id,
+            lines.map((l) => l.vehicleId),
+          ),
+        )
+    })
+  } catch (e) {
+    if (isDuplicateError(e)) throw new BusinessError('Số hóa đơn đã tồn tại')
+    throw e
+  }
+}
+
 /** Reverts delivery (un-exports), returning vehicles back to physical inventory */
 export async function revertDeliveryNote(
   input: {

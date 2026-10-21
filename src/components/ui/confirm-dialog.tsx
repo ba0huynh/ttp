@@ -255,7 +255,10 @@ export function ConfirmDialogHost() {
 
   return (
     <AlertDialog open={open} onOpenChange={handleOpenChange}>
-      <AlertDialogContent className="max-h-[85vh] max-w-md overflow-y-auto">
+      <AlertDialogContent
+        className="max-h-[85vh] max-w-md overflow-y-auto"
+        onOverlayClick={() => handleOpenChange(false)}
+      >
         <AlertDialogHeader>
           <div className="flex items-center gap-2.5">
             {current?.destructive ? (

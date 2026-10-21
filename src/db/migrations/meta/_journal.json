@@ -302,6 +302,13 @@
       "when": 1792800000000,
       "tag": "0042_drop_loan_bank",
       "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "5",
+      "when": 1792900000000,
+      "tag": "0043_prune_banks_by_code",
+      "breakpoints": true
     }
   ]
 }

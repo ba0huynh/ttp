@@ -80,6 +80,7 @@ import {
   updateDeliveryNoteFn,
   revertDeliveryNoteFn,
   revertInvoiceFn,
+  updateInvoiceFn,
 } from '#/server/fns/sales.ts'
 
 export const Route = createFileRoute('/sales/$orderId')({
@@ -277,6 +278,10 @@ function SalesOrderPage() {
     mutationFn: updateDeliveryNoteFn,
     onSuccess: onSettled,
   })
+  const updateInvoiceMutation = useMutation({
+    mutationFn: updateInvoiceFn,
+    onSuccess: onSettled,
+  })
   const revertInvoiceMutation = useMutation({
     mutationFn: revertInvoiceFn,
     onSuccess: onSettled,
@@ -288,12 +293,15 @@ function SalesOrderPage() {
 
   type OrderItem = (typeof items)[number]
   const [deliveryDialogOpen, setDeliveryDialogOpen] = React.useState(false)
-  const [viewDeliveryDialogOpen, setViewDeliveryDialogOpen] = React.useState(false)
-  const [activeDeliveryItem, setActiveDeliveryItem] = React.useState<OrderItem | null>(null)
-  const [editDeliveryDate, setEditDeliveryDate] = React.useState(todayIso())
-  const [editReceiverName, setEditReceiverName] = React.useState('')
-  const [editTransportInfo, setEditTransportInfo] = React.useState('')
-  const [editDeliveryError, setEditDeliveryError] = React.useState<string | null>(null)
+  // Editable delivery fields of the vehicle detail dialog
+  const [dDate, setDDate] = React.useState(todayIso())
+  const [dReceiver, setDReceiver] = React.useState('')
+  const [dTransport, setDTransport] = React.useState('')
+  const [detailError, setDetailError] = React.useState<string | null>(null)
+  // Editable invoice fields of the same dialog
+  const [iNumber, setINumber] = React.useState('')
+  const [iDate, setIDate] = React.useState(todayIso())
+  const [invoiceError, setInvoiceError] = React.useState<string | null>(null)
 
   const [invoiceDialogOpen, setInvoiceDialogOpen] = React.useState(false)
   const [selectedVehicles, setSelectedVehicles] = React.useState<number[]>([])
@@ -307,6 +315,7 @@ function SalesOrderPage() {
     deliveryMutation.isPending ||
     invoiceMutation.isPending ||
     updateDeliveryMutation.isPending ||
+    updateInvoiceMutation.isPending ||
     revertDeliveryMutation.isPending ||
     revertInvoiceMutation.isPending
 
@@ -335,77 +344,22 @@ function SalesOrderPage() {
     setDeliveryDialogOpen(true)
   }
 
-  const openViewDeliveryModal = (item: OrderItem) => {
-    setActiveDeliveryItem(item)
-    setEditDeliveryDate(
-      item.deliveryDate ||
-        (item.deliveredAt ? String(item.deliveredAt).slice(0, 10) : todayIso()),
-    )
-    setEditReceiverName(item.receiverName || '')
-    setEditTransportInfo(item.transportInfo || '')
-    setEditDeliveryError(null)
-    setViewDeliveryDialogOpen(true)
-  }
-
-  const handleUpdateDeliverySubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!activeDeliveryItem) return
-    if (!activeDeliveryItem.deliveryNoteId) {
-      setEditDeliveryError('Không tìm thấy thông tin phiếu giao của xe này để cập nhật')
-      return
-    }
-    setEditDeliveryError(null)
+  const handleSaveDeliveryEdit = async (v: OrderItem) => {
+    if (!v.deliveryNoteId) return
+    setDetailError(null)
     try {
       await updateDeliveryMutation.mutateAsync({
         data: {
           salesOrderId: order.id,
-          deliveryNoteId: activeDeliveryItem.deliveryNoteId,
-          deliveryDate: editDeliveryDate,
-          receiverName: editReceiverName || null,
-          transportInfo: editTransportInfo || null,
-          note: activeDeliveryItem.deliveryNoteContent || null,
+          deliveryNoteId: v.deliveryNoteId,
+          deliveryDate: dDate,
+          receiverName: dReceiver || null,
+          transportInfo: dTransport || null,
+          note: v.deliveryNoteContent || null,
         },
       })
-      setViewDeliveryDialogOpen(false)
     } catch (err: unknown) {
-      setEditDeliveryError(formatErrorMessage(err, 'Lỗi khi cập nhật phiếu giao'))
-    }
-  }
-
-  const handleRevertDelivery = async (revertAll: boolean = false) => {
-    if (!activeDeliveryItem) return
-    const noteId = activeDeliveryItem.deliveryNoteId
-    const relatedItems = noteId
-      ? items.filter((it) => it.deliveryNoteId === noteId)
-      : [activeDeliveryItem]
-    const vehicleCount = relatedItems.length
-
-    const message =
-      revertAll || vehicleCount <= 1
-        ? `Xác nhận hủy xuất kho${vehicleCount > 1 ? ` toàn bộ phiếu giao (${vehicleCount} xe)` : ` cho xe ${activeDeliveryItem.chassisNumber}`}? Xe sẽ được hoàn trả về trạng thái tồn kho thực tế.`
-        : `Xác nhận hủy xuất kho cho xe ${activeDeliveryItem.chassisNumber}? Xe sẽ được hoàn trả về trạng thái tồn kho thực tế.`
-
-    const confirmed = await confirmDialog({
-      title: 'Xác nhận hủy xuất kho',
-      description: message,
-      confirmLabel: 'Hủy xuất kho',
-      destructive: true,
-    })
-    if (!confirmed) return
-
-    setEditDeliveryError(null)
-    try {
-      await revertDeliveryMutation.mutateAsync({
-        data: {
-          salesOrderId: order.id,
-          deliveryNoteId: noteId ?? undefined,
-          vehicleId:
-            revertAll || vehicleCount <= 1 ? undefined : activeDeliveryItem.vehicleId,
-        },
-      })
-      setViewDeliveryDialogOpen(false)
-    } catch (err: unknown) {
-      setEditDeliveryError(formatErrorMessage(err, 'Lỗi khi hủy xuất kho'))
+      setDetailError(formatErrorMessage(err, 'Lỗi khi cập nhật phiếu giao'))
     }
   }
 
@@ -494,6 +448,69 @@ function SalesOrderPage() {
     null,
   )
   const detailItem = items.find((i) => i.vehicleId === detailVehicleId) ?? null
+  const savedDelivery = (v: OrderItem) => ({
+    date:
+      v.deliveryDate ||
+      (v.deliveredAt ? String(v.deliveredAt).slice(0, 10) : todayIso()),
+    receiver: v.receiverName || '',
+    transport: v.transportInfo || '',
+  })
+  React.useEffect(() => {
+    const v = items.find((i) => i.vehicleId === detailVehicleId)
+    if (!v) return
+    const saved = savedDelivery(v)
+    setDDate(saved.date)
+    setDReceiver(saved.receiver)
+    setDTransport(saved.transport)
+    setINumber(v.invoiceNumber || '')
+    setIDate(
+      v.invoiceDate ||
+        (v.invoicedAt ? String(v.invoicedAt).slice(0, 10) : todayIso()),
+    )
+    setInvoiceError(null)
+    setDetailError(null)
+    // Only when another vehicle is opened (not after every refetch)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [detailVehicleId])
+
+  // Save only appears once a delivery field differs from what is stored
+  const deliveryDirty = (() => {
+    if (!detailItem?.isDelivered) return false
+    const saved = savedDelivery(detailItem)
+    return (
+      dDate !== saved.date ||
+      dReceiver !== saved.receiver ||
+      dTransport !== saved.transport
+    )
+  })()
+
+  const invoiceDirty = (() => {
+    if (!detailItem?.isInvoiced) return false
+    const savedDate =
+      detailItem.invoiceDate ||
+      (detailItem.invoicedAt
+        ? String(detailItem.invoicedAt).slice(0, 10)
+        : todayIso())
+    return (
+      iNumber !== (detailItem.invoiceNumber || '') || iDate !== savedDate
+    )
+  })()
+
+  const handleSaveInvoiceEdit = async (v: OrderItem) => {
+    setInvoiceError(null)
+    try {
+      await updateInvoiceMutation.mutateAsync({
+        data: {
+          salesOrderId: order.id,
+          vehicleId: v.vehicleId,
+          invoiceNumber: iNumber,
+          invoiceDate: iDate,
+        },
+      })
+    } catch (err: unknown) {
+      setInvoiceError(formatErrorMessage(err, 'Lỗi khi cập nhật hóa đơn'))
+    }
+  }
 
   const handleRevertDeliveryOf = async (v: OrderItem) => {
     const sameNote = v.deliveryNoteId
@@ -725,7 +742,7 @@ function SalesOrderPage() {
                     size="sm"
                     disabled={selectedInvoiceable.length === 0}
                     onClick={openBatchInvoiceModal}
-                    className="h-7 text-xs bg-blue-700 hover:bg-blue-800 text-white font-semibold gap-1.5"
+                    className="h-7 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold gap-1.5"
                   >
                     <FileCheck className="size-3.5" />
                     Xuất hóa đơn{' '}
@@ -849,14 +866,14 @@ function SalesOrderPage() {
                             disabled={!canDeliver || actionLoading}
                             onClick={() =>
                               i.isDelivered
-                                ? openViewDeliveryModal(i)
+                                ? handleRevertDeliveryOf(i)
                                 : openSingleDeliveryModal(i.vehicleId)
                             }
                             title={
                               !canDeliver
                                 ? undefined
                                 : i.isDelivered
-                                  ? `Bấm để xem / sửa / hủy xuất kho xe ${i.chassisNumber}`
+                                  ? `Bấm để hủy xuất kho xe ${i.chassisNumber}`
                                   : `Bấm để xuất kho xe ${i.chassisNumber}`
                             }
                             className={canDeliver ? 'cursor-pointer' : ''}
@@ -1100,37 +1117,73 @@ function SalesOrderPage() {
                     </Badge>
                   </div>
                   {detailItem.isDelivered && (
-                    <dl className="grid grid-cols-[110px_1fr] gap-y-1 text-slate-600">
-                      <dt>Mã phiếu giao</dt>
-                      <dd className="font-medium text-slate-900">
-                        {detailItem.deliveryNoteNumber || '—'}
-                      </dd>
-                      <dt>Ngày giao</dt>
-                      <dd className="font-medium text-slate-900">
-                        {formatDate(detailItem.deliveryDate || detailItem.deliveredAt)}
-                      </dd>
-                      <dt>Người nhận</dt>
-                      <dd className="font-medium text-slate-900">
-                        {detailItem.receiverName || '—'}
-                      </dd>
-                      <dt>Phương tiện</dt>
-                      <dd className="font-medium text-slate-900">
-                        {detailItem.transportInfo || '—'}
-                      </dd>
-                    </dl>
+                    <div className="space-y-2">
+                      <div className="text-slate-600">
+                        Mã phiếu giao:{' '}
+                        <strong className="text-slate-900">
+                          {detailItem.deliveryNoteNumber || '—'}
+                        </strong>
+                      </div>
+                      {detailError && (
+                        <Alert variant="destructive" className="text-xs py-2">
+                          <AlertDescription>{detailError}</AlertDescription>
+                        </Alert>
+                      )}
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">
+                            Ngày giao hàng
+                          </Label>
+                          <Input
+                            type="date"
+                            disabled={!canDeliver}
+                            value={dDate}
+                            onChange={(e) => setDDate(e.target.value)}
+                            className="h-9 text-sm px-3 rounded-lg"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">
+                            Người / tài xế nhận xe
+                          </Label>
+                          <Input
+                            disabled={!canDeliver}
+                            value={dReceiver}
+                            onChange={(e) => setDReceiver(e.target.value)}
+                            className="h-9 text-sm px-3 rounded-lg"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">
+                            Phương tiện / biển số xe tải
+                          </Label>
+                          <Input
+                            disabled={!canDeliver}
+                            value={dTransport}
+                            onChange={(e) => setDTransport(e.target.value)}
+                            className="h-9 text-sm px-3 rounded-lg"
+                          />
+                        </div>
+                      </div>
+                    </div>
                   )}
                   {canDeliver && (
                     <div className="flex flex-wrap justify-end gap-2 pt-1">
                       {detailItem.isDelivered ? (
                         <>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-8 text-xs"
-                            onClick={() => openViewDeliveryModal(detailItem)}
-                          >
-                            Sửa phiếu giao
-                          </Button>
+                          {deliveryDirty && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              disabled={
+                                actionLoading || !detailItem.deliveryNoteId
+                              }
+                              className="h-8 text-xs"
+                              onClick={() => handleSaveDeliveryEdit(detailItem)}
+                            >
+                              Lưu thay đổi
+                            </Button>
+                          )}
                           <Button
                             size="sm"
                             disabled={actionLoading}
@@ -1174,24 +1227,60 @@ function SalesOrderPage() {
                     </Badge>
                   </div>
                   {detailItem.isInvoiced && (
-                    <dl className="grid grid-cols-[110px_1fr] gap-y-1 text-slate-600">
-                      <dt>Số hóa đơn</dt>
-                      <dd className="font-medium text-slate-900">
-                        {detailItem.invoiceNumber || '—'}
-                      </dd>
-                      <dt>Ngày xuất HĐ</dt>
-                      <dd className="font-medium text-slate-900">
-                        {formatDate(detailItem.invoiceDate || detailItem.invoicedAt)}
-                      </dd>
-                      <dt>Số tiền</dt>
-                      <dd className="font-medium text-slate-900">
-                        {formatVnd(detailItem.unitPrice)}
-                      </dd>
-                    </dl>
+                    <div className="space-y-2">
+                      {invoiceError && (
+                        <Alert variant="destructive" className="text-xs py-2">
+                          <AlertDescription>{invoiceError}</AlertDescription>
+                        </Alert>
+                      )}
+                      <div className="grid grid-cols-1 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">
+                            Số hóa đơn
+                          </Label>
+                          <Input
+                            disabled={!canInvoice}
+                            value={iNumber}
+                            onChange={(e) => setINumber(e.target.value)}
+                            className="h-9 text-sm px-3 rounded-lg"
+                          />
+                        </div>
+                        <div className="space-y-1">
+                          <Label className="text-xs font-semibold">
+                            Ngày xuất hóa đơn
+                          </Label>
+                          <Input
+                            type="date"
+                            disabled={!canInvoice}
+                            value={iDate}
+                            onChange={(e) => setIDate(e.target.value)}
+                            className="h-9 text-sm px-3 rounded-lg"
+                          />
+                        </div>
+                        <div className="text-slate-600">
+                          Số tiền:{' '}
+                          <strong className="text-slate-900">
+                            {formatVnd(detailItem.unitPrice)}
+                          </strong>
+                        </div>
+                      </div>
+                    </div>
                   )}
                   {canInvoice && (
-                    <div className="flex justify-end pt-1">
+                    <div className="flex flex-wrap justify-end gap-2 pt-1">
                       {detailItem.isInvoiced ? (
+                        <>
+                        {invoiceDirty && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            disabled={actionLoading || !iNumber.trim()}
+                            className="h-8 text-xs"
+                            onClick={() => handleSaveInvoiceEdit(detailItem)}
+                          >
+                            Lưu thay đổi
+                          </Button>
+                        )}
                         <Button
                           size="sm"
                           disabled={actionLoading}
@@ -1201,10 +1290,11 @@ function SalesOrderPage() {
                           <RotateCcw className="size-3.5" />
                           Hủy hóa đơn
                         </Button>
+                        </>
                       ) : (
                         <Button
                           size="sm"
-                          className="h-8 text-xs bg-blue-700 hover:bg-blue-800 text-white gap-1.5"
+                          className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5"
                           onClick={() => openSingleInvoiceModal(detailItem.vehicleId)}
                         >
                           <FileCheck className="size-3.5" />
@@ -1229,184 +1319,6 @@ function SalesOrderPage() {
           </DialogContent>
         </Dialog>
         )}
-
-        {/* View & Edit Delivery / Un-export Modal */}
-        <Dialog
-          open={viewDeliveryDialogOpen}
-          onOpenChange={setViewDeliveryDialogOpen}
-        >
-          <DialogContent className="max-w-md">
-            <DialogHeader>
-              <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-1.5">
-                <Truck className="size-4 text-blue-600" />
-                Chi Tiết Phiếu Giao Xe Thực Tế
-              </DialogTitle>
-              <DialogDescription className="text-xs">
-                Mã phiếu giao:{' '}
-                <strong className="text-slate-800">
-                  {activeDeliveryItem?.deliveryNoteNumber || 'Chưa có mã'}
-                </strong>
-              </DialogDescription>
-            </DialogHeader>
-
-            {activeDeliveryItem && (
-              <form
-                onSubmit={handleUpdateDeliverySubmit}
-                className="space-y-3 pt-1"
-              >
-                {editDeliveryError && (
-                  <Alert variant="destructive" className="text-xs py-2">
-                    <AlertDescription>{editDeliveryError}</AlertDescription>
-                  </Alert>
-                )}
-
-                {/* Selected vehicle preview card */}
-                <div className="rounded-lg border border-slate-200 bg-slate-50 p-2.5 text-xs space-y-1.5">
-                  <div className="flex items-center justify-between">
-                    <span className="font-semibold text-slate-900">
-                      Số khung: {activeDeliveryItem.chassisNumber}
-                    </span>
-                    <ColorLabel
-                      name={activeDeliveryItem.colorName}
-                      hex={activeDeliveryItem.colorHex}
-                    />
-                  </div>
-                  <div className="flex items-center justify-between text-slate-600">
-                    <span>
-                      Dòng xe: {activeDeliveryItem.modelName || '—'}
-                    </span>
-                    <span>
-                      Số máy: {activeDeliveryItem.engineNumber || '—'}
-                    </span>
-                  </div>
-
-                  {activeDeliveryItem.deliveryNoteId &&
-                    (() => {
-                      const related = items.filter(
-                        (it) =>
-                          it.deliveryNoteId ===
-                          activeDeliveryItem.deliveryNoteId,
-                      )
-                      if (related.length <= 1) return null
-                      return (
-                        <div className="pt-1 border-t border-slate-200 text-[11px] text-slate-600">
-                          <span className="font-medium text-slate-700">
-                            Phiếu giao này gồm {related.length} xe:{' '}
-                          </span>
-                          {related.map((r) => r.chassisNumber).join(', ')}
-                        </div>
-                      )
-                    })()}
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Ngày Giao Hàng *
-                  </Label>
-                  <Input
-                    type="date"
-                    required
-                    value={editDeliveryDate}
-                    onChange={(e) => setEditDeliveryDate(e.target.value)}
-                    className="h-10 text-sm px-3 rounded-lg"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Tên Người/Tài Xế Nhận Xe
-                  </Label>
-                  <Input
-                    placeholder="Ví dụ: Anh Nam (Lái xe đại lý)"
-                    value={editReceiverName}
-                    onChange={(e) => setEditReceiverName(e.target.value)}
-                    className="h-10 text-sm px-3 rounded-lg"
-                  />
-                </div>
-
-                <div className="space-y-1">
-                  <Label className="text-xs font-semibold">
-                    Thông Tin Phương Tiện / Biển Số Xe Tải
-                  </Label>
-                  <Input
-                    placeholder="Ví dụ: Xe lồng biển số 51C-123.45"
-                    value={editTransportInfo}
-                    onChange={(e) => setEditTransportInfo(e.target.value)}
-                    className="h-10 text-sm px-3 rounded-lg"
-                  />
-                </div>
-
-                <DialogFooter className="pt-3 flex flex-col sm:flex-row sm:justify-between items-stretch sm:items-center gap-2">
-                  <div className="flex items-center gap-1.5 flex-wrap">
-                    {(() => {
-                      const relatedCount = activeDeliveryItem.deliveryNoteId
-                        ? items.filter(
-                            (it) =>
-                              it.deliveryNoteId ===
-                              activeDeliveryItem.deliveryNoteId,
-                          ).length
-                        : 1
-                      return (
-                        <>
-                          <Button
-                            type="button"
-                            variant="destructive"
-                            size="sm"
-                            disabled={actionLoading}
-                            onClick={() => handleRevertDelivery(false)}
-                            className="h-8 text-xs gap-1 font-semibold"
-                            title="Hoàn trả xe này về kho thực tế"
-                          >
-                            <RotateCcw className="size-3.5" />
-                            {relatedCount > 1
-                              ? 'Hủy xuất xe này'
-                              : 'Hủy xuất kho'}
-                          </Button>
-                          {relatedCount > 1 && (
-                            <Button
-                              type="button"
-                              variant="outline"
-                              size="sm"
-                              disabled={actionLoading}
-                              onClick={() => handleRevertDelivery(true)}
-                              className="h-8 text-xs border-rose-300 text-rose-700 hover:bg-rose-50 gap-1 font-semibold"
-                              title={`Hủy toàn bộ phiếu giao gồm ${relatedCount} xe`}
-                            >
-                              <RotateCcw className="size-3.5" />
-                              Hủy cả {relatedCount} xe
-                            </Button>
-                          )}
-                        </>
-                      )
-                    })()}
-                  </div>
-
-                  <div className="flex items-center justify-end gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setViewDeliveryDialogOpen(false)}
-                      className="h-8 text-xs"
-                    >
-                      Đóng
-                    </Button>
-                    <Button
-                      type="submit"
-                      disabled={
-                        actionLoading || !activeDeliveryItem.deliveryNoteId
-                      }
-                      size="sm"
-                      className="h-8 text-xs font-semibold"
-                    >
-                      {actionLoading ? 'Đang lưu...' : 'Lưu Thay Đổi'}
-                    </Button>
-                  </div>
-                </DialogFooter>
-              </form>
-            )}
-          </DialogContent>
-        </Dialog>
 
         {/* Internal Commercial Invoice Modal */}
         <Dialog open={invoiceDialogOpen} onOpenChange={setInvoiceDialogOpen}>
@@ -1482,7 +1394,7 @@ function SalesOrderPage() {
                   type="submit"
                   disabled={actionLoading}
                   size="sm"
-                  className="h-8 text-xs bg-blue-700 hover:bg-blue-800 text-white font-semibold"
+                  className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
                 >
                   {actionLoading ? 'Đang lưu...' : 'Xác Nhận Xuất Hóa Đơn'}
                 </Button>
