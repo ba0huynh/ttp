@@ -1723,7 +1723,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - The interest table lists **one row per day** (newest first, paginated) instead of one row per repayment segment: `Ngày`, `Gốc Đã Trả`, `Dư Nợ Trong Ngày`, `Lãi Trong Ngày`, `Lãi Lũy Kế`. Rows are derived on every load by `expandInterestByDay(segments)` (`src/lib/business.ts`), nothing is stored. Each segment's interest is spread over its days with running rounding, so the daily rows add up exactly to `totalInterest` / `accruedInterest` (the figures used by the repayment forms are unchanged). The day of `asOf` itself is not counted (interest runs from disbursement up to, not including, that date, as before).
 
-_(Next Agent: Append Lesson 156, 157,... above this line upon completing tasks)_
+### Lesson 156: Hard-Delete Script (`npm run db:clear`)
+
+- `src/db/clear-data.ts` TRUNCATEs (hard delete, ids restart) every business table and keeps only accounts (`users`, `sessions`, `password_reset_tokens`), permissions (`roles`, `role_permissions`), settings (`company_info`) and the bank list (`banks`). It also deletes `uploads/suppliers/`. This includes `expense_types` (so the six default expense types from migration `0025` are gone until re-added in `/master-data`), customers, suppliers, models, colours, company bank accounts, loans, batches, sales, vouchers and statements.
+- **Deletes immediately**: `npm run db:clear` prints the target DB and row counts, then deletes; `npm run db:clear -- --dry-run` only prints. It refuses to run when `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME` are not set, because `src/db/index.ts` falls back to a hard-coded server.
+- Unlike `npm run seed -- --reset` it does not delete users, roles, company info or banks.
+
+_(Next Agent: Append Lesson 157, 158,... above this line upon completing tasks)_
 
 
 

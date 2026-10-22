@@ -23,6 +23,7 @@
     "db:pull": "drizzle-kit pull",
     "docker:prod": "(docker rm -f moto-ttp || echo No container to remove) && docker build -t moto-ttp . && docker run -d --name moto-ttp -p 3001:3000 --env-file .env moto-ttp",
     "studio": "drizzle-kit studio",
+    "db:clear": "tsx src/db/clear-data.ts",
     "seed": "tsx src/db/seed/index.ts"
   },
   "dependencies": {
