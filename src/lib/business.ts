@@ -180,6 +180,44 @@ export function calculateLoanInterest(params: {
   }
 }
 
+export interface InterestDay {
+  date: string
+  /** Principal outstanding during this day */
+  outstanding: number
+  /** Interest accrued on this day alone */
+  interest: number
+  /** Interest accrued from disbursement up to and including this day */
+  cumulativeInterest: number
+}
+
+/**
+ * Splits the interest segments into one record per day (oldest first). Each
+ * segment's interest is spread over its days with running rounding, so the
+ * days of a segment add up to exactly the segment's interest and the daily
+ * rows add up to `totalInterest`.
+ */
+export function expandInterestByDay(segments: InterestSegment[]): InterestDay[] {
+  const out: InterestDay[] = []
+  let cumulative = 0
+  for (const seg of segments) {
+    const start = new Date(`${seg.from}T00:00:00Z`).getTime()
+    let allocated = 0
+    for (let k = 1; k <= seg.days; k++) {
+      const upTo = Math.round((seg.interest * k) / seg.days)
+      const interest = upTo - allocated
+      allocated = upTo
+      cumulative += interest
+      out.push({
+        date: new Date(start + (k - 1) * 86_400_000).toISOString().slice(0, 10),
+        outstanding: seg.outstanding,
+        interest,
+        cumulativeInterest: cumulative,
+      })
+    }
+  }
+  return out
+}
+
 /* -------------------------------------------------------------------------- */
 /* Formatting utilities                                                        */
 /* -------------------------------------------------------------------------- */

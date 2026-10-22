@@ -39,6 +39,7 @@ import {
 import {
   addMonthsIso,
   calculateLoanInterest,
+  expandInterestByDay,
   formatDate,
   formatVnd,
   todayIso,
@@ -112,6 +113,13 @@ function LoanDetailPage() {
     [loanDetail.repayments],
   )
   const repaymentsPg = usePagination<any>(sortedRepayments)
+
+  // One record per day (newest first): easier to follow than long segments
+  const dailyRows = React.useMemo(
+    () => expandInterestByDay(loanDetail.segments).reverse(),
+    [loanDetail.segments],
+  )
+  const dailyPg = usePagination(dailyRows)
   const queryClient = useQueryClient()
   const { isBusy, setBusy } = useBusyKeys()
 
@@ -523,7 +531,7 @@ function LoanDetailPage() {
             <CardContent className="p-4">
               <div className="text-xs font-bold text-slate-800 mb-2 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
                 <span>
-                  Bảng Tính Lãi Từng Đoạn Theo Dư Nợ Giảm Dần (Quy ước 365
+                  Bảng Tính Lãi Theo Từng Ngày, Dư Nợ Giảm Dần (Quy ước 365
                   ngày):
                 </span>
                 <span className="text-slate-600 font-medium">
@@ -537,40 +545,47 @@ function LoanDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Từ Ngày</TableHead>
-                      <TableHead>Đến Ngày</TableHead>
-                      <TableHead className="text-center">Số Ngày</TableHead>
+                      <TableHead>Ngày</TableHead>
                       <TableHead className="text-right">Gốc Đã Trả</TableHead>
                       <TableHead className="text-right">
-                        Dư Nợ Còn Lại
+                        Dư Nợ Trong Ngày
                       </TableHead>
-                      <TableHead className="text-right">
-                        Lãi Phát Sinh
-                      </TableHead>
+                      <TableHead className="text-right">Lãi Trong Ngày</TableHead>
+                      <TableHead className="text-right">Lãi Lũy Kế</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {loanDetail.segments.map((seg: any, idx: number) => (
-                      <TableRow key={idx}>
-                        <TableCell>{formatDate(seg.from)}</TableCell>
-                        <TableCell>{formatDate(seg.to)}</TableCell>
-                        <TableCell className="text-center">
-                          {seg.days} ngày
-                        </TableCell>
+                    {dailyPg.pageItems.map((d) => (
+                      <TableRow key={d.date}>
+                        <TableCell>{formatDate(d.date)}</TableCell>
                         <TableCell className="text-right text-emerald-800 font-medium">
-                          {formatVnd(seg.principalPaid ?? 0)}
+                          {formatVnd(loan.principalAmount - d.outstanding)}
                         </TableCell>
                         <TableCell className="text-right font-medium text-purple-900">
-                          {formatVnd(seg.remainingBalance ?? seg.outstanding)}
+                          {formatVnd(d.outstanding)}
                         </TableCell>
                         <TableCell className="text-right font-medium text-purple-900">
-                          {formatVnd(seg.interest)}
+                          {formatVnd(d.interest)}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900 font-medium">
+                          {formatVnd(d.cumulativeInterest)}
                         </TableCell>
                       </TableRow>
                     ))}
+                    {dailyRows.length === 0 && (
+                      <TableRow>
+                        <TableCell
+                          colSpan={5}
+                          className="py-6 text-center text-slate-400 italic"
+                        >
+                          Chưa phát sinh ngày tính lãi nào.
+                        </TableCell>
+                      </TableRow>
+                    )}
                   </TableBody>
                 </Table>
               </div>
+              <TablePagination pagination={dailyPg} />
             </CardContent>
           </Card>
 

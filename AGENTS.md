@@ -1719,7 +1719,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - Select mode now lists vehicles that are not yet exported **or** not yet invoiced (hidden only when both are done) and every listed row is selectable; a `Kho Hóa Đơn` badge column appears in select mode. The bar has two bulk actions: `Xuất kho (n)` (selected vehicles not yet delivered) and `Xuất hóa đơn (n)` (selected vehicles not yet invoiced; one invoice per vehicle, see Lesson 153). Supersedes the "hide already exported vehicles" part of Lesson 143. `Kho Hóa Đơn` is a permanent column. Clicking the `Kho Hóa Đơn` badge of a row issues (opens the invoice dialog) or cancels (confirm dialog) that vehicle's invoice; cancel is (`revertInvoiceFn` → `revertInvoice`): removes that vehicle's invoice line (deletes the invoice if empty, otherwise lowers its total), sets `is_invoiced = false`, leaves physical stock alone. Every row has `Xem` (column `Thao tác`) opening a vehicle detail dialog: export details (delivery note no., date, receiver, vehicle) with `Xuất kho` / `Hủy xuất kho` and inline-editable date / receiver / vehicle (`Lưu thay đổi`) — the old separate "Chi Tiết Phiếu Giao Xe Thực Tế" dialog was removed as redundant; clicking an `Đã giao` badge now asks to un-export directly (the action dialogs opened from the detail dialog stack on top of it), and invoice details with `Xuất hóa đơn` / `Hủy hóa đơn` and inline-editable invoice number / date (`updateInvoiceFn`; the date also updates `vehicles.invoiced_at`; duplicate numbers are refused). Both `Lưu thay đổi` buttons only show while their fields are dirty. The order detail items now carry `invoiceId` / `invoiceNumber` / `invoiceDate`.
 
-_(Next Agent: Append Lesson 155, 156,... above this line upon completing tasks)_
+### Lesson 155: Daily Interest Table on `/loans/$loanId`
+
+- The interest table lists **one row per day** (newest first, paginated) instead of one row per repayment segment: `Ngày`, `Gốc Đã Trả`, `Dư Nợ Trong Ngày`, `Lãi Trong Ngày`, `Lãi Lũy Kế`. Rows are derived on every load by `expandInterestByDay(segments)` (`src/lib/business.ts`), nothing is stored. Each segment's interest is spread over its days with running rounding, so the daily rows add up exactly to `totalInterest` / `accruedInterest` (the figures used by the repayment forms are unchanged). The day of `asOf` itself is not counted (interest runs from disbursement up to, not including, that date, as before).
+
+_(Next Agent: Append Lesson 156, 157,... above this line upon completing tasks)_
 
 
 
