@@ -521,7 +521,12 @@ export async function recordInvoice(
   }
 }
 
-/** Cancels order: only permitted when no vehicles have been delivered or invoiced. Releases vehicles back to inventory. */
+/**
+ * Cancels = DELETES the order: only permitted when no vehicle has been delivered
+ * or invoiced (cancel those first). The order row goes away with its lines, so
+ * the vehicles are free again and nothing is left behind in the sales list.
+ * Receipt vouchers that pointed at it simply lose the link (ON DELETE SET NULL).
+ */
 export async function cancelSalesOrder(orderId: number) {
   await db.transaction(async (tx) => {
     const [d] = await tx
@@ -541,10 +546,7 @@ export async function cancelSalesOrder(orderId: number) {
     await tx
       .delete(salesOrderItems)
       .where(eq(salesOrderItems.salesOrderId, orderId))
-    await tx
-      .update(salesOrders)
-      .set({ status: 'cancelled', totalAmount: 0 })
-      .where(eq(salesOrders.id, orderId))
+    await tx.delete(salesOrders).where(eq(salesOrders.id, orderId))
   })
 }
 

@@ -1713,7 +1713,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Dashboard**: new `Tổng giá nhập` stat card = `sum(vehicles.import_price)` (`getInventorySummary().importValue`).
 - **Seed** (`bank.seed.ts`): `SEED_BANKS` is a hardcoded list of the five banks (name, VietQR code, short name, logo), so `npm run seed` no longer needs internet and no longer calls the VietQR API (this supersedes Lesson 21's live fetch). It inserts only banks whose code is missing and fills an existing bank's empty logo / short name. The rest of the seed is unchanged: company profile, default roles and the `admin` account (a fresh install cannot log in without them); expense types come from migration `0025`.
 - **Five banks only**: ACB, Bản Việt (`VCCB`), Vietcombank (`VCB`), HDBank (`HDB`), Eximbank (`EIB`). `seedBanks()` filters the VietQR catalogue by `ALLOWED_BANK_CODES`; migration `0040_keep_five_banks` deletes every other bank that no loan contract or company bank account uses (its down is a no-op: re-run `npm run seed` to bring banks back). Gotcha: `BVB` is Bảo Việt, not Bản Việt. `0040` matched names with `LIKE`, and the accent-insensitive collation let "Ban Viet" (Timo) and "Ngoại thương Công nghệ số" (VCB Neo) through, so `0043_prune_banks_by_code` deletes by exact code instead. A bank that still has a company bank account is never deleted: move the account to one of the five banks (`/master-data?tab=accounts`), then delete the bank.
-- **Deploy**: run `npm run migration:run` (applies `0039`–`0044`).
+- **Deploy**: run `npm run migration:run` (applies `0039`–`0045`).
 
 ### Lesson 154: Select Mode Covers Export and Invoice (`/sales/$orderId`)
 
@@ -1736,7 +1736,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - `/sales/new`: per vehicle `Đơn Giá Chưa VAT` (input, defaults to the batch selling price), `% VAT` (input, default `DEFAULT_VAT_RATE` = 10, max 100) and `Đơn Giá Đã VAT` (read-only, calculated). The below-cost warning compares the price BEFORE VAT with the cost price (cost has no VAT). `/sales/$orderId` shows the three columns.
 - **Reports** (`reports.ts`) use `price_before_vat` as revenue, so VAT is not counted as income or profit.
 
-_(Next Agent: Append Lesson 158, 159,... above this line upon completing tasks)_
+### Lesson 158: Cancelling a Sales Order Deletes It
+
+- `cancelSalesOrder` now **deletes** the `sales_orders` row (and its lines) instead of keeping a `cancelled` shell with 0 vehicles / 0 ₫ in the `/sales` list. Still refused while any vehicle was delivered or invoiced (cancel those first: `Hủy HĐ`, `Hủy xuất kho`). Receipt vouchers pointing at the order keep existing, only losing the link (`ON DELETE SET NULL`). Migration `0045_delete_cancelled_orders` removed the shells already in the database (its down is a no-op). The `cancelled` enum value remains in the schema but is no longer written.
+
+_(Next Agent: Append Lesson 159, 160,... above this line upon completing tasks)_
 
 
 
