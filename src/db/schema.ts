@@ -388,7 +388,18 @@ export const salesOrderItems = mysqlTable(
     vehicleId: int('vehicle_id')
       .notNull()
       .references(() => vehicles.id),
+    /** Selling price INCLUDING VAT = priceBeforeVat × (1 + vatRate / 100) */
     unitPrice: money('unit_price').notNull(),
+    /** Selling price before VAT (what the user types) */
+    priceBeforeVat: money('price_before_vat').default(0).notNull(),
+    /** VAT rate in percent (e.g. 10) */
+    vatRate: decimal('vat_rate', {
+      precision: 5,
+      scale: 2,
+      mode: 'number',
+    })
+      .default(0)
+      .notNull(),
     /** Cost price snapshot at sale time for consistent profit reporting */
     costPrice: money('cost_price').notNull(),
     createdAt: timestamp('created_at', { mode: 'date' }).defaultNow().notNull(),

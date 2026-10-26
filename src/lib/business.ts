@@ -180,6 +180,13 @@ export function calculateLoanInterest(params: {
   }
 }
 
+/** Default VAT rate (%) offered when selling a vehicle */
+export const DEFAULT_VAT_RATE = 10
+
+/** VAT-inclusive price = price before VAT × (1 + VAT% / 100), whole đồng */
+export const priceWithVat = (before: number, vatRatePercent: number) =>
+  Math.round((Number(before) || 0) * (1 + (Number(vatRatePercent) || 0) / 100))
+
 export interface InterestDay {
   date: string
   /** Principal outstanding during this day */

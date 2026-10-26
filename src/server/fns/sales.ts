@@ -44,6 +44,9 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
         branchId: salesOrders.branchId,
         branchName: posBranches.name,
         vehicleCount: sql<number>`count(distinct ${salesOrderItems.id})`,
+        totalBeforeVat: sql<string>`coalesce(sum(${salesOrderItems.priceBeforeVat}),0)`,
+        minVatRate: sql<string>`coalesce(min(${salesOrderItems.vatRate}),0)`,
+        maxVatRate: sql<string>`coalesce(max(${salesOrderItems.vatRate}),0)`,
         deliveredCount: sql<number>`count(distinct case when ${vehicles.isDelivered} = 1 then ${vehicles.id} end)`,
         invoicedCount: sql<number>`count(distinct case when ${vehicles.isInvoiced} = 1 then ${vehicles.id} end)`,
       })
@@ -70,6 +73,9 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
     return list.map((o) => ({
       ...o,
       totalAmount: num(o.totalAmount),
+      totalBeforeVat: num(o.totalBeforeVat),
+      minVatRate: num(o.minVatRate),
+      maxVatRate: num(o.maxVatRate),
       vehicleCount: num(o.vehicleCount),
       deliveredCount: num(o.deliveredCount),
       invoicedCount: num(o.invoicedCount),
@@ -103,6 +109,8 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
         id: salesOrderItems.id,
         vehicleId: vehicles.id,
         unitPrice: salesOrderItems.unitPrice,
+        priceBeforeVat: salesOrderItems.priceBeforeVat,
+        vatRate: salesOrderItems.vatRate,
         costPrice: salesOrderItems.costPrice,
         chassisNumber: vehicles.chassisNumber,
         engineNumber: vehicles.engineNumber,
@@ -185,6 +193,8 @@ export const getSalesOrderDetailFn = createServerFn({ method: 'GET' })
       items: items.map((i) => ({
         ...i,
         unitPrice: num(i.unitPrice),
+        priceBeforeVat: num(i.priceBeforeVat),
+        vatRate: num(i.vatRate),
         costPrice: num(i.costPrice),
       })),
       deliveries: deliveries.map((d) => ({
@@ -209,7 +219,8 @@ export const createSalesOrderFn = createServerFn({ method: 'POST' })
       items: z.array(
         z.object({
           vehicleId: z.number().int(),
-          unitPrice: z.number().positive().optional(),
+          priceBeforeVat: z.number().positive().optional(),
+          vatRate: z.number().min(0).max(100).optional(),
         }),
       ),
     }),

@@ -48,6 +48,7 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
+import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
@@ -63,7 +64,13 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { formatVnd, todayIso, batchLabel } from '#/lib/business.ts'
+import {
+  DEFAULT_VAT_RATE,
+  batchLabel,
+  formatVnd,
+  priceWithVat,
+  todayIso,
+} from '#/lib/business.ts'
 import {
   availableVehiclesQuery,
   batchesQuery,
@@ -103,16 +110,19 @@ function NewSalesOrderPage() {
   const navigate = useNavigate()
 
   const [orderDate, setOrderDate] = React.useState(todayIso())
-  const [customerId, setCustomerId] = React.useState<number>(
-    customers[0]?.id ?? 1,
+  // null = not chosen yet (never fall back to a made-up id: the customer may not exist)
+  const [customerId, setCustomerId] = React.useState<number | null>(
+    customers[0]?.id ?? null,
   )
   const [branchId, setBranchId] = React.useState<number | null>(null)
 
-  // Selected vehicles to sell: vehicleId -> custom unitPrice
+  // Selected vehicles to sell: price before VAT + VAT % (the VAT-inclusive
+  // price is always calculated from the two)
   const [selectedItems, setSelectedItems] = React.useState<
     {
       vehicleId: number
-      unitPrice: number
+      priceBeforeVat: number
+      vatRate: number
       chassisNumber: string
       modelName: string
       colorName: string
@@ -316,7 +326,8 @@ function NewSalesOrderPage() {
         const existing = selectedItems.find((x) => x.vehicleId === v.id)
         return {
           vehicleId: v.id,
-          unitPrice: existing ? existing.unitPrice : v.sellingPrice,
+          priceBeforeVat: existing ? existing.priceBeforeVat : v.sellingPrice,
+          vatRate: existing ? existing.vatRate : DEFAULT_VAT_RATE,
           chassisNumber: v.chassisNumber,
           modelName: v.modelName,
           colorName: v.colorName,
@@ -332,18 +343,23 @@ function NewSalesOrderPage() {
   }
 
   const totalAmount = selectedItems.reduce(
-    (s, i) => s + (Number(i.unitPrice) || 0),
+    (s, i) => s + priceWithVat(i.priceBeforeVat, i.vatRate),
     0,
   )
 
+  // Cost has no VAT, so it is compared with the price BEFORE VAT
   const lossItems = selectedItems.filter(
-    (i) => i.unitPrice > 0 && i.unitPrice < i.costPrice,
+    (i) => i.priceBeforeVat > 0 && i.priceBeforeVat < i.costPrice,
   )
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     if (selectedItems.length === 0) {
       setError('Vui lòng chọn ít nhất một chiếc xe từ kho để bán')
+      return
+    }
+    if (customerId === null) {
+      setError('Vui lòng chọn khách hàng')
       return
     }
     setError(null)
@@ -355,7 +371,8 @@ function NewSalesOrderPage() {
           branchId,
           items: selectedItems.map((i) => ({
             vehicleId: i.vehicleId,
-            unitPrice: i.unitPrice,
+            priceBeforeVat: i.priceBeforeVat,
+            vatRate: i.vatRate,
           })),
         },
       })
@@ -451,7 +468,7 @@ function NewSalesOrderPage() {
                     {lossItems.map((i) => (
                       <p key={i.vehicleId}>
                         Lưu ý: xe <strong>{i.chassisNumber}</strong> có giá bán
-                        thấp hơn giá vốn {formatVnd(i.costPrice - i.unitPrice)}{' '}
+                        thấp hơn giá vốn {formatVnd(i.costPrice - i.priceBeforeVat)}{' '}
                         (bán lỗ).
                       </p>
                     ))}
@@ -479,7 +496,13 @@ function NewSalesOrderPage() {
                           <TableHead>Dòng xe / Màu</TableHead>
                           <TableHead className="text-right">Giá Vốn</TableHead>
                           <TableHead className="text-right w-44">
-                            Đơn Giá Bán Đã VAT (VNĐ) *
+                            Đơn Giá Chưa VAT (VNĐ) *
+                          </TableHead>
+                          <TableHead className="text-right w-28">
+                            % VAT *
+                          </TableHead>
+                          <TableHead className="text-right w-40">
+                            Đơn Giá Đã VAT (VNĐ)
                           </TableHead>
                           <TableHead className="w-10"></TableHead>
                         </TableRow>
@@ -503,14 +526,31 @@ function NewSalesOrderPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <MoneyInput
-                                value={item.unitPrice}
+                                value={item.priceBeforeVat}
                                 onValueChange={(n) => {
                                   const updated = [...selectedItems]
-                                  updated[idx].unitPrice = n
+                                  updated[idx].priceBeforeVat = n
                                   setSelectedItems(updated)
                                 }}
                                 className="h-9 text-sm text-right px-4 rounded-lg"
                               />
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <DecimalInput
+                                maxDecimals={2}
+                                value={item.vatRate}
+                                onValueChange={(n) => {
+                                  const updated = [...selectedItems]
+                                  updated[idx].vatRate = Math.min(n, 100)
+                                  setSelectedItems(updated)
+                                }}
+                                className="h-9 text-sm text-right px-3 rounded-lg"
+                              />
+                            </TableCell>
+                            <TableCell className="text-right font-semibold text-slate-900">
+                              {formatVnd(
+                                priceWithVat(item.priceBeforeVat, item.vatRate),
+                              )}
                             </TableCell>
                             <TableCell>
                               <Button
@@ -561,7 +601,12 @@ function NewSalesOrderPage() {
                   </Label>
                   <SearchSelect
                     className="h-11 w-full text-sm rounded-lg"
-                    value={String(customerId)}
+                    value={customerId === null ? '' : String(customerId)}
+                    placeholder={
+                      customers.length === 0
+                        ? 'Chưa có khách hàng: hãy tạo ở mục Khách hàng'
+                        : 'Chọn khách hàng'
+                    }
                     onValueChange={(val) => {
                       setCustomerId(Number(val))
                       setBranchId(null) // Reset branch

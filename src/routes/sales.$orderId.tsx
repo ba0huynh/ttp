@@ -801,6 +801,8 @@ function SalesOrderPage() {
                     )}
                     <TableHead>Số Khung</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
+                    <TableHead className="text-right">Đơn Giá Chưa VAT</TableHead>
+                    <TableHead className="text-right">% VAT</TableHead>
                     <TableHead className="text-right">Đơn Giá Bán Đã VAT</TableHead>
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
                     <TableHead className="text-center">Kho Hóa Đơn</TableHead>
@@ -852,6 +854,12 @@ function SalesOrderPage() {
                           <div className="text-[11px] text-slate-500 mt-0.5">
                             <ColorLabel name={i.colorName} hex={i.colorHex} />
                           </div>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-slate-900">
+                          {formatVnd(i.priceBeforeVat)}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-500">
+                          {i.vatRate}%
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(i.unitPrice)}
@@ -948,7 +956,7 @@ function SalesOrderPage() {
                   {filteredItems.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={6}
+                        colSpan={8}
                         className="py-10 text-center text-xs text-slate-400 italic"
                       >
                         {selectMode

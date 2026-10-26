@@ -92,6 +92,9 @@ const SORT_VALUE: Record<
     customerName: string
     branchName: string | null
     totalAmount: number
+    totalBeforeVat: number
+    minVatRate: number
+    maxVatRate: number
     vehicleCount: number
   }) => number | string
 > = {
@@ -383,6 +386,10 @@ function SalesPage() {
                     {sortHead('date', 'Ngày Bán', '')}
                     {sortHead('customer', 'Khách Hàng', '')}
                     {sortHead('branch', 'Điểm Bán Nhận Xe', '')}
+                    <TableHead className="text-right">
+                      Tổng Tiền Chưa VAT
+                    </TableHead>
+                    <TableHead className="text-center">% VAT</TableHead>
                     {sortHead('amount', 'Tổng Tiền Đã VAT', 'text-right')}
                     {sortHead('vehicles', 'Số Xe', 'text-center')}
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
@@ -409,6 +416,15 @@ function SalesPage() {
                             Trực tiếp
                           </span>
                         )}
+                      </TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatVnd(o.totalBeforeVat)}
+                      </TableCell>
+                      <TableCell className="text-center text-slate-500">
+                        {/* Rates are per vehicle: show a range when they differ */}
+                        {o.minVatRate === o.maxVatRate
+                          ? `${o.minVatRate}%`
+                          : `${o.minVatRate}–${o.maxVatRate}%`}
                       </TableCell>
                       <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(o.totalAmount)}

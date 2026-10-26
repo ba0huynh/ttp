@@ -1713,7 +1713,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Dashboard**: new `Tổng giá nhập` stat card = `sum(vehicles.import_price)` (`getInventorySummary().importValue`).
 - **Seed** (`bank.seed.ts`): `SEED_BANKS` is a hardcoded list of the five banks (name, VietQR code, short name, logo), so `npm run seed` no longer needs internet and no longer calls the VietQR API (this supersedes Lesson 21's live fetch). It inserts only banks whose code is missing and fills an existing bank's empty logo / short name. The rest of the seed is unchanged: company profile, default roles and the `admin` account (a fresh install cannot log in without them); expense types come from migration `0025`.
 - **Five banks only**: ACB, Bản Việt (`VCCB`), Vietcombank (`VCB`), HDBank (`HDB`), Eximbank (`EIB`). `seedBanks()` filters the VietQR catalogue by `ALLOWED_BANK_CODES`; migration `0040_keep_five_banks` deletes every other bank that no loan contract or company bank account uses (its down is a no-op: re-run `npm run seed` to bring banks back). Gotcha: `BVB` is Bảo Việt, not Bản Việt. `0040` matched names with `LIKE`, and the accent-insensitive collation let "Ban Viet" (Timo) and "Ngoại thương Công nghệ số" (VCB Neo) through, so `0043_prune_banks_by_code` deletes by exact code instead. A bank that still has a company bank account is never deleted: move the account to one of the five banks (`/master-data?tab=accounts`), then delete the bank.
-- **Deploy**: run `npm run migration:run` (applies `0039`–`0043`).
+- **Deploy**: run `npm run migration:run` (applies `0039`–`0044`).
 
 ### Lesson 154: Select Mode Covers Export and Invoice (`/sales/$orderId`)
 
@@ -1727,9 +1727,16 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - `src/db/clear-data.ts` TRUNCATEs (hard delete, ids restart) every business table and keeps only accounts (`users`, `sessions`, `password_reset_tokens`), permissions (`roles`, `role_permissions`), settings (`company_info`) and the bank list (`banks`). It also deletes `uploads/suppliers/`. This includes `expense_types` (so the six default expense types from migration `0025` are gone until re-added in `/master-data`), customers, suppliers, models, colours, company bank accounts, loans, batches, sales, vouchers and statements.
 - **Deletes immediately**: `npm run db:clear` prints the target DB and row counts, then deletes; `npm run db:clear -- --dry-run` only prints. It refuses to run when `DB_HOST/DB_USER/DB_PASSWORD/DB_NAME` are not set, because `src/db/index.ts` falls back to a hard-coded server.
+- **Gotcha (empty database)**: never default a foreign-key select to a made-up id (`customers[0]?.id ?? 1`): after `db:clear` that id does not exist and the insert fails with a raw FK error. `/sales/new` now starts with no customer (`null`), asks to choose one, and `createSalesOrder` checks the customer exists. The same `?? 1` pattern is still in `finance.tsx` (receipt customer, payment supplier).
 - Unlike `npm run seed -- --reset` it does not delete users, roles, company info or banks.
 
-_(Next Agent: Append Lesson 157, 158,... above this line upon completing tasks)_
+### Lesson 157: Sales Price = Price Before VAT + VAT % → Price With VAT
+
+- `sales_order_items` has `price_before_vat` and `vat_rate` (%) next to `unit_price` (migration `0044`; old rows: `price_before_vat = unit_price`, VAT 0). **`unit_price` stays the VAT-inclusive price** (= `priceWithVat(before, rate)` in `src/lib/business.ts`), so order totals, invoices and receivables are unchanged. The server (`createSalesOrder`) always derives it; the client sends only `priceBeforeVat` + `vatRate` (`createSalesOrderFn`).
+- `/sales/new`: per vehicle `Đơn Giá Chưa VAT` (input, defaults to the batch selling price), `% VAT` (input, default `DEFAULT_VAT_RATE` = 10, max 100) and `Đơn Giá Đã VAT` (read-only, calculated). The below-cost warning compares the price BEFORE VAT with the cost price (cost has no VAT). `/sales/$orderId` shows the three columns.
+- **Reports** (`reports.ts`) use `price_before_vat` as revenue, so VAT is not counted as income or profit.
+
+_(Next Agent: Append Lesson 158, 159,... above this line upon completing tasks)_
 
 
 

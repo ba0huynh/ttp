@@ -2,6 +2,7 @@ import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
+  customers,
   deliveryNoteItems,
   deliveryNotes,
   invoiceItems,
@@ -11,6 +12,7 @@ import {
   salesOrders,
   vehicles,
 } from '../../db/schema.ts'
+import { priceWithVat } from '../../lib/business.ts'
 import {
   BusinessError,
   isDuplicateError,
@@ -22,8 +24,15 @@ export interface CreateSalesOrderInput {
   orderDate: string
   customerId: number
   branchId?: number | null
-  items: { vehicleId: number; unitPrice?: number | null }[]
+  items: {
+    vehicleId: number
+    /** Price before VAT (defaults to the vehicle's selling price) */
+    priceBeforeVat?: number | null
+    /** VAT rate in percent (defaults to 0) */
+    vatRate?: number | null
+  }[]
 }
+
 
 /**
  * Lập phiếu bán: chọn xe cụ thể từ kho.
@@ -41,6 +50,11 @@ export async function createSalesOrder(
 
   try {
     return await db.transaction(async (tx) => {
+      const [cust] = await tx
+        .select({ id: customers.id })
+        .from(customers)
+        .where(eq(customers.id, input.customerId))
+      if (!cust) throw new BusinessError('Khách hàng không tồn tại')
       if (input.branchId) {
         const [b] = await tx
           .select({ customerId: posBranches.customerId })
@@ -67,14 +81,20 @@ export async function createSalesOrder(
           `Xe đã được bán, không thể bán lại: ${sold.map((s) => s.c).join(', ')}`,
         )
 
-      const priceMap = new Map(
-        input.items.map((i) => [i.vehicleId, i.unitPrice]),
-      )
-      const rows = list.map((v) => ({
-        vehicleId: v.id,
-        unitPrice: num(priceMap.get(v.id) ?? v.sellingPrice),
-        costPrice: num(v.costPrice),
-      }))
+      const inputMap = new Map(input.items.map((i) => [i.vehicleId, i]))
+      const rows = list.map((v) => {
+        const it = inputMap.get(v.id)
+        const before = num(it?.priceBeforeVat ?? v.sellingPrice)
+        const vatRate = num(it?.vatRate ?? 0)
+        return {
+          vehicleId: v.id,
+          priceBeforeVat: before,
+          vatRate,
+          // The server always derives the VAT-inclusive price itself
+          unitPrice: priceWithVat(before, vatRate),
+          costPrice: num(v.costPrice),
+        }
+      })
       const total = rows.reduce((s, r) => s + r.unitPrice, 0)
 
       const [created] = await tx
