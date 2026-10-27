@@ -243,15 +243,18 @@ export function VehicleFormDialog({
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Năm / Đời xe</Label>
               <Input
-                type="number"
+                type="text"
+                inputMode="numeric"
+                maxLength={4}
                 placeholder="2026"
                 value={v.year ?? ''}
-                onChange={(e) =>
+                onChange={(e) => {
+                  const val = e.target.value.replace(/\D/g, '').slice(0, 4)
                   setV({
                     ...v,
-                    year: e.target.value ? Number(e.target.value) : null,
+                    year: val ? Number(val) : null,
                   })
-                }
+                }}
               />
             </div>
           </div>

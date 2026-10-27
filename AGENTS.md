@@ -1790,7 +1790,34 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - `src/components/batches/VehicleFormDialog.tsx`: Placed Model and Color side-by-side, added "Năm / Đời xe" numeric input.
   - `src/routes/inventory.tsx`: Displayed vehicle year badge next to model name in inventory table.
 
-_(Next Agent: Append Lesson 162, 163,... above this line upon completing tasks)_
+### Lesson 162: Compact Inline Vehicle Input Sizing & Tailwind Merge for UI Primitives
+
+- **Problem / Symptom**:
+  - The inline vehicle row in `/batches/new` and `BatchEditor.tsx` was cramped horizontally on standard desktop resolutions (1366px/1440px), causing horizontal scrolling, clipped engine numbers, and truncated import price digits.
+  - Sizing classes like `h-8` and `px-2` were failing to override primitive styles like `h-11` and `px-4` because `src/components/ui/input.tsx` and `src/components/ui/table.tsx` were importing `cn` from the `'cn'` npm package (which only concatenates class names without resolving conflicting Tailwind utilities) instead of `#/lib/utils.ts` (which runs `clsx` through `tailwind-merge`).
+- **Fix & Visual Design**:
+  - **`src/components/ui/input.tsx` & `src/components/ui/table.tsx`**: Updated import to `import { cn } from '#/lib/utils.ts'` so Tailwind class overrides are properly merged and take effect.
+  - **Column Width Optimization**:
+    - `Số Khung`: Reduced from `w-[170px]` to `w-[145px]`.
+    - `Số Máy`: Reduced from `w-[170px]` to `w-[130px]`.
+    - `Dòng xe / Năm / Màu`: Adjusted from `min-w-[280px]` to `min-w-[240px]`.
+    - `Đơn Giá Nhập`: Reduced from `w-[150px]` to `w-[125px]`.
+    - `CP Phân Bổ`: Reduced from `w-[120px]` to `w-[100px]`.
+    - `Giá Vốn Xe`: Reduced from `w-[130px]` to `w-[110px]`.
+    - `Giá Bán Áp Dụng`: Reduced from `w-[140px]` to `w-[115px]`.
+    - Actions: Reduced from `w-[90px]` to `w-[70px]`.
+    - Total table footprint reduced to ~1,035px, preventing horizontal scrolling on standard screens.
+  - **Compact Input Dimensions & Unified Font Sizing**:
+    - Replaced `p-2` with `px-1.5 py-1 align-middle` on edit row cells.
+    - Set all inputs and dropdowns (Chassis Number, Engine Number, Model dropdown, Year, Color dropdown, Import Price) to consistent `h-7.5 text-xs px-2 rounded`.
+    - Removed `md:text-sm` from base `Input` (`input.tsx`) so `text-xs` overrides are never overridden by desktop `@media (min-width: 768px)` queries.
+    - Year input compact at `w-14 text-center px-1` using `type="text"` with `inputMode="numeric"`, `maxLength={4}`, and non-digit filtering so browser stepper arrows are completely eliminated across all platforms.
+    - Smaller action buttons (`size-6.5` with `size-3.5` icons).
+    - **Unified Typography Across All Inputs**: Removed `font-mono` from Chassis Number and Engine Number inputs and table cells so that all form fields share the identical clean sans-serif UI font (`font-sans`), consistent `text-xs` (12px), and uniform line spacing.
+  - Applied consistently across `src/routes/batches.new.tsx`, `src/components/batches/BatchEditor.tsx`, and `src/components/batches/VehicleFormDialog.tsx`.
+
+_(Next Agent: Append Lesson 163, 164,... above this line upon completing tasks)_
+
 
 
 

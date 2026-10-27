@@ -1,6 +1,6 @@
 import { CheckIcon, ChevronDownIcon, PlusIcon } from 'lucide-react'
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '#/lib/utils.ts'
 
 import { Input } from '#/components/ui/input.tsx'
 import {

@@ -1158,18 +1158,18 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         <Table>
           <TableHeader>
             <TableRow className="text-xs bg-slate-50">
-              <TableHead className="w-[170px]">Số Khung</TableHead>
-              <TableHead className="w-[170px]">Số Máy</TableHead>
-              <TableHead className="min-w-[280px]">Dòng xe / Năm / Màu</TableHead>
-              <TableHead className="text-right w-[150px]">
+              <TableHead className="w-[145px]">Số Khung</TableHead>
+              <TableHead className="w-[130px]">Số Máy</TableHead>
+              <TableHead className="min-w-[240px]">Dòng xe / Năm / Màu</TableHead>
+              <TableHead className="text-right w-[125px]">
                 Đơn Giá Nhập
               </TableHead>
-              <TableHead className="text-right w-[120px]">CP Phân Bổ</TableHead>
-              <TableHead className="text-right w-[130px]">Giá Vốn Xe</TableHead>
-              <TableHead className="text-right w-[140px]">
+              <TableHead className="text-right w-[100px]">CP Phân Bổ</TableHead>
+              <TableHead className="text-right w-[110px]">Giá Vốn Xe</TableHead>
+              <TableHead className="text-right w-[115px]">
                 Giá Bán Áp Dụng
               </TableHead>
-              <TableHead className="w-[90px] text-right" />
+              <TableHead className="w-[70px] text-right" />
             </TableRow>
           </TableHeader>
           <TableBody className="text-xs">
@@ -1184,7 +1184,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     className="bg-emerald-50/40 border-y border-emerald-200"
                     onKeyDown={handleKeyDown}
                   >
-                    <TableCell className="p-2 align-middle">
+                    <TableCell className="px-1.5 py-1 align-middle">
                       <Input
                         autoFocus
                         value={vDraft.chassisNumber}
@@ -1197,7 +1197,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         onKeyDown={handleKeyDown}
                         placeholder="Số khung *"
                         className={cn(
-                          'h-8 text-xs font-mono uppercase bg-white',
+                          'h-7.5 text-xs uppercase bg-white px-2 rounded',
                           vSubmitted &&
                             !vDraft.chassisNumber.trim() &&
                             'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
@@ -1205,7 +1205,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         disabled={isSaving}
                       />
                     </TableCell>
-                    <TableCell className="p-2 align-middle">
+                    <TableCell className="px-1.5 py-1 align-middle">
                       <Input
                         value={vDraft.engineNumber}
                         onChange={(e) =>
@@ -1217,7 +1217,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         onKeyDown={handleKeyDown}
                         placeholder="Số máy *"
                         className={cn(
-                          'h-8 text-xs font-mono uppercase bg-white',
+                          'h-7.5 text-xs uppercase bg-white px-2 rounded',
                           vSubmitted &&
                             !vDraft.engineNumber.trim() &&
                             'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
@@ -1225,11 +1225,11 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         disabled={isSaving}
                       />
                     </TableCell>
-                    <TableCell className="p-2 align-middle">
-                      <div className="flex items-center gap-1.5">
+                    <TableCell className="px-1.5 py-1 align-middle">
+                      <div className="flex items-center gap-1">
                         <ModelSelect
                           className={cn(
-                            'h-8 text-xs bg-white flex-1 min-w-[120px]',
+                            'h-7.5 text-xs bg-white flex-1 min-w-[85px] px-2 py-0 rounded gap-1 [&>svg]:size-3',
                             vSubmitted &&
                               !vDraft.modelId &&
                               'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
@@ -1240,23 +1240,26 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                           }
                         />
                         <Input
-                          type="number"
+                          type="text"
+                          inputMode="numeric"
+                          maxLength={4}
                           placeholder="Năm"
                           value={vDraft.year ?? ''}
-                          onChange={(e) =>
+                          onChange={(e) => {
+                            const val = e.target.value
+                              .replace(/\D/g, '')
+                              .slice(0, 4)
                             setVDraft({
                               ...vDraft,
-                              year: e.target.value
-                                ? Number(e.target.value)
-                                : null,
+                              year: val ? Number(val) : null,
                             })
-                          }
-                          className="h-8 text-xs w-20 bg-white shrink-0"
+                          }}
+                          className="h-7.5 text-xs w-14 text-center bg-white shrink-0 px-1 rounded"
                           disabled={isSaving}
                         />
                         <ColorSelect
                           className={cn(
-                            'h-8 text-xs bg-white flex-1 min-w-[100px]',
+                            'h-7.5 text-xs bg-white flex-1 min-w-[80px] px-2 py-0 rounded gap-1 [&>svg]:size-3',
                             vSubmitted &&
                               !vDraft.colorId &&
                               'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
@@ -1268,7 +1271,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         />
                       </div>
                     </TableCell>
-                    <TableCell className="p-2 align-middle text-right">
+                    <TableCell className="px-1.5 py-1 align-middle text-right">
                       <MoneyInput
                         value={vDraft.importPrice}
                         onValueChange={(val: number) =>
@@ -1278,7 +1281,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         onKeyDown={handleKeyDown}
                         placeholder="Đơn giá nhập *"
                         className={cn(
-                          'h-8 text-xs text-right bg-white',
+                          'h-7.5 text-xs text-right bg-white px-2 rounded',
                           vSubmitted &&
                             vDraft.importPrice <= 0 &&
                             'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
@@ -1295,23 +1298,23 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     <TableCell className="text-right font-bold text-emerald-800 text-xs align-middle">
                       {formatVnd(v.sellingPrice)}
                     </TableCell>
-                    <TableCell className="text-right whitespace-nowrap p-2 align-middle">
+                    <TableCell className="text-right whitespace-nowrap px-1.5 py-1 align-middle">
                       <div className="flex items-center justify-end gap-1">
                         <Button
                           type="button"
                           variant="ghost"
                           size="icon"
                           disabled={isSaving}
-                          className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
+                          className="size-6.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
                           onMouseDown={(ev) => ev.preventDefault()}
                           onClick={() => void saveVehicleInline()}
                           aria-label="Lưu (Enter)"
                           title="Lưu (Enter)"
                         >
                           {isSaving ? (
-                            <Loader2 className="size-4 animate-spin text-emerald-700" />
+                            <Loader2 className="size-3.5 animate-spin text-emerald-700" />
                           ) : (
-                            <Check className="size-4" />
+                            <Check className="size-3.5" />
                           )}
                         </Button>
                         <Button
@@ -1319,12 +1322,12 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                           variant="ghost"
                           size="icon"
                           disabled={isSaving}
-                          className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                          className="size-6.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                           onMouseDown={(ev) => ev.preventDefault()}
                           onClick={cancelVehicleEdit}
                           title="Hủy (Esc)"
                         >
-                          <X className="size-4" />
+                          <X className="size-3.5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -1344,10 +1347,10 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     if (!locked && editingVehicleId !== v.id) startEditVehicle(v)
                   }}
                 >
-                  <TableCell className="font-medium font-mono">
+                  <TableCell className="font-medium">
                     {v.chassisNumber}
                   </TableCell>
-                  <TableCell className="text-slate-500 font-mono">
+                  <TableCell className="text-slate-500">
                     {v.engineNumber}
                   </TableCell>
                   <TableCell>
@@ -1455,7 +1458,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                 className="bg-emerald-50/40 border-y border-emerald-200"
                 onKeyDown={handleKeyDown}
               >
-                <TableCell className="p-2 align-middle">
+                <TableCell className="px-1.5 py-1 align-middle">
                   <Input
                     autoFocus
                     value={vDraft.chassisNumber}
@@ -1468,7 +1471,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     onKeyDown={handleKeyDown}
                     placeholder="Số khung *"
                     className={cn(
-                      'h-8 text-xs font-mono uppercase bg-white',
+                      'h-7.5 text-xs uppercase bg-white px-2 rounded',
                       vSubmitted &&
                         !vDraft.chassisNumber.trim() &&
                         'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
@@ -1476,7 +1479,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     disabled={isSaving}
                   />
                 </TableCell>
-                <TableCell className="p-2 align-middle">
+                <TableCell className="px-1.5 py-1 align-middle">
                   <Input
                     value={vDraft.engineNumber}
                     onChange={(e) =>
@@ -1488,7 +1491,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     onKeyDown={handleKeyDown}
                     placeholder="Số máy *"
                     className={cn(
-                      'h-8 text-xs font-mono uppercase bg-white',
+                      'h-7.5 text-xs uppercase bg-white px-2 rounded',
                       vSubmitted &&
                         !vDraft.engineNumber.trim() &&
                         'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
@@ -1496,11 +1499,11 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     disabled={isSaving}
                   />
                 </TableCell>
-                <TableCell className="p-2 align-middle">
-                  <div className="flex items-center gap-1.5">
+                <TableCell className="px-1.5 py-1 align-middle">
+                  <div className="flex items-center gap-1">
                     <ModelSelect
                       className={cn(
-                        'h-8 text-xs bg-white flex-1 min-w-[120px]',
+                        'h-7.5 text-xs bg-white flex-1 min-w-[85px] px-2 py-0 rounded gap-1 [&>svg]:size-3',
                         vSubmitted &&
                           !vDraft.modelId &&
                           'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
@@ -1511,23 +1514,26 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                       }
                     />
                     <Input
-                      type="number"
+                      type="text"
+                      inputMode="numeric"
+                      maxLength={4}
                       placeholder="Năm"
                       value={vDraft.year ?? ''}
-                      onChange={(e) =>
+                      onChange={(e) => {
+                        const val = e.target.value
+                          .replace(/\D/g, '')
+                          .slice(0, 4)
                         setVDraft({
                           ...vDraft,
-                          year: e.target.value
-                            ? Number(e.target.value)
-                            : null,
+                          year: val ? Number(val) : null,
                         })
-                      }
-                      className="h-8 text-xs w-20 bg-white shrink-0"
+                      }}
+                      className="h-7.5 text-xs w-14 text-center bg-white shrink-0 px-1 rounded"
                       disabled={isSaving}
                     />
                     <ColorSelect
                       className={cn(
-                        'h-8 text-xs bg-white flex-1 min-w-[100px]',
+                        'h-7.5 text-xs bg-white flex-1 min-w-[80px] px-2 py-0 rounded gap-1 [&>svg]:size-3',
                         vSubmitted &&
                           !vDraft.colorId &&
                           'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
@@ -1539,7 +1545,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     />
                   </div>
                 </TableCell>
-                <TableCell className="p-2 align-middle text-right">
+                <TableCell className="px-1.5 py-1 align-middle text-right">
                   <MoneyInput
                     value={vDraft.importPrice}
                     onValueChange={(val: number) =>
@@ -1549,7 +1555,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     onKeyDown={handleKeyDown}
                     placeholder="Đơn giá nhập *"
                     className={cn(
-                      'h-8 text-xs text-right bg-white',
+                      'h-7.5 text-xs text-right bg-white px-2 rounded',
                       vSubmitted &&
                         vDraft.importPrice <= 0 &&
                         'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
@@ -1566,23 +1572,23 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                 <TableCell className="text-right text-slate-400 text-xs align-middle">
                   (tính tự động)
                 </TableCell>
-                <TableCell className="text-right whitespace-nowrap p-2 align-middle">
+                <TableCell className="text-right whitespace-nowrap px-1.5 py-1 align-middle">
                   <div className="flex items-center justify-end gap-1">
                     <Button
                       type="button"
                       variant="ghost"
                       size="icon"
                       disabled={isSaving}
-                      className="size-7 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
+                      className="size-6.5 text-emerald-700 hover:text-emerald-800 hover:bg-emerald-100/60"
                       onMouseDown={(ev) => ev.preventDefault()}
                       onClick={() => void saveVehicleInline()}
                       aria-label="Lưu (Enter)"
                       title="Lưu (Enter)"
                     >
                       {isSaving ? (
-                        <Loader2 className="size-4 animate-spin text-emerald-700" />
+                        <Loader2 className="size-3.5 animate-spin text-emerald-700" />
                       ) : (
-                        <Check className="size-4" />
+                        <Check className="size-3.5" />
                       )}
                     </Button>
                     <Button
@@ -1590,12 +1596,12 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                       variant="ghost"
                       size="icon"
                       disabled={isSaving}
-                      className="size-7 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
+                      className="size-6.5 text-slate-400 hover:text-rose-600 hover:bg-rose-50"
                       onMouseDown={(ev) => ev.preventDefault()}
                       onClick={cancelVehicleEdit}
                       title="Hủy (Esc)"
                     >
-                      <X className="size-4" />
+                      <X className="size-3.5" />
                     </Button>
                   </div>
                 </TableCell>

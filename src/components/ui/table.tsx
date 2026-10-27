@@ -1,5 +1,5 @@
 import * as React from 'react'
-import { cn } from 'cn'
+import { cn } from '#/lib/utils.ts'
 import { markRequired } from '#/components/ui/required-mark.tsx'
 
 function Table({ className, ...props }: React.ComponentProps<'table'>) {
