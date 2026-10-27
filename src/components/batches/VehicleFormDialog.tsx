@@ -27,6 +27,7 @@ export interface VehicleFormValues {
   colorId: number
   chassisNumber: string
   engineNumber: string
+  year?: number | null
   importPrice: number
 }
 
@@ -35,6 +36,7 @@ const EMPTY: VehicleFormValues = {
   colorId: 0,
   chassisNumber: '',
   engineNumber: '',
+  year: null,
   importPrice: 0,
 }
 
@@ -140,6 +142,7 @@ export function VehicleFormDialog({
         ...v,
         chassisNumber: v.chassisNumber.trim(),
         engineNumber: v.engineNumber.trim(),
+        year: v.year ? Number(v.year) : null,
       })
       onOpenChange(false)
     } catch (err: unknown) {
@@ -149,78 +152,80 @@ export function VehicleFormDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md" aria-describedby={undefined}>
+      <DialogContent className="max-w-lg" aria-describedby={undefined}>
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900">
             {title}
           </DialogTitle>
         </DialogHeader>
         <form onSubmit={handleSubmit} noValidate className="space-y-3 pt-2">
-          <div className="space-y-1">
-            <Label className="text-xs font-semibold">Dòng Xe *</Label>
-            <SearchSelect
-              className="h-11 w-full rounded-lg text-sm"
-              placeholder="Chọn dòng xe"
-              value={v.modelId ? String(v.modelId) : ''}
-              onValueChange={(val) => {
-                setV({ ...v, modelId: Number(val) })
-              }}
-              createAction={
-                canManage
-                  ? {
-                      label: 'Thêm dòng xe mới',
-                      onClick: () => {
-                        setMName('')
-                        setMError(null)
-                        setModelOpen(true)
-                      },
-                    }
-                  : undefined
-              }
-            >
-              {models.map((m) => (
-                <SearchSelectItem
-                  key={m.id}
-                  value={String(m.id)}
-                  keywords={modelLabel(m)}
-                >
-                  <ModelOption model={m} />
-                </SearchSelectItem>
-              ))}
-            </SearchSelect>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Dòng Xe *</Label>
+              <SearchSelect
+                className="h-11 w-full rounded-lg text-sm"
+                placeholder="Chọn dòng xe"
+                value={v.modelId ? String(v.modelId) : ''}
+                onValueChange={(val) => {
+                  setV({ ...v, modelId: Number(val) })
+                }}
+                createAction={
+                  canManage
+                    ? {
+                        label: 'Thêm dòng xe mới',
+                        onClick: () => {
+                          setMName('')
+                          setMError(null)
+                          setModelOpen(true)
+                        },
+                      }
+                    : undefined
+                }
+              >
+                {models.map((m) => (
+                  <SearchSelectItem
+                    key={m.id}
+                    value={String(m.id)}
+                    keywords={modelLabel(m)}
+                  >
+                    <ModelOption model={m} />
+                  </SearchSelectItem>
+                ))}
+              </SearchSelect>
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Màu Xe *</Label>
+              <SearchSelect
+                className="h-11 w-full rounded-lg text-sm"
+                placeholder="Chọn màu xe"
+                value={v.colorId ? String(v.colorId) : ''}
+                onValueChange={(val) => setV({ ...v, colorId: Number(val) })}
+                createAction={
+                  canManage
+                    ? {
+                        label: 'Thêm màu mới',
+                        onClick: () => {
+                          setCName('')
+                          setCError(null)
+                          setColorOpen(true)
+                        },
+                      }
+                    : undefined
+                }
+              >
+                {colors.map((c) => (
+                  <SearchSelectItem
+                    key={c.id}
+                    value={String(c.id)}
+                    keywords={c.name}
+                  >
+                    {c.name}
+                  </SearchSelectItem>
+                ))}
+              </SearchSelect>
+            </div>
           </div>
-          <div className="space-y-1">
-            <Label className="text-xs font-semibold">Màu Xe *</Label>
-            <SearchSelect
-              className="h-11 w-full rounded-lg text-sm"
-              placeholder="Chọn màu xe"
-              value={v.colorId ? String(v.colorId) : ''}
-              onValueChange={(val) => setV({ ...v, colorId: Number(val) })}
-              createAction={
-                canManage
-                  ? {
-                      label: 'Thêm màu mới',
-                      onClick: () => {
-                        setCName('')
-                        setCError(null)
-                        setColorOpen(true)
-                      },
-                    }
-                  : undefined
-              }
-            >
-              {colors.map((c) => (
-                <SearchSelectItem
-                  key={c.id}
-                  value={String(c.id)}
-                  keywords={c.name}
-                >
-                  {c.name}
-                </SearchSelectItem>
-              ))}
-            </SearchSelect>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Số Khung *</Label>
               <Input
@@ -233,6 +238,20 @@ export function VehicleFormDialog({
               <Input
                 value={v.engineNumber}
                 onChange={(e) => setV({ ...v, engineNumber: e.target.value })}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Năm / Đời xe</Label>
+              <Input
+                type="number"
+                placeholder="2026"
+                value={v.year ?? ''}
+                onChange={(e) =>
+                  setV({
+                    ...v,
+                    year: e.target.value ? Number(e.target.value) : null,
+                  })
+                }
               />
             </div>
           </div>

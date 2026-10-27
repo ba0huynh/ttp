@@ -322,6 +322,8 @@ export const vehicles = mysqlTable(
     /** Chassis number (VIN) — unique across the system */
     chassisNumber: varchar('chassis_number', { length: 50 }).notNull().unique(),
     engineNumber: varchar('engine_number', { length: 50 }).notNull().unique(),
+    /** Model year / manufacture year (đời xe / năm) */
+    year: int('year'),
     importPrice: money('import_price').notNull(),
     /** Cached — recalculated by recalculateBatch() */
     allocatedExpense: money('allocated_expense').default(0).notNull(),

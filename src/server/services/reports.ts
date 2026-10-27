@@ -239,6 +239,7 @@ export async function listVehicles(filter: {
       id: vehicles.id,
       chassisNumber: vehicles.chassisNumber,
       engineNumber: vehicles.engineNumber,
+      year: vehicles.year,
       importPrice: vehicles.importPrice,
       allocatedExpense: vehicles.allocatedExpense,
       costPrice: vehicles.costPrice,

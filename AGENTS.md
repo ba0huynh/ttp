@@ -1766,7 +1766,31 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - `/loans/$loanId`: PageHeader description displays `Ngân hàng: {loan.bankName}`.
   - Services & Server functions: `listLoansFn`, `getLoanStatus`, `reports.ts`, and `usage.ts` updated to join and reference `banks` directly on `loan_contracts.bank_id`.
 
-_(Next Agent: Append Lesson 161, 162,... above this line upon completing tasks)_
+### Lesson 161: Vehicle Import from Excel, Template Download & Vehicle Manufacture Year (Đời Xe)
+
+- **Client Directive**:
+  1. Add 2 action buttons to vehicle batch intake:
+     - "Tải file mẫu": Downloads official Excel template (`mau-nhap-xe.xlsx`) with columns `STT`, `TÊN HÀNG`, `SK`, `SM`, `MÀU SƠN`, `NĂM`, `GIÁ NHẬP` pre-populated with sample rows.
+     - "Import Excel": Uploads and parses vehicle list from `.xlsx` / `.xls` files.
+  2. Auto-create Models and Colors:
+     - Compare model names and color names case-insensitively with Vietnamese diacritics preserved (`name.trim().toLowerCase()`).
+     - If not already in master data, automatically auto-create using `saveModelFn` / `saveColorFn` without interrupting import.
+  3. UI Row Layout:
+     - Arrange "DÒNG XE" (`ModelSelect`) and "MÀU" (`ColorSelect`) horizontally side-by-side on the same row instead of stacked vertically in `flex-col`.
+     - Add input field for vehicle manufacture year / model year ("NĂM" / "Đời xe") on the vehicle itself (not on the model entity).
+- **Database & Migration (`0047_vehicle_year.sql`)**:
+  - Added `year int` column to `vehicles` table.
+- **Components & Files Modified**:
+  - `src/lib/excel-import.ts`: Dedicated utility for generating `mau-nhap-xe.xlsx` workbook download and parsing uploaded spreadsheets with auto-creation of missing models/colors.
+  - `src/db/schema.ts` & `src/server/services/batches.ts` & `src/server/fns/batches.ts`: Supported `year` across schema, input validation schemas, and queries.
+  - `src/routes/batches.new.tsx` & `src/components/batches/BatchEditor.tsx`:
+    - Added "Tải file mẫu" and "Import Excel" buttons above the vehicle table.
+    - Updated inline row edit (`isEditing` and `editingVehicleId === 'new'`) to place Model, Year, and Color side-by-side.
+    - Rendered year badge in read-only rows.
+  - `src/components/batches/VehicleFormDialog.tsx`: Placed Model and Color side-by-side, added "Năm / Đời xe" numeric input.
+  - `src/routes/inventory.tsx`: Displayed vehicle year badge next to model name in inventory table.
+
+_(Next Agent: Append Lesson 162, 163,... above this line upon completing tasks)_
 
 
 

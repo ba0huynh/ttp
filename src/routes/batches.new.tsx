@@ -24,9 +24,11 @@ import {
   ArrowLeft,
   Check,
   Copy,
+  Download,
   Loader2,
   Plus,
   Trash2,
+  Upload,
   X,
 } from 'lucide-react'
 import * as React from 'react'
@@ -61,9 +63,11 @@ import {
   modelLabel,
   todayIso,
 } from '#/lib/business.ts'
+import { downloadVehicleTemplate, parseVehicleExcel } from '#/lib/excel-import.ts'
 import { currentUserQuery, masterDataQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { createBatchFn } from '#/server/fns/batches.ts'
+import { saveColorFn, saveModelFn } from '#/server/fns/master-data.ts'
 
 export const Route = createFileRoute('/batches/new')({
   beforeLoad: async ({ context: { queryClient } }) => {
@@ -84,6 +88,7 @@ interface VehicleRow {
   colorId: number
   chassisNumber: string
   engineNumber: string
+  year?: number | null
   importPrice: number
 }
 
@@ -252,22 +257,71 @@ function NewBatchPage() {
     colorId: number
     chassisNumber: string
     engineNumber: string
+    year: number | null
     importPrice: number
   }>({
     modelId: 0,
     colorId: 0,
     chassisNumber: '',
     engineNumber: '',
+    year: null,
     importPrice: 0,
   })
 
+  // Excel file upload
+  const fileInputRef = React.useRef<HTMLInputElement | null>(null)
+  const [isImporting, setIsImporting] = React.useState(false)
+
+  const handleExcelImport = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setIsImporting(true)
+    try {
+      const imported = await parseVehicleExcel(file, {
+        models: master.models,
+        colors: master.colors,
+        onAutoCreateModel: async (rawName: string) => {
+          const res = await saveModelFn({ data: { name: rawName } })
+          await queryClient.invalidateQueries({ queryKey: ['master-data'] })
+          return res.id
+        },
+        onAutoCreateColor: async (rawName: string) => {
+          const res = await saveColorFn({ data: { name: rawName } })
+          await queryClient.invalidateQueries({ queryKey: ['master-data'] })
+          return res.id
+        },
+      })
+
+      const baseId = Math.max(0, ...vehicles.map((x) => x.id)) + 1
+      const newRows: VehicleRow[] = imported.map((item, idx) => ({
+        id: baseId + idx,
+        modelId: item.modelId,
+        colorId: item.colorId,
+        chassisNumber: item.chassisNumber,
+        engineNumber: item.engineNumber,
+        year: item.year,
+        importPrice: item.importPrice,
+      }))
+
+      setVehicles((prev) => [...prev, ...newRows])
+      toast.success(`Đã import thành công ${newRows.length} xe từ file Excel`)
+    } catch (err: unknown) {
+      toast.error(err instanceof Error ? err.message : 'Có lỗi khi import Excel')
+    } finally {
+      setIsImporting(false)
+      if (fileInputRef.current) fileInputRef.current.value = ''
+    }
+  }
+
   const startAddVehicle = () => {
+    const prev = vehicles[vehicles.length - 1]
     setVDraft({
-      modelId: master.models[0]?.id ?? 0,
-      colorId: master.colors[0]?.id ?? 0,
+      modelId: prev?.modelId ?? master.models[0]?.id ?? 0,
+      colorId: prev?.colorId ?? master.colors[0]?.id ?? 0,
       chassisNumber: '',
       engineNumber: '',
-      importPrice: 0,
+      year: prev?.year ?? null,
+      importPrice: prev?.importPrice ?? 0,
     })
     setVSubmitted(false)
     setEditingVehicleId('new')
@@ -279,6 +333,7 @@ function NewBatchPage() {
       colorId: v.colorId,
       chassisNumber: '',
       engineNumber: '',
+      year: v.year ?? null,
       importPrice: v.importPrice,
     })
     setVSubmitted(false)
@@ -291,6 +346,7 @@ function NewBatchPage() {
       colorId: v.colorId,
       chassisNumber: v.chassisNumber,
       engineNumber: v.engineNumber,
+      year: v.year ?? null,
       importPrice: v.importPrice,
     })
     setVSubmitted(false)
@@ -336,6 +392,7 @@ function NewBatchPage() {
           colorId: vDraft.colorId,
           chassisNumber: chassis,
           engineNumber: engine,
+          year: vDraft.year,
           importPrice: vDraft.importPrice,
         },
       ])
@@ -348,6 +405,7 @@ function NewBatchPage() {
         orig.colorId !== vDraft.colorId ||
         orig.chassisNumber.trim() !== chassis ||
         orig.engineNumber.trim() !== engine ||
+        orig.year !== vDraft.year ||
         orig.importPrice !== vDraft.importPrice
 
       if (hasChanged) {
@@ -360,6 +418,7 @@ function NewBatchPage() {
                   colorId: vDraft.colorId,
                   chassisNumber: chassis,
                   engineNumber: engine,
+                  year: vDraft.year,
                   importPrice: vDraft.importPrice,
                 }
               : x,
@@ -461,6 +520,7 @@ function NewBatchPage() {
             colorId: v.colorId,
             chassisNumber: v.chassisNumber,
             engineNumber: v.engineNumber,
+            year: v.year ? Number(v.year) : null,
             importPrice: v.importPrice,
           })),
           expenses: expenses.map((e) => ({
@@ -902,17 +962,51 @@ function NewBatchPage() {
         <Section
           title={`Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (${vehicles.length} chiếc — Tiền hàng ${formatVnd(totalImport)})`}
           aside={
-            <Button
-              type="button"
-              size="sm"
-              variant="outline"
-              className="h-9 gap-1.5 rounded-lg bg-white text-sm"
-              onClick={startAddVehicle}
-              disabled={editingVehicleId !== null}
-            >
-              <Plus className="size-3.5" />
-              Thêm xe
-            </Button>
+            <div className="flex items-center gap-1.5 flex-wrap">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9 gap-1.5 rounded-lg bg-white text-xs"
+                onClick={downloadVehicleTemplate}
+              >
+                <Download className="size-3.5" />
+                Tải file mẫu
+              </Button>
+              <input
+                type="file"
+                ref={fileInputRef}
+                accept=".xlsx,.xls"
+                className="hidden"
+                onChange={handleExcelImport}
+              />
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9 gap-1.5 rounded-lg bg-white text-xs text-emerald-700 hover:text-emerald-800"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isImporting}
+              >
+                {isImporting ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Upload className="size-3.5" />
+                )}
+                {isImporting ? 'Đang import...' : 'Import Excel'}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                className="h-9 gap-1.5 rounded-lg bg-white text-sm"
+                onClick={startAddVehicle}
+                disabled={editingVehicleId !== null}
+              >
+                <Plus className="size-3.5" />
+                Thêm xe
+              </Button>
+            </div>
           }
         >
           {vehicles.length === 0 && editingVehicleId === null ? (
@@ -920,32 +1014,55 @@ function NewBatchPage() {
               <p className="text-sm text-slate-500">
                 Chưa có xe nào trong danh sách lô
               </p>
-              <Button
-                type="button"
-                size="sm"
-                variant="outline"
-                className="mt-3 h-8 gap-1.5 text-xs text-emerald-700 hover:text-emerald-800"
-                onClick={startAddVehicle}
-              >
-                <Plus className="size-3.5" />
-                Thêm xe vào lô
-              </Button>
+              <div className="mt-3 flex items-center justify-center gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-xs"
+                  onClick={downloadVehicleTemplate}
+                >
+                  <Download className="size-3.5" />
+                  Tải file mẫu
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-xs text-emerald-700 hover:text-emerald-800"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isImporting}
+                >
+                  <Upload className="size-3.5" />
+                  Import Excel
+                </Button>
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  className="h-8 gap-1.5 text-xs text-emerald-700 hover:text-emerald-800"
+                  onClick={startAddVehicle}
+                >
+                  <Plus className="size-3.5" />
+                  Thêm xe vào lô
+                </Button>
+              </div>
             </div>
           ) : (
             <div className="border border-slate-200 rounded-lg overflow-x-auto bg-white">
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
-                    <TableHead className="w-[180px]">Số Khung</TableHead>
-                    <TableHead className="w-[180px]">Số Máy</TableHead>
-                    <TableHead className="min-w-[220px]">Dòng xe / Màu</TableHead>
-                    <TableHead className="text-right w-[160px]">
+                    <TableHead className="w-[170px]">Số Khung</TableHead>
+                    <TableHead className="w-[170px]">Số Máy</TableHead>
+                    <TableHead className="min-w-[280px]">Dòng xe / Năm / Màu</TableHead>
+                    <TableHead className="text-right w-[150px]">
                       Đơn Giá Nhập
                     </TableHead>
-                    <TableHead className="text-right w-[130px]">
+                    <TableHead className="text-right w-[120px]">
                       CP Phân Bổ
                     </TableHead>
-                    <TableHead className="text-right w-[140px]">
+                    <TableHead className="text-right w-[130px]">
                       Giá Vốn Xe
                     </TableHead>
                     <TableHead className="text-right w-[140px]">
@@ -1002,10 +1119,10 @@ function NewBatchPage() {
                             />
                           </TableCell>
                           <TableCell className="p-2 align-middle">
-                            <div className="flex flex-col gap-1.5">
+                            <div className="flex items-center gap-1.5">
                               <ModelSelect
                                 className={cn(
-                                  'h-8 text-xs bg-white w-full',
+                                  'h-8 text-xs bg-white flex-1 min-w-[120px]',
                                   vSubmitted &&
                                     !vDraft.modelId &&
                                     'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
@@ -1018,9 +1135,23 @@ function NewBatchPage() {
                                   })
                                 }
                               />
+                              <Input
+                                type="number"
+                                placeholder="Năm"
+                                value={vDraft.year ?? ''}
+                                onChange={(e) =>
+                                  setVDraft({
+                                    ...vDraft,
+                                    year: e.target.value
+                                      ? Number(e.target.value)
+                                      : null,
+                                  })
+                                }
+                                className="h-8 text-xs w-20 bg-white shrink-0"
+                              />
                               <ColorSelect
                                 className={cn(
-                                  'h-8 text-xs bg-white w-full',
+                                  'h-8 text-xs bg-white flex-1 min-w-[100px]',
                                   vSubmitted &&
                                     !vDraft.colorId &&
                                     'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
@@ -1110,8 +1241,13 @@ function NewBatchPage() {
                           {v.engineNumber}
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-slate-900">
-                            {model ? modelLabel(model) : ''}
+                          <div className="font-medium text-slate-900 flex items-center gap-1.5 flex-wrap">
+                            <span>{model ? modelLabel(model) : ''}</span>
+                            {v.year && (
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                {v.year}
+                              </span>
+                            )}
                           </div>
                           <div className="text-[11px] text-slate-500">
                             {colorOf(v.colorId)?.name}
@@ -1217,10 +1353,10 @@ function NewBatchPage() {
                         />
                       </TableCell>
                       <TableCell className="p-2 align-middle">
-                        <div className="flex flex-col gap-1.5">
+                        <div className="flex items-center gap-1.5">
                           <ModelSelect
                             className={cn(
-                              'h-8 text-xs bg-white w-full',
+                              'h-8 text-xs bg-white flex-1 min-w-[120px]',
                               vSubmitted &&
                                 !vDraft.modelId &&
                                 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',
@@ -1230,9 +1366,23 @@ function NewBatchPage() {
                               setVDraft({ ...vDraft, modelId: val })
                             }
                           />
+                          <Input
+                            type="number"
+                            placeholder="Năm"
+                            value={vDraft.year ?? ''}
+                            onChange={(e) =>
+                              setVDraft({
+                                ...vDraft,
+                                year: e.target.value
+                                  ? Number(e.target.value)
+                                  : null,
+                              })
+                            }
+                            className="h-8 text-xs w-20 bg-white shrink-0"
+                          />
                           <ColorSelect
                             className={cn(
-                              'h-8 text-xs bg-white w-full',
+                              'h-8 text-xs bg-white flex-1 min-w-[100px]',
                               vSubmitted &&
                                 !vDraft.colorId &&
                                 'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20',

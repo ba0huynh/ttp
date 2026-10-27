@@ -619,8 +619,13 @@ function InventoryPage() {
                           {v.engineNumber}
                         </TableCell>
                         <TableCell>
-                          <div className="font-medium text-slate-900">
-                            {v.modelName}
+                          <div className="font-medium text-slate-900 flex items-center gap-1.5 flex-wrap">
+                            <span>{v.modelName}</span>
+                            {v.year && (
+                              <span className="text-[10px] font-semibold text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded border border-emerald-200">
+                                {v.year}
+                              </span>
+                            )}
                           </div>
                           <div className="text-slate-500">
                             {v.colorName}

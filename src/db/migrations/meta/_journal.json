@@ -330,6 +330,13 @@
       "when": 1793200000000,
       "tag": "0046_loan_bank_id",
       "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "5",
+      "when": 1793300000000,
+      "tag": "0047_vehicle_year",
+      "breakpoints": true
     }
   ]
 }

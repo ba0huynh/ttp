@@ -20,6 +20,7 @@ export interface VehicleInput {
   colorId: number
   chassisNumber: string
   engineNumber: string
+  year?: number | null
   importPrice: number
 }
 
@@ -122,6 +123,7 @@ const normalizeVehicle = (batchId: number, v: VehicleInput) => ({
   colorId: v.colorId,
   chassisNumber: v.chassisNumber.trim().toUpperCase(),
   engineNumber: v.engineNumber.trim().toUpperCase(),
+  year: v.year ? Number(v.year) : null,
   importPrice: v.importPrice,
 })
 
