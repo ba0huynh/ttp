@@ -11,7 +11,6 @@ import * as React from 'react'
 import { z } from 'zod'
 
 import { BankLabel, BankLogo } from '#/components/finance/BankLabel.tsx'
-import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { SupplierLink } from '#/components/suppliers/SupplierDetailDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
@@ -300,7 +299,6 @@ function MasterDataPage() {
   // Modal Color
   const [colorOpen, setColorOpen] = React.useState(false)
   const [cName, setCName] = React.useState('')
-  const [cHex, setCHex] = React.useState('#18181b')
 
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -396,14 +394,9 @@ function MasterDataPage() {
 
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
-    const hex = cHex.trim() ? normalizeHex(cHex) : null
-    if (cHex.trim() && !hex) {
-      await alertDialog('Mã màu hex không hợp lệ. Ví dụ: #990000')
-      return
-    }
     try {
       await saveColor.mutateAsync({
-        data: { id: cId ?? undefined, name: cName, hex },
+        data: { id: cId ?? undefined, name: cName.trim() },
       })
       setColorOpen(false)
     } catch (err: unknown) {
@@ -951,7 +944,6 @@ function MasterDataPage() {
                     onClick={() => {
                       setCId(null)
                       setCName('')
-                      setCHex('#18181b')
                       setColorOpen(true)
                     }}
                     className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -973,13 +965,7 @@ function MasterDataPage() {
                     {colorsPg.pageItems.map((c) => (
                       <TableRow key={c.id}>
                         <TableCell>
-                          <div className="flex items-center gap-2 font-medium text-slate-900">
-                            {c.hex && (
-                              <span
-                                className="size-3.5 rounded-full inline-block border border-slate-300"
-                                style={{ backgroundColor: c.hex }}
-                              />
-                            )}
+                          <div className="font-medium text-slate-900">
                             {c.name}
                           </div>
                         </TableCell>
@@ -992,7 +978,6 @@ function MasterDataPage() {
                                 onClick={() => {
                                   setCId(c.id)
                                   setCName(c.name)
-                                  setCHex(c.hex ?? '#18181b')
                                   setColorOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -1365,10 +1350,6 @@ function MasterDataPage() {
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="Đỏ Đô"
                 />
-              </div>
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Mã Màu Hex</Label>
-                <ColorPicker value={cHex} onChange={setCHex} />
               </div>
               <DialogFooter className="pt-2">
                 <Button

@@ -4,6 +4,7 @@ import { db } from '../../db/index.ts'
 import {
   bankStatementLines,
   bankStatements,
+  banks,
   customers,
   importBatches,
   loanContracts,
@@ -31,8 +32,22 @@ import type { Exec } from './common.ts'
 
 export async function getLoanStatus(loanId: number, asOf = todayIso()) {
   const [loan] = await db
-    .select()
+    .select({
+      id: loanContracts.id,
+      contractNumber: loanContracts.contractNumber,
+      principalAmount: loanContracts.principalAmount,
+      interestRate: loanContracts.interestRate,
+      disbursementDate: loanContracts.disbursementDate,
+      termMonths: loanContracts.termMonths,
+      bankId: loanContracts.bankId,
+      bankName: banks.name,
+      bankImage: banks.image,
+      bankCode: banks.code,
+      createdAt: loanContracts.createdAt,
+      updatedAt: loanContracts.updatedAt,
+    })
     .from(loanContracts)
+    .leftJoin(banks, eq(banks.id, loanContracts.bankId))
     .where(eq(loanContracts.id, loanId))
   if (!loan) throw new BusinessError('Không tìm thấy khế ước')
   const repayments = await db

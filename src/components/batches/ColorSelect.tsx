@@ -3,8 +3,6 @@ import * as React from 'react'
 
 import { useCan } from '#/components/auth/Can.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { ColorLabel } from '#/components/ui/color-label.tsx'
-import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import {
   Dialog,
   DialogContent,
@@ -37,7 +35,6 @@ export function ColorSelect({
   const canManage = useCan('master-data.manage')
   const [open, setOpen] = React.useState(false)
   const [name, setName] = React.useState('')
-  const [hex, setHex] = React.useState('#18181b')
   const [error, setError] = React.useState<string | null>(null)
   const [pending, setPending] = React.useState(false)
 
@@ -46,13 +43,11 @@ export function ColorSelect({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const normalizedHex = hex.trim() ? normalizeHex(hex) : null
     if (!name.trim()) return setError('Vui lòng nhập tên màu')
-    if (hex.trim() && !normalizedHex) return setError('Mã màu hex không hợp lệ')
     setPending(true)
     try {
       const res = await saveColorFn({
-        data: { name: name.trim(), hex: normalizedHex },
+        data: { name: name.trim() },
       })
       await queryClient.invalidateQueries({ queryKey: ['master-data'] })
       onChange(res.id)
@@ -77,7 +72,6 @@ export function ColorSelect({
                 label: 'Thêm màu mới',
                 onClick: () => {
                   setName('')
-                  setHex('#18181b')
                   setError(null)
                   setOpen(true)
                 },
@@ -87,7 +81,7 @@ export function ColorSelect({
       >
         {colors.map((c) => (
           <SearchSelectItem key={c.id} value={String(c.id)} keywords={c.name}>
-            <ColorLabel name={c.name} hex={c.hex} />
+            {c.name}
           </SearchSelectItem>
         ))}
       </SearchSelect>
@@ -107,10 +101,6 @@ export function ColorSelect({
                 onChange={(e) => setName(e.target.value)}
                 placeholder="Đỏ Đô"
               />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Mã Màu Hex</Label>
-              <ColorPicker value={hex} onChange={setHex} />
             </div>
             {error && (
               <p className="text-[11px] font-medium text-rose-600">{error}</p>
@@ -140,3 +130,4 @@ export function ColorSelect({
     </>
   )
 }
+

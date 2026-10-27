@@ -60,22 +60,16 @@ export const listLoansFn = createServerFn({ method: 'GET' })
         bankId: banks.id,
         bankName: banks.name,
         bankImage: banks.image,
-        accountNumber: companyBankAccounts.accountNumber,
         bankCode: banks.code,
         principalAmount: loanContracts.principalAmount,
         interestRate: loanContracts.interestRate,
         disbursementDate: loanContracts.disbursementDate,
         termMonths: loanContracts.termMonths,
-        companyBankAccountId: loanContracts.companyBankAccountId,
         principalPaid: sql<string>`coalesce((select sum(r.principal_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
         interestPaid: sql<string>`coalesce((select sum(r.interest_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
       })
       .from(loanContracts)
-      .leftJoin(
-        companyBankAccounts,
-        eq(companyBankAccounts.id, loanContracts.companyBankAccountId),
-      )
-      .leftJoin(banks, eq(banks.id, companyBankAccounts.bankId))
+      .leftJoin(banks, eq(banks.id, loanContracts.bankId))
       .orderBy(desc(loanContracts.disbursementDate))
 
     return list.map((l) => {
@@ -111,7 +105,7 @@ export const saveLoanContractFn = createServerFn({ method: 'POST' })
       interestRate: z.number().min(0, 'Lãi suất %/năm'),
       disbursementDate: z.string().min(10),
       termMonths: z.number().int().min(1).max(200),
-      companyBankAccountId: z.number().int({ message: 'Chọn số tài khoản' }),
+      bankId: z.number().int({ message: 'Chọn ngân hàng' }),
     }),
   )
   .handler(async ({ data }) => {
@@ -479,11 +473,7 @@ export const listReconciliationLinesFn = createServerFn({ method: 'GET' })
               loanContracts,
               eq(loanContracts.id, loanRepayments.loanContractId),
             )
-            .leftJoin(
-              companyBankAccounts,
-              eq(companyBankAccounts.id, loanContracts.companyBankAccountId),
-            )
-            .leftJoin(banks, eq(banks.id, companyBankAccounts.bankId))
+            .leftJoin(banks, eq(banks.id, loanContracts.bankId))
             .where(inArray(loanRepayments.id, loanIds))
         : [],
     ])
@@ -731,11 +721,7 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
               loanContracts,
               eq(loanContracts.id, loanRepayments.loanContractId),
             )
-            .leftJoin(
-              companyBankAccounts,
-              eq(companyBankAccounts.id, loanContracts.companyBankAccountId),
-            )
-            .leftJoin(banks, eq(banks.id, companyBankAccounts.bankId))
+            .leftJoin(banks, eq(banks.id, loanContracts.bankId))
             .where(inArray(loanRepayments.id, loanIds))
         : [],
     ])

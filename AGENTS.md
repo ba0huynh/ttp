@@ -36,11 +36,10 @@ All AI Agents working on this repository **MUST STRICTLY ADHERE** to the followi
    - Whenever completing a new feature, fixing a complex bug, discovering a technical gotcha, or changing database schema/routes:
    - The Agent **MUST IMMEDIATELY** record that lesson into **Section 5: Living Knowledge Log & Lessons Learned** at the bottom of this file before handing back to the user.
 
-6. **MANDATORY COLOR CIRCLE SWATCH DISPLAY (CRITICAL UI PROTOCOL)**:
-   - **Whenever displaying vehicle colors in UI tables, select dropdowns, search filters, or preview cards, ALWAYS render the round color swatch preview circle alongside the color name.**
-   - Use `#/components/ui/color-label.tsx` (`<ColorLabel name={colorName} hex={colorHex} />`) or an inline rounded color dot (`size-2.5` to `size-3.5`, `rounded-full border border-slate-300`, `style={{ backgroundColor: colorHex || 'transparent' }}`).
-   - **Never render raw color text alone without its color swatch circle.**
-   - Backend queries and endpoints returning vehicle items must always select and return `colorHex: colors.hex` so UI components have the hex value available.
+6. **TEXT-ONLY COLOR DISPLAY PROTOCOL (CLIENT DIRECTIVE)**:
+   - Per explicit client feedback, color swatches (round color circles, hex palettes, and color pickers) **MUST NOT be displayed** anywhere in the system.
+   - Users only enter color as a name (plain text, e.g. "Đỏ", "Đen nhám", "Trắng"). All color displays across tables, dropdowns, search filters, modal forms, and detail views must **ONLY render the color name text** (`colorName` / `c.name`).
+   - Do NOT render color swatch circles or hex pickers.
 
 ---
 
@@ -1740,7 +1739,34 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - `cancelSalesOrder` now **deletes** the `sales_orders` row (and its lines) instead of keeping a `cancelled` shell with 0 vehicles / 0 ₫ in the `/sales` list. Still refused while any vehicle was delivered or invoiced (cancel those first: `Hủy HĐ`, `Hủy xuất kho`). Receipt vouchers pointing at the order keep existing, only losing the link (`ON DELETE SET NULL`). Migration `0045_delete_cancelled_orders` removed the shells already in the database (its down is a no-op). The `cancelled` enum value remains in the schema but is no longer written.
 
-_(Next Agent: Append Lesson 159, 160,... above this line upon completing tasks)_
+### Lesson 159: Removal of Color Swatches & Color Picker per Client Directive
+
+- **Client Directive**: The client explicitly requested:
+  - Users do not need to pick a hex color / palette anymore; they only enter the color name (text input).
+  - Remove all color swatch previews / circles / hex pickers across all UI components, displaying ONLY the color name text everywhere.
+- **Affected Components & Views**:
+  - `src/components/ui/color-label.tsx`: Swatch dot removed, renders plain text name.
+  - `src/routes/master-data.tsx`: Removed hex color circle from table and `<ColorPicker>` / hex validation from Add/Edit Color modal. Only "Tên Màu *" is entered.
+  - `src/components/batches/ColorSelect.tsx`: Removed `<ColorPicker>` and hex input from quick-add modal, renders `{c.name}` in dropdown options.
+  - `src/components/batches/VehicleFormDialog.tsx`: Removed `<ColorPicker>` and hex input from quick-add modal, renders `{c.name}` in dropdown options.
+  - `src/routes/inventory.tsx`: Removed color swatch dot from table and multi-select filter options.
+  - `src/routes/index.tsx`: Removed color swatch dot from recent vehicles table.
+  - `src/routes/sales.new.tsx` & `src/routes/sales.$orderId.tsx`: Removed `<ColorLabel>` swatches in favor of clean text `{colorName}` / `{c.name}`.
+  - Rule 6 of `AGENTS.md` updated to forbid color swatches.
+
+### Lesson 160: Loan Contract Uses Bank Selection (Replaced Account Number per Client Directive)
+
+- **Client Directive**: In the "Tạo Khế Ước Vay Ngân Hàng Mới" modal, replace "Số Tài Khoản" with "Ngân Hàng" selected from the bank list (`master.banks`).
+- **Database & Migration (`0046_loan_bank_id.sql`)**:
+  - `loan_contracts.bank_id` (NOT NULL FK referencing `banks.id`) replaces `company_bank_account_id`.
+  - Backfilled from existing account link or lowest bank id.
+  - Dropped `company_bank_account_id` and foreign key constraint `loan_contracts_bank_account_fk`.
+- **UI & Routes**:
+  - `/loans` (`loans.index.tsx`): Form modal now displays "Ngân Hàng *" using `SearchSelect` with `BankLabel` over `master.banks`. The table column header is updated to "Ngân Hàng" and renders `<BankLabel image={l.bankImage} name={l.bankName}>{l.bankName}</BankLabel>`.
+  - `/loans/$loanId`: PageHeader description displays `Ngân hàng: {loan.bankName}`.
+  - Services & Server functions: `listLoansFn`, `getLoanStatus`, `reports.ts`, and `usage.ts` updated to join and reference `banks` directly on `loan_contracts.bank_id`.
+
+_(Next Agent: Append Lesson 161, 162,... above this line upon completing tasks)_
 
 
 

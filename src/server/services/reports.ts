@@ -6,7 +6,6 @@ import {
   batchExpenses,
   expenseTypes,
   colors,
-  companyBankAccounts,
   customers,
   importBatches,
   loanContracts,
@@ -347,11 +346,7 @@ export async function getReports(from: string, to: string) {
       principalPaid: sql<string>`coalesce((select sum(r.principal_amount) from ${loanRepayments} r where r.loan_contract_id = ${loanContracts.id}),0)`,
     })
     .from(loanContracts)
-    .leftJoin(
-      companyBankAccounts,
-      eq(companyBankAccounts.id, loanContracts.companyBankAccountId),
-    )
-    .leftJoin(banks, eq(banks.id, companyBankAccounts.bankId))
+    .leftJoin(banks, eq(banks.id, loanContracts.bankId))
     .orderBy(asc(loanContracts.disbursementDate))
 
   // All independent: run them concurrently (each is a network round trip)

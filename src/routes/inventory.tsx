@@ -211,9 +211,7 @@ function InventoryPage() {
     ...new Map(vehicles.map((v) => [v.batchId, batchLabel(v)])),
   ]
   const modelOptions = [...new Set(vehicles.map((v) => v.modelName))].sort()
-  // Color name -> swatch, so the dropdown shows the same dot as the table
-  const colorHexByName = new Map(vehicles.map((v) => [v.colorName, v.colorHex]))
-  const colorOptions = [...colorHexByName.keys()].sort()
+  const colorOptions = [...new Set(vehicles.map((v) => v.colorName))].sort()
   const activeFilterCount = [
     filterBatch.length > 0,
     filterModel.length > 0,
@@ -422,14 +420,6 @@ function InventoryPage() {
               >
                 {colorOptions.map((c) => (
                   <SearchSelectItem key={c} value={c}>
-                    {colorHexByName.get(c) && (
-                      <span
-                        className="size-2.5 shrink-0 rounded-full inline-block border border-slate-300"
-                        style={{
-                          backgroundColor: colorHexByName.get(c) ?? undefined,
-                        }}
-                      />
-                    )}
                     {c}
                   </SearchSelectItem>
                 ))}
@@ -632,13 +622,7 @@ function InventoryPage() {
                           <div className="font-medium text-slate-900">
                             {v.modelName}
                           </div>
-                          <div className="flex items-center gap-1.5 text-slate-500">
-                            {v.colorHex && (
-                              <span
-                                className="size-2.5 rounded-full inline-block border border-slate-300"
-                                style={{ backgroundColor: v.colorHex }}
-                              />
-                            )}
+                          <div className="text-slate-500">
                             {v.colorName}
                           </div>
                         </TableCell>

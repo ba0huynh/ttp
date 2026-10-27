@@ -215,16 +215,11 @@ export const loanContracts = mysqlTable('loan_contracts', {
   disbursementDate: date('disbursement_date', { mode: 'string' }).notNull(),
   /** Loan term (kỳ hạn) in months, 1-200 */
   termMonths: int('term_months').default(12).notNull(),
-  /** Company bank account that records the loan (optional) */
-  companyBankAccountId: int('company_bank_account_id'),
+  bankId: int('bank_id')
+    .notNull()
+    .references(() => banks.id),
   ...timestamps,
-}, (t) => [
-  foreignKey({
-    name: 'loan_contracts_bank_account_fk',
-    columns: [t.companyBankAccountId],
-    foreignColumns: [companyBankAccounts.id],
-  }),
-])
+})
 
 export const loanRepayments = mysqlTable(
   'loan_repayments',
@@ -645,9 +640,9 @@ export const posBranchesRelations = relations(posBranches, ({ one }) => ({
 export const loanContractsRelations = relations(
   loanContracts,
   ({ one, many }) => ({
-    account: one(companyBankAccounts, {
-      fields: [loanContracts.companyBankAccountId],
-      references: [companyBankAccounts.id],
+    bank: one(banks, {
+      fields: [loanContracts.bankId],
+      references: [banks.id],
     }),
     repayments: many(loanRepayments),
     batches: many(importBatches),

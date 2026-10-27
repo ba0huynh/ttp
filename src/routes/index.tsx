@@ -201,13 +201,7 @@ function DashboardPage() {
                           <div className="font-medium text-slate-900">
                             {v.modelName}
                           </div>
-                          <div className="text-[11px] text-slate-500 flex items-center gap-1.5">
-                            {v.colorHex && (
-                              <span
-                                className="size-2.5 rounded-full border border-slate-300 inline-block shrink-0"
-                                style={{ backgroundColor: v.colorHex }}
-                              />
-                            )}
+                          <div className="text-[11px] text-slate-500">
                             {v.colorName}
                           </div>
                         </TableCell>

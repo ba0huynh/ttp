@@ -34,7 +34,6 @@ import {
   CardTitle,
 } from '#/components/ui/card.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
-import { ColorLabel } from '#/components/ui/color-label.tsx'
 import {
   Dialog,
   DialogContent,
@@ -768,7 +767,7 @@ function NewSalesOrderPage() {
                               {v.modelName}
                             </div>
                             <div className="text-[11px] text-slate-500">
-                              <ColorLabel name={v.colorName} hex={v.colorHex} />
+                              {v.colorName}
                             </div>
                           </TableCell>
                           <TableCell className="text-slate-900">
@@ -893,7 +892,7 @@ function NewSalesOrderPage() {
                       value={String(c.id)}
                       keywords={c.name}
                     >
-                      <ColorLabel name={c.name} hex={c.hex} />
+                      {c.name}
                     </SearchSelectItem>
                   ))}
                 </MultiSearchSelect>

@@ -35,7 +35,6 @@ import { Alert, AlertDescription } from '#/components/ui/alert.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
-import { ColorLabel } from '#/components/ui/color-label.tsx'
 import { cn } from 'cn'
 import {
   Card,
@@ -852,7 +851,7 @@ function SalesOrderPage() {
                             {i.modelName}
                           </div>
                           <div className="text-[11px] text-slate-500 mt-0.5">
-                            <ColorLabel name={i.colorName} hex={i.colorHex} />
+                            {i.colorName}
                           </div>
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
@@ -1089,10 +1088,9 @@ function SalesOrderPage() {
                     <span className="font-semibold text-slate-900">
                       Số khung: {detailItem.chassisNumber}
                     </span>
-                    <ColorLabel
-                      name={detailItem.colorName}
-                      hex={detailItem.colorHex}
-                    />
+                    <span className="font-medium text-slate-700">
+                      {detailItem.colorName}
+                    </span>
                   </div>
                   <div className="flex items-center justify-between text-slate-600">
                     <span>Dòng xe: {detailItem.modelName || '—'}</span>
@@ -1483,7 +1481,7 @@ function SalesOrderPage() {
                     </SearchSelectItem>
                     {distinctColors.map((c) => (
                       <SearchSelectItem key={c.name} value={c.name} keywords={c.name}>
-                        <ColorLabel name={c.name} hex={c.hex} />
+                        {c.name}
                       </SearchSelectItem>
                     ))}
                   </SearchSelect>

@@ -4,8 +4,6 @@ import * as React from 'react'
 import { ModelOption } from '#/components/batches/ModelOption.tsx'
 import { useCan } from '#/components/auth/Can.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { ColorLabel } from '#/components/ui/color-label.tsx'
-import { ColorPicker, normalizeHex } from '#/components/ui/color-picker.tsx'
 import {
   Dialog,
   DialogContent,
@@ -75,7 +73,6 @@ export function VehicleFormDialog({
   // Quick-create a colour without leaving the vehicle form
   const [colorOpen, setColorOpen] = React.useState(false)
   const [cName, setCName] = React.useState('')
-  const [cHex, setCHex] = React.useState('#18181b')
   const [cError, setCError] = React.useState<string | null>(null)
   const [cPending, setCPending] = React.useState(false)
 
@@ -109,12 +106,10 @@ export function VehicleFormDialog({
   const handleCreateColor = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    const hex = cHex.trim() ? normalizeHex(cHex) : null
     if (!cName.trim()) return setCError('Vui lòng nhập tên màu')
-    if (cHex.trim() && !hex) return setCError('Mã màu hex không hợp lệ')
     setCPending(true)
     try {
-      const res = await saveColorFn({ data: { name: cName.trim(), hex } })
+      const res = await saveColorFn({ data: { name: cName.trim() } })
       await queryClient.invalidateQueries({ queryKey: ['master-data'] })
       setV((cur) => ({ ...cur, colorId: res.id }))
       setColorOpen(false)
@@ -207,7 +202,6 @@ export function VehicleFormDialog({
                       label: 'Thêm màu mới',
                       onClick: () => {
                         setCName('')
-                        setCHex('#18181b')
                         setCError(null)
                         setColorOpen(true)
                       },
@@ -221,7 +215,7 @@ export function VehicleFormDialog({
                   value={String(c.id)}
                   keywords={c.name}
                 >
-                  <ColorLabel name={c.name} hex={c.hex} />
+                  {c.name}
                 </SearchSelectItem>
               ))}
             </SearchSelect>
@@ -341,10 +335,6 @@ export function VehicleFormDialog({
                 onChange={(e) => setCName(e.target.value)}
                 placeholder="Đỏ Đô"
               />
-            </div>
-            <div className="space-y-1">
-              <Label className="text-xs font-semibold">Mã Màu Hex</Label>
-              <ColorPicker value={cHex} onChange={setCHex} />
             </div>
             {cError && (
               <p className="text-[11px] font-medium text-rose-600">{cError}</p>

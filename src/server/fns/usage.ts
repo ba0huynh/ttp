@@ -76,11 +76,7 @@ async function usageOf(
             contractNumber: loanContracts.contractNumber,
           })
           .from(loanContracts)
-          .innerJoin(
-            companyBankAccounts,
-            eq(companyBankAccounts.id, loanContracts.companyBankAccountId),
-          )
-          .where(eq(companyBankAccounts.bankId, id)),
+          .where(eq(loanContracts.bankId, id)),
         db
           .select({
             accountNumber: companyBankAccounts.accountNumber,
@@ -108,7 +104,7 @@ async function usageOf(
     }
 
     case 'companyBankAccounts': {
-      const [receipts, payments, repayments, statements, loans] =
+      const [receipts, payments, repayments, statements] =
         await Promise.all([
         db
           .select({
@@ -145,13 +141,6 @@ async function usageOf(
           .select({ id: bankStatements.id, fileName: bankStatements.fileName })
           .from(bankStatements)
           .where(eq(bankStatements.companyBankAccountId, id)),
-        db
-          .select({
-            id: loanContracts.id,
-            contractNumber: loanContracts.contractNumber,
-          })
-          .from(loanContracts)
-          .where(eq(loanContracts.companyBankAccountId, id)),
       ])
       return [
         group(
@@ -166,13 +155,6 @@ async function usageOf(
           payments.map((p) => ({
             label: `${formatDate(p.date)} — ${p.supplier ?? p.payee ?? 'Khác'} — ${formatVnd(num(p.amount))}`,
             href: '/finance?tab=payments',
-          })),
-        ),
-        group(
-          'Khế ước vay',
-          loans.map((l) => ({
-            label: `Khế ước ${l.contractNumber}`,
-            href: `/loans/${l.id}`,
           })),
         ),
         group(

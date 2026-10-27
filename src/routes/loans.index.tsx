@@ -40,7 +40,6 @@ import {
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
 import { DecimalInput } from '#/components/ui/decimal-input.tsx'
-import { BankAccountSelect } from '#/components/finance/BankAccountSelect.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
@@ -253,9 +252,7 @@ function LoansPage() {
   const [interestRate, setInterestRate] = React.useState(8.5)
   const [disbursementDate, setDisbursementDate] = React.useState(todayIso())
   const [termMonths, setTermMonths] = React.useState(12)
-  const [companyBankAccountId, setCompanyBankAccountId] = React.useState<
-    number | null
-  >(null)
+  const [bankId, setBankId] = React.useState<number | null>(null)
   // What the user typed so far, shown live under the form
   const estimate = estimateLoanTermInterest(
     principalAmount,
@@ -299,7 +296,7 @@ function LoansPage() {
     setInterestRate(8.5)
     setDisbursementDate(todayIso())
     setTermMonths(12)
-    setCompanyBankAccountId(master.bankAccounts.find((a) => a.isActive)?.id ?? null)
+    setBankId(master.banks[0]?.id ?? null)
     setNewLoanOpen(true)
   }
 
@@ -310,15 +307,15 @@ function LoansPage() {
     setInterestRate(l.interestRate)
     setDisbursementDate(l.disbursementDate)
     setTermMonths(l.termMonths)
-    setCompanyBankAccountId(l.companyBankAccountId ?? null)
+    setBankId(l.bankId ?? null)
     setNewLoanOpen(true)
   }
 
   const handleCreateLoan = async (e: React.FormEvent) => {
     e.preventDefault()
-    if (companyBankAccountId === null)
+    if (bankId === null)
       return showErrorDialog(
-        new Error('Vui lòng chọn số tài khoản'),
+        new Error('Vui lòng chọn ngân hàng'),
         'Lỗi khi lưu khế ước vay',
       )
     try {
@@ -330,7 +327,7 @@ function LoansPage() {
           interestRate,
           disbursementDate,
           termMonths,
-          companyBankAccountId,
+          bankId,
         },
       })
       setNewLoanOpen(false)
@@ -399,7 +396,7 @@ function LoansPage() {
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
                     {sortHead('contract', 'Số Khế Ước', '')}
-                    {sortHead('bank', 'Số Tài Khoản', '')}
+                    {sortHead('bank', 'Ngân Hàng', '')}
                     {sortHead('rate', 'Lãi Suất', 'text-center')}
                     {sortHead('term', 'Kỳ Hạn', 'text-center')}
                     {sortHead('paid', 'Gốc Đã Trả', 'text-right')}
@@ -420,9 +417,9 @@ function LoansPage() {
                         </Link>
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
-                        {l.accountNumber ? (
+                        {l.bankName ? (
                           <BankLabel image={l.bankImage} name={l.bankName}>
-                            {l.bankCode || l.bankName} - {l.accountNumber}
+                            {l.bankName}
                           </BankLabel>
                         ) : (
                           '—'
@@ -631,11 +628,25 @@ function LoansPage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Số Tài Khoản *</Label>
-                <BankAccountSelect
-                  value={companyBankAccountId}
-                  onChange={setCompanyBankAccountId}
-                />
+                <Label className="text-xs font-semibold">Ngân Hàng *</Label>
+                <SearchSelect
+                  className="h-11 w-full text-sm rounded-lg"
+                  placeholder="Chọn ngân hàng"
+                  value={bankId ? String(bankId) : ''}
+                  onValueChange={(v) => setBankId(Number(v))}
+                >
+                  {master.banks.map((b) => (
+                    <SearchSelectItem
+                      key={b.id}
+                      value={String(b.id)}
+                      keywords={`${b.code ?? ''} ${b.shortName ?? ''}`}
+                    >
+                      <BankLabel image={b.image} name={b.name}>
+                        {b.name}
+                      </BankLabel>
+                    </SearchSelectItem>
+                  ))}
+                </SearchSelect>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
