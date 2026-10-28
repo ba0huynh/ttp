@@ -357,7 +357,7 @@ async function assertPaymentWithinDebt(
 ) {
   const [[bought], [paid], [supplier]] = await Promise.all([
     db
-      .select({ t: sql<string>`coalesce(sum(${vehicles.importPrice}),0)` })
+      .select({ t: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)` })
       .from(vehicles)
       .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))
       .where(eq(importBatches.supplierId, supplierId)),

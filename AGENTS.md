@@ -1846,7 +1846,106 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - Added input labeled "Số tài khoản" with placeholder "Tìm theo số tài khoản..." in the "Bộ Lọc Khế Ước" modal.
   - Updated filter count, pagination cache key, and reset button ("Xóa lọc") to reset `accountSearch`.
 
-_(Next Agent: Append Lesson 165, 166,... above this line upon completing tasks)_
+### Lesson 165: Vehicle Import VAT (% VAT & VAT-Inclusive Price) & Proportional Expense Allocation
+
+- **Client Directive**:
+  - In batch intake and batch editing ("Nhập lô => Danh sách xe"), add 2 columns directly after "Đơn Giá Nhập":
+    1. Input "% VAT" (`vatRate`, defaults to 10%).
+    2. Auto-calculated "Đơn Giá Đã VAT" (`importPriceWithVat = priceWithVat(importPrice, vatRate)`).
+  - All downstream calculations — Allocated Expenses (CP phân bổ), Cost Price (Giá vốn xe), and Batch Selling Price (Giá bán áp dụng) — are now computed based on the VAT-inclusive price (`importPriceWithVat`).
+- **Database & Migration (`0049_vehicle_vat.sql`)**:
+  - Added `vat_rate decimal(5,2) DEFAULT 0 NOT NULL` and `import_price_with_vat bigint DEFAULT 0 NOT NULL` to `vehicles`.
+  - Backfilled existing rows with `import_price_with_vat = import_price` to preserve existing financial records.
+  - Set default `vat_rate` to 10% for new records.
+- **Core Business Logic (`src/lib/business.ts`)**:
+  - `allocateBatchExpenses`: Allocates batch expenses proportionally based on `importPriceWithVat` of each vehicle:
+    $$\text{Allocated Expense}_i = \text{Total Batch Expenses} \times \frac{\text{importPriceWithVat}_i}{\sum \text{importPriceWithVat}}$$
+    $$\text{Cost Price}_i = \text{importPriceWithVat}_i + \text{Allocated Expense}_i$$
+  - `computeSellingPrice`: Uses `v.importPriceWithVat` as the base when `pricingBase === 'import_price'`.
+- **Services & Server Functions**:
+  - `src/server/services/batches.ts`: Updated `recalculateBatch` and `normalizeVehicle` to compute `importPriceWithVat` and allocate based on it.
+  - `src/server/fns/batches.ts`: Updated `createBatchFn`, `addVehiclesToBatchFn`, `updateVehicleFn` schemas to accept `vatRate`, and `getBatchDetailFn` to return `vatRate` and `importPriceWithVat`.
+  - `src/server/services/reports.ts`: Selected `vatRate` and `importPriceWithVat` in `listVehicles`.
+- **UI Components & Routes**:
+  - `src/routes/batches.new.tsx` & `src/components/batches/BatchEditor.tsx`:
+    - Added columns `% VAT` and `Đơn Giá Đã VAT` immediately after `Đơn Giá Nhập`.
+    - Inline edit rows include a `% VAT` input (`w-14 text-center`) and real-time auto-calculated VAT-inclusive price display.
+    - Read-only rows render `{v.vatRate}%` badge and formatted VAT-inclusive price.
+  - `src/components/batches/VehicleFormDialog.tsx`: Added `% VAT` input and read-only `Đơn Giá Đã VAT` auto-calculated preview.
+  - `src/lib/excel-import.ts`: Updated sample template download and parser to include the optional `% VAT` column (defaults to 10%).
+
+### Lesson 166: Editable Selling Price Before VAT & % VAT in Sales Order (`/sales/$orderId`)
+
+- **Client Directive**:
+  - In Sales Order detail (`/sales/$orderId`), allow editing:
+    1. Đơn Giá Chưa VAT (`priceBeforeVat`)
+    2. % VAT (`vatRate`)
+  - Auto-recalculate Đơn Giá Bán Đã VAT (`unitPrice = priceWithVat(priceBeforeVat, vatRate)`).
+- **Backend Services & Functions (`src/server/services/sales.ts` & `src/server/fns/sales.ts`)**:
+  - Added `updateSalesOrderPricing`: updates `priceBeforeVat`, `vatRate`, and `unitPrice` on `sales_order_items`.
+  - Automatically recalculates `sales_orders.totalAmount` (`sum(unitPrice)` of all items in the order).
+  - Synchronizes any already-issued commercial invoices (`invoice_items.amount` and `invoices.totalAmount`) ensuring accounting and debt totals stay strictly in sync.
+  - Exposed `updateSalesOrderPricingFn` guarded by `sales.create` permission.
+- **Frontend UI (`src/routes/sales.$orderId.tsx`)**:
+  - **Single Vehicle Pricing Edit**:
+    - Added "Sửa giá" button with pencil icon (`<Pencil />`) in the "Thao tác" column next to the "Xem" button.
+    - Also enabled clicking directly on the "Đơn Giá Chưa VAT" or "% VAT" cells to open the edit modal.
+    - Edit dialog features:
+      - Vehicle details summary card (Chassis number, Model, Color, and Cost price `costPrice`).
+      - `MoneyInput` for "Đơn Giá Chưa VAT (VNĐ)".
+      - `DecimalInput` for "% VAT".
+      - Real-time preview box displaying the auto-calculated "Đơn Giá Bán Đã VAT".
+      - Prominent below-cost alert if `priceBeforeVat < costPrice`.
+  - **Batch Pricing Edit**:
+    - In `selectMode`, added "Sửa giá (X) xe đã chọn" button allowing bulk update of `% VAT` and/or `priceBeforeVat` across multiple vehicles in the sales order.
+  - React Query invalidation refreshes sales order detail, order listings, receivables, and reports immediately upon saving.
+
+### Lesson 167: Batch Pricing Base Label Updated to "Đơn giá nhập đã VAT"
+
+- **Client Directive**:
+  - In "Cài Giá Bán Theo Lô" (Batch Selling Price Configuration), update the text for the import price base option in "Gốc tính giá" to **"Đơn giá nhập đã VAT"**.
+  - Since selling price margin is now calculated on top of the VAT-inclusive import price (`importPriceWithVat`), this text change clearly communicates to users that margin is applied to the VAT-inclusive price.
+- **Frontend UI Updates**:
+  - `src/routes/batches.new.tsx`: Updated `<SelectItem value="import_price">` to "Đơn giá nhập đã VAT".
+  - `src/components/batches/BatchEditor.tsx`: Updated `<SelectItem value="import_price">` to "Đơn giá nhập đã VAT".
+  - `src/routes/batches.index.tsx`: Updated batch list badge and filter dropdown to "Trên Giá Nhập Đã VAT".
+
+### Lesson 168: Batch Goods Total ("Tiền Hàng") Computed as After-VAT (VAT-Inclusive)
+
+- **Context & Client Directive**:
+  - In batch management (`/batches` & `/batches/new` / `/batches/$batchId`), "Tiền Hàng" (goods value / total import price) must be the after-VAT amount (`importPriceWithVat`).
+  - Previously, `totalImport` was aggregating `vehicles.importPrice` (pre-VAT), which caused "TIỀN HÀNG" and "TỔNG GIÁ VỐN LÔ" in `/batches` to display the pre-VAT value.
+- **Backend & Database Queries**:
+  - `src/server/fns/batches.ts`: Updated `listBatchesFn` to compute `totalImport: sql<string>'coalesce(sum(${vehicles.importPriceWithVat}),0)'`. This correctly computes both `totalImport` (Tiền hàng) and `totalCost = totalImport + totalExpense` (Tổng giá vốn lô) on the batch list page.
+  - `src/server/services/finance.ts`: Updated supplier debt verification `assertPaymentWithinDebt` to sum `vehicles.importPriceWithVat`.
+  - `src/server/services/reports.ts`: Updated `getPayablesSummary` (AP debt to suppliers) and `getInventoryTotals` to sum `vehicles.importPriceWithVat`.
+- **Frontend UI Updates**:
+  - `src/routes/batches.new.tsx`: Calculated `totalImport` summing `priceWithVat(v.importPrice, v.vatRate)` so the section header reads `(... chiếc — Tiền hàng {formatVnd(totalImport)})` using the VAT-inclusive price.
+  - `src/components/batches/BatchEditor.tsx`: Added `— Tiền hàng {formatVnd(totalImport)}` to the vehicle section header using `importPriceWithVat`.
+
+### Lesson 169: Vehicle Import Price ("Đơn Giá Nhập") Displayed After-VAT in Inventory (`/inventory`)
+
+- **Context & Client Directive**:
+  - In the Dual Inventory view (`/inventory`, "Kho Xe – Cơ Chế 2 Kho Độc Lập"), the "ĐƠN GIÁ NHẬP" column must display the VAT-inclusive price (`importPriceWithVat`), consistent with batch intake and costing rules.
+- **Frontend UI & Filter Updates (`src/routes/inventory.tsx`)**:
+  - Table cell for `ĐƠN GIÁ NHẬP`: Updated to render `{formatVnd(v.importPriceWithVat ?? v.importPrice)}`.
+  - Filter logic: Updated price filter and allocated fee calculations to use `(v.importPriceWithVat ?? v.importPrice)`.
+  - Filter dropdown label: Updated from "Đơn giá nhập (giá nhập thực tế)" to "Đơn giá nhập (đã gồm VAT)".
+
+### Lesson 170: Comprehensive Audit of After-VAT Calculations for Imported Motorbikes
+
+- **Audit & Verification**:
+  - Conducted a full audit across all calculations, tables, alerts, and services involving imported motorbikes to ensure strict consistency with after-VAT (`importPriceWithVat`) pricing:
+    1. **Expense Allocation & Cost Price Formula (`src/lib/business.ts`)**: Proportional expense allocation $\text{Allocated Expense}_i = \text{Total Batch Expenses} \times \frac{\text{importPriceWithVat}_i}{\sum \text{importPriceWithVat}}$ and $\text{Cost Price}_i = \text{importPriceWithVat}_i + \text{Allocated Expense}_i$.
+    2. **Batch Selling Price Formula (`computeSellingPrice` in `src/lib/business.ts`)**: Base for "Đơn giá nhập đã VAT" uses `v.importPriceWithVat`.
+    3. **Batch Intake & Batch Editor Header (`batches.new.tsx` & `BatchEditor.tsx`)**: "Tiền hàng" displays `sum(importPriceWithVat)`.
+    4. **Below-Cost Warning Alert (`CostWarningAlert.tsx` & `BatchEditor.tsx`)**: Updated `CostWarningAlert` to display `worst.importPriceWithVat` and reference text "(Lưu ý: Đơn giá nhập đã VAT là ...)".
+    5. **Inventory View & Filters (`inventory.tsx`)**: Table column "ĐƠN GIÁ NHẬP", fee calculations, and price range filters all evaluate `v.importPriceWithVat`.
+    6. **Batch Listing & Total Cost (`batches.ts`)**: `totalImport` and `totalCost` in `listBatchesFn` sum `vehicles.importPriceWithVat`.
+    7. **Supplier Debt & AP (`finance.ts` & `reports.ts`)**: `assertPaymentWithinDebt` and `getPayablesSummary` calculate supplier debt based on `vehicles.importPriceWithVat`.
+    8. **Warehouse Total Asset Value (`reports.ts`)**: `getInventoryTotals` computes `importValue` using `vehicles.importPriceWithVat`.
+
+_(Next Agent: Append Lesson 171, 172,... above this line upon completing tasks)_
 
 
 

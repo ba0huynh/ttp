@@ -595,3 +595,122 @@ export async function updateSalesOrder(
       .where(eq(salesOrders.id, orderId))
   })
 }
+
+/** Updates pricing (priceBeforeVat & vatRate) for one or more items in a sales order */
+export async function updateSalesOrderPricing(
+  input: {
+    salesOrderId: number
+    items: {
+      itemId: number
+      priceBeforeVat: number
+      vatRate: number
+    }[]
+  },
+  _userId?: number,
+) {
+  if (input.items.length === 0) {
+    throw new BusinessError('Không có dòng xe nào để cập nhật giá')
+  }
+
+  for (const it of input.items) {
+    if (it.priceBeforeVat < 0) {
+      throw new BusinessError('Đơn giá chưa VAT không hợp lệ')
+    }
+    if (it.vatRate < 0 || it.vatRate > 100) {
+      throw new BusinessError('% VAT phải từ 0% đến 100%')
+    }
+  }
+
+  return await db.transaction(async (tx) => {
+    const [order] = await tx
+      .select({ id: salesOrders.id, status: salesOrders.status })
+      .from(salesOrders)
+      .where(eq(salesOrders.id, input.salesOrderId))
+      .limit(1)
+
+    if (!order) throw new BusinessError('Không tìm thấy phiếu bán')
+    if (order.status === 'cancelled') {
+      throw new BusinessError('Phiếu bán đã hủy — không thể chỉnh sửa giá')
+    }
+
+    const itemIds = input.items.map((i) => i.itemId)
+    const existing = await tx
+      .select({
+        id: salesOrderItems.id,
+        salesOrderId: salesOrderItems.salesOrderId,
+        vehicleId: salesOrderItems.vehicleId,
+        costPrice: salesOrderItems.costPrice,
+      })
+      .from(salesOrderItems)
+      .where(
+        and(
+          eq(salesOrderItems.salesOrderId, input.salesOrderId),
+          inArray(salesOrderItems.id, itemIds),
+        ),
+      )
+
+    if (existing.length !== itemIds.length) {
+      throw new BusinessError('Có dòng xe không thuộc phiếu bán này')
+    }
+
+    const existingMap = new Map(existing.map((e) => [e.id, e]))
+
+    for (const it of input.items) {
+      const ex = existingMap.get(it.itemId)!
+      const unitPrice = priceWithVat(it.priceBeforeVat, it.vatRate)
+
+      await tx
+        .update(salesOrderItems)
+        .set({
+          priceBeforeVat: it.priceBeforeVat,
+          vatRate: it.vatRate,
+          unitPrice,
+        })
+        .where(eq(salesOrderItems.id, it.itemId))
+
+      // If an internal invoice was already issued for this vehicle, synchronize invoice item & total
+      const [invLine] = await tx
+        .select({
+          id: invoiceItems.id,
+          invoiceId: invoiceItems.invoiceId,
+        })
+        .from(invoiceItems)
+        .where(eq(invoiceItems.vehicleId, ex.vehicleId))
+        .limit(1)
+
+      if (invLine) {
+        await tx
+          .update(invoiceItems)
+          .set({ amount: unitPrice })
+          .where(eq(invoiceItems.id, invLine.id))
+
+        const invLines = await tx
+          .select({ amount: invoiceItems.amount })
+          .from(invoiceItems)
+          .where(eq(invoiceItems.invoiceId, invLine.invoiceId))
+
+        const invTotal = invLines.reduce((sum, line) => sum + num(line.amount), 0)
+
+        await tx
+          .update(invoices)
+          .set({ totalAmount: invTotal })
+          .where(eq(invoices.id, invLine.invoiceId))
+      }
+    }
+
+    // Recalculate order total
+    const allItems = await tx
+      .select({ unitPrice: salesOrderItems.unitPrice })
+      .from(salesOrderItems)
+      .where(eq(salesOrderItems.salesOrderId, input.salesOrderId))
+
+    const newTotal = allItems.reduce((sum, line) => sum + num(line.unitPrice), 0)
+
+    await tx
+      .update(salesOrders)
+      .set({ totalAmount: newTotal })
+      .where(eq(salesOrders.id, input.salesOrderId))
+
+    return { totalAmount: newTotal }
+  })
+}

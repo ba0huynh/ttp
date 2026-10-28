@@ -119,7 +119,7 @@ export async function getPayablesSummary() {
     db
       .select({
         supplierId: importBatches.supplierId,
-        total: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
+        total: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
       })
       .from(importBatches)
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
@@ -167,7 +167,7 @@ function getInventoryTotals() {
   return db
     .select({
       total: sql<number>`count(*)`,
-      importValue: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
+      importValue: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
       physical: sql<number>`sum(case when ${vehicles.isDelivered} = 0 then 1 else 0 end)`,
       invoiced: sql<number>`sum(case when ${vehicles.isInvoiced} = 0 then 1 else 0 end)`,
       physicalValue: sql<string>`coalesce(sum(case when ${vehicles.isDelivered} = 0 then ${vehicles.costPrice} else 0 end),0)`,
@@ -241,6 +241,8 @@ export async function listVehicles(filter: {
       engineNumber: vehicles.engineNumber,
       year: vehicles.year,
       importPrice: vehicles.importPrice,
+      vatRate: vehicles.vatRate,
+      importPriceWithVat: vehicles.importPriceWithVat,
       allocatedExpense: vehicles.allocatedExpense,
       costPrice: vehicles.costPrice,
       sellingPrice: vehicles.sellingPrice,
@@ -271,6 +273,8 @@ export async function listVehicles(filter: {
   return rows.map((r) => ({
     ...r,
     importPrice: num(r.importPrice),
+    vatRate: num(r.vatRate),
+    importPriceWithVat: num(r.importPriceWithVat),
     allocatedExpense: num(r.allocatedExpense),
     costPrice: num(r.costPrice),
     sellingPrice: num(r.sellingPrice),

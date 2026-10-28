@@ -50,7 +50,13 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import { CostWarningAlert } from '#/components/pricing/CostWarningAlert.tsx'
-import { computeSellingPrice, formatVnd, isBelowCost } from '#/lib/business.ts'
+import {
+  DEFAULT_VAT_RATE,
+  computeSellingPrice,
+  formatVnd,
+  isBelowCost,
+  priceWithVat,
+} from '#/lib/business.ts'
 import type { PricingBase, PricingMethod } from '#/lib/business.ts'
 import { downloadVehicleTemplate, parseVehicleExcel } from '#/lib/excel-import.ts'
 import { masterDataQuery } from '#/lib/queries.ts'
@@ -231,7 +237,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="import_price">Đơn giá nhập</SelectItem>
+              <SelectItem value="import_price">Đơn giá nhập đã VAT</SelectItem>
               <SelectItem value="cost_price">Giá vốn thực tế</SelectItem>
             </SelectContent>
           </Select>
@@ -297,7 +303,7 @@ function PricingEditor({ detail }: { detail: BatchDetail }) {
         <CostWarningAlert
           sellingPrice={worst.newPrice}
           costPrice={worst.costPrice}
-          importPrice={worst.importPrice}
+          importPrice={worst.importPriceWithVat ?? worst.importPrice}
         />
       )}
     </Section>
@@ -731,6 +737,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     engineNumber: string
     year: number | null
     importPrice: number
+    vatRate: number
   }>({
     modelId: 0,
     colorId: 0,
@@ -738,6 +745,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     engineNumber: '',
     year: null,
     importPrice: 0,
+    vatRate: DEFAULT_VAT_RATE,
   })
 
   // Excel file upload
@@ -775,6 +783,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
             colorId: item.colorId,
             year: item.year,
             importPrice: item.importPrice,
+            vatRate: item.vatRate ?? DEFAULT_VAT_RATE,
           })),
         },
       })
@@ -881,6 +890,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       engineNumber: '',
       year: prev?.year ?? null,
       importPrice: 0,
+      vatRate: prev?.vatRate ?? DEFAULT_VAT_RATE,
     })
     setVSubmitted(false)
     setEditingVehicleId('new')
@@ -894,6 +904,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       engineNumber: '',
       year: v.year ?? null,
       importPrice: v.importPrice,
+      vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
     setVSubmitted(false)
     setEditingVehicleId('new')
@@ -907,6 +918,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       engineNumber: v.engineNumber,
       year: v.year ?? null,
       importPrice: v.importPrice,
+      vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
     setVSubmitted(false)
     setEditingVehicleId(v.id)
@@ -954,6 +966,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                 colorId: vDraft.colorId,
                 year: vDraft.year ? Number(vDraft.year) : null,
                 importPrice: vDraft.importPrice,
+                vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
               },
             ],
           },
@@ -968,7 +981,8 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           orig.chassisNumber.trim() !== chassis ||
           orig.engineNumber.trim() !== engine ||
           (orig.year ?? null) !== vDraft.year ||
-          Number(orig.importPrice) !== vDraft.importPrice
+          Number(orig.importPrice) !== vDraft.importPrice ||
+          (orig.vatRate ?? DEFAULT_VAT_RATE) !== vDraft.vatRate
 
         if (hasChanged) {
           await update.mutateAsync({
@@ -980,6 +994,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
               colorId: vDraft.colorId,
               year: vDraft.year ? Number(vDraft.year) : null,
               importPrice: vDraft.importPrice,
+              vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
             },
           })
           toast.success('Đã cập nhật thông tin xe')
@@ -1019,9 +1034,17 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     handleRowArrowNavigation(e)
   }
 
+  const totalImport = detail.vehicles.reduce(
+    (s, v) =>
+      s +
+      (v.importPriceWithVat ??
+        priceWithVat(Number(v.importPrice) || 0, Number(v.vatRate ?? 10) || 0)),
+    0,
+  )
+
   return (
     <Section
-      title={`Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (${detail.vehicles.length} chiếc)`}
+      title={`Danh Sách Xe Trong Lô & Phân Bổ Giá Vốn (${detail.vehicles.length} chiếc — Tiền hàng ${formatVnd(totalImport)})`}
       aside={
         <div className="flex items-center gap-1.5 flex-wrap">
           <Button
@@ -1164,6 +1187,12 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
               <TableHead className="text-right w-[125px]">
                 Đơn Giá Nhập
               </TableHead>
+              <TableHead className="text-center w-[75px]">
+                % VAT
+              </TableHead>
+              <TableHead className="text-right w-[125px]">
+                Đơn Giá Đã VAT
+              </TableHead>
               <TableHead className="text-right w-[100px]">CP Phân Bổ</TableHead>
               <TableHead className="text-right w-[110px]">Giá Vốn Xe</TableHead>
               <TableHead className="text-right w-[115px]">
@@ -1289,6 +1318,26 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                         disabled={isSaving}
                       />
                     </TableCell>
+                    <TableCell className="px-1.5 py-1 align-middle text-center">
+                      <Input
+                        type="text"
+                        inputMode="numeric"
+                        placeholder="%"
+                        value={vDraft.vatRate}
+                        onChange={(e) => {
+                          const val = e.target.value.replace(/[^\d.]/g, '')
+                          setVDraft({
+                            ...vDraft,
+                            vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                          })
+                        }}
+                        className="h-7.5 text-xs w-14 text-center bg-white mx-auto px-1 rounded"
+                        disabled={isSaving}
+                      />
+                    </TableCell>
+                    <TableCell className="text-right font-medium text-slate-800 text-xs align-middle px-2">
+                      {formatVnd(priceWithVat(vDraft.importPrice, vDraft.vatRate))}
+                    </TableCell>
                     <TableCell className="text-right text-slate-400 text-xs align-middle">
                       +{formatVnd(v.allocatedExpense)}
                     </TableCell>
@@ -1368,6 +1417,14 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                   </TableCell>
                   <TableCell className="text-right">
                     {formatVnd(v.importPrice)}
+                  </TableCell>
+                  <TableCell className="text-center">
+                    <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                      {v.vatRate ?? 10}%
+                    </span>
+                  </TableCell>
+                  <TableCell className="text-right font-medium text-slate-900">
+                    {formatVnd(v.importPriceWithVat ?? priceWithVat(v.importPrice, v.vatRate ?? 10))}
                   </TableCell>
                   <TableCell className="text-right text-slate-500">
                     +{formatVnd(v.allocatedExpense)}
@@ -1562,6 +1619,26 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     )}
                     disabled={isSaving}
                   />
+                </TableCell>
+                <TableCell className="px-1.5 py-1 align-middle text-center">
+                  <Input
+                    type="text"
+                    inputMode="numeric"
+                    placeholder="%"
+                    value={vDraft.vatRate}
+                    onChange={(e) => {
+                      const val = e.target.value.replace(/[^\d.]/g, '')
+                      setVDraft({
+                        ...vDraft,
+                        vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                      })
+                    }}
+                    className="h-7.5 text-xs w-14 text-center bg-white mx-auto px-1 rounded"
+                    disabled={isSaving}
+                  />
+                </TableCell>
+                <TableCell className="text-right font-medium text-slate-800 text-xs align-middle px-2">
+                  {formatVnd(priceWithVat(vDraft.importPrice, vDraft.vatRate))}
                 </TableCell>
                 <TableCell className="text-right text-slate-400 text-xs align-middle">
                   (tính tự động)

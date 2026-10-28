@@ -16,10 +16,12 @@ import {
 } from '@tanstack/react-router'
 import {
   ArrowLeft,
+  AlertTriangle,
   CheckSquare,
   Eye,
   FileCheck,
   Loader2,
+  Pencil,
   RotateCcw,
   Search,
   SlidersHorizontal,
@@ -68,7 +70,9 @@ import {
   TablePagination,
   usePagination,
 } from '#/components/ui/table-pagination.tsx'
-import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
+import { DecimalInput } from '#/components/ui/decimal-input.tsx'
+import { MoneyInput } from '#/components/ui/money-input.tsx'
+import { formatDate, formatVnd, priceWithVat, todayIso } from '#/lib/business.ts'
 import { currentUserQuery, salesOrderDetailQuery } from '#/lib/queries.ts'
 import { hasPermission } from '#/lib/permissions.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
@@ -80,6 +84,7 @@ import {
   revertDeliveryNoteFn,
   revertInvoiceFn,
   updateInvoiceFn,
+  updateSalesOrderPricingFn,
 } from '#/server/fns/sales.ts'
 
 export const Route = createFileRoute('/sales/$orderId')({
@@ -289,8 +294,24 @@ function SalesOrderPage() {
     mutationFn: revertDeliveryNoteFn,
     onSuccess: onSettled,
   })
+  const updatePricingMutation = useMutation({
+    mutationFn: updateSalesOrderPricingFn,
+    onSuccess: onSettled,
+  })
 
   type OrderItem = (typeof items)[number]
+  const [editingItem, setEditingItem] = React.useState<OrderItem | null>(null)
+  const [editPriceBeforeVat, setEditPriceBeforeVat] = React.useState(0)
+  const [editVatRate, setEditVatRate] = React.useState(0)
+  const [editPricingError, setEditPricingError] = React.useState<string | null>(null)
+
+  const [batchPricingOpen, setBatchPricingOpen] = React.useState(false)
+  const [batchVatRate, setBatchVatRate] = React.useState<number>(10)
+  const [applyVatToBatch, setApplyVatToBatch] = React.useState(true)
+  const [batchPriceBeforeVat, setBatchPriceBeforeVat] = React.useState<number>(0)
+  const [applyPriceToBatch, setApplyPriceToBatch] = React.useState(false)
+  const [batchPricingError, setBatchPricingError] = React.useState<string | null>(null)
+
   const [deliveryDialogOpen, setDeliveryDialogOpen] = React.useState(false)
   // Editable delivery fields of the vehicle detail dialog
   const [dDate, setDDate] = React.useState(todayIso())
@@ -316,8 +337,10 @@ function SalesOrderPage() {
     updateDeliveryMutation.isPending ||
     updateInvoiceMutation.isPending ||
     revertDeliveryMutation.isPending ||
-    revertInvoiceMutation.isPending
+    revertInvoiceMutation.isPending ||
+    updatePricingMutation.isPending
 
+  const canManageSales = hasPermission(user, 'sales.create')
   const canDeliver = hasPermission(user, 'sales.deliver')
   const canInvoice = hasPermission(user, 'sales.invoice')
   const canCancel = items.every((i) => !i.isDelivered && !i.isInvoiced)
@@ -439,6 +462,61 @@ function SalesOrderPage() {
       setInvoiceDialogOpen(false)
     } catch (err: unknown) {
       setActionError(formatErrorMessage(err, 'Lỗi khi lập hóa đơn'))
+    }
+  }
+
+  const handleSavePricing = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!editingItem) return
+    setEditPricingError(null)
+    try {
+      await updatePricingMutation.mutateAsync({
+        data: {
+          salesOrderId: order.id,
+          items: [
+            {
+              itemId: editingItem.id,
+              priceBeforeVat: editPriceBeforeVat,
+              vatRate: editVatRate,
+            },
+          ],
+        },
+      })
+      setEditingItem(null)
+    } catch (err: unknown) {
+      setEditPricingError(formatErrorMessage(err, 'Lỗi khi cập nhật giá bán / VAT'))
+    }
+  }
+
+  const handleBatchPricingSubmit = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (selectedForDelivery.length === 0) return
+    if (!applyVatToBatch && !applyPriceToBatch) {
+      setBatchPricingError('Vui lòng chọn áp dụng % VAT hoặc Đơn giá chưa VAT')
+      return
+    }
+    setBatchPricingError(null)
+
+    const selectedVehiclesList = items.filter((it) =>
+      selectedForDelivery.includes(it.vehicleId),
+    )
+
+    const payloadItems = selectedVehiclesList.map((it) => ({
+      itemId: it.id,
+      priceBeforeVat: applyPriceToBatch ? batchPriceBeforeVat : it.priceBeforeVat,
+      vatRate: applyVatToBatch ? batchVatRate : it.vatRate,
+    }))
+
+    try {
+      await updatePricingMutation.mutateAsync({
+        data: {
+          salesOrderId: order.id,
+          items: payloadItems,
+        },
+      })
+      setBatchPricingOpen(false)
+    } catch (err: unknown) {
+      setBatchPricingError(formatErrorMessage(err, 'Lỗi khi cập nhật giá bán / VAT'))
     }
   }
 
@@ -751,6 +829,29 @@ function SalesOrderPage() {
                     xe đã chọn
                   </Button>
                 )}
+                {canManageSales && (
+                  <Button
+                    size="sm"
+                    disabled={selectedForDelivery.length === 0}
+                    onClick={() => {
+                      const first = items.find((it) => it.vehicleId === selectedForDelivery[0])
+                      setBatchVatRate(first?.vatRate ?? 10)
+                      setBatchPriceBeforeVat(first?.priceBeforeVat ?? 0)
+                      setApplyVatToBatch(true)
+                      setApplyPriceToBatch(false)
+                      setBatchPricingError(null)
+                      setBatchPricingOpen(true)
+                    }}
+                    className="h-7 text-xs bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1.5"
+                  >
+                    <Pencil className="size-3.5" />
+                    Sửa giá{' '}
+                    {selectedForDelivery.length > 0
+                      ? `(${selectedForDelivery.length})`
+                      : ''}{' '}
+                    xe đã chọn
+                  </Button>
+                )}
                 {canDeliver && (
                 <Button
                   size="sm"
@@ -854,10 +955,52 @@ function SalesOrderPage() {
                             {i.colorName}
                           </div>
                         </TableCell>
-                        <TableCell className="text-right font-medium text-slate-900">
+                        <TableCell
+                          className={cn(
+                            'text-right font-medium text-slate-900',
+                            canManageSales &&
+                              !selectMode &&
+                              'cursor-pointer hover:text-amber-700 hover:bg-amber-50/60 transition-colors',
+                          )}
+                          onClick={(e) => {
+                            if (canManageSales && !selectMode) {
+                              e.stopPropagation()
+                              setEditingItem(i)
+                              setEditPriceBeforeVat(i.priceBeforeVat)
+                              setEditVatRate(i.vatRate)
+                              setEditPricingError(null)
+                            }
+                          }}
+                          title={
+                            canManageSales && !selectMode
+                              ? `Bấm để sửa đơn giá chưa VAT xe ${i.chassisNumber}`
+                              : undefined
+                          }
+                        >
                           {formatVnd(i.priceBeforeVat)}
                         </TableCell>
-                        <TableCell className="text-right text-slate-500">
+                        <TableCell
+                          className={cn(
+                            'text-right text-slate-600 font-medium',
+                            canManageSales &&
+                              !selectMode &&
+                              'cursor-pointer hover:text-amber-700 hover:bg-amber-50/60 transition-colors',
+                          )}
+                          onClick={(e) => {
+                            if (canManageSales && !selectMode) {
+                              e.stopPropagation()
+                              setEditingItem(i)
+                              setEditPriceBeforeVat(i.priceBeforeVat)
+                              setEditVatRate(i.vatRate)
+                              setEditPricingError(null)
+                            }
+                          }}
+                          title={
+                            canManageSales && !selectMode
+                              ? `Bấm để sửa % VAT xe ${i.chassisNumber}`
+                              : undefined
+                          }
+                        >
                           {i.vatRate}%
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
@@ -937,16 +1080,35 @@ function SalesOrderPage() {
                         </TableCell>
                         {!selectMode && (
                           <TableCell className="text-center whitespace-nowrap">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="h-7 text-xs border-blue-300 text-blue-800 hover:bg-blue-50 gap-1.5 font-medium px-2.5"
-                              onClick={() => setDetailVehicleId(i.vehicleId)}
-                              title={`Xem chi tiết xuất kho / hóa đơn xe ${i.chassisNumber}`}
-                            >
-                              <Eye className="size-3.5 text-blue-600" />
-                              Xem
-                            </Button>
+                            <div className="flex items-center justify-center gap-1.5">
+                              {canManageSales && (
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs border-amber-300 text-amber-800 hover:bg-amber-50 gap-1 font-medium px-2"
+                                  onClick={() => {
+                                    setEditingItem(i)
+                                    setEditPriceBeforeVat(i.priceBeforeVat)
+                                    setEditVatRate(i.vatRate)
+                                    setEditPricingError(null)
+                                  }}
+                                  title={`Sửa đơn giá chưa VAT & % VAT xe ${i.chassisNumber}`}
+                                >
+                                  <Pencil className="size-3 text-amber-600" />
+                                  Sửa giá
+                                </Button>
+                              )}
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-7 text-xs border-blue-300 text-blue-800 hover:bg-blue-50 gap-1.5 font-medium px-2.5"
+                                onClick={() => setDetailVehicleId(i.vehicleId)}
+                                title={`Xem chi tiết xuất kho / hóa đơn xe ${i.chassisNumber}`}
+                              >
+                                <Eye className="size-3.5 text-blue-600" />
+                                Xem
+                              </Button>
+                            </div>
                           </TableCell>
                         )}
                       </TableRow>
@@ -1510,6 +1672,252 @@ function SalesOrderPage() {
                 Áp dụng ({filteredItems.length})
               </Button>
             </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        {/* Edit Single Vehicle Pricing Dialog */}
+        <Dialog
+          open={Boolean(editingItem)}
+          onOpenChange={(open) => {
+            if (!open) {
+              setEditingItem(null)
+              setEditPricingError(null)
+            }
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                <Pencil className="size-4 text-amber-600" />
+                Chỉnh Sửa Giá Bán & Thuế VAT
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Cập nhật đơn giá chưa VAT và tỷ lệ % VAT cho xe trong phiếu bán #{order.id}.
+              </DialogDescription>
+            </DialogHeader>
+
+            {editingItem && (
+              <form onSubmit={handleSavePricing} className="space-y-4 pt-1">
+                {editPricingError && (
+                  <Alert variant="destructive" className="py-2 text-xs">
+                    <AlertDescription>{editPricingError}</AlertDescription>
+                  </Alert>
+                )}
+
+                <div className="bg-slate-50 border border-slate-200 rounded-lg p-3 space-y-1.5 text-xs">
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Số khung:</span>
+                    <span className="font-mono font-bold text-slate-800">
+                      {editingItem.chassisNumber}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center">
+                    <span className="text-slate-500">Dòng xe / Màu:</span>
+                    <span className="font-medium text-slate-800">
+                      {editingItem.modelName}{' '}
+                      {editingItem.colorName ? `• ${editingItem.colorName}` : ''}
+                    </span>
+                  </div>
+                  <div className="flex justify-between items-center pt-1 border-t border-slate-200/80">
+                    <span className="text-slate-500">Giá vốn xe:</span>
+                    <span className="font-semibold text-slate-700">
+                      {formatVnd(editingItem.costPrice)}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      Đơn Giá Chưa VAT (VNĐ) <span className="text-rose-500">*</span>
+                    </Label>
+                    <MoneyInput
+                      value={editPriceBeforeVat}
+                      onValueChange={setEditPriceBeforeVat}
+                      className="h-9 text-sm text-right px-3"
+                    />
+                  </div>
+
+                  <div className="space-y-1.5">
+                    <Label className="text-xs font-semibold text-slate-700">
+                      % VAT <span className="text-rose-500">*</span>
+                    </Label>
+                    <DecimalInput
+                      maxDecimals={2}
+                      value={editVatRate}
+                      onValueChange={(val) =>
+                        setEditVatRate(Math.min(Math.max(0, val), 100))
+                      }
+                      className="h-9 text-sm text-right px-3"
+                    />
+                  </div>
+
+                  {/* Calculated preview */}
+                  <div className="bg-emerald-50/70 border border-emerald-200/80 rounded-lg p-3 flex items-center justify-between">
+                    <div>
+                      <div className="text-xs font-semibold text-emerald-900">
+                        Đơn Giá Bán Đã VAT
+                      </div>
+                      <div className="text-[11px] text-emerald-700">
+                        Tự động tính từ đơn giá & % VAT
+                      </div>
+                    </div>
+                    <div className="text-base font-bold text-emerald-800 font-mono">
+                      {formatVnd(priceWithVat(editPriceBeforeVat, editVatRate))}
+                    </div>
+                  </div>
+
+                  {/* Below cost warning */}
+                  {editPriceBeforeVat > 0 &&
+                    editPriceBeforeVat < editingItem.costPrice && (
+                      <Alert className="border-amber-200 bg-amber-50 text-amber-900 py-2.5">
+                        <AlertTriangle className="size-4 text-amber-600 mt-0.5 shrink-0" />
+                        <AlertDescription className="text-xs ml-1 leading-relaxed">
+                          Cảnh báo: Đơn giá chưa VAT ({formatVnd(editPriceBeforeVat)}) thấp
+                          hơn giá vốn ({formatVnd(editingItem.costPrice)}).
+                        </AlertDescription>
+                      </Alert>
+                    )}
+                </div>
+
+                <DialogFooter className="pt-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setEditingItem(null)}
+                    disabled={updatePricingMutation.isPending}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    type="submit"
+                    size="sm"
+                    disabled={updatePricingMutation.isPending}
+                    className="bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1.5"
+                  >
+                    {updatePricingMutation.isPending && (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    )}
+                    Lưu Thay Đổi
+                  </Button>
+                </DialogFooter>
+              </form>
+            )}
+          </DialogContent>
+        </Dialog>
+
+        {/* Batch Pricing Edit Dialog */}
+        <Dialog
+          open={batchPricingOpen}
+          onOpenChange={(open) => {
+            if (!open) {
+              setBatchPricingOpen(false)
+              setBatchPricingError(null)
+            }
+          }}
+        >
+          <DialogContent className="max-w-md">
+            <DialogHeader>
+              <DialogTitle className="text-base font-bold text-slate-900 flex items-center gap-1.5">
+                <Pencil className="size-4 text-amber-600" />
+                Sửa Giá Cho ({selectedForDelivery.length}) Xe Đã Chọn
+              </DialogTitle>
+              <DialogDescription className="text-xs text-slate-500">
+                Áp dụng tỷ lệ VAT hoặc đơn giá chưa VAT đồng loạt cho các xe được chọn.
+              </DialogDescription>
+            </DialogHeader>
+
+            <form onSubmit={handleBatchPricingSubmit} className="space-y-4 pt-1">
+              {batchPricingError && (
+                <Alert variant="destructive" className="py-2 text-xs">
+                  <AlertDescription>{batchPricingError}</AlertDescription>
+                </Alert>
+              )}
+
+              <div className="space-y-3">
+                {/* Toggle apply VAT */}
+                <div className="space-y-2 p-3 border rounded-lg bg-slate-50">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="applyVatCheckbox"
+                      checked={applyVatToBatch}
+                      onCheckedChange={(c) => setApplyVatToBatch(Boolean(c))}
+                    />
+                    <Label
+                      htmlFor="applyVatCheckbox"
+                      className="text-xs font-semibold cursor-pointer text-slate-800"
+                    >
+                      Cập nhật % VAT đồng loạt
+                    </Label>
+                  </div>
+                  {applyVatToBatch && (
+                    <div className="pl-6 pt-1">
+                      <DecimalInput
+                        maxDecimals={2}
+                        value={batchVatRate}
+                        onValueChange={(val) =>
+                          setBatchVatRate(Math.min(Math.max(0, val), 100))
+                        }
+                        className="h-9 text-sm text-right px-3"
+                      />
+                    </div>
+                  )}
+                </div>
+
+                {/* Toggle apply price */}
+                <div className="space-y-2 p-3 border rounded-lg bg-slate-50">
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      id="applyPriceCheckbox"
+                      checked={applyPriceToBatch}
+                      onCheckedChange={(c) => setApplyPriceToBatch(Boolean(c))}
+                    />
+                    <Label
+                      htmlFor="applyPriceCheckbox"
+                      className="text-xs font-semibold cursor-pointer text-slate-800"
+                    >
+                      Cập nhật Đơn Giá Chưa VAT đồng loạt
+                    </Label>
+                  </div>
+                  {applyPriceToBatch && (
+                    <div className="pl-6 pt-1">
+                      <MoneyInput
+                        value={batchPriceBeforeVat}
+                        onValueChange={setBatchPriceBeforeVat}
+                        className="h-9 text-sm text-right px-3"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <DialogFooter className="pt-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setBatchPricingOpen(false)}
+                  disabled={updatePricingMutation.isPending}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  size="sm"
+                  disabled={
+                    updatePricingMutation.isPending ||
+                    (!applyVatToBatch && !applyPriceToBatch)
+                  }
+                  className="bg-amber-600 hover:bg-amber-700 text-white font-semibold gap-1.5"
+                >
+                  {updatePricingMutation.isPending && (
+                    <Loader2 className="size-3.5 animate-spin" />
+                  )}
+                  Áp Dụng Cho {selectedForDelivery.length} Xe
+                </Button>
+              </DialogFooter>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

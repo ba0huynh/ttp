@@ -6,6 +6,13 @@
 /** Round VND to nearest integer */
 export const roundVnd = (n: number) => Math.round(n)
 
+/** Default VAT rate (%) */
+export const DEFAULT_VAT_RATE = 10
+
+/** VAT-inclusive price = price before VAT × (1 + VAT% / 100), whole đồng */
+export const priceWithVat = (before: number, vatRatePercent: number) =>
+  Math.round((Number(before) || 0) * (1 + (Number(vatRatePercent) || 0) / 100))
+
 /* -------------------------------------------------------------------------- */
 /* Batch expense allocation & cost price                                      */
 /* -------------------------------------------------------------------------- */
@@ -13,49 +20,67 @@ export const roundVnd = (n: number) => Math.round(n)
 export interface AllocationInput {
   id: number
   importPrice: number
+  vatRate?: number
+  importPriceWithVat?: number
 }
 
 export interface AllocationResult {
   id: number
   importPrice: number
+  vatRate: number
+  importPriceWithVat: number
   allocatedExpense: number
   costPrice: number
 }
 
 /**
- * Allocated expense for vehicle i = Total batch expenses × (Import price of vehicle i / Σ import prices).
+ * Allocated expense for vehicle i = Total batch expenses × (VAT-inclusive import price of vehicle i / Σ VAT-inclusive import prices).
+ * Cost price of vehicle i = VAT-inclusive import price + Allocated expense.
  * Rounding differences are apportioned to the last vehicle so total allocated == total batch expense.
  */
 export function allocateBatchExpenses(
   items: AllocationInput[],
   totalExpense: number,
 ): AllocationResult[] {
-  const totalImport = items.reduce((s, v) => s + v.importPrice, 0)
-  if (items.length === 0) return []
-  if (totalImport <= 0) {
+  const withVat = items.map((v) => {
+    const vatRate = v.vatRate !== undefined ? v.vatRate : DEFAULT_VAT_RATE
+    const importPriceWithVat =
+      v.importPriceWithVat !== undefined
+        ? v.importPriceWithVat
+        : priceWithVat(v.importPrice, vatRate)
+    return {
+      ...v,
+      vatRate,
+      importPriceWithVat,
+    }
+  })
+
+  const totalGoodsValue = withVat.reduce((s, v) => s + v.importPriceWithVat, 0)
+  if (withVat.length === 0) return []
+  if (totalGoodsValue <= 0) {
     // Zero goods value -> divide equally to preserve total expense
-    const each = roundVnd(totalExpense / items.length)
-    return items.map((v, i) => {
+    const each = roundVnd(totalExpense / withVat.length)
+    return withVat.map((v, i) => {
       const allocated =
-        i === items.length - 1 ? totalExpense - each * (items.length - 1) : each
+        i === withVat.length - 1 ? totalExpense - each * (withVat.length - 1) : each
       return {
         ...v,
         allocatedExpense: allocated,
-        costPrice: v.importPrice + allocated,
+        costPrice: v.importPriceWithVat + allocated,
       }
     })
   }
   let running = 0
-  return items.map((v, i) => {
+  return withVat.map((v, i) => {
     const allocated =
-      i === items.length - 1
+      i === withVat.length - 1
         ? roundVnd(totalExpense - running)
-        : roundVnd((totalExpense * v.importPrice) / totalImport)
+        : roundVnd((totalExpense * v.importPriceWithVat) / totalGoodsValue)
     running += allocated
     return {
       ...v,
       allocatedExpense: allocated,
-      costPrice: v.importPrice + allocated,
+      costPrice: v.importPriceWithVat + allocated,
     }
   })
 }
@@ -73,12 +98,15 @@ export interface BatchPricing {
   pricingValue: number
 }
 
-/** Selling price = Base (import price | cost price) + % or + fixed amount */
+/** Selling price = Base (VAT-inclusive import price | cost price) + % or + fixed amount */
 export function computeSellingPrice(
-  v: { importPrice: number; costPrice: number },
+  v: { importPrice: number; importPriceWithVat?: number; costPrice: number },
   p: BatchPricing,
 ): number {
-  const base = p.pricingBase === 'import_price' ? v.importPrice : v.costPrice
+  const base =
+    p.pricingBase === 'import_price'
+      ? (v.importPriceWithVat ?? v.importPrice)
+      : v.costPrice
   const price =
     p.pricingMethod === 'percent'
       ? base * (1 + p.pricingValue / 100)
@@ -179,13 +207,6 @@ export function calculateLoanInterest(params: {
     outstanding,
   }
 }
-
-/** Default VAT rate (%) offered when selling a vehicle */
-export const DEFAULT_VAT_RATE = 10
-
-/** VAT-inclusive price = price before VAT × (1 + VAT% / 100), whole đồng */
-export const priceWithVat = (before: number, vatRatePercent: number) =>
-  Math.round((Number(before) || 0) * (1 + (Number(vatRatePercent) || 0) / 100))
 
 export interface InterestDay {
   date: string

@@ -47,7 +47,7 @@ export const listBatchesFn = createServerFn({ method: 'GET' })
         loanContractId: importBatches.loanContractId,
         loanContractNumber: loanContracts.contractNumber,
         vehicleCount: sql<number>`count(distinct ${vehicles.id})`,
-        totalImport: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
+        totalImport: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
         totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
       })
       .from(importBatches)
@@ -149,6 +149,8 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
         engineNumber: vehicles.engineNumber,
         year: vehicles.year,
         importPrice: vehicles.importPrice,
+        vatRate: vehicles.vatRate,
+        importPriceWithVat: vehicles.importPriceWithVat,
         allocatedExpense: vehicles.allocatedExpense,
         costPrice: vehicles.costPrice,
         sellingPrice: vehicles.sellingPrice,
@@ -189,6 +191,8 @@ export const getBatchDetailFn = createServerFn({ method: 'GET' })
         ...v,
         isSold: Boolean(num(v.isSold)),
         importPrice: num(v.importPrice),
+        vatRate: num(v.vatRate),
+        importPriceWithVat: num(v.importPriceWithVat),
         allocatedExpense: num(v.allocatedExpense),
         costPrice: num(v.costPrice),
         sellingPrice: num(v.sellingPrice),
@@ -220,6 +224,7 @@ export const createBatchFn = createServerFn({ method: 'POST' })
           engineNumber: z.string().trim().min(1),
           year: z.number().int().nullable().optional(),
           importPrice: z.number().positive('Đơn giá nhập phải > 0'),
+          vatRate: z.number().min(0).max(100).optional(),
         }),
       ),
       expenses: z.array(
@@ -252,6 +257,7 @@ export const addVehiclesToBatchFn = createServerFn({ method: 'POST' })
           engineNumber: z.string().trim().min(1),
           year: z.number().int().nullable().optional(),
           importPrice: z.number().positive(),
+          vatRate: z.number().min(0).max(100).optional(),
         }),
       ),
     }),
@@ -272,6 +278,7 @@ export const updateVehicleFn = createServerFn({ method: 'POST' })
       engineNumber: z.string().trim().min(1, 'Nhập số máy'),
       year: z.number().int().nullable().optional(),
       importPrice: z.number().positive('Đơn giá nhập phải > 0'),
+      vatRate: z.number().min(0).max(100).optional(),
     }),
   )
   .handler(async ({ data: { vehicleId, ...v } }) => {

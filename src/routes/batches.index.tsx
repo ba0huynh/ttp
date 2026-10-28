@@ -409,7 +409,7 @@ function BatchesPage() {
                         >
                           {b.pricingBase === 'cost_price'
                             ? 'Trên Giá Vốn'
-                            : 'Trên Giá Nhập'}{' '}
+                            : 'Trên Giá Nhập Đã VAT'}{' '}
                           {b.pricingMethod === 'percent'
                             ? `+${b.pricingValue}%`
                             : `+${formatVnd(b.pricingValue)}`}
@@ -561,7 +561,7 @@ function BatchesPage() {
                   Tất cả
                 </SearchSelectItem>
                 <SearchSelectItem value="import_price">
-                  Trên Giá Nhập
+                  Trên Giá Nhập Đã VAT
                 </SearchSelectItem>
                 <SearchSelectItem value="cost_price">
                   Trên Giá Vốn

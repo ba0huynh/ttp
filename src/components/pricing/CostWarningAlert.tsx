@@ -42,7 +42,7 @@ export function CostWarningAlert({
           </p>
           {importPrice && (
             <p className="text-[11px] text-rose-600">
-              (Lưu ý: Đơn giá nhập là {formatVnd(importPrice)}, nhưng chi phí
+              (Lưu ý: Đơn giá nhập đã VAT là {formatVnd(importPrice)}, nhưng chi phí
               hải quan, thuế, vận chuyển phân bổ khiến giá vốn bị đội lên cao).
             </p>
           )}

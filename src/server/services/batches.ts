@@ -9,8 +9,10 @@ import {
 } from '../../db/schema.ts'
 import type { PricingBase, PricingMethod } from '../../db/schema.ts'
 import {
+  DEFAULT_VAT_RATE,
   allocateBatchExpenses,
   computeSellingPrice,
+  priceWithVat,
 } from '../../lib/business.ts'
 import { BusinessError, isDuplicateError, num } from './common.ts'
 import type { Exec } from './common.ts'
@@ -22,6 +24,7 @@ export interface VehicleInput {
   engineNumber: string
   year?: number | null
   importPrice: number
+  vatRate?: number
 }
 
 export interface ExpenseInput {
@@ -61,13 +64,23 @@ export async function recalculateBatch(exec: Exec, batchId: number) {
   const totalExpense = num(exp?.total)
 
   const list = await exec
-    .select({ id: vehicles.id, importPrice: vehicles.importPrice })
+    .select({
+      id: vehicles.id,
+      importPrice: vehicles.importPrice,
+      vatRate: vehicles.vatRate,
+      importPriceWithVat: vehicles.importPriceWithVat,
+    })
     .from(vehicles)
     .where(eq(vehicles.batchId, batchId))
     .orderBy(vehicles.id)
 
   const allocated = allocateBatchExpenses(
-    list.map((v) => ({ id: v.id, importPrice: num(v.importPrice) })),
+    list.map((v) => ({
+      id: v.id,
+      importPrice: num(v.importPrice),
+      vatRate: num(v.vatRate),
+      importPriceWithVat: num(v.importPriceWithVat),
+    })),
     totalExpense,
   )
   for (const v of allocated) {
@@ -76,6 +89,7 @@ export async function recalculateBatch(exec: Exec, batchId: number) {
       .set({
         allocatedExpense: v.allocatedExpense,
         costPrice: v.costPrice,
+        importPriceWithVat: v.importPriceWithVat,
         sellingPrice: computeSellingPrice(v, {
           pricingBase: batch.pricingBase,
           pricingMethod: batch.pricingMethod,
@@ -116,16 +130,23 @@ async function assertNotInDb(exec: Exec, list: VehicleInput[]) {
   }
 }
 
-const normalizeVehicle = (batchId: number, v: VehicleInput) => ({
-  batchId,
-  // 0 = no model line chosen
-  modelId: v.modelId || null,
-  colorId: v.colorId,
-  chassisNumber: v.chassisNumber.trim().toUpperCase(),
-  engineNumber: v.engineNumber.trim().toUpperCase(),
-  year: v.year ? Number(v.year) : null,
-  importPrice: v.importPrice,
-})
+const normalizeVehicle = (batchId: number, v: VehicleInput) => {
+  const vatRate = v.vatRate !== undefined ? Number(v.vatRate) : DEFAULT_VAT_RATE
+  const importPrice = Number(v.importPrice) || 0
+  const importPriceWithVat = priceWithVat(importPrice, vatRate)
+  return {
+    batchId,
+    // 0 = no model line chosen
+    modelId: v.modelId || null,
+    colorId: v.colorId,
+    chassisNumber: v.chassisNumber.trim().toUpperCase(),
+    engineNumber: v.engineNumber.trim().toUpperCase(),
+    year: v.year ? Number(v.year) : null,
+    importPrice,
+    vatRate,
+    importPriceWithVat,
+  }
+}
 
 /** Batch import = vehicles immediately in inventory (no detached intake step) */
 export async function createBatch(input: CreateBatchInput, userId?: number) {

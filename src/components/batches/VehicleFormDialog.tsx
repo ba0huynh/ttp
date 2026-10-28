@@ -19,7 +19,7 @@ import {
   SearchSelectItem,
 } from '#/components/ui/search-select.tsx'
 import { saveColorFn, saveModelFn } from '#/server/fns/master-data.ts'
-import { modelLabel } from '#/lib/business.ts'
+import { DEFAULT_VAT_RATE, formatVnd, modelLabel, priceWithVat } from '#/lib/business.ts'
 import { masterDataQuery } from '#/lib/queries.ts'
 
 export interface VehicleFormValues {
@@ -29,6 +29,7 @@ export interface VehicleFormValues {
   engineNumber: string
   year?: number | null
   importPrice: number
+  vatRate?: number
 }
 
 const EMPTY: VehicleFormValues = {
@@ -38,6 +39,7 @@ const EMPTY: VehicleFormValues = {
   engineNumber: '',
   year: null,
   importPrice: 0,
+  vatRate: DEFAULT_VAT_RATE,
 }
 
 /**
@@ -266,6 +268,32 @@ export function VehicleFormDialog({
               value={v.importPrice}
               onValueChange={(n) => setV({ ...v, importPrice: n })}
             />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">% VAT *</Label>
+              <Input
+                type="text"
+                inputMode="numeric"
+                value={v.vatRate ?? DEFAULT_VAT_RATE}
+                onChange={(e) => {
+                  const val = e.target.value.replace(/[^\d.]/g, '')
+                  setV({
+                    ...v,
+                    vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                  })
+                }}
+              />
+            </div>
+            <div className="space-y-1">
+              <Label className="text-xs font-semibold">Đơn Giá Đã VAT</Label>
+              <Input
+                readOnly
+                tabIndex={-1}
+                value={formatVnd(priceWithVat(v.importPrice, v.vatRate ?? DEFAULT_VAT_RATE))}
+                className="bg-slate-50 font-medium text-slate-700"
+              />
+            </div>
           </div>
           {error && (
             <p className="text-[11px] font-medium text-rose-600">{error}</p>

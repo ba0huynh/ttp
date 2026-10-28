@@ -56,11 +56,13 @@ import {
   TableRow,
 } from '#/components/ui/table.tsx'
 import {
+  DEFAULT_VAT_RATE,
   allocateBatchExpenses,
   computeSellingPrice,
   formatVnd,
   isBelowCost,
   modelLabel,
+  priceWithVat,
   todayIso,
 } from '#/lib/business.ts'
 import { downloadVehicleTemplate, parseVehicleExcel } from '#/lib/excel-import.ts'
@@ -90,6 +92,7 @@ interface VehicleRow {
   engineNumber: string
   year?: number | null
   importPrice: number
+  vatRate?: number
 }
 
 interface ExpenseRow {
@@ -259,6 +262,7 @@ function NewBatchPage() {
     engineNumber: string
     year: number | null
     importPrice: number
+    vatRate: number
   }>({
     modelId: 0,
     colorId: 0,
@@ -266,6 +270,7 @@ function NewBatchPage() {
     engineNumber: '',
     year: null,
     importPrice: 0,
+    vatRate: DEFAULT_VAT_RATE,
   })
 
   // Excel file upload
@@ -301,6 +306,7 @@ function NewBatchPage() {
         engineNumber: item.engineNumber,
         year: item.year,
         importPrice: item.importPrice,
+        vatRate: item.vatRate ?? DEFAULT_VAT_RATE,
       }))
 
       setVehicles((prev) => [...prev, ...newRows])
@@ -322,6 +328,7 @@ function NewBatchPage() {
       engineNumber: '',
       year: prev?.year ?? null,
       importPrice: prev?.importPrice ?? 0,
+      vatRate: prev?.vatRate ?? DEFAULT_VAT_RATE,
     })
     setVSubmitted(false)
     setEditingVehicleId('new')
@@ -335,6 +342,7 @@ function NewBatchPage() {
       engineNumber: '',
       year: v.year ?? null,
       importPrice: v.importPrice,
+      vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
     setVSubmitted(false)
     setEditingVehicleId('new')
@@ -348,6 +356,7 @@ function NewBatchPage() {
       engineNumber: v.engineNumber,
       year: v.year ?? null,
       importPrice: v.importPrice,
+      vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
     setVSubmitted(false)
     setEditingVehicleId(v.id)
@@ -394,6 +403,7 @@ function NewBatchPage() {
           engineNumber: engine,
           year: vDraft.year,
           importPrice: vDraft.importPrice,
+          vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
         },
       ])
       toast.success('Đã thêm xe vào lô')
@@ -406,7 +416,8 @@ function NewBatchPage() {
         orig.chassisNumber.trim() !== chassis ||
         orig.engineNumber.trim() !== engine ||
         orig.year !== vDraft.year ||
-        orig.importPrice !== vDraft.importPrice
+        orig.importPrice !== vDraft.importPrice ||
+        orig.vatRate !== vDraft.vatRate
 
       if (hasChanged) {
         setVehicles(
@@ -420,6 +431,7 @@ function NewBatchPage() {
                   engineNumber: engine,
                   year: vDraft.year,
                   importPrice: vDraft.importPrice,
+                  vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
                 }
               : x,
           ),
@@ -464,27 +476,45 @@ function NewBatchPage() {
   // REAL-TIME COST & SELLING PRICE ALLOCATION (LIVE PREVIEW)
   const totalExpense = expenses.reduce((s, e) => s + (Number(e.amount) || 0), 0)
   const totalImport = vehicles.reduce(
-    (s, v) => s + (Number(v.importPrice) || 0),
+    (s, v) =>
+      s +
+      priceWithVat(
+        Number(v.importPrice) || 0,
+        Number(v.vatRate ?? 10) || 0,
+      ),
     0,
   )
   const allocated = allocateBatchExpenses(
     vehicles.map((v) => ({
       id: v.id,
       importPrice: Number(v.importPrice) || 0,
+      vatRate: v.vatRate !== undefined ? Number(v.vatRate) : DEFAULT_VAT_RATE,
+      importPriceWithVat: priceWithVat(
+        Number(v.importPrice) || 0,
+        v.vatRate !== undefined ? Number(v.vatRate) : DEFAULT_VAT_RATE,
+      ),
     })),
     totalExpense,
   )
   const previewVehicles = vehicles.map((v, i) => {
+    const rate = v.vatRate !== undefined ? Number(v.vatRate) : DEFAULT_VAT_RATE
+    const withVat = priceWithVat(Number(v.importPrice) || 0, rate)
     const alloc = allocated[i] || {
       allocatedExpense: 0,
-      costPrice: v.importPrice,
+      costPrice: withVat,
     }
     const selling = computeSellingPrice(
-      { importPrice: v.importPrice, costPrice: alloc.costPrice },
+      {
+        importPrice: v.importPrice,
+        importPriceWithVat: withVat,
+        costPrice: alloc.costPrice,
+      },
       { pricingBase, pricingMethod, pricingValue },
     )
     return {
       ...v,
+      vatRate: rate,
+      importPriceWithVat: withVat,
       allocatedExpense: alloc.allocatedExpense,
       costPrice: alloc.costPrice,
       sellingPrice: selling,
@@ -494,10 +524,6 @@ function NewBatchPage() {
   const hasLossWarning = previewVehicles.some((v) =>
     isBelowCost(v.sellingPrice, v.costPrice),
   )
-
-
-
-
 
   const handleSubmit = async () => {
     setError(null)
@@ -522,6 +548,7 @@ function NewBatchPage() {
             engineNumber: v.engineNumber,
             year: v.year ? Number(v.year) : null,
             importPrice: v.importPrice,
+            vatRate: v.vatRate !== undefined ? Number(v.vatRate) : DEFAULT_VAT_RATE,
           })),
           expenses: expenses.map((e) => ({
             expenseTypeId: e.expenseTypeId,
@@ -649,7 +676,7 @@ function NewBatchPage() {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="import_price">Đơn giá nhập</SelectItem>
+                  <SelectItem value="import_price">Đơn giá nhập đã VAT</SelectItem>
                   <SelectItem value="cost_price">Giá vốn thực tế</SelectItem>
                 </SelectContent>
               </Select>
@@ -1059,6 +1086,12 @@ function NewBatchPage() {
                     <TableHead className="text-right w-[125px]">
                       Đơn Giá Nhập
                     </TableHead>
+                    <TableHead className="text-center w-[75px]">
+                      % VAT
+                    </TableHead>
+                    <TableHead className="text-right w-[125px]">
+                      Đơn Giá Đã VAT
+                    </TableHead>
                     <TableHead className="text-right w-[100px]">
                       CP Phân Bổ
                     </TableHead>
@@ -1185,6 +1218,25 @@ function NewBatchPage() {
                               )}
                             />
                           </TableCell>
+                          <TableCell className="px-1.5 py-1 align-middle text-center">
+                            <Input
+                              type="text"
+                              inputMode="numeric"
+                              placeholder="%"
+                              value={vDraft.vatRate}
+                              onChange={(e) => {
+                                const val = e.target.value.replace(/[^\d.]/g, '')
+                                setVDraft({
+                                  ...vDraft,
+                                  vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                                })
+                              }}
+                              className="h-7.5 text-xs w-14 text-center bg-white mx-auto px-1 rounded"
+                            />
+                          </TableCell>
+                          <TableCell className="text-right font-medium text-slate-800 text-xs align-middle px-2">
+                            {formatVnd(priceWithVat(vDraft.importPrice, vDraft.vatRate))}
+                          </TableCell>
                           <TableCell className="text-right text-slate-400 text-xs align-middle">
                             +{formatVnd(v.allocatedExpense)}
                           </TableCell>
@@ -1258,6 +1310,14 @@ function NewBatchPage() {
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatVnd(v.importPrice)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
+                            {v.vatRate}%
+                          </span>
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-slate-900">
+                          {formatVnd(v.importPriceWithVat)}
                         </TableCell>
                         <TableCell className="text-right text-slate-500">
                           +{formatVnd(v.allocatedExpense)}
@@ -1415,6 +1475,25 @@ function NewBatchPage() {
                               'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
                           )}
                         />
+                      </TableCell>
+                      <TableCell className="px-1.5 py-1 align-middle text-center">
+                        <Input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="%"
+                          value={vDraft.vatRate}
+                          onChange={(e) => {
+                            const val = e.target.value.replace(/[^\d.]/g, '')
+                            setVDraft({
+                              ...vDraft,
+                              vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                            })
+                          }}
+                          className="h-7.5 text-xs w-14 text-center bg-white mx-auto px-1 rounded"
+                        />
+                      </TableCell>
+                      <TableCell className="text-right font-medium text-slate-800 text-xs align-middle px-2">
+                        {formatVnd(priceWithVat(vDraft.importPrice, vDraft.vatRate))}
                       </TableCell>
                       <TableCell className="text-right text-slate-400 text-xs align-middle">
                         (tính tự động)

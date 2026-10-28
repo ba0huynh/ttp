@@ -326,6 +326,16 @@ export const vehicles = mysqlTable(
     /** Model year / manufacture year (đời xe / năm) */
     year: int('year'),
     importPrice: money('import_price').notNull(),
+    /** VAT rate in percent (e.g. 10) */
+    vatRate: decimal('vat_rate', {
+      precision: 5,
+      scale: 2,
+      mode: 'number',
+    })
+      .default(10)
+      .notNull(),
+    /** Import price INCLUDING VAT = importPrice × (1 + vatRate / 100) */
+    importPriceWithVat: money('import_price_with_vat').default(0).notNull(),
     /** Cached — recalculated by recalculateBatch() */
     allocatedExpense: money('allocated_expense').default(0).notNull(),
     costPrice: money('cost_price').default(0).notNull(),

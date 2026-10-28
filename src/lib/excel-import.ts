@@ -7,6 +7,7 @@ export interface ImportedVehicle {
   engineNumber: string
   year: number | null
   importPrice: number
+  vatRate: number
   modelName: string
   colorName: string
 }
@@ -27,15 +28,15 @@ export interface MasterColorRef {
  * Columns: STT | TÊN HÀNG | SK | SM | MÀU SƠN | NĂM | GIÁ NHẬP
  */
 export function downloadVehicleTemplate(): void {
-  const headers = ['STT', 'TÊN HÀNG', 'SK', 'SM', 'MÀU SƠN', 'NĂM', 'GIÁ NHẬP']
+  const headers = ['STT', 'TÊN HÀNG', 'SK', 'SM', 'MÀU SƠN', 'NĂM', 'GIÁ NHẬP', '% VAT']
   const sampleData = [
-    [1, 'SIRIUS FI', 'RLCUE4110TY409827', 'E34CE - 554148', 'XANH BẠC ĐEN', 2026, 29600000],
-    [2, 'SIRIUS FI', 'RLCUE4110TY409822', 'E34CE - 554143', 'XANH BẠC ĐEN', 2027, 29600000],
-    [3, 'SIRIUS FI', 'RLCUE4110TY444318', 'E34CE - 603840', 'ĐEN XÁM', 2027, 29600000],
-    [4, 'SIRIUS FI', 'RLCUE4110TY444320', 'E34CE - 603842', 'ĐEN XÁM', 2027, 29600000],
-    [5, 'SIRIUS FI', 'RLCUE4110TY424477', 'E34CE - 575348', 'ĐỎ ĐEN', 2027, 29600000],
-    [6, 'SIRIUS FI', 'RLCUE4110TY424489', 'E34CE - 575360', 'ĐỎ ĐEN', 2027, 29600000],
-    [7, 'SIRIUS FI', 'RLCUE4110TY445723', 'E34CE - 605546', 'ĐỎ ĐEN', 2027, 29600000],
+    [1, 'SIRIUS FI', 'RLCUE4110TY409827', 'E34CE - 554148', 'XANH BẠC ĐEN', 2026, 29600000, 10],
+    [2, 'SIRIUS FI', 'RLCUE4110TY409822', 'E34CE - 554143', 'XANH BẠC ĐEN', 2027, 29600000, 10],
+    [3, 'SIRIUS FI', 'RLCUE4110TY444318', 'E34CE - 603840', 'ĐEN XÁM', 2027, 29600000, 10],
+    [4, 'SIRIUS FI', 'RLCUE4110TY444320', 'E34CE - 603842', 'ĐEN XÁM', 2027, 29600000, 10],
+    [5, 'SIRIUS FI', 'RLCUE4110TY424477', 'E34CE - 575348', 'ĐỎ ĐEN', 2027, 29600000, 10],
+    [6, 'SIRIUS FI', 'RLCUE4110TY424489', 'E34CE - 575360', 'ĐỎ ĐEN', 2027, 29600000, 10],
+    [7, 'SIRIUS FI', 'RLCUE4110TY445723', 'E34CE - 605546', 'ĐỎ ĐEN', 2027, 29600000, 10],
   ]
 
   const wsData = [headers, ...sampleData]
@@ -50,6 +51,7 @@ export function downloadVehicleTemplate(): void {
     { wch: 18 }, // MÀU SƠN
     { wch: 10 }, // NĂM
     { wch: 16 }, // GIÁ NHẬP
+    { wch: 10 }, // % VAT
   ]
 
   const wb = XLSX.utils.book_new()
@@ -99,6 +101,14 @@ interface ColumnIndexMap {
   color: number
   year: number
   price: number
+  vat?: number
+}
+
+function parseVat(val: unknown): number {
+  if (typeof val === 'number') return Math.min(100, Math.max(0, val))
+  if (!val) return 10
+  const clean = String(val).replace(/[^\d.]/g, '')
+  return clean ? Math.min(100, Math.max(0, Number(clean))) : 10
 }
 
 function findHeaderIndices(headerRow: unknown[]): ColumnIndexMap | null {
@@ -164,6 +174,16 @@ function findHeaderIndices(headerRow: unknown[]): ColumnIndexMap | null {
     ) {
       if (map.price === undefined) map.price = idx
     }
+    // VAT (% VAT / Thuế VAT)
+    else if (
+      name === 'vat' ||
+      name.includes('% vat') ||
+      name.includes('thuế vat') ||
+      name.includes('thue vat') ||
+      name.includes('vat')
+    ) {
+      if (map.vat === undefined) map.vat = idx
+    }
   })
 
   // Mandatory columns: chassis and engine
@@ -181,6 +201,7 @@ function findHeaderIndices(headerRow: unknown[]): ColumnIndexMap | null {
     color: map.color ?? -1,
     year: map.year ?? -1,
     price: map.price ?? -1,
+    vat: map.vat,
   }
 }
 
@@ -307,6 +328,8 @@ export async function parseVehicleExcel(
 
     const year = parseYear(yearRaw)
     const importPrice = parsePrice(priceRaw)
+    const vatRate =
+      colMap.vat !== undefined && colMap.vat >= 0 ? parseVat(row[colMap.vat]) : 10
 
     result.push({
       modelId,
@@ -315,6 +338,7 @@ export async function parseVehicleExcel(
       engineNumber: engineRaw,
       year,
       importPrice,
+      vatRate,
       modelName: finalModelName,
       colorName: finalColorName,
     })

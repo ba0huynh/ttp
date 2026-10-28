@@ -241,11 +241,16 @@ function InventoryPage() {
       !filterInvoiced.includes(v.isInvoiced ? 'yes' : 'no')
     )
       return false
-    const price = filterPriceType === 'cost' ? v.costPrice : v.importPrice
+    const price =
+      filterPriceType === 'cost'
+        ? v.costPrice
+        : (v.importPriceWithVat ?? v.importPrice)
     if (filterMinPrice !== undefined && price < filterMinPrice) return false
     if (filterMaxPrice !== undefined && price > filterMaxPrice) return false
-    // Fee = the batch expenses allocated to this vehicle (cost - import price)
-    const fee = v.costPrice - v.importPrice
+    // Fee = the batch expenses allocated to this vehicle (cost - import price after VAT)
+    const fee =
+      v.allocatedExpense ??
+      (v.costPrice - (v.importPriceWithVat ?? v.importPrice))
     if (filterMinFee !== undefined && fee < filterMinFee) return false
     if (filterMaxFee !== undefined && fee > filterMaxFee) return false
     const chassisQ = chassisSearch.trim().toLowerCase()
@@ -482,7 +487,7 @@ function InventoryPage() {
                       }
                     >
                       <SearchSelectItem value="import">
-                        Đơn giá nhập (giá nhập thực tế)
+                        Đơn giá nhập (đã gồm VAT)
                       </SearchSelectItem>
                       <SearchSelectItem value="cost">
                         Giá vốn xe (đã gồm chi phí)
@@ -642,7 +647,7 @@ function InventoryPage() {
                           </Link>
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
-                          {formatVnd(v.importPrice)}
+                          {formatVnd(v.importPriceWithVat ?? v.importPrice)}
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
                           {formatVnd(v.costPrice)}
@@ -759,7 +764,9 @@ function InventoryPage() {
                   colorId: editVehicle.colorId,
                   chassisNumber: editVehicle.chassisNumber,
                   engineNumber: editVehicle.engineNumber,
+                  year: editVehicle.year,
                   importPrice: editVehicle.importPrice,
+                  vatRate: editVehicle.vatRate,
                 }
               : null
           }

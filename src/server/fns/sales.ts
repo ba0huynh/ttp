@@ -20,6 +20,7 @@ import { num } from '#/server/services/common.ts'
 import {
   cancelSalesOrder,
   updateSalesOrder,
+  updateSalesOrderPricing,
   createSalesOrder,
   recordDelivery,
   recordInvoice,
@@ -343,4 +344,22 @@ export const updateSalesOrderFn = createServerFn({ method: 'POST' })
   .handler(async ({ data: { orderId, ...v } }) => {
     await updateSalesOrder(orderId, v)
     return { ok: true }
+  })
+
+export const updateSalesOrderPricingFn = createServerFn({ method: 'POST' })
+  .middleware([requirePermission('sales.create')])
+  .validator(
+    z.object({
+      salesOrderId: z.number().int(),
+      items: z.array(
+        z.object({
+          itemId: z.number().int(),
+          priceBeforeVat: z.number().min(0, 'Đơn giá chưa VAT không hợp lệ'),
+          vatRate: z.number().min(0, 'VAT không được âm').max(100, 'VAT tối đa 100%'),
+        }),
+      ).min(1, 'Chọn ít nhất 1 dòng xe để cập nhật giá'),
+    }),
+  )
+  .handler(async ({ data, context }) => {
+    return await updateSalesOrderPricing(data, context.user.id)
   })
