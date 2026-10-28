@@ -111,6 +111,7 @@ export const Route = createFileRoute('/loans/')({
   // Filters and sort live in the URL so a reload or shared link keeps them
   validateSearch: z.object({
     q: z.string().optional().catch(undefined),
+    stk: z.string().optional().catch(undefined),
     bank: z.array(z.number().int()).optional().catch(undefined),
     from: z.string().optional().catch(undefined),
     to: z.string().optional().catch(undefined),
@@ -160,6 +161,14 @@ function LoansPage() {
         replace: true,
       }),
   )
+  const [accountSearch, setAccountSearch] = useUrlText(
+    searchParams.stk ?? '',
+    (stk) =>
+      navigate({
+        search: (prev) => ({ ...prev, stk: stk || undefined }),
+        replace: true,
+      }),
+  )
   const setFilter = (
     key: 'bank' | 'from' | 'to',
     value: string | string[] | number[] | undefined,
@@ -168,6 +177,7 @@ function LoansPage() {
 
   const activeFilterCount = [
     Boolean(contractSearch.trim()),
+    Boolean(accountSearch.trim()),
     Boolean(bank?.length),
     Boolean(from || to),
     minPrincipal !== undefined || maxPrincipal !== undefined,
@@ -175,11 +185,9 @@ function LoansPage() {
 
   const filtered = loans.filter((l) => {
     const q = contractSearch.trim().toLowerCase()
-    if (
-      q &&
-      !l.contractNumber.toLowerCase().includes(q) &&
-      !(l.accountNumber && l.accountNumber.toLowerCase().includes(q))
-    )
+    if (q && !l.contractNumber.toLowerCase().includes(q)) return false
+    const stk = accountSearch.trim().toLowerCase()
+    if (stk && (!l.accountNumber || !l.accountNumber.toLowerCase().includes(stk)))
       return false
     if (bank?.length && (l.bankId === null || !bank.includes(l.bankId))) return false
     const date = String(l.disbursementDate).slice(0, 10)
@@ -205,7 +213,7 @@ function LoansPage() {
     : filtered
   const loansPg = usePagination(
     sorted,
-    `${contractSearch}|${bank?.join()}|${from}|${to}|${minPrincipal}|${maxPrincipal}|${sort}|${dir}`,
+    `${contractSearch}|${accountSearch}|${bank?.join()}|${from}|${to}|${minPrincipal}|${maxPrincipal}|${sort}|${dir}`,
   )
 
   // Header click: ascending, then descending, then back to the default order
@@ -514,7 +522,7 @@ function LoansPage() {
                 Bộ Lọc Khế Ước
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Tìm theo số khế ước, ngân hàng, ngày giải ngân và số tiền vay ({filtered.length} khế ước phù hợp)
+                Tìm theo số khế ước, số tài khoản, ngân hàng, ngày giải ngân và số tiền vay ({filtered.length} khế ước phù hợp)
               </DialogDescription>
             </DialogHeader>
 
@@ -525,6 +533,15 @@ function LoansPage() {
                   placeholder="Tìm theo số khế ước..."
                   value={contractSearch}
                   onChange={(e) => setContractSearch(e.target.value)}
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
+              </div>
+              <div className="space-y-1 sm:col-span-2">
+                <Label className="text-xs font-semibold">Số tài khoản</Label>
+                <Input
+                  placeholder="Tìm theo số tài khoản..."
+                  value={accountSearch}
+                  onChange={(e) => setAccountSearch(e.target.value)}
                   className="h-11 text-sm px-4 rounded-lg"
                 />
               </div>
@@ -599,6 +616,7 @@ function LoansPage() {
                 disabled={activeFilterCount === 0}
                 onClick={() => {
                   setContractSearch('')
+                  setAccountSearch('')
                   navigate({
                     search: (prev) => ({
                       sort: prev.sort,

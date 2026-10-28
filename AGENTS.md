@@ -1835,7 +1835,18 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - `src/routes/loans.$loanId.tsx`: Rendered account number in PageHeader description next to the bank name when present.
   - `src/components/batches/LoanSelect.tsx`: Rendered account number in bank loan dropdown items and search keywords.
 
-_(Next Agent: Append Lesson 164, 165,... above this line upon completing tasks)_
+### Lesson 164: Filter Loans by Account Number (STK ILIKE)
+
+- **Client Directive**:
+  - In the "Bộ Lọc Khế Ước" dialog (`/loans`), add a dedicated filter input for Account Number ("Số tài khoản") with case-insensitive pattern matching (ILIKE substring match) on `accountNumber`.
+- **UI & Routes (`src/routes/loans.index.tsx`)**:
+  - `validateSearch`: Added `stk: z.string().optional().catch(undefined)`.
+  - Added `accountSearch` state synchronized via `useUrlText(searchParams.stk ?? '', ...)`.
+  - Filter logic checks `l.accountNumber.toLowerCase().includes(stk)` when `stk` is provided.
+  - Added input labeled "Số tài khoản" with placeholder "Tìm theo số tài khoản..." in the "Bộ Lọc Khế Ước" modal.
+  - Updated filter count, pagination cache key, and reset button ("Xóa lọc") to reset `accountSearch`.
+
+_(Next Agent: Append Lesson 165, 166,... above this line upon completing tasks)_
 
 
 
