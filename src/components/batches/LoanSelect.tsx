@@ -31,9 +31,14 @@ export function LoanSelect({
     >
       <SearchSelectItem value={NO_LOAN}>Không vay</SearchSelectItem>
       {(loans ?? []).map((l) => (
-        <SearchSelectItem key={l.id} value={String(l.id)}>
+        <SearchSelectItem
+          key={l.id}
+          value={String(l.id)}
+          keywords={`${l.contractNumber} ${l.bankName ?? ''} ${l.accountNumber ?? ''}`}
+        >
           <BankLabel image={l.bankImage} name={l.bankName}>
             {l.contractNumber} · {l.bankName}
+            {l.accountNumber ? ` (${l.accountNumber})` : ''}
           </BankLabel>
         </SearchSelectItem>
       ))}

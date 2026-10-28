@@ -512,7 +512,13 @@ function LoanDetailPage() {
             <>
               {loan.bankName && (
                 <>
-                  Ngân hàng: <strong>{loan.bankName}</strong> ·{' '}
+                  Ngân hàng: <strong>{loan.bankName}</strong>
+                  {loan.accountNumber && (
+                    <>
+                      {' '}· STK: <strong>{loan.accountNumber}</strong>
+                    </>
+                  )}{' '}
+                  ·{' '}
                 </>
               )}
               Lãi suất: <strong>{loan.interestRate}%/năm</strong> · Giải ngân:{' '}

@@ -218,6 +218,7 @@ export const loanContracts = mysqlTable('loan_contracts', {
   bankId: int('bank_id')
     .notNull()
     .references(() => banks.id),
+  accountNumber: varchar('account_number', { length: 50 }),
   ...timestamps,
 })
 

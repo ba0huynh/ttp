@@ -61,6 +61,7 @@ export const listLoansFn = createServerFn({ method: 'GET' })
         bankName: banks.name,
         bankImage: banks.image,
         bankCode: banks.code,
+        accountNumber: loanContracts.accountNumber,
         principalAmount: loanContracts.principalAmount,
         interestRate: loanContracts.interestRate,
         disbursementDate: loanContracts.disbursementDate,
@@ -106,16 +107,21 @@ export const saveLoanContractFn = createServerFn({ method: 'POST' })
       disbursementDate: z.string().min(10),
       termMonths: z.number().int().min(1).max(200),
       bankId: z.number().int({ message: 'Chọn ngân hàng' }),
+      accountNumber: z.string().trim().nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
     try {
-      const { id, ...v } = data
+      const { id, accountNumber, ...v } = data
+      const values = {
+        ...v,
+        accountNumber: accountNumber?.trim() ? accountNumber.trim() : null,
+      }
       if (id) {
-        await db.update(loanContracts).set(v).where(eq(loanContracts.id, id))
+        await db.update(loanContracts).set(values).where(eq(loanContracts.id, id))
         return { id }
       }
-      const [created] = await db.insert(loanContracts).values(v).$returningId()
+      const [created] = await db.insert(loanContracts).values(values).$returningId()
       return { id: created.id }
     } catch (e) {
       if (isDuplicateError(e)) throw new Error('Số khế ước đã tồn tại')

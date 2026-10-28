@@ -1816,7 +1816,26 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - **Unified Typography Across All Inputs**: Removed `font-mono` from Chassis Number and Engine Number inputs and table cells so that all form fields share the identical clean sans-serif UI font (`font-sans`), consistent `text-xs` (12px), and uniform line spacing.
   - Applied consistently across `src/routes/batches.new.tsx`, `src/components/batches/BatchEditor.tsx`, and `src/components/batches/VehicleFormDialog.tsx`.
 
-_(Next Agent: Append Lesson 163, 164,... above this line upon completing tasks)_
+### Lesson 163: Free-Text Account Number Input on Loan Contracts
+
+- **Client Directive**:
+  - In the "Tạo Khế Ước Vay Ngân Hàng Mới" modal, add an input field for Account Number ("Số tài khoản") as a plain string input located directly below the "Ngân Hàng *" dropdown.
+- **Database & Migration (`0048_loan_account_number.sql`)**:
+  - Added `account_number varchar(50)` (nullable) to `loan_contracts` table.
+- **Server Services & Functions**:
+  - `src/db/schema.ts`: Added `accountNumber: varchar('account_number', { length: 50 })` on `loanContracts`.
+  - `src/server/fns/finance.ts`: Added `accountNumber: z.string().trim().nullable().optional()` to `saveLoanContractFn` validator & insert/update payload; included `accountNumber` in `listLoansFn`.
+  - `src/server/services/finance.ts`: Included `accountNumber` in `getLoanStatus` query.
+- **UI & Routes**:
+  - `src/routes/loans.index.tsx`:
+    - Added `accountNumber` state, bound to a dedicated text input labeled "Số Tài Khoản" right beneath the "Ngân Hàng *" select in the Create/Edit Loan modal dialog.
+    - Updated `openNewLoan` (resets to empty string) and `openEditLoan` (populates `l.accountNumber`).
+    - Enhanced table row in `/loans` to display `STK: {l.accountNumber}` below the bank name when available.
+    - Included `accountNumber` in search filtering (`q`).
+  - `src/routes/loans.$loanId.tsx`: Rendered account number in PageHeader description next to the bank name when present.
+  - `src/components/batches/LoanSelect.tsx`: Rendered account number in bank loan dropdown items and search keywords.
+
+_(Next Agent: Append Lesson 164, 165,... above this line upon completing tasks)_
 
 
 

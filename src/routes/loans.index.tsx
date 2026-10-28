@@ -175,7 +175,12 @@ function LoansPage() {
 
   const filtered = loans.filter((l) => {
     const q = contractSearch.trim().toLowerCase()
-    if (q && !l.contractNumber.toLowerCase().includes(q)) return false
+    if (
+      q &&
+      !l.contractNumber.toLowerCase().includes(q) &&
+      !(l.accountNumber && l.accountNumber.toLowerCase().includes(q))
+    )
+      return false
     if (bank?.length && (l.bankId === null || !bank.includes(l.bankId))) return false
     const date = String(l.disbursementDate).slice(0, 10)
     if (from && date < from) return false
@@ -253,6 +258,7 @@ function LoansPage() {
   const [disbursementDate, setDisbursementDate] = React.useState(todayIso())
   const [termMonths, setTermMonths] = React.useState(12)
   const [bankId, setBankId] = React.useState<number | null>(null)
+  const [accountNumber, setAccountNumber] = React.useState('')
   // What the user typed so far, shown live under the form
   const estimate = estimateLoanTermInterest(
     principalAmount,
@@ -297,6 +303,7 @@ function LoansPage() {
     setDisbursementDate(todayIso())
     setTermMonths(12)
     setBankId(master.banks[0]?.id ?? null)
+    setAccountNumber('')
     setNewLoanOpen(true)
   }
 
@@ -308,6 +315,7 @@ function LoansPage() {
     setDisbursementDate(l.disbursementDate)
     setTermMonths(l.termMonths)
     setBankId(l.bankId ?? null)
+    setAccountNumber(l.accountNumber ?? '')
     setNewLoanOpen(true)
   }
 
@@ -328,6 +336,7 @@ function LoansPage() {
           disbursementDate,
           termMonths,
           bankId,
+          accountNumber: accountNumber.trim() || null,
         },
       })
       setNewLoanOpen(false)
@@ -418,11 +427,18 @@ function LoansPage() {
                       </TableCell>
                       <TableCell className="font-medium text-slate-900">
                         {l.bankName ? (
-                          <BankLabel image={l.bankImage} name={l.bankName}>
-                            {l.bankName}
-                          </BankLabel>
+                          <div>
+                            <BankLabel image={l.bankImage} name={l.bankName}>
+                              {l.bankName}
+                            </BankLabel>
+                            {l.accountNumber && (
+                              <div className="text-[11px] text-slate-500 font-normal pl-6 mt-0.5">
+                                STK: {l.accountNumber}
+                              </div>
+                            )}
+                          </div>
                         ) : (
-                          '—'
+                          l.accountNumber || '—'
                         )}
                       </TableCell>
                       <TableCell className="text-center">
@@ -647,6 +663,16 @@ function LoansPage() {
                     </SearchSelectItem>
                   ))}
                 </SearchSelect>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Số Tài Khoản</Label>
+                <Input
+                  value={accountNumber}
+                  onChange={(e) => setAccountNumber(e.target.value)}
+                  placeholder="Nhập số tài khoản"
+                  className="h-11 text-sm px-4 rounded-lg"
+                />
               </div>
 
               <div className="grid grid-cols-2 gap-2">

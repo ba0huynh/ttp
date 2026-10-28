@@ -43,6 +43,7 @@ export async function getLoanStatus(loanId: number, asOf = todayIso()) {
       bankName: banks.name,
       bankImage: banks.image,
       bankCode: banks.code,
+      accountNumber: loanContracts.accountNumber,
       createdAt: loanContracts.createdAt,
       updatedAt: loanContracts.updatedAt,
     })
