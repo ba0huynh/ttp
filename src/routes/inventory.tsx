@@ -21,7 +21,6 @@ import {
   InvoiceStatusBadge,
 } from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { StatCard } from '#/components/layout/StatCard.tsx'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -69,6 +68,12 @@ import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { useUrlText } from '#/lib/use-url-text.ts'
 import { removeVehicleFn, updateVehicleFn } from '#/server/fns/batches.ts'
+
+const WIDGET_TONES = {
+  jade: 'bg-emerald-50 text-emerald-700 ring-emerald-200/70',
+  slate: 'bg-slate-100 text-slate-600 ring-slate-200/70',
+  amber: 'bg-amber-50 text-amber-700 ring-amber-200/70',
+} as const
 
 const STOCK_FILTERS = [
   'physical',
@@ -636,18 +641,31 @@ function InventoryPage() {
               title={`Mở danh sách xe "${w.label}" trong tab mới`}
               className="block rounded-xl transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
             >
-              <StatCard
-                label={w.label}
-                icon={w.icon}
-                tone={w.tone}
-                value={formatVnd(w.value)}
-                hint={
-                  <>
-                    Tổng giá vốn của{' '}
-                    <strong className="text-slate-700">{w.count}</strong> xe
-                  </>
-                }
-              />
+              <div className="rounded-xl border bg-card shadow-card p-5 flex flex-col gap-4">
+                <div className="flex items-start justify-between gap-3">
+                  <span className="text-sm font-bold text-slate-900">
+                    {w.label}
+                  </span>
+                  <span
+                    className={`size-8 shrink-0 rounded-lg ring-1 flex items-center justify-center ${WIDGET_TONES[w.tone]}`}
+                  >
+                    <w.icon className="size-4" />
+                  </span>
+                </div>
+                {/* Count above amount, same font size */}
+                <div className="tabular flex flex-col gap-1 text-base leading-tight font-bold text-slate-900">
+                  <div>
+                    <span className="font-medium text-slate-500">SL: </span>
+                    {w.count} xe
+                  </div>
+                  <div>
+                    <span className="font-medium text-slate-500">
+                      Giá vốn:{' '}
+                    </span>
+                    {formatVnd(w.value)}
+                  </div>
+                </div>
+              </div>
             </Link>
           ))}
         </div>
