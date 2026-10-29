@@ -4,7 +4,13 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Pencil, SlidersHorizontal } from 'lucide-react'
+import {
+  CircleCheckBig,
+  FileClock,
+  PackageOpen,
+  Pencil,
+  SlidersHorizontal,
+} from 'lucide-react'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -15,6 +21,7 @@ import {
   InvoiceStatusBadge,
 } from '#/components/inventory/DualInventoryBadge.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import { StatCard } from '#/components/layout/StatCard.tsx'
 import { BusyTrash } from '#/components/ui/busy-trash.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -274,6 +281,44 @@ function InventoryPage() {
     }
     return true
   })
+  // Widgets above the table: totals of the filtered list per delivery / invoice combination
+  const stockWidgets = (
+    [
+      {
+        label: 'Đã giao · Đã hóa đơn',
+        delivered: 'yes',
+        invoiced: 'yes',
+        icon: CircleCheckBig,
+        tone: 'jade',
+      },
+      {
+        label: 'Chưa giao · Chưa hóa đơn',
+        delivered: 'no',
+        invoiced: 'no',
+        icon: PackageOpen,
+        tone: 'slate',
+      },
+      {
+        label: 'Chưa giao · Đã hóa đơn',
+        delivered: 'no',
+        invoiced: 'yes',
+        icon: FileClock,
+        tone: 'amber',
+      },
+    ] as const
+  ).map((w) => {
+    const rows = filtered.filter(
+      (v) =>
+        v.isDelivered === (w.delivered === 'yes') &&
+        v.isInvoiced === (w.invoiced === 'yes'),
+    )
+    return {
+      ...w,
+      count: rows.length,
+      value: rows.reduce((s, v) => s + v.costPrice, 0),
+    }
+  })
+
   const vehiclesPg = usePagination(
     filtered,
     `${chassisSearch}|${engineSearch}|${filterStock.join()}|${filterBatch.join()}|${filterModel.join()}|${filterColor.join()}|${filterDelivered}|${filterInvoiced}|${filterPriceType}|${filterMinPrice}|${filterMaxPrice}|${filterMinFee}|${filterMaxFee}`,
@@ -551,6 +596,8 @@ function InventoryPage() {
                           priceType: undefined,
                           minPrice: undefined,
                           maxPrice: undefined,
+                          minFee: undefined,
+                          maxFee: undefined,
                         }),
                         replace: true,
                       })
@@ -570,6 +617,40 @@ function InventoryPage() {
                 </DialogFooter>
               </DialogContent>
             </Dialog>
+
+        {/* Stock widgets: follow the current filters; a click opens the matching list in a new tab */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+          {stockWidgets.map((w) => (
+            <Link
+              key={w.label}
+              to="/inventory"
+              search={{
+                ...searchParams,
+                chassis: chassisSearch.trim() || undefined,
+                engine: engineSearch.trim() || undefined,
+                delivered: [w.delivered],
+                invoiced: [w.invoiced],
+              }}
+              target="_blank"
+              rel="noopener"
+              title={`Mở danh sách xe "${w.label}" trong tab mới`}
+              className="block rounded-xl transition hover:-translate-y-0.5 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-600"
+            >
+              <StatCard
+                label={w.label}
+                icon={w.icon}
+                tone={w.tone}
+                value={formatVnd(w.value)}
+                hint={
+                  <>
+                    Tổng giá vốn của{' '}
+                    <strong className="text-slate-700">{w.count}</strong> xe
+                  </>
+                }
+              />
+            </Link>
+          ))}
+        </div>
 
         {/* Vehicles Table */}
         <Card className="border-slate-200 shadow-xs">

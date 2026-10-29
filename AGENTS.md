@@ -1945,6 +1945,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     7. **Supplier Debt & AP (`finance.ts` & `reports.ts`)**: `assertPaymentWithinDebt` and `getPayablesSummary` calculate supplier debt based on `vehicles.importPriceWithVat`.
     8. **Warehouse Total Asset Value (`reports.ts`)**: `getInventoryTotals` computes `importValue` using `vehicles.importPriceWithVat`.
 
+### Lesson 171: Stock Widgets Above the `/inventory` Table
+
+- **Client Directive**: above the vehicle table, show 3 widgets styled like the dashboard (`StatCard`): **Đã giao · Đã hóa đơn**, **Chưa giao · Chưa hóa đơn**, **Chưa giao · Đã hóa đơn**. Each shows the total value and the vehicle count; the numbers must follow the current filters; clicking a widget opens a new browser tab with the matching vehicles.
+- **Implementation** (`src/routes/inventory.tsx`): `stockWidgets` is computed from `filtered` (the list after every filter), value = `sum(costPrice)` (same "trị giá vốn" basis as the dashboard). Each card is a `<Link to="/inventory" target="_blank">` whose search = current search params + the live chassis/engine text + `delivered: [..]`, `invoiced: [..]` for that widget (overriding any delivered/invoiced filter already set).
+- **Also fixed**: "Xóa lọc" now clears `minFee` / `maxFee` too.
+
 _(Next Agent: Append Lesson 171, 172,... above this line upon completing tasks)_
 
 
