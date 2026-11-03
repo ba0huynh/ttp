@@ -1958,7 +1958,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - Inventory displays notes for every vehicle. Users with the existing `batches.manage` permission can edit or clear notes through `updateVehicleNoteFn`, including for sold, delivered, or invoiced vehicles. This operation changes only the note and does not recalculate pricing or change stock flags. Successful saves invalidate queries so inventory and batch views refresh.
 - Apply the schema change with `npm run migration:run` before using this feature.
 
-_(Next Agent: Append Lesson 173, 174,... above this line upon completing tasks)_
+### Lesson 173: Click Vehicle Notes to Edit in Inventory
+
+- The inventory note column displays clickable note text for users with `batches.manage`; an empty note displays a clickable dash. Clicking opens the existing note editor, including for sold, delivered, or invoiced vehicles. The note column has no pencil icon; the existing vehicle-edit pencil remains in the final actions column and its form includes the note field. Users without management permission see plain text.
+
+_(Next Agent: Append Lesson 174, 175,... above this line upon completing tasks)_
 
 
 

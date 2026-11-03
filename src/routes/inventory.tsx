@@ -754,30 +754,27 @@ function InventoryPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          <div className="flex items-start gap-2">
-                            <span className="min-w-0 max-w-xs whitespace-pre-wrap break-words text-slate-500">
+                          {canManage ? (
+                            <button
+                              type="button"
+                              className="block w-full max-w-xs cursor-pointer rounded py-1 text-left whitespace-pre-wrap break-words text-slate-500 hover:text-emerald-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                              onClick={() => {
+                                setNoteDraft(v.note ?? '')
+                                setNoteVehicle(v)
+                              }}
+                              disabled={
+                                updateNote.isPending || updateVehicle.isPending
+                              }
+                              aria-label={`Sửa ghi chú xe ${v.chassisNumber}`}
+                              title="Nhấn để sửa ghi chú"
+                            >
+                              {v.note || '—'}
+                            </button>
+                          ) : (
+                            <span className="block max-w-xs whitespace-pre-wrap break-words text-slate-500">
                               {v.note || '—'}
                             </span>
-                            {canManage && (
-                              <Button
-                                type="button"
-                                variant="ghost"
-                                size="icon"
-                                className="size-7 shrink-0 text-slate-400 hover:text-emerald-700"
-                                onClick={() => {
-                                  setNoteDraft(v.note ?? '')
-                                  setNoteVehicle(v)
-                                }}
-                                disabled={
-                                  updateNote.isPending || updateVehicle.isPending
-                                }
-                                aria-label={`Sửa ghi chú xe ${v.chassisNumber}`}
-                                title="Sửa ghi chú"
-                              >
-                                <Pencil className="size-3.5" />
-                              </Button>
-                            )}
-                          </div>
+                          )}
                         </TableCell>
                         <TableCell className="text-slate-900">
                           <Link
