@@ -1951,14 +1951,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Implementation** (`src/routes/inventory.tsx`): `stockWidgets` is computed from `filtered` (the list after every filter), value = `sum(costPrice)` (same "trị giá vốn" basis as the dashboard). Each card is a `<Link to="/inventory" target="_blank">` whose search = current search params + the live chassis/engine text + `delivered: [..]`, `invoiced: [..]` for that widget (overriding any delivered/invoiced filter already set).
 - **Also fixed**: "Xóa lọc" now clears `minFee` / `maxFee` too.
 
-### Lesson 172: Nullable Vehicle Notes in Batch Entry and Inventory
-
-- `vehicles.note` is nullable text (migration `0050_vehicle_note.sql`). Batch creation, vehicle additions, and vehicle edits persist trimmed notes; blank notes become `null`. Omitting the note from a full vehicle update preserves the existing value.
-- Both batch vehicle tables have a leading sequential `STT` column and an optional note input immediately after the model/year/color column. Vehicle edit dialogs also retain and edit notes.
-- Inventory displays notes for every vehicle. Users with the existing `batches.manage` permission can edit or clear notes through `updateVehicleNoteFn`, including for sold, delivered, or invoiced vehicles. This operation changes only the note and does not recalculate pricing or change stock flags. Successful saves invalidate queries so inventory and batch views refresh.
-- Apply the schema change with `npm run migration:run` before using this feature.
-
-_(Next Agent: Append Lesson 173, 174,... above this line upon completing tasks)_
+_(Next Agent: Append Lesson 171, 172,... above this line upon completing tasks)_
 
 
 
