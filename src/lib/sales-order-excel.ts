@@ -98,9 +98,9 @@ const COLUMNS: Column[] = [
     value: (v) => v.unitPrice,
   },
   {
-    header: 'Trạng thái giao xe',
-    width: 20,
-    value: (v) => (v.isDelivered ? 'Đã giao' : 'Chưa giao'),
+    header: 'Kho thực tế',
+    width: 24,
+    value: (v) => (v.isDelivered ? 'Đã giao' : 'Còn trong kho thực tế'),
   },
   {
     header: 'Ngày giao xe',
@@ -124,9 +124,9 @@ const COLUMNS: Column[] = [
     value: (v) => (v.isDelivered ? v.transportInfo : null),
   },
   {
-    header: 'Trạng thái hóa đơn',
-    width: 21,
-    value: (v) => (v.isInvoiced ? 'Đã HĐ' : 'Chưa HĐ'),
+    header: 'Kho hóa đơn',
+    width: 22,
+    value: (v) => (v.isInvoiced ? 'Đã xuất HĐ' : 'Chưa xuất HĐ'),
   },
   {
     header: 'Số hóa đơn',
