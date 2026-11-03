@@ -132,6 +132,7 @@ function SalesOrderPage() {
   const [showFilters, setShowFilters] = React.useState(false)
   const [searchQuery, setSearchQuery] = React.useState('')
   const [deliveryFilter, setDeliveryFilter] = React.useState('all')
+  const [invoiceFilter, setInvoiceFilter] = React.useState('all')
   const [modelFilter, setModelFilter] = React.useState('all')
   const [colorFilter, setColorFilter] = React.useState('all')
 
@@ -172,28 +173,40 @@ function SalesOrderPage() {
       }
       if (deliveryFilter === 'undelivered' && i.isDelivered) return false
       if (deliveryFilter === 'delivered' && !i.isDelivered) return false
+      if (invoiceFilter === 'invoiced' && !i.isInvoiced) return false
+      if (invoiceFilter === 'uninvoiced' && i.isInvoiced) return false
       if (modelFilter !== 'all' && i.modelName !== modelFilter) return false
       if (colorFilter !== 'all' && i.colorName !== colorFilter) return false
       return true
     })
-  }, [items, selectMode, searchQuery, deliveryFilter, modelFilter, colorFilter])
+  }, [
+    items,
+    selectMode,
+    searchQuery,
+    deliveryFilter,
+    invoiceFilter,
+    modelFilter,
+    colorFilter,
+  ])
 
   const activeFilterCount =
     (searchQuery.trim() ? 1 : 0) +
     (deliveryFilter !== 'all' ? 1 : 0) +
+    (invoiceFilter !== 'all' ? 1 : 0) +
     (modelFilter !== 'all' ? 1 : 0) +
     (colorFilter !== 'all' ? 1 : 0)
 
   const resetFilters = () => {
     setSearchQuery('')
     setDeliveryFilter('all')
+    setInvoiceFilter('all')
     setModelFilter('all')
     setColorFilter('all')
   }
 
   const itemsPg = usePagination(
     filteredItems,
-    `${selectMode}|${searchQuery}|${deliveryFilter}|${modelFilter}|${colorFilter}`,
+    `${selectMode}|${searchQuery}|${deliveryFilter}|${invoiceFilter}|${modelFilter}|${colorFilter}`,
   )
 
   // In select mode every listed vehicle is selectable (it still needs export and/or invoice)
@@ -547,7 +560,6 @@ function SalesOrderPage() {
     setInvoiceError(null)
     setDetailError(null)
     // Only when another vehicle is opened (not after every refetch)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [detailVehicleId])
 
   // Save only appears once a delivery field differs from what is stored
@@ -1607,6 +1619,23 @@ function SalesOrderPage() {
                   <SearchSelectItem value="all">Tất cả kho thực tế</SearchSelectItem>
                   <SearchSelectItem value="undelivered">Còn trong kho</SearchSelectItem>
                   <SearchSelectItem value="delivered">Đã giao xe</SearchSelectItem>
+                </SearchSelect>
+              </div>
+
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">
+                  Trạng thái xuất hóa đơn
+                </Label>
+                <SearchSelect
+                  className="h-10 text-xs rounded-lg"
+                  value={invoiceFilter}
+                  onValueChange={setInvoiceFilter}
+                >
+                  <SearchSelectItem value="all">
+                    Tất cả trạng thái hóa đơn
+                  </SearchSelectItem>
+                  <SearchSelectItem value="invoiced">Đã HĐ</SearchSelectItem>
+                  <SearchSelectItem value="uninvoiced">Chưa HĐ</SearchSelectItem>
                 </SearchSelect>
               </div>
 

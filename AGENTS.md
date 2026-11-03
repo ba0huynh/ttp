@@ -1971,7 +1971,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - In `/inventory`, both the note header and every vehicle's note cell appear immediately after `Sales Order` and before the optional `Actions` column. Notes remain plain text and are edited through the vehicle form described in Lesson 174.
 
-_(Next Agent: Append Lesson 176, 177,... above this line upon completing tasks)_
+### Lesson 176: Invoice Status Filter in Sales Order Details
+
+- `/sales/$orderId` has an invoice-status dropdown in the vehicle filter dialog with all statuses, invoiced, and uninvoiced options. It filters by `isInvoiced` independently of physical delivery and combines with the existing search, delivery, model, color, and selection-mode filters.
+- Invoice status participates in the active-filter count, reset action, and pagination reset key, so changing it returns the vehicle list to page 1. No database or server changes are required.
+
+_(Next Agent: Append Lesson 177, 178,... above this line upon completing tasks)_
 
 
 
