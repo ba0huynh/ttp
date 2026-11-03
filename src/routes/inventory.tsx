@@ -689,13 +689,13 @@ function InventoryPage() {
                     <TableHead className="w-[180px]">Số Khung</TableHead>
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
-                    <TableHead className="min-w-[180px]">Ghi chú</TableHead>
                     <TableHead>Lô Nhập</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>
                     <TableHead className="text-right">Giá Vốn Xe</TableHead>
                     <TableHead className="text-center">Trạng Thái</TableHead>
                     <TableHead className="text-center">Trạng Thái HĐ</TableHead>
                     <TableHead>Đơn Bán</TableHead>
+                    <TableHead className="min-w-[180px]">Ghi chú</TableHead>
                     {canManage && (
                       <TableHead className="text-center">Thao tác</TableHead>
                     )}
@@ -735,11 +735,6 @@ function InventoryPage() {
                           <div className="text-slate-500">
                             {v.colorName}
                           </div>
-                        </TableCell>
-                        <TableCell>
-                          <span className="block max-w-xs whitespace-pre-wrap break-words text-slate-500">
-                            {v.note || '—'}
-                          </span>
                         </TableCell>
                         <TableCell className="text-slate-900">
                           <Link
@@ -783,6 +778,11 @@ function InventoryPage() {
                           ) : (
                             <span className="text-slate-500">—</span>
                           )}
+                        </TableCell>
+                        <TableCell>
+                          <span className="block max-w-xs whitespace-pre-wrap break-words text-slate-500">
+                            {v.note || '—'}
+                          </span>
                         </TableCell>
                         {canManage && (
                           <TableCell className="text-center whitespace-nowrap">

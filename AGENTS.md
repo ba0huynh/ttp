@@ -1967,7 +1967,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - Supersedes the inventory editing interactions in Lessons 172 and 173: the note column now displays plain text only, including the empty dash. Edit notes through the existing vehicle-edit pencil next to the delete button in the final actions column. The vehicle form retains its note field and follows the existing permission and vehicle-status restrictions.
 - Removed the separate note dialog, click handling, mutation, and unused note-only server endpoint/service. Batch entry, note persistence, and note display are unchanged.
 
-_(Next Agent: Append Lesson 175, 176,... above this line upon completing tasks)_
+### Lesson 175: Inventory Note Column Follows the Sales Order Column
+
+- In `/inventory`, both the note header and every vehicle's note cell appear immediately after `Sales Order` and before the optional `Actions` column. Notes remain plain text and are edited through the vehicle form described in Lesson 174.
+
+_(Next Agent: Append Lesson 176, 177,... above this line upon completing tasks)_
 
 
 
