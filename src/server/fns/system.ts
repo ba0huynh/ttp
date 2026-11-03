@@ -30,10 +30,28 @@ export const getCompanyProfileFn = createServerFn({ method: 'GET' })
 
 const companySchema = z.object({
   name: z.string().trim().min(1, 'Nhập tên công ty'),
-  taxCode: z.string().trim().min(1, 'Nhập mã số thuế'),
+  taxCode: z
+    .string()
+    .trim()
+    .min(1, 'Nhập mã số thuế')
+    .regex(/^\d+$/, 'Mã số thuế chỉ được chứa các chữ số'),
   address: z.string().trim().min(1, 'Nhập địa chỉ'),
-  phone: z.string().trim().nullable(),
-  email: z.string().trim().nullable(),
+  phone: z
+    .string()
+    .trim()
+    .nullable()
+    .refine(
+      (v) => !v || /^\d+$/.test(v),
+      'Số điện thoại chỉ được chứa các chữ số',
+    ),
+  email: z
+    .string()
+    .trim()
+    .nullable()
+    .refine(
+      (v) => !v || /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v),
+      'Email không đúng định dạng',
+    ),
   representative: z.string().trim().nullable(),
   website: z.string().trim().nullable(),
 })

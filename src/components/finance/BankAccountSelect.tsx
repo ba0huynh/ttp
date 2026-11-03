@@ -53,7 +53,8 @@ export function BankAccountSelect({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!name.trim() || !bankId || !number.trim())
+    const cleanNumber = number.replace(/\D/g, '').trim()
+    if (!name.trim() || !bankId || !cleanNumber)
       return setError('Vui lòng nhập tên tài khoản, ngân hàng và số tài khoản')
     setPending(true)
     try {
@@ -61,7 +62,7 @@ export function BankAccountSelect({
         data: {
           bankId,
           accountName: name.trim(),
-          accountNumber: number.trim(),
+          accountNumber: cleanNumber,
           branch: branch.trim() || null,
           isActive: true,
         },
@@ -164,7 +165,9 @@ export function BankAccountSelect({
               <Label className="text-xs font-semibold">Số Tài Khoản *</Label>
               <Input
                 value={number}
-                onChange={(e) => setNumber(e.target.value)}
+                onChange={(e) => setNumber(e.target.value.replace(/\D/g, ''))}
+                inputMode="numeric"
+                pattern="[0-9]*"
                 maxLength={50}
                 placeholder="0071001234567"
               />

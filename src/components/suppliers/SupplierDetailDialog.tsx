@@ -68,6 +68,11 @@ export function SupplierDetailDialog({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supplier) return
+    const cleanName = name.trim()
+    if (!cleanName) {
+      setError('Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng')
+      return
+    }
     setSaving(true)
     setError(null)
     try {
@@ -78,7 +83,7 @@ export function SupplierDetailDialog({
       await save.mutateAsync({
         data: {
           id: supplier.id,
-          name,
+          name: cleanName,
           image,
         },
       })

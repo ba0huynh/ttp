@@ -1967,7 +1967,156 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - Supersedes the inventory editing interactions in Lessons 172 and 173: the note column now displays plain text only, including the empty dash. Edit notes through the existing vehicle-edit pencil next to the delete button in the final actions column. The vehicle form retains its note field and follows the existing permission and vehicle-status restrictions.
 - Removed the separate note dialog, click handling, mutation, and unused note-only server endpoint/service. Batch entry, note persistence, and note display are unchanged.
 
-_(Next Agent: Append Lesson 175, 176,... above this line upon completing tasks)_
+### Lesson 175: Company Tax Code Validation & QA Bug Tracker Skill
+
+- **QA Bug Log & Feedback Interpretation**:
+  - Created skill `qa-bug-log-tracker` in `.agents/skills/qa-bug-log-tracker/SKILL.md` and `.claude/skills/qa-bug-log-tracker/SKILL.md` to instruct agents how to read client QA spreadsheets:
+    - **Left column/square**: Bug report / reproduction link (e.g. `prnt.sc/...` Lightshot screenshot) with status pill `[Bug]`.
+    - **Right column/square**: Desired fix / outcome (e.g. `trường mã số thuế chỉ cho nhập số thôi chặn kí tự và chữ cái`).
+- **Company Tax Code Bug Resolution (`/settings?tab=company`)**:
+  - **Issue**: In `Pháp Nhân Doanh Nghiệp`, "Mã Số Thuế" accepted letters and special characters (e.g., `4566455553ggg@@`).
+  - **Client-Side Enforcement (`src/routes/settings.tsx`)**:
+    - Input sanitization on `onChange`: `e.target.value.replace(/\D/g, '')` strips all non-numeric characters immediately.
+    - Added `inputMode="numeric"`, `pattern="[0-9]*"`, and `placeholder="Chỉ nhập số..."`.
+    - Real-time inline field validation error and visual red border if blank or invalid.
+    - Also enforced email formatting validation and inline error display for "Email Liên Hệ".
+  - **Server-Side Enforcement (`src/server/fns/system.ts`)**:
+    - `taxCode`: Validated with `.regex(/^\d+$/, 'Mã số thuế chỉ được chứa các chữ số')`.
+    - `email`: Validated with `.refine(...)` ensuring valid format when provided.
+
+### Lesson 176: Company Phone & Email Validation, and Duplicate Motorcycle Model Prevention
+
+- **Context & QA Bug Log Reports**:
+  - Bug 1: `nhập email sai định dạng không hiển thị lỗi` (https://prnt.sc/wJkVla98GuoJ) -> Company settings email input accepted invalid format (e.g. `ac`) and displayed success banner without error.
+  - Bug 2: `số điện thoại nhập sai định dạng không hiển thị lỗi` -> Desired fix: `chỉ cho nhập số` (https://prnt.sc/cUv7_DLRf_6T) -> Phone input accepted non-digits (e.g. `0nfj@`).
+  - Bug 3: Duplicate motorcycle model bug -> Desired fix: `không cho tạo/sửa trùng dòng xe` (https://prnt.sc/mc8r8PhxXcq9).
+- **Company Settings Resolution (`src/routes/settings.tsx` & `src/server/fns/system.ts`)**:
+  - `phone` ("Số Điện Thoại"):
+    - Real-time digit stripping: `e.target.value.replace(/\D/g, '')`.
+    - Added `inputMode="numeric"`, `pattern="[0-9]*"`, and `placeholder="Chỉ nhập số..."`.
+    - Server Zod schema validation: `.regex(/^\d+$/, 'Số điện thoại chỉ được chứa các chữ số')`.
+    - Inline error `<p className="text-[11px] font-medium text-rose-600">` and red border highlight.
+  - `email` ("Email Liên Hệ"):
+    - Inline regex validation checking valid email format prior to submission.
+    - Server Zod schema validation: rejects malformed emails.
+    - Inline error text rendered under the input when invalid.
+- **Motorcycle Model Duplicate Prevention (`src/routes/master-data.tsx` & `src/server/fns/master-data.ts`)**:
+  - Server-side check in `saveModelFn`:
+    - Queries `motorcycle_models` case-insensitively with `sql`lower(${motorcycleModels.name}) = ${trimmedName.toLowerCase()}`` (excluding current model `id` if editing).
+    - Throws user-friendly error `Dòng xe "${trimmedName}" đã tồn tại trong hệ thống`.
+  - Client-side pre-validation in `handleSaveModel`:
+    - Checks `master.models.some(...)` against trimmed name (case-insensitive) excluding the current editing model.
+    - Sets `mError` to display inline error under the model name input and halts form submission.
+
+### Lesson 177: Zod v4 Error Message Translation & Master Data Empty Input Prevention
+
+- **Context & QA Bug Log Report**:
+  - Screenshot `https://prnt.sc/4JWleo4_p3Jn` showed `/master-data?tab=models` popping up an error dialog with raw English Zod text:
+    `Thông Báo Lỗi` -> `Tên: Too small: expected string to have >=1 characters`.
+- **Root Cause Analysis**:
+  - In Zod v4 (`zod` ^4.3.6), string validation issue objects provide `origin: 'string'` rather than Zod v3's `type: 'string'`.
+  - In `src/components/ui/confirm-dialog.tsx`, `formatErrorMessage` checked `item.code === 'too_small' && item.type === 'string'`. Because `item.type` was `undefined`, it skipped the Vietnamese formatting logic and fell back to `item.message`, which was Zod's default raw English string (`"Too small: expected string to have >=1 characters"`).
+  - Additionally, several master-data modal handlers submitted without trimming or validating client-side input.
+- **Resolution**:
+  - **`src/components/ui/confirm-dialog.tsx` (`formatErrorMessage`)**:
+    - Updated `isString` check to `item.origin === 'string' || item.type === 'string'`.
+    - Added comprehensive default message detection (`isDefaultZodMessage`: starts with `Too small`, `Too big`, `Expected `, `Invalid `).
+    - If empty string (`item.minimum === 1`), formats to `"Không được để trống"`.
+    - If `item.minimum > 1`, formats to `"Tối thiểu N ký tự"`.
+    - Automatically strips any remaining raw English Zod fragments.
+  - **`src/server/fns/master-data.ts`**:
+    - Added user-friendly Vietnamese messages to all Zod `.min(1, '...')` schemas (`saveBankFn`, `saveBankAccountFn`, `saveSupplierFn`, `saveModelFn`, `saveColorFn`, `saveExpenseTypeFn`).
+  - **`src/routes/master-data.tsx`**:
+    - Added client-side trimmed validation across all modal forms (`handleSaveExpenseType`, `handleSaveSupplier`, `handleSaveBank`, `handleSaveAccount`, `handleSaveColor`) before initiating network mutations.
+
+### Lesson 178: Latest Created Vehicle Models Displayed First in List
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/QziXEt82HkZR`): `hiển thị dòng xe vừa tạo lên đầu danh sách` (Display the newly created motorcycle model at the top of the list).
+  - Previously, `getMasterDataFn` ordered `motorcycleModels` by `asc(motorcycleModels.name)`. When users added a new model, it was sorted alphabetically and often placed at the bottom or on later pagination pages, requiring manual search to confirm creation.
+- **Resolution**:
+  - `src/server/fns/master-data.ts`: Updated `getMasterDataFn` to query `motorcycleModels` with `.orderBy(desc(motorcycleModels.id))`.
+  - The latest created vehicle model now automatically appears as the very first item on page 1 of the Dòng Xe catalogue (`/master-data?tab=models`) and at the top of vehicle selection lists.
+
+### Lesson 179: Whitespace Validation Message Localization & Latest Created Suppliers Ordering
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/eQD-UeDakgJ3`): `việt hóa message lỗi khi nhập khoảng trắng` (Vietnamese localization for error message when entering whitespace).
+    - When entering whitespace/blank into required text inputs like "Tên Doanh Nghiệp Cung Cấp *", the system displayed raw Zod error text.
+  - QA Feedback ticket 2 (`https://prnt.sc/uESx1QE5pZfo`): `hiển thị NCC vừa tạo lên đầu danh sách` (Display newly created supplier at the top of the list).
+- **Resolution**:
+  - **Validation Message Localization**:
+    - Updated `src/components/ui/confirm-dialog.tsx` (`formatErrorMessage`): When string input fails minimum length / empty check, outputs `"Không được để trống hoặc chỉ chứa khoảng trắng"`.
+    - Updated `src/server/fns/master-data.ts`: Applied explicit Vietnamese messages to all master data entity schemas (`saveSupplierFn`, `saveModelFn`, `saveBankFn`, `saveBankAccountFn`, `saveColorFn`, `saveExpenseTypeFn`).
+    - Updated `src/routes/master-data.tsx`, `SupplierDetailDialog.tsx`, and `SupplierSelect.tsx`: Added trimmed whitespace checks preventing blank submissions with consistent Vietnamese dialog/inline errors.
+  - **Supplier Ordering (`src/server/fns/master-data.ts`)**:
+    - Updated `getMasterDataFn` to query `suppliers` with `.orderBy(desc(suppliers.id))` so newly created suppliers automatically appear as the first item on page 1 of the Nhà Cung Cấp catalogue (`/master-data?tab=suppliers`) and at the top of supplier dropdowns.
+
+### Lesson 180: Master Data Global Newest-First Ordering (Banks, Accounts, Colors, Expense Types)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/YGi0NgUeANj5`): `hiển thị ngân hàng vừa tạo lên đầu danh sách` (Display newly created bank at the top of the list).
+- **Resolution**:
+  - `src/server/fns/master-data.ts`: Extended the `.orderBy(desc(id))` strategy to all remaining master data catalogs in `getMasterDataFn`:
+    - `banks`: `.orderBy(desc(banks.id))`
+    - `companyBankAccounts`: `.orderBy(desc(companyBankAccounts.id))`
+    - `colors`: `.orderBy(desc(colors.id))`
+    - `expenseTypes`: `.orderBy(desc(expenseTypes.id))`
+  - Any new bank, account, color, or expense type added by users will automatically appear as the first row on page 1 of its respective catalogue table.
+
+### Lesson 181: Bank Whitespace Localization & Comprehensive Duplicate Prevention across Master Data
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/x4cXxIADw2li`): `việt hóa message lỗi khi nhập khoảng trắng` (Localized error message when entering whitespace in bank name).
+  - QA Feedback ticket 2 (`https://prnt.sc/z1bLMJX3yOcx`): `không cho tạo/sửa trùng ngân hàng` (Do not allow creating/editing duplicate banks).
+- **Resolution**:
+  - **Duplicate Prevention across Master Data**:
+    - **Server-Side (`src/server/fns/master-data.ts`)**:
+      - `saveBankFn`: Checks existing banks by case-insensitive name (`sql`lower(${banks.name}) = ${trimmedName.toLowerCase()}``) excluding current editing ID, throwing `Ngân hàng "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveSupplierFn`: Checks existing suppliers, throwing `Nhà cung cấp "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveColorFn`: Checks existing colors, throwing `Màu sắc "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveExpenseTypeFn`: Checks existing expense types, throwing `Loại chi phí "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveBankAccountFn`: Checks duplicate account numbers per bank, throwing `Số tài khoản "${cleanNumber}" đã tồn tại cho ngân hàng này`.
+    - **Client-Side Pre-Validation (`src/routes/master-data.tsx`)**:
+      - Added instant case-insensitive duplicate checks in modal save handlers (`handleSaveBank`, `handleSaveSupplier`, `handleSaveColor`, `handleSaveExpenseType`, `handleSaveAccount`) alerting users prior to sending network requests.
+
+### Lesson 182: Bank Tab Search Box Placeholder Updated to "Tìm tên ngân hàng"
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/-wak8m1K3G5P`): `đổi placeholder thành "Tìm tên ngân hàng"`.
+  - The previous placeholder (`"Tìm tên, mã hoặc tên viết tắt ngân hàng..."`) was excessively long and was visually truncated (`"Tìm tên, mã hoặc tên viết tắt ngân h"`) inside the `SearchBox` on `/master-data?tab=banks`.
+- **Resolution**:
+  - `src/routes/master-data.tsx`: Updated `SearchBox` placeholder for the `banks` tab to `"Tìm tên ngân hàng..."`, providing a clean, concise input label consistent with other master data tabs without truncation.
+
+### Lesson 183: Bank Account Number Restricted to Digits Only
+
+- **Context & QA Bug Log Report**:
+  - QA Bug ticket (`https://prnt.sc/aeN-bSb9HlAi`): `số tài khoản chỉ nhập số thôi chặn kí tự và chữ cái` (Bank account number must only accept digits, blocking letters and special characters).
+  - The previous form accepted arbitrary characters (such as `HHH@@`).
+- **Resolution**:
+  - **Client-Side Sanitization & Validation (`src/routes/master-data.tsx`, `BankAccountSelect.tsx`, `loans.index.tsx`)**:
+    - `onChange`: Automatically strips non-digits with `replace(/\D/g, '')`.
+    - Added `inputMode="numeric"`, `pattern="[0-9]*"`, and `maxLength={50}`.
+    - Verified `!/^\d+$/.test(cleanNumber)` before submitting, alerting `"Số tài khoản chỉ được chứa các chữ số"`.
+  - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
+    - Added `.regex(/^\d+$/, 'Số tài khoản chỉ được chứa các chữ số')` to `saveBankAccountFn` Zod validator.
+
+### Lesson 184: Color Ordering and Duplicate Color Prevention (`/master-data?tab=colors`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/7kWP1_XMkwDv`): `hiển thị màu sắc vừa tạo lên đầu danh sách` (Display newly created color at the top of the list).
+  - QA Feedback ticket 2 (`https://prnt.sc/NM8phj3dVNlu`): `không cho tạo/sửa trùng màu sắc` (Do not allow creating/editing duplicate colors).
+- **Resolution**:
+  - **Ordering (`src/server/fns/master-data.ts`)**:
+    - `getMasterDataFn` orders `colors` by `desc(colors.id)` so any newly created color automatically appears as the very first row on page 1 of the Màu Sắc table (`/master-data?tab=colors`) and at the top of color pickers across batches and sales dispatches.
+  - **Duplicate Color Prevention**:
+    - **Client-Side Pre-Validation (`src/routes/master-data.tsx`)**:
+      - In `handleSaveColor`, trimmed color name is checked against `master.colors.some(...)` (case-insensitive) excluding the current editing ID. If found, displays `alertDialog(`Màu sắc "${trimmed}" đã tồn tại trong hệ thống`)` before making the network request.
+    - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
+      - In `saveColorFn`, queries `colors` for `lower(${colors.name}) = ${trimmedName.toLowerCase()}` excluding `id`. If found, throws `new Error(`Màu sắc "${trimmedName}" đã tồn tại trong hệ thống`)`.
+
+_(Next Agent: Append Lesson 185, 186,... above this line upon completing tasks)_
+
 
 
 

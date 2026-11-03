@@ -39,7 +39,10 @@ export function SupplierSelect({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!name.trim()) return setError('Vui lòng nhập tên nhà cung cấp')
+    if (!name.trim())
+      return setError(
+        'Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng',
+      )
     setPending(true)
     try {
       const res = await saveSupplierFn({ data: { name: name.trim() } })

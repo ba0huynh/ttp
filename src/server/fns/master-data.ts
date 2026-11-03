@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, eq } from 'drizzle-orm'
+import { and, desc, eq, ne, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -50,7 +50,7 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
   .middleware([authMiddleware])
   .handler(async () => {
     const [b, a, s, m, c, x] = await Promise.all([
-      db.select().from(banks).orderBy(asc(banks.name)),
+      db.select().from(banks).orderBy(desc(banks.id)),
       db
         .select({
           id: companyBankAccounts.id,
@@ -66,11 +66,11 @@ export const getMasterDataFn = createServerFn({ method: 'GET' })
         })
         .from(companyBankAccounts)
         .innerJoin(banks, eq(banks.id, companyBankAccounts.bankId))
-        .orderBy(asc(banks.name)),
-      db.select().from(suppliers).orderBy(asc(suppliers.name)),
-      db.select().from(motorcycleModels).orderBy(asc(motorcycleModels.name)),
-      db.select().from(colors).orderBy(asc(colors.name)),
-      db.select().from(expenseTypes).orderBy(asc(expenseTypes.name)),
+        .orderBy(desc(companyBankAccounts.id)),
+      db.select().from(suppliers).orderBy(desc(suppliers.id)),
+      db.select().from(motorcycleModels).orderBy(desc(motorcycleModels.id)),
+      db.select().from(colors).orderBy(desc(colors.id)),
+      db.select().from(expenseTypes).orderBy(desc(expenseTypes.id)),
     ])
     return {
       banks: b,
@@ -88,22 +88,38 @@ export const saveBankFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      name: z.string().trim().min(1),
+      name: z.string().trim().min(1, 'Tên ngân hàng không được để trống hoặc chỉ chứa khoảng trắng'),
       image: imageField,
     }),
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
+      const trimmedName = v.name.trim().replace(/\s+/g, ' ').normalize('NFC')
+      const [existing] = await db
+        .select({ id: banks.id })
+        .from(banks)
+        .where(
+          and(
+            sql`lower(trim(${banks.name})) = ${trimmedName.toLowerCase()}`,
+            id ? ne(banks.id, id) : undefined,
+          ),
+        )
+        .limit(1)
+
+      if (existing) {
+        throw new Error(`Ngân hàng "${trimmedName}" đã tồn tại trong hệ thống`)
+      }
+
       if (id) {
         const [old] = await db
           .select({ image: banks.image })
           .from(banks)
           .where(eq(banks.id, id))
-        await db.update(banks).set(v).where(eq(banks.id, id))
+        await db.update(banks).set({ ...v, name: trimmedName }).where(eq(banks.id, id))
         // A replaced or removed logo no longer needs its file
         if (old?.image && old.image !== (v.image ?? null))
           await deleteImage(old.image)
-      } else await db.insert(banks).values(v)
+      } else await db.insert(banks).values({ ...v, name: trimmedName })
       return { ok: true }
     }),
   )
@@ -116,22 +132,55 @@ export const saveBankAccountFn = createServerFn({ method: 'POST' })
       id: z.number().optional(),
       bankId: z.number(),
       // Same limits as the columns (50 / 255 / 150)
-      accountNumber: z.string().trim().min(1).max(50),
-      accountName: z.string().trim().min(1).max(255),
-      branch: z.string().trim().max(150).nullable().optional(),
+      accountNumber: z
+        .string()
+        .trim()
+        .min(1, 'Số tài khoản không được để trống hoặc chỉ chứa khoảng trắng')
+        .max(50, 'Số tài khoản tối đa 50 ký tự')
+        .regex(/^\d+$/, 'Số tài khoản chỉ được chứa các chữ số'),
+      accountName: z
+        .string()
+        .trim()
+        .min(1, 'Tên tài khoản không được để trống hoặc chỉ chứa khoảng trắng')
+        .max(255, 'Tên tài khoản tối đa 255 ký tự'),
+      branch: z.string().trim().max(150, 'Chi nhánh tối đa 150 ký tự').nullable().optional(),
       isActive: z.boolean(),
     }),
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
+      const cleanNumber = v.accountNumber.trim()
+      const cleanName = v.accountName.trim()
+      const [existing] = await db
+        .select({ id: companyBankAccounts.id })
+        .from(companyBankAccounts)
+        .where(
+          and(
+            eq(companyBankAccounts.accountNumber, cleanNumber),
+            eq(companyBankAccounts.bankId, v.bankId),
+            id ? ne(companyBankAccounts.id, id) : undefined,
+          ),
+        )
+        .limit(1)
+
+      if (existing) {
+        throw new Error(
+          `Số tài khoản "${cleanNumber}" đã tồn tại cho ngân hàng này`,
+        )
+      }
+
       if (id) {
         await db
           .update(companyBankAccounts)
-          .set(v)
+          .set({ ...v, accountNumber: cleanNumber, accountName: cleanName })
           .where(eq(companyBankAccounts.id, id))
         return { ok: true, id }
       }
-      const [res] = await db.insert(companyBankAccounts).values(v)
+      const [res] = await db.insert(companyBankAccounts).values({
+        ...v,
+        accountNumber: cleanNumber,
+        accountName: cleanName,
+      })
       return { ok: true, id: Number(res.insertId) }
     }),
   )
@@ -143,7 +192,11 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       // Same limits as the columns (255 / 255)
-      name: z.string().trim().min(1).max(255),
+      name: z
+        .string()
+        .trim()
+        .min(1, 'Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng')
+        .max(255, 'Tên nhà cung cấp tối đa 255 ký tự'),
       taxCode: opt,
       email: opt,
       note: opt,
@@ -152,18 +205,37 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
+      const trimmedName = v.name.trim().replace(/\s+/g, ' ').normalize('NFC')
+      const [existing] = await db
+        .select({ id: suppliers.id })
+        .from(suppliers)
+        .where(
+          and(
+            sql`lower(trim(${suppliers.name})) = ${trimmedName.toLowerCase()}`,
+            id ? ne(suppliers.id, id) : undefined,
+          ),
+        )
+        .limit(1)
+
+      if (existing) {
+        throw new Error(`Nhà cung cấp "${trimmedName}" đã tồn tại trong hệ thống`)
+      }
+
       if (id) {
         const [old] = await db
           .select({ image: suppliers.image })
           .from(suppliers)
           .where(eq(suppliers.id, id))
-        await db.update(suppliers).set(v).where(eq(suppliers.id, id))
+        await db
+          .update(suppliers)
+          .set({ ...v, name: trimmedName })
+          .where(eq(suppliers.id, id))
         // A replaced or removed logo no longer needs its file
         if (old?.image && old.image !== (v.image ?? null))
           await deleteImage(old.image)
         return { ok: true, id }
       }
-      const [res] = await db.insert(suppliers).values(v)
+      const [res] = await db.insert(suppliers).values({ ...v, name: trimmedName })
       return { ok: true, id: Number(res.insertId) }
     }),
   )
@@ -175,20 +247,38 @@ export const saveModelFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().optional(),
       brand: opt,
-      name: z.string().trim().min(1),
+      name: z.string().trim().min(1, 'Tên dòng xe không được để trống hoặc chỉ chứa khoảng trắng'),
       description: opt,
     }),
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
+      const trimmedName = v.name.trim().replace(/\s+/g, ' ').normalize('NFC')
+      const [existing] = await db
+        .select({ id: motorcycleModels.id })
+        .from(motorcycleModels)
+        .where(
+          and(
+            sql`lower(trim(${motorcycleModels.name})) = ${trimmedName.toLowerCase()}`,
+            id ? ne(motorcycleModels.id, id) : undefined,
+          ),
+        )
+        .limit(1)
+
+      if (existing) {
+        throw new Error(`Dòng xe "${trimmedName}" đã tồn tại trong hệ thống`)
+      }
+
       if (id) {
         await db
           .update(motorcycleModels)
-          .set(v)
+          .set({ ...v, name: trimmedName })
           .where(eq(motorcycleModels.id, id))
         return { ok: true, id }
       }
-      const [res] = await db.insert(motorcycleModels).values(v)
+      const [res] = await db
+        .insert(motorcycleModels)
+        .values({ ...v, name: trimmedName })
       return { ok: true, id: Number(res.insertId) }
     }),
   )
@@ -199,17 +289,33 @@ export const saveColorFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      name: z.string().trim().min(1),
+      name: z.string().trim().min(1, 'Tên màu sắc không được để trống hoặc chỉ chứa khoảng trắng'),
       hex: opt,
     }),
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
+      const trimmedName = v.name.trim().replace(/\s+/g, ' ').normalize('NFC')
+      const [existing] = await db
+        .select({ id: colors.id })
+        .from(colors)
+        .where(
+          and(
+            sql`lower(trim(${colors.name})) = ${trimmedName.toLowerCase()}`,
+            id ? ne(colors.id, id) : undefined,
+          ),
+        )
+        .limit(1)
+
+      if (existing) {
+        throw new Error(`Màu sắc "${trimmedName}" đã tồn tại trong hệ thống`)
+      }
+
       if (id) {
-        await db.update(colors).set(v).where(eq(colors.id, id))
+        await db.update(colors).set({ ...v, name: trimmedName }).where(eq(colors.id, id))
         return { ok: true, id }
       }
-      const [res] = await db.insert(colors).values(v)
+      const [res] = await db.insert(colors).values({ ...v, name: trimmedName })
       return { ok: true, id: Number(res.insertId) }
     }),
   )
@@ -220,16 +326,32 @@ export const saveExpenseTypeFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().optional(),
-      name: z.string().trim().min(1),
+      name: z.string().trim().min(1, 'Tên loại chi phí không được để trống hoặc chỉ chứa khoảng trắng'),
     }),
   )
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
+      const trimmedName = v.name.trim().replace(/\s+/g, ' ').normalize('NFC')
+      const [existing] = await db
+        .select({ id: expenseTypes.id })
+        .from(expenseTypes)
+        .where(
+          and(
+            sql`lower(trim(${expenseTypes.name})) = ${trimmedName.toLowerCase()}`,
+            id ? ne(expenseTypes.id, id) : undefined,
+          ),
+        )
+        .limit(1)
+
+      if (existing) {
+        throw new Error(`Loại chi phí "${trimmedName}" đã tồn tại trong hệ thống`)
+      }
+
       if (id) {
-        await db.update(expenseTypes).set(v).where(eq(expenseTypes.id, id))
+        await db.update(expenseTypes).set({ ...v, name: trimmedName }).where(eq(expenseTypes.id, id))
         return { ok: true, id }
       }
-      const [res] = await db.insert(expenseTypes).values(v)
+      const [res] = await db.insert(expenseTypes).values({ ...v, name: trimmedName })
       return { ok: true, id: Number(res.insertId) }
     }),
   )

@@ -48,6 +48,7 @@ import {
   SearchSelectItem,
 } from '#/components/ui/search-select.tsx'
 import { Switch } from '#/components/ui/switch.tsx'
+import { cn } from '#/lib/utils.ts'
 import {
   Table,
   TableBody,
@@ -216,6 +217,7 @@ function MasterDataPage() {
   const [cId, setCId] = React.useState<number | null>(null)
   const [modelOpen, setModelOpen] = React.useState(false)
   const [mName, setMName] = React.useState('')
+  const [mError, setMError] = React.useState<string | null>(null)
 
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
@@ -302,25 +304,61 @@ function MasterDataPage() {
 
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = mName.trim()
+    if (!trimmed) {
+      setMError('Tên dòng xe không được để trống hoặc chỉ chứa khoảng trắng')
+      return
+    }
+    const isDup = master.models.some(
+      (m: (typeof master.models)[number]) =>
+        m.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        m.id !== (mId ?? undefined),
+    )
+    if (isDup) {
+      setMError(`Dòng xe "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
+    setMError(null)
     try {
       await saveModel.mutateAsync({
         data: {
           id: mId ?? undefined,
           brand: mBrand || null,
-          name: mName,
+          name: trimmed,
         },
       })
       setModelOpen(false)
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi lưu loại xe')
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('đã tồn tại')) {
+        setMError(msg)
+      } else {
+        await showErrorDialog(err, 'Lỗi khi lưu dòng xe')
+      }
     }
   }
 
   const handleSaveExpenseType = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = xName.trim()
+    if (!trimmed) {
+      await alertDialog(
+        'Tên loại chi phí không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.expenseTypes.some(
+      (x: (typeof master.expenseTypes)[number]) =>
+        x.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        x.id !== (xId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(`Loại chi phí "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
     try {
       await saveExpenseType.mutateAsync({
-        data: { id: xId ?? undefined, name: xName },
+        data: { id: xId ?? undefined, name: trimmed },
       })
       setExpenseTypeOpen(false)
     } catch (err: unknown) {
@@ -330,6 +368,22 @@ function MasterDataPage() {
 
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = sName.trim()
+    if (!trimmed) {
+      await alertDialog(
+        'Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.suppliers.some(
+      (s: (typeof master.suppliers)[number]) =>
+        s.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        s.id !== (sId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(`Nhà cung cấp "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
     setSupplierSaving(true)
     try {
       // The file only reaches the server now, when the supplier is saved
@@ -339,7 +393,7 @@ function MasterDataPage() {
       await saveSupplier.mutateAsync({
         data: {
           id: sId ?? undefined,
-          name: sName,
+          name: trimmed,
           image,
         },
       })
@@ -353,12 +407,28 @@ function MasterDataPage() {
 
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = bName.trim()
+    if (!trimmed) {
+      await alertDialog(
+        'Tên ngân hàng không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.banks.some(
+      (b: (typeof master.banks)[number]) =>
+        b.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        b.id !== (bId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(`Ngân hàng "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
     setBankSaving(true)
     try {
       // The file only reaches the server now, when the bank is saved
       const image = bFile ? await uploadLogo(bFile) : bImage || null
       await saveBank.mutateAsync({
-        data: { id: bId ?? undefined, name: bName, image },
+        data: { id: bId ?? undefined, name: trimmed, image },
       })
       clearLogoFile()
       setBankOpen(false)
@@ -375,13 +445,43 @@ function MasterDataPage() {
       await alertDialog('Chưa chọn ngân hàng cho tài khoản')
       return
     }
+    const cleanNumber = accNumber.trim()
+    if (!cleanNumber) {
+      await alertDialog(
+        'Số tài khoản không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    if (!/^\d+$/.test(cleanNumber)) {
+      await alertDialog('Số tài khoản chỉ được chứa các chữ số')
+      return
+    }
+    const cleanName = accName.trim()
+    if (!cleanName) {
+      await alertDialog(
+        'Tên tài khoản không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.bankAccounts.some(
+      (a: (typeof master.bankAccounts)[number]) =>
+        a.accountNumber.trim() === cleanNumber &&
+        a.bankId === accBankId &&
+        a.id !== (accId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(
+        `Số tài khoản "${cleanNumber}" đã tồn tại cho ngân hàng này`,
+      )
+      return
+    }
     try {
       await saveAccount.mutateAsync({
         data: {
           id: accId ?? undefined,
           bankId: accBankId,
-          accountName: accName,
-          accountNumber: accNumber,
+          accountName: cleanName,
+          accountNumber: cleanNumber,
           branch: accBranch.trim() || null,
           isActive: accActive,
         },
@@ -394,9 +494,25 @@ function MasterDataPage() {
 
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = cName.trim()
+    if (!trimmed) {
+      await alertDialog(
+        'Tên màu sắc không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.colors.some(
+      (c: (typeof master.colors)[number]) =>
+        c.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        c.id !== (cId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(`Màu sắc "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
     try {
       await saveColor.mutateAsync({
-        data: { id: cId ?? undefined, name: cName.trim() },
+        data: { id: cId ?? undefined, name: trimmed },
       })
       setColorOpen(false)
     } catch (err: unknown) {
@@ -483,6 +599,7 @@ function MasterDataPage() {
                       setMId(null)
                       setMName('')
                       setMBrand('')
+                      setMError(null)
                       setModelOpen(true)
                     }}
                     className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -516,6 +633,7 @@ function MasterDataPage() {
                                   setMId(m.id)
                                   setMName(m.name)
                                   setMBrand(m.brand ?? '')
+                                  setMError(null)
                                   setModelOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -736,7 +854,7 @@ function MasterDataPage() {
                 <SearchBox
                   value={search}
                   onChange={setSearch}
-                  placeholder="Tìm tên, mã hoặc tên viết tắt ngân hàng..."
+                  placeholder="Tìm tên ngân hàng..."
                   className="ml-auto mr-3 w-72"
                 />
                 <Can permission="master-data.manage">
@@ -1013,7 +1131,13 @@ function MasterDataPage() {
         </Tabs>
 
         {/* Add Motorcycle Model Modal */}
-        <Dialog open={modelOpen} onOpenChange={setModelOpen}>
+        <Dialog
+          open={modelOpen}
+          onOpenChange={(open) => {
+            setModelOpen(open)
+            if (!open) setMError(null)
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
@@ -1026,10 +1150,20 @@ function MasterDataPage() {
                 <Input
                   required
                   value={mName}
-                  onChange={(e) => setMName(e.target.value)}
-                  className="h-11 text-sm px-4 rounded-lg"
+                  onChange={(e) => {
+                    setMName(e.target.value)
+                    if (mError) setMError(null)
+                  }}
+                  className={cn(
+                    'h-11 text-sm px-4 rounded-lg',
+                    mError &&
+                      'border-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                  )}
                   placeholder="SH 150i ABS"
                 />
+                {mError && (
+                  <p className="text-[11px] font-medium text-rose-600">{mError}</p>
+                )}
               </div>
               <DialogFooter className="pt-2">
                 <Button
@@ -1289,7 +1423,11 @@ function MasterDataPage() {
                 <Input
                   required
                   value={accNumber}
-                  onChange={(e) => setAccNumber(e.target.value)}
+                  onChange={(e) =>
+                    setAccNumber(e.target.value.replace(/\D/g, ''))
+                  }
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   maxLength={50}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="0071001234567"
