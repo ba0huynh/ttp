@@ -1962,7 +1962,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - The inventory note column displays clickable note text for users with `batches.manage`; an empty note displays a clickable dash. Clicking opens the existing note editor, including for sold, delivered, or invoiced vehicles. The note column has no pencil icon; the existing vehicle-edit pencil remains in the final actions column and its form includes the note field. Users without management permission see plain text.
 
-_(Next Agent: Append Lesson 174, 175,... above this line upon completing tasks)_
+### Lesson 174: Edit Inventory Notes Only through the Vehicle Form
+
+- Supersedes the inventory editing interactions in Lessons 172 and 173: the note column now displays plain text only, including the empty dash. Edit notes through the existing vehicle-edit pencil next to the delete button in the final actions column. The vehicle form retains its note field and follows the existing permission and vehicle-status restrictions.
+- Removed the separate note dialog, click handling, mutation, and unused note-only server endpoint/service. Batch entry, note persistence, and note display are unchanged.
+
+_(Next Agent: Append Lesson 175, 176,... above this line upon completing tasks)_
 
 
 

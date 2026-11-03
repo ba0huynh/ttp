@@ -256,20 +256,6 @@ export async function updateVehicle(vehicleId: number, input: VehicleInput) {
   }
 }
 
-/** Notes remain editable after a vehicle is sold, delivered or invoiced. */
-export async function updateVehicleNote(vehicleId: number, note: string | null) {
-  const [vehicle] = await db
-    .select({ id: vehicles.id })
-    .from(vehicles)
-    .where(eq(vehicles.id, vehicleId))
-  if (!vehicle) throw new BusinessError('Không tìm thấy xe')
-
-  await db
-    .update(vehicles)
-    .set({ note: note?.trim() || null })
-    .where(eq(vehicles.id, vehicleId))
-}
-
 export async function removeVehicle(vehicleId: number) {
   await db.transaction(async (tx) => {
     const [v] = await tx
