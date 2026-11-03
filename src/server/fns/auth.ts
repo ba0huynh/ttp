@@ -16,6 +16,7 @@ import {
   getUserBySessionToken,
   resetPasswordWithToken,
 } from '#/server/services/auth.ts'
+import { ACCOUNT_LOCKED_MESSAGE } from '#/lib/auth-errors.ts'
 import {
   isMailConfigured,
   sendPasswordResetMail,
@@ -48,7 +49,10 @@ export const loginFn = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
-    const user = await authenticate(data.login, data.password)
+    const { user, reason } = await authenticate(data.login, data.password)
+    if (reason === 'locked') {
+      throw new Error(ACCOUNT_LOCKED_MESSAGE)
+    }
     if (!user)
       throw new Error(
         'Sai thông tin đăng nhập hoặc tài khoản chưa được kích hoạt',

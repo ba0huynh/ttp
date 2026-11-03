@@ -2,6 +2,10 @@ import { createHash, randomBytes, scrypt, timingSafeEqual } from 'node:crypto'
 import { promisify } from 'node:util'
 import { and, eq, gt, isNull, sql } from 'drizzle-orm'
 
+import {
+  ACCOUNT_LOCKED_CODE,
+  ACCOUNT_LOCKED_MESSAGE,
+} from '../../lib/auth-errors.ts'
 import { db } from '../../db/index.ts'
 import {
   passwordResetTokens,
@@ -84,7 +88,11 @@ export async function getUserBySessionToken(
       and(eq(sessions.id, sha256(token)), gt(sessions.expiresAt, sql`NOW()`)),
     )
   const row = rows[0]
-  if (!row || !row.isActive) return null
+  if (!row) return null
+  if (!row.isActive) {
+    await db.delete(sessions).where(eq(sessions.userId, row.id))
+    throw new Error(`${ACCOUNT_LOCKED_CODE}: ${ACCOUNT_LOCKED_MESSAGE}`)
+  }
   return {
     id: row.id,
     username: row.username,
@@ -107,9 +115,11 @@ export async function authenticate(login: string, password: string) {
     .from(users)
     .where(sql`${users.username} = ${login} OR ${users.email} = ${login}`)
     .limit(1)
-  if (!user || !user.isActive) return null
-  if (!(await verifyPassword(password, user.passwordHash))) return null
-  return user
+  if (!user) return { user: null, reason: 'not_found' as const }
+  if (!user.isActive) return { user: null, reason: 'locked' as const }
+  if (!(await verifyPassword(password, user.passwordHash)))
+    return { user: null, reason: 'wrong_password' as const }
+  return { user, reason: null }
 }
 
 /** Creates a password reset token (expires in 30 minutes). Returns raw token. */
