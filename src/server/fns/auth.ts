@@ -79,7 +79,7 @@ export const logoutFn = createServerFn({ method: 'POST' })
  */
 export const forgotPasswordFn = createServerFn({ method: 'POST' })
   .middleware([loggingMiddleware])
-  .validator(z.object({ email: z.email('Email không hợp lệ') }))
+  .validator(z.object({ email: z.string().trim().email('Email không hợp lệ') }))
   .handler(async ({ data }) => {
     const token = await createPasswordResetToken(data.email)
     if (!token) throw new Error('Email này chưa được đăng ký trong hệ thống')
@@ -109,7 +109,7 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
   .middleware([loggingMiddleware])
   .validator(
     z.object({
-      token: z.string().min(10),
+      token: z.string().trim().min(10),
       password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
     }),
   )

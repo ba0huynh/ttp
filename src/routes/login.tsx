@@ -2,6 +2,7 @@ import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import { Loader2, Lock, LogIn, User } from 'lucide-react'
 import * as React from 'react'
+import { z } from 'zod'
 
 import { AuthAlert, AuthShell } from '#/components/layout/AuthShell.tsx'
 import { Button } from '#/components/ui/button.tsx'
@@ -11,20 +12,37 @@ import { PasswordInput } from '#/components/ui/password-input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { currentUserQuery } from '#/lib/queries.ts'
 import { loginFn } from '#/server/fns/auth.ts'
+import {
+  ACCOUNT_LOCKED_MESSAGE,
+  isAccountLockedError,
+} from '#/lib/auth-errors.ts'
 
 export const Route = createFileRoute('/login')({
+  validateSearch: z.object({
+    locked: z.string().optional().catch(undefined),
+  }),
   beforeLoad: async ({ context: { queryClient } }) => {
-    const user = await queryClient.query(currentUserQuery())
-    // Use the router's redirect() (a raw Response cannot be serialized during SSR)
-    if (user) throw redirect({ to: '/' })
+    try {
+      const user = await queryClient.query(currentUserQuery())
+      // Use the router's redirect() (a raw Response cannot be serialized during SSR)
+      if (user) throw redirect({ to: '/' })
+    } catch (err) {
+      if (isAccountLockedError(err)) {
+        return
+      }
+      throw err
+    }
   },
   component: LoginPage,
 })
 
 function LoginPage() {
+  const { locked } = Route.useSearch()
   const [login, setLogin] = React.useState('')
   const [password, setPassword] = React.useState('')
-  const [error, setError] = React.useState<string | null>(null)
+  const [error, setError] = React.useState<string | null>(() =>
+    locked ? ACCOUNT_LOCKED_MESSAGE : null,
+  )
   const [loading, setLoading] = React.useState(false)
 
   const handleSubmit = async (e: React.FormEvent) => {

@@ -44,10 +44,14 @@ const sha256 = (s: string) => createHash('sha256').update(s).digest('hex')
 export async function createSession(userId: number) {
   const token = randomBytes(32).toString('base64url')
   const expiresAt = new Date(Date.now() + SESSION_TTL_DAYS * 86_400_000)
-  await db.insert(sessions).values({ id: sha256(token), userId, expiresAt })
+  await db.insert(sessions).values({
+    id: sha256(token),
+    userId,
+    expiresAt: sql`DATE_ADD(NOW(), INTERVAL ${SESSION_TTL_DAYS} DAY)`,
+  })
   await db
     .update(users)
-    .set({ lastLoginAt: new Date() })
+    .set({ lastLoginAt: sql`NOW()` })
     .where(eq(users.id, userId))
   return { token, expiresAt }
 }
@@ -124,28 +128,30 @@ export async function authenticate(login: string, password: string) {
 
 /** Creates a password reset token (expires in 30 minutes). Returns raw token. */
 export async function createPasswordResetToken(email: string) {
+  const normalizedEmail = email.trim().toLowerCase()
   const [user] = await db
     .select({ id: users.id })
     .from(users)
-    .where(eq(users.email, email))
+    .where(sql`LOWER(${users.email}) = ${normalizedEmail}`)
     .limit(1)
   if (!user) return null
   const token = randomBytes(24).toString('base64url')
   await db.insert(passwordResetTokens).values({
     userId: user.id,
     tokenHash: sha256(token),
-    expiresAt: new Date(Date.now() + 30 * 60_000),
+    expiresAt: sql`DATE_ADD(NOW(), INTERVAL 30 MINUTE)`,
   })
   return token
 }
 
 export async function resetPasswordWithToken(token: string, password: string) {
+  const cleanToken = token.trim()
   const [row] = await db
     .select()
     .from(passwordResetTokens)
     .where(
       and(
-        eq(passwordResetTokens.tokenHash, sha256(token)),
+        eq(passwordResetTokens.tokenHash, sha256(cleanToken)),
         isNull(passwordResetTokens.usedAt),
         gt(passwordResetTokens.expiresAt, sql`NOW()`),
       ),
@@ -159,7 +165,7 @@ export async function resetPasswordWithToken(token: string, password: string) {
       .where(eq(users.id, row.userId))
     await tx
       .update(passwordResetTokens)
-      .set({ usedAt: new Date() })
+      .set({ usedAt: sql`NOW()` })
       .where(eq(passwordResetTokens.id, row.id))
     await tx.delete(sessions).where(eq(sessions.userId, row.userId))
   })

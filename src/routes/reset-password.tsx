@@ -29,7 +29,7 @@ function ResetPasswordPage() {
     setError(null)
     if (password !== confirm) return setError('Mật khẩu nhập lại không khớp')
     try {
-      await reset.mutateAsync({ data: { token, password } })
+      await reset.mutateAsync({ data: { token: token.trim(), password } })
     } catch (err: unknown) {
       setError(formatErrorMessage(err, 'Không đặt lại được mật khẩu'))
     }

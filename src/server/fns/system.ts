@@ -152,10 +152,11 @@ export const saveUserFn = createServerFn({ method: 'POST' })
             ...(password ? { passwordHash: await hashPassword(password) } : {}),
           })
           .where(eq(users.id, id))
-        // A deactivated account, or one whose password an admin just reset, must
-        // not keep working (or come back to life when re-activated) with an old
-        // session. Its next request gets UNAUTHENTICATED and the client logs out.
-        if (!rest.isActive || password)
+        // An account whose password an admin just reset must not keep working with
+        // an old session. (Deactivated accounts retain their sessions until the next
+        // request so getUserBySessionToken can detect that the account was locked
+        // and notify the user with the exact locked message before cleaning up).
+        if (password)
           await db.delete(sessions).where(eq(sessions.userId, id))
       } else {
         if (!password) throw new Error('Nhập mật khẩu cho tài khoản mới')

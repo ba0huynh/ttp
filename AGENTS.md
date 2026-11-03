@@ -2258,7 +2258,35 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - In `src/styles.css`: Added global rule `input::-ms-reveal, input::-ms-clear { display: none; }` to suppress native browser password reveal and clear controls.
   - In `src/components/ui/password-input.tsx`: Added `[&::-ms-reveal]:hidden [&::-ms-clear]:hidden` to `Input` className to ensure consistent single-eye behavior across all platforms and browsers.
 
-_(Next Agent: Append Lesson 197, 198,... above this line upon completing tasks)_
+### Lesson 197: Immediate Account Lockout Notification & Seamless Session Revocation
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (Module: `Quản lý người dùng` / CMS):
+    - Requirement: `người dùng đang log in mà admin khóa thì hiển thị thông báo "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ"` (When an active user is logged in and an admin locks/deactivates their account, show notice: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ").
+- **Root Cause & Technical Gap**:
+  - Previously, `saveUserFn` immediately deleted sessions from `sessions` table upon deactivation. When the user's browser sent subsequent requests, `getUserBySessionToken` found no session record and returned generic 401 unauthenticated, losing the context that the account was explicitly deactivated by an admin.
+  - Furthermore, `currentUserQuery` had a 5-minute cache time without periodic polling, causing idle users to remain uninformed for minutes.
+- **Architectural Resolution**:
+  1. **`src/lib/auth-errors.ts`**:
+     - Defined `ACCOUNT_LOCKED_CODE = 'ACCOUNT_LOCKED'` and exact message `ACCOUNT_LOCKED_MESSAGE = 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ'`.
+     - Added type-safe detector `isAccountLockedError(error: unknown): boolean`.
+  2. **`src/server/services/auth.ts`**:
+     - In `getUserBySessionToken`: When session matches but `!row.isActive`, automatically purge the user's sessions from `sessions` and throw `ACCOUNT_LOCKED_CODE: ACCOUNT_LOCKED_MESSAGE`.
+     - In `authenticate`: If user exists but `!user.isActive`, return `{ user: null, reason: 'locked' }`.
+  3. **`src/server/fns/auth.ts`**:
+     - In `loginFn`: When `reason === 'locked'`, throw `ACCOUNT_LOCKED_MESSAGE` so locked users attempting to log in receive this exact message.
+  4. **`src/server/fns/system.ts`**:
+     - In `saveUserFn`: Deactivated accounts retain their sessions in DB until the next request so `getUserBySessionToken` detects the deactivation and delivers the exact locked message before cleaning up.
+  5. **`src/lib/queries.ts`**:
+     - Configured `currentUserQuery` with `staleTime: 10_000`, `refetchInterval: 10_000`, and `refetchOnWindowFocus: true` for near real-time detection of account lockouts.
+  6. **`src/integrations/tanstack-query/root-provider.tsx`**:
+     - In `handleAuthError(error)`: When `isAccountLockedError(error)` triggers, displays an immediate modal dialog (`alertDialog`) with the message `"Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ"`. Clicking "Về trang đăng nhập" redirects to `/login?locked=1`.
+  7. **`src/routes/login.tsx`**:
+     - Accepts `locked` search param (`/login?locked=1`) and initializes `error` state to `ACCOUNT_LOCKED_MESSAGE`, presenting a prominent red error banner upon arrival.
+  8. **`src/routes/__root.tsx`**:
+     - Added router `errorComponent` catching `isAccountLockedError(error)` and redirecting to `/login?locked=1`.
+
+_(Next Agent: Append Lesson 198, 199,... above this line upon completing tasks)_
 
 
 

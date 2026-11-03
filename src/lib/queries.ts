@@ -185,13 +185,14 @@ export const rolesQuery = () =>
   })
 
 /**
- * Người dùng hiện tại, dùng trong `beforeLoad` của mọi route. Cache 5 phút để
- * chuyển trang không phải gọi server mỗi lần. Đăng nhập/đăng xuất dùng full
- * reload nên cache được làm mới; phiên hết hạn vẫn bị chặn ở middleware server.
+ * Người dùng hiện tại, dùng trong `beforeLoad` của mọi route và được refetch định kỳ
+ * để phát hiện kịp thời khi tài khoản bị admin khóa hoặc thay đổi quyền.
  */
 export const currentUserQuery = () =>
   queryOptions({
     queryKey: ['auth', 'user'],
     queryFn: () => getCurrentUserFn(),
-    staleTime: 5 * 60_000,
+    staleTime: 10_000,
+    refetchInterval: 10_000,
+    refetchOnWindowFocus: true,
   })
