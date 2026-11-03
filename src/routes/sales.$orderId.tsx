@@ -18,6 +18,7 @@ import {
   ArrowLeft,
   AlertTriangle,
   CheckSquare,
+  Download,
   Eye,
   FileCheck,
   Loader2,
@@ -30,6 +31,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import * as React from 'react'
+import { toast } from 'sonner'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
@@ -135,6 +137,7 @@ function SalesOrderPage() {
   const [invoiceFilter, setInvoiceFilter] = React.useState('all')
   const [modelFilter, setModelFilter] = React.useState('all')
   const [colorFilter, setColorFilter] = React.useState('all')
+  const [exporting, setExporting] = React.useState(false)
 
   const distinctModels = React.useMemo(() => {
     return Array.from(
@@ -202,6 +205,39 @@ function SalesOrderPage() {
     setInvoiceFilter('all')
     setModelFilter('all')
     setColorFilter('all')
+  }
+
+  const handleExportExcel = async () => {
+    if (exporting || filteredItems.length === 0) return
+    setExporting(true)
+    try {
+      // Loaded on click so the xlsx library stays out of this page's bundle
+      const { downloadSalesOrderExcel } = await import(
+        '#/lib/sales-order-excel.ts'
+      )
+      // Written into the file so a filtered export is not mistaken for the full order
+      const filters = [
+        selectMode && 'Chế độ chọn: xe chưa xuất kho hoặc chưa xuất HĐ',
+        searchQuery.trim() && `Tìm kiếm: "${searchQuery.trim()}"`,
+        deliveryFilter === 'undelivered' && 'Kho thực tế: Còn trong kho',
+        deliveryFilter === 'delivered' && 'Kho thực tế: Đã giao xe',
+        invoiceFilter === 'invoiced' && 'Hóa đơn: Đã HĐ',
+        invoiceFilter === 'uninvoiced' && 'Hóa đơn: Chưa HĐ',
+        modelFilter !== 'all' && `Dòng xe: ${modelFilter}`,
+        colorFilter !== 'all' && `Màu xe: ${colorFilter}`,
+      ].filter((f): f is string => Boolean(f))
+      downloadSalesOrderExcel({
+        order,
+        items: filteredItems,
+        totalInOrder: items.length,
+        filters,
+      })
+      toast.success(`Đã xuất ${filteredItems.length} xe ra file Excel`)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xuất Excel')
+    } finally {
+      setExporting(false)
+    }
   }
 
   const itemsPg = usePagination(
@@ -743,7 +779,7 @@ function SalesOrderPage() {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <div className="relative w-48 sm:w-64">
                 <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-slate-400" />
                 <Input
@@ -767,6 +803,22 @@ function SalesOrderPage() {
                     {activeFilterCount}
                   </span>
                 )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void handleExportExcel()}
+                disabled={exporting || filteredItems.length === 0}
+                title={`Xuất ${filteredItems.length} xe theo bộ lọc hiện tại`}
+                className="h-8 gap-1.5 text-xs"
+              >
+                {exporting ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                {exporting ? 'Đang xuất...' : 'Xuất Excel'}
               </Button>
               {(canDeliver || canInvoice) &&
                 items.some((i) => !i.isDelivered || !i.isInvoiced) && (

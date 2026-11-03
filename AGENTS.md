@@ -1976,7 +1976,16 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - `/sales/$orderId` has an invoice-status dropdown in the vehicle filter dialog with all statuses, invoiced, and uninvoiced options. It filters by `isInvoiced` independently of physical delivery and combines with the existing search, delivery, model, color, and selection-mode filters.
 - Invoice status participates in the active-filter count, reset action, and pagination reset key, so changing it returns the vehicle list to page 1. No database or server changes are required.
 
-_(Next Agent: Append Lesson 177, 178,... above this line upon completing tasks)_
+### Lesson 177: Excel Export from Sales Order Details
+
+- `/sales/$orderId` has an Excel export button beside the vehicle filters. It exports the entire current filtered vehicle list across all pages, including selection-mode visibility, rather than only the current page or checked rows.
+- The workbook is built in `src/lib/sales-order-excel.ts` (`downloadSalesOrderExcel`). The page loads that module with `await import(...)` on click, so `xlsx` stays out of the page bundle. Export runs in the browser, shows a success toast, and is disabled for an empty result or while exporting.
+- Sheet layout: an order block on top (order number, customer, branch or "Trực tiếp", order date, exported count with the active filters in words, export time), one empty row, the table, one empty row, then a totals row. Keep that empty row before the totals: Excel extends the autofilter over any row touching the data, so sorting would move the totals into the list.
+- Columns: row number, chassis/engine numbers, model/color, price before VAT, VAT %, VAT amount (`unitPrice - priceBeforeVat`), price with VAT, delivery status/date, delivery note number, receiver/driver, truck/plate, invoice status/number/date. Delivery fields are filled only when `isDelivered`, invoice fields only when `isInvoiced` (independent flags). Cost price is never exported.
+- Money cells are numbers with `#,##0`. Dates are real Excel date serials with `dd/mm/yyyy` (built from the `yyyy-mm-dd` strings, timezone-free), so they sort and filter as dates. The totals row uses `SUBTOTAL(109/103, ...)` with cached values, so totals follow the Excel autofilter. The autofilter covers only the header and data rows.
+- SheetJS Community 0.18.5 cannot write cell styles (bold, fills) or frozen panes; merges, number formats, formulas, column widths and autofilter work. The file name uses the local date: `phieu-ban-<id>-xe-<yyyy-mm-dd>.xlsx`. No server or schema changes are needed.
+
+_(Next Agent: Append Lesson 178, 179,... above this line upon completing tasks)_
 
 
 
