@@ -736,6 +736,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     chassisNumber: string
     engineNumber: string
     year: number | null
+    note: string
     importPrice: number
     vatRate: number
   }>({
@@ -744,6 +745,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
     chassisNumber: '',
     engineNumber: '',
     year: null,
+    note: '',
     importPrice: 0,
     vatRate: DEFAULT_VAT_RATE,
   })
@@ -889,6 +891,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       chassisNumber: '',
       engineNumber: '',
       year: prev?.year ?? null,
+      note: '',
       importPrice: 0,
       vatRate: prev?.vatRate ?? DEFAULT_VAT_RATE,
     })
@@ -903,6 +906,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       chassisNumber: '',
       engineNumber: '',
       year: v.year ?? null,
+      note: v.note ?? '',
       importPrice: v.importPrice,
       vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
@@ -917,6 +921,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
       chassisNumber: v.chassisNumber,
       engineNumber: v.engineNumber,
       year: v.year ?? null,
+      note: v.note ?? '',
       importPrice: v.importPrice,
       vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
@@ -965,6 +970,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                 modelId: vDraft.modelId,
                 colorId: vDraft.colorId,
                 year: vDraft.year ? Number(vDraft.year) : null,
+                note: vDraft.note.trim() || null,
                 importPrice: vDraft.importPrice,
                 vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
               },
@@ -981,6 +987,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
           orig.chassisNumber.trim() !== chassis ||
           orig.engineNumber.trim() !== engine ||
           (orig.year ?? null) !== vDraft.year ||
+          (orig.note ?? '') !== vDraft.note.trim() ||
           Number(orig.importPrice) !== vDraft.importPrice ||
           (orig.vatRate ?? DEFAULT_VAT_RATE) !== vDraft.vatRate
 
@@ -993,6 +1000,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
               modelId: vDraft.modelId,
               colorId: vDraft.colorId,
               year: vDraft.year ? Number(vDraft.year) : null,
+              note: vDraft.note.trim() || null,
               importPrice: vDraft.importPrice,
               vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
             },
@@ -1181,9 +1189,11 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
         <Table>
           <TableHeader>
             <TableRow className="text-xs bg-slate-50">
+              <TableHead className="w-12 text-center">STT</TableHead>
               <TableHead className="w-[145px]">Số Khung</TableHead>
               <TableHead className="w-[130px]">Số Máy</TableHead>
               <TableHead className="min-w-[240px]">Dòng xe / Năm / Màu</TableHead>
+              <TableHead className="min-w-[180px]">Ghi chú</TableHead>
               <TableHead className="text-right w-[125px]">
                 Đơn Giá Nhập
               </TableHead>
@@ -1202,7 +1212,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
             </TableRow>
           </TableHeader>
           <TableBody className="text-xs">
-            {filteredVehicles.map((v) => {
+            {filteredVehicles.map((v, index) => {
               const locked = v.isSold || v.isDelivered || v.isInvoiced
               const isEditing = editingVehicleId === v.id
 
@@ -1213,6 +1223,9 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     className="bg-emerald-50/40 border-y border-emerald-200"
                     onKeyDown={handleKeyDown}
                   >
+                    <TableCell className="text-center text-slate-500">
+                      {index + 1}
+                    </TableCell>
                     <TableCell className="px-1.5 py-1 align-middle">
                       <Input
                         autoFocus
@@ -1299,6 +1312,17 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                           }
                         />
                       </div>
+                    </TableCell>
+                    <TableCell className="px-1.5 py-1 align-middle">
+                      <Input
+                        value={vDraft.note}
+                        onChange={(e) =>
+                          setVDraft({ ...vDraft, note: e.target.value })
+                        }
+                        aria-label="Ghi chú xe"
+                        placeholder="Ghi chú (tùy chọn)"
+                        className="h-7.5 text-xs bg-white px-2 rounded"
+                      />
                     </TableCell>
                     <TableCell className="px-1.5 py-1 align-middle text-right">
                       <MoneyInput
@@ -1396,6 +1420,9 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     if (!locked && editingVehicleId !== v.id) startEditVehicle(v)
                   }}
                 >
+                  <TableCell className="text-center text-slate-500">
+                    {index + 1}
+                  </TableCell>
                   <TableCell className="font-medium">
                     {v.chassisNumber}
                   </TableCell>
@@ -1414,6 +1441,9 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     <div className="text-[11px] text-slate-500">
                       {v.colorName}
                     </div>
+                  </TableCell>
+                  <TableCell className="max-w-xs whitespace-pre-wrap break-words text-slate-500">
+                    {v.note || '—'}
                   </TableCell>
                   <TableCell className="text-right">
                     {formatVnd(v.importPrice)}
@@ -1515,6 +1545,9 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                 className="bg-emerald-50/40 border-y border-emerald-200"
                 onKeyDown={handleKeyDown}
               >
+                <TableCell className="text-center text-slate-500">
+                  {filteredVehicles.length + 1}
+                </TableCell>
                 <TableCell className="px-1.5 py-1 align-middle">
                   <Input
                     autoFocus
@@ -1602,6 +1635,17 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
                     />
                   </div>
                 </TableCell>
+                <TableCell className="px-1.5 py-1 align-middle">
+                  <Input
+                    value={vDraft.note}
+                    onChange={(e) =>
+                      setVDraft({ ...vDraft, note: e.target.value })
+                    }
+                    aria-label="Ghi chú xe"
+                    placeholder="Ghi chú (tùy chọn)"
+                    className="h-7.5 text-xs bg-white px-2 rounded"
+                  />
+                </TableCell>
                 <TableCell className="px-1.5 py-1 align-middle text-right">
                   <MoneyInput
                     value={vDraft.importPrice}
@@ -1687,7 +1731,7 @@ function VehiclesEditor({ detail }: { detail: BatchDetail }) {
             {filteredVehicles.length === 0 && editingVehicleId !== 'new' && (
               <TableRow>
                 <TableCell
-                  colSpan={8}
+                  colSpan={12}
                   className="py-8 text-center text-xs text-slate-400 italic"
                 >
                   Không tìm thấy xe phù hợp với bộ lọc

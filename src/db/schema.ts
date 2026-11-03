@@ -325,6 +325,7 @@ export const vehicles = mysqlTable(
     engineNumber: varchar('engine_number', { length: 50 }).notNull().unique(),
     /** Model year / manufacture year (đời xe / năm) */
     year: int('year'),
+    note: text('note'),
     importPrice: money('import_price').notNull(),
     /** VAT rate in percent (e.g. 10) */
     vatRate: decimal('vat_rate', {

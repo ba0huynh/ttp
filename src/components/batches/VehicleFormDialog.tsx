@@ -14,6 +14,7 @@ import {
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import {
   SearchSelect,
   SearchSelectItem,
@@ -28,6 +29,7 @@ export interface VehicleFormValues {
   chassisNumber: string
   engineNumber: string
   year?: number | null
+  note?: string | null
   importPrice: number
   vatRate?: number
 }
@@ -38,6 +40,7 @@ const EMPTY: VehicleFormValues = {
   chassisNumber: '',
   engineNumber: '',
   year: null,
+  note: null,
   importPrice: 0,
   vatRate: DEFAULT_VAT_RATE,
 }
@@ -145,6 +148,7 @@ export function VehicleFormDialog({
         chassisNumber: v.chassisNumber.trim(),
         engineNumber: v.engineNumber.trim(),
         year: v.year ? Number(v.year) : null,
+        note: v.note?.trim() || null,
       })
       onOpenChange(false)
     } catch (err: unknown) {
@@ -259,6 +263,18 @@ export function VehicleFormDialog({
                 }}
               />
             </div>
+          </div>
+          <div className="space-y-1">
+            <Label htmlFor="vehicle-note" className="text-xs font-semibold">
+              Ghi chú
+            </Label>
+            <Textarea
+              id="vehicle-note"
+              value={v.note ?? ''}
+              onChange={(e) => setV({ ...v, note: e.target.value })}
+              placeholder="Ghi chú (tùy chọn)"
+              rows={3}
+            />
           </div>
           <div className="space-y-1">
             <Label className="text-xs font-semibold">Đơn Giá Nhập *</Label>

@@ -91,6 +91,7 @@ interface VehicleRow {
   chassisNumber: string
   engineNumber: string
   year?: number | null
+  note?: string | null
   importPrice: number
   vatRate?: number
 }
@@ -261,6 +262,7 @@ function NewBatchPage() {
     chassisNumber: string
     engineNumber: string
     year: number | null
+    note: string
     importPrice: number
     vatRate: number
   }>({
@@ -269,6 +271,7 @@ function NewBatchPage() {
     chassisNumber: '',
     engineNumber: '',
     year: null,
+    note: '',
     importPrice: 0,
     vatRate: DEFAULT_VAT_RATE,
   })
@@ -327,6 +330,7 @@ function NewBatchPage() {
       chassisNumber: '',
       engineNumber: '',
       year: prev?.year ?? null,
+      note: '',
       importPrice: prev?.importPrice ?? 0,
       vatRate: prev?.vatRate ?? DEFAULT_VAT_RATE,
     })
@@ -341,6 +345,7 @@ function NewBatchPage() {
       chassisNumber: '',
       engineNumber: '',
       year: v.year ?? null,
+      note: v.note ?? '',
       importPrice: v.importPrice,
       vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
@@ -355,6 +360,7 @@ function NewBatchPage() {
       chassisNumber: v.chassisNumber,
       engineNumber: v.engineNumber,
       year: v.year ?? null,
+      note: v.note ?? '',
       importPrice: v.importPrice,
       vatRate: v.vatRate ?? DEFAULT_VAT_RATE,
     })
@@ -402,6 +408,7 @@ function NewBatchPage() {
           chassisNumber: chassis,
           engineNumber: engine,
           year: vDraft.year,
+          note: vDraft.note.trim() || null,
           importPrice: vDraft.importPrice,
           vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
         },
@@ -416,6 +423,7 @@ function NewBatchPage() {
         orig.chassisNumber.trim() !== chassis ||
         orig.engineNumber.trim() !== engine ||
         orig.year !== vDraft.year ||
+        (orig.note ?? '') !== vDraft.note.trim() ||
         orig.importPrice !== vDraft.importPrice ||
         orig.vatRate !== vDraft.vatRate
 
@@ -430,6 +438,7 @@ function NewBatchPage() {
                   chassisNumber: chassis,
                   engineNumber: engine,
                   year: vDraft.year,
+                  note: vDraft.note.trim() || null,
                   importPrice: vDraft.importPrice,
                   vatRate: vDraft.vatRate !== undefined ? Number(vDraft.vatRate) : DEFAULT_VAT_RATE,
                 }
@@ -547,6 +556,7 @@ function NewBatchPage() {
             chassisNumber: v.chassisNumber,
             engineNumber: v.engineNumber,
             year: v.year ? Number(v.year) : null,
+            note: v.note?.trim() || null,
             importPrice: v.importPrice,
             vatRate: v.vatRate !== undefined ? Number(v.vatRate) : DEFAULT_VAT_RATE,
           })),
@@ -1080,9 +1090,11 @@ function NewBatchPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
+                    <TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead className="w-[145px]">Số Khung</TableHead>
                     <TableHead className="w-[130px]">Số Máy</TableHead>
                     <TableHead className="min-w-[240px]">Dòng xe / Năm / Màu</TableHead>
+                    <TableHead className="min-w-[180px]">Ghi chú</TableHead>
                     <TableHead className="text-right w-[125px]">
                       Đơn Giá Nhập
                     </TableHead>
@@ -1105,7 +1117,7 @@ function NewBatchPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {previewVehicles.map((v) => {
+                  {previewVehicles.map((v, index) => {
                     const isEditing = editingVehicleId === v.id
                     if (isEditing) {
                       return (
@@ -1114,6 +1126,9 @@ function NewBatchPage() {
                           className="bg-emerald-50/40 border-y border-emerald-200"
                           onKeyDown={handleKeyDown}
                         >
+                          <TableCell className="text-center text-slate-500">
+                            {index + 1}
+                          </TableCell>
                           <TableCell className="px-1.5 py-1 align-middle">
                             <Input
                               autoFocus
@@ -1202,6 +1217,17 @@ function NewBatchPage() {
                               />
                             </div>
                           </TableCell>
+                          <TableCell className="px-1.5 py-1 align-middle">
+                            <Input
+                              value={vDraft.note}
+                              onChange={(e) =>
+                                setVDraft({ ...vDraft, note: e.target.value })
+                              }
+                              aria-label="Ghi chú xe"
+                              placeholder="Ghi chú (tùy chọn)"
+                              className="h-7.5 text-xs bg-white px-2 rounded"
+                            />
+                          </TableCell>
                           <TableCell className="px-1.5 py-1 align-middle text-right">
                             <MoneyInput
                               value={vDraft.importPrice}
@@ -1289,6 +1315,9 @@ function NewBatchPage() {
                           if (editingVehicleId !== v.id) startEditVehicle(v)
                         }}
                       >
+                        <TableCell className="text-center text-slate-500">
+                          {index + 1}
+                        </TableCell>
                         <TableCell className="font-medium">
                           {v.chassisNumber}
                         </TableCell>
@@ -1307,6 +1336,9 @@ function NewBatchPage() {
                           <div className="text-[11px] text-slate-500">
                             {colorOf(v.colorId)?.name}
                           </div>
+                        </TableCell>
+                        <TableCell className="max-w-xs whitespace-pre-wrap break-words text-slate-500">
+                          {v.note || '—'}
                         </TableCell>
                         <TableCell className="text-right font-medium">
                           {formatVnd(v.importPrice)}
@@ -1378,6 +1410,9 @@ function NewBatchPage() {
                       className="bg-emerald-50/40 border-y border-emerald-200"
                       onKeyDown={handleKeyDown}
                     >
+                      <TableCell className="text-center text-slate-500">
+                        {vehicles.length + 1}
+                      </TableCell>
                       <TableCell className="px-1.5 py-1 align-middle">
                         <Input
                           autoFocus
@@ -1459,6 +1494,17 @@ function NewBatchPage() {
                             }
                           />
                         </div>
+                      </TableCell>
+                      <TableCell className="px-1.5 py-1 align-middle">
+                        <Input
+                          value={vDraft.note}
+                          onChange={(e) =>
+                            setVDraft({ ...vDraft, note: e.target.value })
+                          }
+                          aria-label="Ghi chú xe"
+                          placeholder="Ghi chú (tùy chọn)"
+                          className="h-7.5 text-xs bg-white px-2 rounded"
+                        />
                       </TableCell>
                       <TableCell className="px-1.5 py-1 align-middle text-right">
                         <MoneyInput

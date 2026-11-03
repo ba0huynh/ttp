@@ -1951,7 +1951,23 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Implementation** (`src/routes/inventory.tsx`): `stockWidgets` is computed from `filtered` (the list after every filter), value = `sum(costPrice)` (same "trị giá vốn" basis as the dashboard). Each card is a `<Link to="/inventory" target="_blank">` whose search = current search params + the live chassis/engine text + `delivered: [..]`, `invoiced: [..]` for that widget (overriding any delivered/invoiced filter already set).
 - **Also fixed**: "Xóa lọc" now clears `minFee` / `maxFee` too.
 
-_(Next Agent: Append Lesson 171, 172,... above this line upon completing tasks)_
+### Lesson 172: Nullable Vehicle Notes in Batch Entry and Inventory
+
+- `vehicles.note` is nullable text (migration `0050_vehicle_note.sql`). Batch creation, vehicle additions, and vehicle edits persist trimmed notes; blank notes become `null`. Omitting the note from a full vehicle update preserves the existing value.
+- Both batch vehicle tables have a leading sequential `STT` column and an optional note input immediately after the model/year/color column. Vehicle edit dialogs also retain and edit notes.
+- Inventory displays notes for every vehicle. Users with the existing `batches.manage` permission can edit or clear notes through `updateVehicleNoteFn`, including for sold, delivered, or invoiced vehicles. This operation changes only the note and does not recalculate pricing or change stock flags. Successful saves invalidate queries so inventory and batch views refresh.
+- Apply the schema change with `npm run migration:run` before using this feature.
+
+### Lesson 173: Click Vehicle Notes to Edit in Inventory
+
+- The inventory note column displays clickable note text for users with `batches.manage`; an empty note displays a clickable dash. Clicking opens the existing note editor, including for sold, delivered, or invoiced vehicles. The note column has no pencil icon; the existing vehicle-edit pencil remains in the final actions column and its form includes the note field. Users without management permission see plain text.
+
+### Lesson 174: Edit Inventory Notes Only through the Vehicle Form
+
+- Supersedes the inventory editing interactions in Lessons 172 and 173: the note column now displays plain text only, including the empty dash. Edit notes through the existing vehicle-edit pencil next to the delete button in the final actions column. The vehicle form retains its note field and follows the existing permission and vehicle-status restrictions.
+- Removed the separate note dialog, click handling, mutation, and unused note-only server endpoint/service. Batch entry, note persistence, and note display are unchanged.
+
+_(Next Agent: Append Lesson 175, 176,... above this line upon completing tasks)_
 
 
 

@@ -489,7 +489,7 @@ function InventoryPage() {
                       onValuesChange={(vals) =>
                         setDropdownFilter(
                           'delivered',
-                          vals.length ? (vals as ('yes' | 'no')[]) : undefined,
+                          vals.length ? vals : undefined,
                         )
                       }
                     >
@@ -510,7 +510,7 @@ function InventoryPage() {
                       onValuesChange={(vals) =>
                         setDropdownFilter(
                           'invoiced',
-                          vals.length ? (vals as ('yes' | 'no')[]) : undefined,
+                          vals.length ? vals : undefined,
                         )
                       }
                     >
@@ -689,6 +689,7 @@ function InventoryPage() {
                     <TableHead className="w-[180px]">Số Khung</TableHead>
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
+                    <TableHead className="min-w-[180px]">Ghi chú</TableHead>
                     <TableHead>Lô Nhập</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>
                     <TableHead className="text-right">Giá Vốn Xe</TableHead>
@@ -704,7 +705,7 @@ function InventoryPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={canManage ? 11 : 10}
+                        colSpan={canManage ? 12 : 11}
                         className="text-center py-8 text-slate-500"
                       >
                         Không tìm thấy chiếc xe nào phù hợp bộ lọc
@@ -734,6 +735,11 @@ function InventoryPage() {
                           <div className="text-slate-500">
                             {v.colorName}
                           </div>
+                        </TableCell>
+                        <TableCell>
+                          <span className="block max-w-xs whitespace-pre-wrap break-words text-slate-500">
+                            {v.note || '—'}
+                          </span>
                         </TableCell>
                         <TableCell className="text-slate-900">
                           <Link
@@ -864,6 +870,7 @@ function InventoryPage() {
                   chassisNumber: editVehicle.chassisNumber,
                   engineNumber: editVehicle.engineNumber,
                   year: editVehicle.year,
+                  note: editVehicle.note,
                   importPrice: editVehicle.importPrice,
                   vatRate: editVehicle.vatRate,
                 }
