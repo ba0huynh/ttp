@@ -4,7 +4,7 @@ import * as React from 'react'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { Button } from '#/components/ui/button.tsx'
-import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
+import { confirmDialog, formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import {
   Dialog,
   DialogContent,
@@ -68,10 +68,25 @@ export function SupplierDetailDialog({
   const handleSave = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!supplier) return
-    const cleanName = name.trim()
+    const cleanName = name.trim().replace(/\s+/g, ' ').normalize('NFC')
     if (!cleanName) {
       setError('Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng')
       return
+    }
+    const isDup = master?.suppliers.some(
+      (s) =>
+        s.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          cleanName.toLowerCase() &&
+        s.id !== supplier.id,
+    )
+    if (isDup) {
+      const ok = await confirmDialog({
+        title: 'Cảnh Báo Trùng Tên Nhà Cung Cấp',
+        description: `Nhà cung cấp "${cleanName}" đã tồn tại trong hệ thống. Các nhà cung cấp khác nhau có thể có cùng tên. Bạn có chắc chắn muốn tiếp tục lưu không?`,
+        confirmLabel: 'Tiếp tục lưu',
+        cancelLabel: 'Kiểm tra lại',
+      })
+      if (!ok) return
     }
     setSaving(true)
     setError(null)
@@ -201,10 +216,12 @@ export function SupplierDetailDialog({
 export function SupplierLink({
   supplierId,
   className = 'hover:text-emerald-700 hover:underline',
+  title,
   children,
 }: {
   supplierId: number
   className?: string
+  title?: string
   children: React.ReactNode
 }) {
   const [open, setOpen] = React.useState(false)
@@ -212,6 +229,7 @@ export function SupplierLink({
     <>
       <button
         type="button"
+        title={title}
         onClick={() => setOpen(true)}
         className={`cursor-pointer text-left ${className}`}
       >

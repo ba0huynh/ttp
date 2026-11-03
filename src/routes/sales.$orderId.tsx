@@ -73,6 +73,7 @@ import {
 import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
 import { formatDate, formatVnd, priceWithVat, todayIso } from '#/lib/business.ts'
+import { matchesSearch } from '#/lib/text.ts'
 import { currentUserQuery, salesOrderDetailQuery } from '#/lib/queries.ts'
 import { hasPermission } from '#/lib/permissions.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
@@ -162,13 +163,17 @@ function SalesOrderPage() {
       // In select mode, only show cars not yet exported OR not yet invoiced
       if (selectMode && i.isDelivered && i.isInvoiced) return false
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase().trim()
-        const matchChassis = i.chassisNumber?.toLowerCase().includes(q)
-        const matchEngine = i.engineNumber?.toLowerCase().includes(q)
-        const matchModel = i.modelName?.toLowerCase().includes(q)
-        const matchColor = i.colorName?.toLowerCase().includes(q)
-        if (!matchChassis && !matchEngine && !matchModel && !matchColor) return false
+      if (
+        searchQuery.trim() &&
+        !matchesSearch(
+          searchQuery,
+          i.chassisNumber,
+          i.engineNumber,
+          i.modelName,
+          i.colorName,
+        )
+      ) {
+        return false
       }
       if (deliveryFilter === 'undelivered' && i.isDelivered) return false
       if (deliveryFilter === 'delivered' && !i.isDelivered) return false

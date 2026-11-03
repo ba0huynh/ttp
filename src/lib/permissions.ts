@@ -73,7 +73,7 @@ export const PERMISSION_GROUPS = [
   },
   {
     key: 'master-data',
-    label: 'Danh mục hệ thống',
+    label: 'Dữ liệu chung',
     items: [
       { key: 'master-data.view', label: 'Xem danh mục' },
       { key: 'master-data.manage', label: 'Thêm, sửa, xóa danh mục' },

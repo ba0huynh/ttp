@@ -150,7 +150,7 @@ export const saveBankAccountFn = createServerFn({ method: 'POST' })
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
       const cleanNumber = v.accountNumber.trim()
-      const cleanName = v.accountName.trim()
+      const cleanName = v.accountName.trim().replace(/\s+/g, ' ').normalize('NFC')
       const [existing] = await db
         .select({ id: companyBankAccounts.id })
         .from(companyBankAccounts)
@@ -206,21 +206,6 @@ export const saveSupplierFn = createServerFn({ method: 'POST' })
   .handler(({ data: { id, ...v } }) =>
     wrapDup(async () => {
       const trimmedName = v.name.trim().replace(/\s+/g, ' ').normalize('NFC')
-      const [existing] = await db
-        .select({ id: suppliers.id })
-        .from(suppliers)
-        .where(
-          and(
-            sql`lower(trim(${suppliers.name})) = ${trimmedName.toLowerCase()}`,
-            id ? ne(suppliers.id, id) : undefined,
-          ),
-        )
-        .limit(1)
-
-      if (existing) {
-        throw new Error(`Nhà cung cấp "${trimmedName}" đã tồn tại trong hệ thống`)
-      }
-
       if (id) {
         const [old] = await db
           .select({ image: suppliers.image })

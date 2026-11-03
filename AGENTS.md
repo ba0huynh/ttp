@@ -2072,7 +2072,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - **Context & QA Feedback**:
   - QA Feedback ticket 1 (`https://prnt.sc/x4cXxIADw2li`): `việt hóa message lỗi khi nhập khoảng trắng` (Localized error message when entering whitespace in bank name).
-  - QA Feedback ticket 2 (`https://prnt.sc/z1bLMJX3yOcx`): `không cho tạo/sửa trùng ngân hàng` (Do not allow creating/editing duplicate banks).
+  - QA Feedback ticket 2 (`https://prnt.sc/z1bLMJX3yOcx, https://prnt.sc/s4bkMLY7x9sp`): `không cho tạo/sửa trùng ngân hàng` (Do not allow creating/editing duplicate banks).
 - **Resolution**:
   - **Duplicate Prevention across Master Data**:
     - **Server-Side (`src/server/fns/master-data.ts`)**:
@@ -2119,7 +2119,108 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
       - In `saveColorFn`, queries `colors` for `lower(${colors.name}) = ${trimmedName.toLowerCase()}` excluding `id`. If found, throws `new Error(`Màu sắc "${trimmedName}" đã tồn tại trong hệ thống`)`.
 
-_(Next Agent: Append Lesson 186, 187,... above this line upon completing tasks)_
+### Lesson 186: Expense Type Ordering and Duplicate Prevention (`/master-data?tab=expenseTypes`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/bO_xEaKCmPXQ`): `hiển thị chi phí vừa tạo lên đầu danh sách` (Display newly created expense type at the top of the list).
+  - QA Feedback ticket 2 (`https://prnt.sc/EGhoRcHQzTkq`): `không cho tạo/sửa trùng loại chi phí` (Do not allow creating/editing duplicate expense types).
+- **Resolution**:
+  - **Ordering (`src/server/fns/master-data.ts`)**:
+    - `getMasterDataFn` orders `expenseTypes` with `.orderBy(desc(expenseTypes.id))` so any newly created expense type automatically appears as the very first row on page 1 of the Loại Chi Phí table (`/master-data?tab=expenseTypes`).
+  - **Duplicate Expense Type Prevention**:
+    - **Client-Side Pre-Validation (`src/routes/master-data.tsx`)**:
+      - In `handleSaveExpenseType`, trimmed and normalized name (`replace(/\s+/g, ' ').normalize('NFC')`) is verified against `master.expenseTypes.some(...)` (case-insensitive) excluding the current editing ID. If found, displays `alertDialog(`Loại chi phí "${trimmed}" đã tồn tại trong hệ thống`)` before sending requests.
+    - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
+      - In `saveExpenseTypeFn`, queries `expenseTypes` for `lower(trim(${expenseTypes.name})) = ${trimmedName.toLowerCase()}` excluding `id`. If duplicate exists, throws `new Error(`Loại chi phí "${trimmedName}" đã tồn tại trong hệ thống`)`.
+
+### Lesson 187: Non-Blocking Duplicate Name Warning for Suppliers & Customers/Branches
+
+- **Context & Client Business Rule**:
+  - QA Feedback: "Khi nhập tên trùng với khách hàng/NCC đã tồn tại, nên hiển thị cảnh báo để người dùng kiểm tra, nhưng vẫn cho phép tiếp tục lưu vì các khách hàng/NCC khác nhau có thể trùng tên" (When entering a name that duplicates an already existing customer / supplier, display a warning so the user can verify, but still allow saving because different customers/suppliers can have the same name).
+- **Architecture & Implementation**:
+  - **Suppliers (`src/routes/master-data.tsx`, `SupplierDetailDialog.tsx`, `SupplierSelect.tsx`, `src/server/fns/master-data.ts`)**:
+    - Replaced hard-blocking errors with an interactive warning confirmation dialog (`confirmDialog`):
+      `Cảnh Báo Trùng Tên Nhà Cung Cấp`: `Nhà cung cấp "${trimmed}" đã tồn tại trong hệ thống. Các nhà cung cấp khác nhau có thể có cùng tên. Bạn có chắc chắn muốn tiếp tục lưu không?`.
+    - If user clicks "Tiếp tục lưu" (confirm), the form proceeds with saving. If user cancels ("Kiểm tra lại"), stays in the editor.
+    - Server `saveSupplierFn`: Removed duplicate error throwing to permit saving confirmed duplicate trade names.
+  - **Customers (`src/routes/customers.index.tsx`)**:
+    - When saving or updating a customer (`handleCreateCustomer`), checks `data?.some(...)` for matching name.
+    - Prompts with `confirmDialog` ("Cảnh Báo Trùng Tên Khách Hàng") allowing users to proceed or revise.
+  - **POS Branches (`src/routes/customers.$customerId.tsx`)**:
+    - When saving a branch (`handleCreateBranch`), checks `customer.branches.some(...)` and prompts with `confirmDialog` ("Cảnh Báo Trùng Tên Điểm Bán") allowing users to proceed or revise.
+
+### Lesson 188: Actions Column Header ("Thao tác") in Master Data (`/master-data`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/jWWh7ir5ujEM`): `thêm text Thao tác trên icon sửa xóa` (Add header text "Thao tác" above edit/delete icons).
+  - Previously, all tables in `/master-data` had an empty `<TableHead className="w-10"></TableHead>` or `<TableHead className="w-20"></TableHead>` column header above the action buttons.
+- **Resolution**:
+  - Updated all 6 master data tab tables in `src/routes/master-data.tsx` (`models`, `expenseTypes`, `suppliers`, `banks`, `accounts`, `colors`):
+    - Replaced empty `<TableHead>` with `<TableHead className="w-24 text-right pr-4">Thao tác</TableHead>`.
+    - Aligns header text right with the `size-7` edit/delete action button groups.
+
+### Lesson 189: Ellipsis Truncation for Long Names in Master Data Tables (`/master-data`)
+
+- **Context & QA Feedback**:
+  - QA Feedback tickets (`https://prnt.sc/V6alvEZ-btPn`, `https://prnt.sc/vkf1kLSIL-Ru`, `https://prnt.sc/nVZ5gXEZM9K7`): `tên dài quá thì ... để UI gọn hơn` (If the name is too long, truncate with ellipsis `...` to keep UI neat and compact).
+  - Extremely long supplier names, bank names, and company bank account names stretched table cells horizontally and pushed subsequent columns off-screen.
+- **Resolution**:
+  - Updated `src/routes/master-data.tsx`:
+    - **Suppliers**: Constrained cell with `max-w-xl` and truncated text `truncate` with `title={s.name}`.
+    - **Banks**: Wrapped `BankLabel` in `<div className="max-w-xl truncate" title={b.name}>`.
+    - **Company Bank Accounts**: Fixed column widths (`w-52` for account name, `w-64` for bank, `w-36` for account number, `w-36` for branch, `w-28` for status) and wrapped text in `max-w-[...] truncate` with `title={...}`.
+    - **Models, Expense Types, Colors**: Applied `max-w-xl truncate` with `title={...}`.
+  - Long entity names now cleanly truncate with ellipsis (`...`), keeping all columns visible while allowing full text inspection on hover.
+
+### Lesson 190: Relocating Rows-Per-Page Selector ("Số dòng") to Right Side in TablePagination Across All Tables
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/UOzZMNyxGq4p`): `đưa số dòng qua bên phải, dev sửa các trang UI còn lại luôn` (Move the "Số dòng" rows-per-page dropdown to the right side; dev must update across all remaining UI pages as well).
+  - In the table footer, the "Số dòng" dropdown was previously on the left alongside the range counter ("Hiển thị X–Y / Z"), separating it from the pagination page navigation controls.
+- **Resolution**:
+  - The application uses the unified `TablePagination` component (`src/components/ui/table-pagination.tsx`) across all 14+ paginated tables and picker modals (`/batches`, `/customers`, `/finance`, `/inventory`, `/loans`, `/master-data`, `/reconcile`, `/reports`, `/sales`, `/settings`).
+  - Updated `TablePagination` in `src/components/ui/table-pagination.tsx`:
+    - **Left Container**: Strictly renders range info (`Hiển thị from–to / total`).
+    - **Right Container**: Groups the rows-per-page selector (`Số dòng: [10 v]`) side-by-side with the page buttons (`< [1] [2] >` and `Trang X / Y`).
+    - Standardized `SelectTrigger` dimensions (`h-8 w-[4.5rem] text-xs rounded-lg`) to cleanly align with page navigation buttons (`h-8`).
+  - Because `TablePagination` is the single source of truth for list pagination across the entire codebase, this updates every single table view uniformly across the system.
+
+### Lesson 191: Latest Created Customer & POS Branches Ordering (`/customers` & `/customers/$customerId`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/4O6yiUcOiHVJ`): `hiển thị khách hàng vừa tạo lên đầu danh sách` (Display newly created customer at the top of the list).
+  - Previously, `listCustomersFn` queried `customers` with `.orderBy(asc(customers.name))`. When users created a new customer, it sorted alphabetically, often landing near the bottom of the list or on subsequent pages.
+- **Resolution**:
+  - **Server-Side Ordering (`src/server/fns/customers.ts`)**:
+    - Updated `listCustomersFn` to query `customers` with `.orderBy(desc(customers.id))` so newly created customer records appear at the top by default.
+    - Updated `getCustomerDetailFn` to query `posBranches` with `.orderBy(desc(posBranches.id))` so newly created POS branches appear at the top of the branch list.
+  - **Client-Side Tie-Breaking & Auto-Reset (`src/routes/customers.index.tsx`)**:
+    - In custom table sorting (`sorted = sort ? [...filtered].sort(...) : filtered`), added `b.id - a.id` as a tie-breaker when sorted values are identical (e.g., customers with equal branch counts or balance), keeping newer customers higher up.
+    - In `handleCreateCustomer`, when saving a newly created customer (non-edit), automatically resets active search text (`q`) and sort parameters, ensuring users immediately see their new customer at the very top of page 1.
+
+### Lesson 192: Accent-Insensitive / Unaccented Customer Search (`/customers`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/KrtcfMxzIeQQ`): `cho phép tìm tên khách hàng không dấu` (Allow searching customer name without diacritics / unaccented search).
+  - In `/customers`, the customer filter previously used raw substring matching `c.name.toLowerCase().includes(q)`. Typing unaccented text like "khuong" resulted in 0 matches for "Khương".
+- **Resolution**:
+  - **Client-Side Filtering (`src/routes/customers.index.tsx`)**:
+    - Replaced `c.name.toLowerCase().includes(q)` with `matchesSearch(nameSearch, c.name)` from `#/lib/text.ts`.
+    - `matchesSearch` normalizes and folds Unicode diacritics via `foldText` (`normalize('NFD')`, stripping combining marks `[\u0300-\u036f]`, converting `đ`/`Đ` to `d`, and lower-casing).
+    - Unaccented queries like "khuong", "thanh thuy", or "mai" match accented customer names ("Khương", "Thanh Thùy", "Mai") immediately.
+  - Also extended `matchesSearch` to vehicle and transaction searches in `sales.$orderId.tsx` and `reconcile.tsx` for consistent system-wide search experience.
+
+### Lesson 193: Permission Group Renamed to Match Sidebar Navigation ("Dữ liệu chung")
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/vjBkCTzW3v9e`): `Đổi tên nhóm "Danh mục hệ thống" thành "Dữ liệu chung" để giống thanh menu` (Rename permission group "Danh mục hệ thống" to "Dữ liệu chung" to match the sidebar menu).
+  - While the sidebar menu item was previously renamed to "Dữ liệu chung" (covering Dòng xe, Nhà cung cấp, Ngân hàng, Tài khoản ngân hàng, Màu sắc, Loại chi phí), the role permission checklist in `PERMISSION_GROUPS` (`RolesTab.tsx`) was still displaying the legacy group header "Danh mục hệ thống".
+- **Resolution**:
+  - Updated `src/lib/permissions.ts`:
+    - In `PERMISSION_GROUPS`, changed `label: 'Danh mục hệ thống'` to `label: 'Dữ liệu chung'` for group `key: 'master-data'`.
+    - Modal in `/settings?tab=roles` (`RolesTab.tsx`) now displays "Dữ liệu chung", ensuring 100% nomenclature alignment with the application sidebar menu.
+
+_(Next Agent: Append Lesson 194, 195,... above this line upon completing tasks)_
 
 
 

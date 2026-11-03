@@ -72,6 +72,7 @@ import {
 } from '#/components/ui/table-pagination.tsx'
 import { Textarea } from '#/components/ui/textarea.tsx'
 import { formatDate, formatVnd } from '#/lib/business.ts'
+import { matchesSearch } from '#/lib/text.ts'
 import {
   currentUserQuery,
   reconciliationLinesQuery,
@@ -180,14 +181,17 @@ function ReconcilePage() {
     ) {
       return false
     }
-    const q = descSearch.trim().toLowerCase()
-    if (q) {
-      const matchDesc = String(l.description ?? '').toLowerCase().includes(q)
-      const matchAcc = String(l.accountNumber ?? '').toLowerCase().includes(q)
-      const matchBank = String(
-        l.bankShortName || l.bankName || '',
-      ).toLowerCase().includes(q)
-      if (!matchDesc && !matchAcc && !matchBank) return false
+    if (
+      descSearch.trim() &&
+      !matchesSearch(
+        descSearch,
+        l.description,
+        l.accountNumber,
+        l.bankShortName,
+        l.bankName,
+      )
+    ) {
+      return false
     }
     const date = String(l.transactionDate).slice(0, 10)
     if (from && date < from) return false

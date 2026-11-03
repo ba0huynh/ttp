@@ -18,6 +18,7 @@ import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   alertDialog,
+  confirmDialog,
   showErrorDialog,
 } from '#/components/ui/confirm-dialog.tsx'
 import {
@@ -304,18 +305,21 @@ function MasterDataPage() {
 
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = mName.trim()
+    const trimmed = mName.trim().replace(/\s+/g, ' ').normalize('NFC')
     if (!trimmed) {
       setMError('Tên dòng xe không được để trống hoặc chỉ chứa khoảng trắng')
       return
     }
     const isDup = master.models.some(
       (m: (typeof master.models)[number]) =>
-        m.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        m.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
         m.id !== (mId ?? undefined),
     )
     if (isDup) {
-      setMError(`Dòng xe "${trimmed}" đã tồn tại trong hệ thống`)
+      const msg = `Dòng xe "${trimmed}" đã tồn tại trong hệ thống`
+      setMError(msg)
+      await alertDialog(msg)
       return
     }
     setMError(null)
@@ -332,6 +336,7 @@ function MasterDataPage() {
       const msg = err instanceof Error ? err.message : String(err)
       if (msg.includes('đã tồn tại')) {
         setMError(msg)
+        await alertDialog(msg)
       } else {
         await showErrorDialog(err, 'Lỗi khi lưu dòng xe')
       }
@@ -340,7 +345,7 @@ function MasterDataPage() {
 
   const handleSaveExpenseType = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = xName.trim()
+    const trimmed = xName.trim().replace(/\s+/g, ' ').normalize('NFC')
     if (!trimmed) {
       await alertDialog(
         'Tên loại chi phí không được để trống hoặc chỉ chứa khoảng trắng',
@@ -349,7 +354,8 @@ function MasterDataPage() {
     }
     const isDup = master.expenseTypes.some(
       (x: (typeof master.expenseTypes)[number]) =>
-        x.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        x.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
         x.id !== (xId ?? undefined),
     )
     if (isDup) {
@@ -368,7 +374,7 @@ function MasterDataPage() {
 
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = sName.trim()
+    const trimmed = sName.trim().replace(/\s+/g, ' ').normalize('NFC')
     if (!trimmed) {
       await alertDialog(
         'Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng',
@@ -377,12 +383,18 @@ function MasterDataPage() {
     }
     const isDup = master.suppliers.some(
       (s: (typeof master.suppliers)[number]) =>
-        s.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        s.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
         s.id !== (sId ?? undefined),
     )
     if (isDup) {
-      await alertDialog(`Nhà cung cấp "${trimmed}" đã tồn tại trong hệ thống`)
-      return
+      const ok = await confirmDialog({
+        title: 'Cảnh Báo Trùng Tên Nhà Cung Cấp',
+        description: `Nhà cung cấp "${trimmed}" đã tồn tại trong hệ thống. Các nhà cung cấp khác nhau có thể có cùng tên. Bạn có chắc chắn muốn tiếp tục lưu không?`,
+        confirmLabel: 'Tiếp tục lưu',
+        cancelLabel: 'Kiểm tra lại',
+      })
+      if (!ok) return
     }
     setSupplierSaving(true)
     try {
@@ -407,7 +419,7 @@ function MasterDataPage() {
 
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = bName.trim()
+    const trimmed = bName.trim().replace(/\s+/g, ' ').normalize('NFC')
     if (!trimmed) {
       await alertDialog(
         'Tên ngân hàng không được để trống hoặc chỉ chứa khoảng trắng',
@@ -416,7 +428,8 @@ function MasterDataPage() {
     }
     const isDup = master.banks.some(
       (b: (typeof master.banks)[number]) =>
-        b.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        b.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
         b.id !== (bId ?? undefined),
     )
     if (isDup) {
@@ -456,7 +469,7 @@ function MasterDataPage() {
       await alertDialog('Số tài khoản chỉ được chứa các chữ số')
       return
     }
-    const cleanName = accName.trim()
+    const cleanName = accName.trim().replace(/\s+/g, ' ').normalize('NFC')
     if (!cleanName) {
       await alertDialog(
         'Tên tài khoản không được để trống hoặc chỉ chứa khoảng trắng',
@@ -494,7 +507,7 @@ function MasterDataPage() {
 
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
-    const trimmed = cName.trim()
+    const trimmed = cName.trim().replace(/\s+/g, ' ').normalize('NFC')
     if (!trimmed) {
       await alertDialog(
         'Tên màu sắc không được để trống hoặc chỉ chứa khoảng trắng',
@@ -503,7 +516,8 @@ function MasterDataPage() {
     }
     const isDup = master.colors.some(
       (c: (typeof master.colors)[number]) =>
-        c.name.trim().toLowerCase() === trimmed.toLowerCase() &&
+        c.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
         c.id !== (cId ?? undefined),
     )
     if (isDup) {
@@ -614,14 +628,16 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Dòng Xe</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {modelsPg.pageItems.map((m) => (
                       <TableRow key={m.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          {m.name}
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <div className="truncate" title={m.name}>
+                            {m.name}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -702,14 +718,16 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Loại Chi Phí</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {expenseTypesPg.pageItems.map((m) => (
                       <TableRow key={m.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          {m.name}
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <div className="truncate" title={m.name}>
+                            {m.name}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -789,14 +807,18 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Công Ty Cung Cấp</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {suppliersPg.pageItems.map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          <SupplierLink supplierId={s.id} className="inline-flex max-w-full min-w-0 items-center gap-2 hover:text-emerald-700 hover:underline">
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <SupplierLink
+                            supplierId={s.id}
+                            title={s.name}
+                            className="inline-flex max-w-full min-w-0 items-center gap-2 hover:text-emerald-700 hover:underline"
+                          >
                             <SupplierLogo src={s.image} name={s.name} />
                             <span className="truncate">{s.name}</span>
                           </SupplierLink>
@@ -879,16 +901,18 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Ngân Hàng</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {banksPg.pageItems.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          <BankLabel image={b.image} name={b.name}>
-                            {b.name}
-                          </BankLabel>
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <div className="max-w-xl truncate" title={b.name}>
+                            <BankLabel image={b.image} name={b.name}>
+                              {b.name}
+                            </BankLabel>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -962,30 +986,36 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Tên Tài Khoản</TableHead>
-                      <TableHead>Ngân Hàng</TableHead>
-                      <TableHead>Số Tài Khoản</TableHead>
-                      <TableHead>Chi Nhánh</TableHead>
-                      <TableHead className="text-center">Trạng Thái</TableHead>
-                      <TableHead className="w-20"></TableHead>
+                      <TableHead className="w-52">Tên Tài Khoản</TableHead>
+                      <TableHead className="w-64">Ngân Hàng</TableHead>
+                      <TableHead className="w-36">Số Tài Khoản</TableHead>
+                      <TableHead className="w-36">Chi Nhánh</TableHead>
+                      <TableHead className="w-28 text-center">Trạng Thái</TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {accountsPg.pageItems.map((a) => (
                       <TableRow key={a.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          {a.accountName}
+                        <TableCell className="font-medium text-slate-900 max-w-[210px]">
+                          <div className="truncate" title={a.accountName}>
+                            {a.accountName}
+                          </div>
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">
-                          <BankLabel image={a.bankImage} name={a.bankName}>
-                            {a.bankName}
-                          </BankLabel>
+                        <TableCell className="font-medium text-slate-900 max-w-[260px]">
+                          <div className="truncate" title={a.bankName}>
+                            <BankLabel image={a.bankImage} name={a.bankName}>
+                              {a.bankName}
+                            </BankLabel>
+                          </div>
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">
+                        <TableCell className="font-medium text-slate-900 whitespace-nowrap">
                           {a.accountNumber}
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">
-                          {a.branch || '—'}
+                        <TableCell className="font-medium text-slate-900 max-w-[150px]">
+                          <div className="truncate" title={a.branch || '—'}>
+                            {a.branch || '—'}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge
@@ -1076,14 +1106,14 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Màu Sắc</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {colorsPg.pageItems.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell>
-                          <div className="font-medium text-slate-900">
+                        <TableCell className="max-w-xl">
+                          <div className="font-medium text-slate-900 truncate" title={c.name}>
                             {c.name}
                           </div>
                         </TableCell>

@@ -21,7 +21,11 @@ import { z } from 'zod'
 
 import { Can } from '#/components/auth/Can.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
-import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  alertDialog,
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
 import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
@@ -62,6 +66,7 @@ import {
 import { formatVnd } from '#/lib/business.ts'
 import { customersQuery, currentUserQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
+import { matchesSearch } from '#/lib/text.ts'
 import { deleteCustomerFn, saveCustomerFn } from '#/server/fns/customers.ts'
 
 const SORT_KEYS = ['name', 'branches', 'balance'] as const
@@ -131,8 +136,7 @@ function CustomersPage() {
   ].filter(Boolean).length
 
   const filtered = customers.filter((c) => {
-    const q = nameSearch.trim().toLowerCase()
-    if (q && !c.name.toLowerCase().includes(q)) return false
+    if (nameSearch.trim() && !matchesSearch(nameSearch, c.name)) return false
     if (
       debt?.length &&
       !debt.includes(c.balance > 0 ? 'owing' : c.balance < 0 ? 'overpaid' : 'zero')
@@ -151,7 +155,8 @@ function CustomersPage() {
           typeof va === 'string' || typeof vb === 'string'
             ? String(va).localeCompare(String(vb), 'vi')
             : va - vb
-        return dir === 'asc' ? cmp : -cmp
+        if (cmp !== 0) return dir === 'asc' ? cmp : -cmp
+        return b.id - a.id
       })
     : filtered
   const customersPg = usePagination(
@@ -231,14 +236,48 @@ function CustomersPage() {
 
   const handleCreateCustomer = async (e: React.FormEvent) => {
     e.preventDefault()
+    const cleanName = name.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!cleanName) {
+      await alertDialog(
+        'Tên khách hàng không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = customers.some(
+      (c) =>
+        c.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          cleanName.toLowerCase() &&
+        c.id !== (editId ?? undefined),
+    )
+    if (isDup) {
+      const ok = await confirmDialog({
+        title: 'Cảnh Báo Trùng Tên Khách Hàng',
+        description: `Khách hàng "${cleanName}" đã tồn tại trong hệ thống. Các khách hàng khác nhau có thể có cùng tên. Bạn có chắc chắn muốn tiếp tục lưu không?`,
+        confirmLabel: 'Tiếp tục lưu',
+        cancelLabel: 'Kiểm tra lại',
+      })
+      if (!ok) return
+    }
     try {
       await saveCustomer.mutateAsync({
         data: {
           id: editId ?? undefined,
-          name,
+          name: cleanName,
         },
       })
       setNewCustOpen(false)
+      if (!editId) {
+        setNameSearch('')
+        navigate({
+          search: (prev) => ({
+            ...prev,
+            q: undefined,
+            sort: undefined,
+            dir: undefined,
+          }),
+          replace: true,
+        })
+      }
     } catch (err: unknown) {
       await showErrorDialog(err, 'Lỗi khi lưu khách hàng')
     }
