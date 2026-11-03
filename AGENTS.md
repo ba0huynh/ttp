@@ -1967,7 +1967,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - Supersedes the inventory editing interactions in Lessons 172 and 173: the note column now displays plain text only, including the empty dash. Edit notes through the existing vehicle-edit pencil next to the delete button in the final actions column. The vehicle form retains its note field and follows the existing permission and vehicle-status restrictions.
 - Removed the separate note dialog, click handling, mutation, and unused note-only server endpoint/service. Batch entry, note persistence, and note display are unchanged.
 
-### Lesson 175: Company Tax Code Validation & QA Bug Tracker Skill
+### Lesson 175: Inventory Note Column Follows the Sales Order Column
+
+- In `/inventory`, both the note header and every vehicle's note cell appear immediately after `Sales Order` and before the optional `Actions` column. Notes remain plain text and are edited through the vehicle form described in Lesson 174.
+
+### Lesson 176: Company Tax Code Validation & QA Bug Tracker Skill
 
 - **QA Bug Log & Feedback Interpretation**:
   - Created skill `qa-bug-log-tracker` in `.agents/skills/qa-bug-log-tracker/SKILL.md` and `.claude/skills/qa-bug-log-tracker/SKILL.md` to instruct agents how to read client QA spreadsheets:
@@ -1984,7 +1988,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - `taxCode`: Validated with `.regex(/^\d+$/, 'Mã số thuế chỉ được chứa các chữ số')`.
     - `email`: Validated with `.refine(...)` ensuring valid format when provided.
 
-### Lesson 176: Company Phone & Email Validation, and Duplicate Motorcycle Model Prevention
+### Lesson 177: Company Phone & Email Validation, and Duplicate Motorcycle Model Prevention
 
 - **Context & QA Bug Log Reports**:
   - Bug 1: `nhập email sai định dạng không hiển thị lỗi` (https://prnt.sc/wJkVla98GuoJ) -> Company settings email input accepted invalid format (e.g. `ac`) and displayed success banner without error.
@@ -2008,7 +2012,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - Checks `master.models.some(...)` against trimmed name (case-insensitive) excluding the current editing model.
     - Sets `mError` to display inline error under the model name input and halts form submission.
 
-### Lesson 177: Zod v4 Error Message Translation & Master Data Empty Input Prevention
+### Lesson 178: Zod v4 Error Message Translation & Master Data Empty Input Prevention
 
 - **Context & QA Bug Log Report**:
   - Screenshot `https://prnt.sc/4JWleo4_p3Jn` showed `/master-data?tab=models` popping up an error dialog with raw English Zod text:
@@ -2029,7 +2033,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - **`src/routes/master-data.tsx`**:
     - Added client-side trimmed validation across all modal forms (`handleSaveExpenseType`, `handleSaveSupplier`, `handleSaveBank`, `handleSaveAccount`, `handleSaveColor`) before initiating network mutations.
 
-### Lesson 178: Latest Created Vehicle Models Displayed First in List
+### Lesson 179: Latest Created Vehicle Models Displayed First in List
 
 - **Context & QA Feedback**:
   - QA Feedback ticket (`https://prnt.sc/QziXEt82HkZR`): `hiển thị dòng xe vừa tạo lên đầu danh sách` (Display the newly created motorcycle model at the top of the list).
@@ -2038,7 +2042,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - `src/server/fns/master-data.ts`: Updated `getMasterDataFn` to query `motorcycleModels` with `.orderBy(desc(motorcycleModels.id))`.
   - The latest created vehicle model now automatically appears as the very first item on page 1 of the Dòng Xe catalogue (`/master-data?tab=models`) and at the top of vehicle selection lists.
 
-### Lesson 179: Whitespace Validation Message Localization & Latest Created Suppliers Ordering
+### Lesson 180: Whitespace Validation Message Localization & Latest Created Suppliers Ordering
 
 - **Context & QA Feedback**:
   - QA Feedback ticket 1 (`https://prnt.sc/eQD-UeDakgJ3`): `việt hóa message lỗi khi nhập khoảng trắng` (Vietnamese localization for error message when entering whitespace).
@@ -2052,7 +2056,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - **Supplier Ordering (`src/server/fns/master-data.ts`)**:
     - Updated `getMasterDataFn` to query `suppliers` with `.orderBy(desc(suppliers.id))` so newly created suppliers automatically appear as the first item on page 1 of the Nhà Cung Cấp catalogue (`/master-data?tab=suppliers`) and at the top of supplier dropdowns.
 
-### Lesson 180: Master Data Global Newest-First Ordering (Banks, Accounts, Colors, Expense Types)
+### Lesson 181: Master Data Global Newest-First Ordering (Banks, Accounts, Colors, Expense Types)
 
 - **Context & QA Feedback**:
   - QA Feedback ticket (`https://prnt.sc/YGi0NgUeANj5`): `hiển thị ngân hàng vừa tạo lên đầu danh sách` (Display newly created bank at the top of the list).
@@ -2064,7 +2068,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - `expenseTypes`: `.orderBy(desc(expenseTypes.id))`
   - Any new bank, account, color, or expense type added by users will automatically appear as the first row on page 1 of its respective catalogue table.
 
-### Lesson 181: Bank Whitespace Localization & Comprehensive Duplicate Prevention across Master Data
+### Lesson 182: Bank Whitespace Localization & Comprehensive Duplicate Prevention across Master Data
 
 - **Context & QA Feedback**:
   - QA Feedback ticket 1 (`https://prnt.sc/x4cXxIADw2li`): `việt hóa message lỗi khi nhập khoảng trắng` (Localized error message when entering whitespace in bank name).
@@ -2080,7 +2084,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - **Client-Side Pre-Validation (`src/routes/master-data.tsx`)**:
       - Added instant case-insensitive duplicate checks in modal save handlers (`handleSaveBank`, `handleSaveSupplier`, `handleSaveColor`, `handleSaveExpenseType`, `handleSaveAccount`) alerting users prior to sending network requests.
 
-### Lesson 182: Bank Tab Search Box Placeholder Updated to "Tìm tên ngân hàng"
+### Lesson 183: Bank Tab Search Box Placeholder Updated to "Tìm tên ngân hàng"
 
 - **Context & QA Feedback**:
   - QA Feedback ticket (`https://prnt.sc/-wak8m1K3G5P`): `đổi placeholder thành "Tìm tên ngân hàng"`.
@@ -2088,7 +2092,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Resolution**:
   - `src/routes/master-data.tsx`: Updated `SearchBox` placeholder for the `banks` tab to `"Tìm tên ngân hàng..."`, providing a clean, concise input label consistent with other master data tabs without truncation.
 
-### Lesson 183: Bank Account Number Restricted to Digits Only
+### Lesson 184: Bank Account Number Restricted to Digits Only
 
 - **Context & QA Bug Log Report**:
   - QA Bug ticket (`https://prnt.sc/aeN-bSb9HlAi`): `số tài khoản chỉ nhập số thôi chặn kí tự và chữ cái` (Bank account number must only accept digits, blocking letters and special characters).
@@ -2101,7 +2105,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
     - Added `.regex(/^\d+$/, 'Số tài khoản chỉ được chứa các chữ số')` to `saveBankAccountFn` Zod validator.
 
-### Lesson 184: Color Ordering and Duplicate Color Prevention (`/master-data?tab=colors`)
+### Lesson 185: Color Ordering and Duplicate Color Prevention (`/master-data?tab=colors`)
 
 - **Context & QA Feedback**:
   - QA Feedback ticket 1 (`https://prnt.sc/7kWP1_XMkwDv`): `hiển thị màu sắc vừa tạo lên đầu danh sách` (Display newly created color at the top of the list).
@@ -2115,8 +2119,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
       - In `saveColorFn`, queries `colors` for `lower(${colors.name}) = ${trimmedName.toLowerCase()}` excluding `id`. If found, throws `new Error(`Màu sắc "${trimmedName}" đã tồn tại trong hệ thống`)`.
 
-_(Next Agent: Append Lesson 185, 186,... above this line upon completing tasks)_
-
+_(Next Agent: Append Lesson 186, 187,... above this line upon completing tasks)_
 
 
 
