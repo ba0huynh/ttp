@@ -10,7 +10,7 @@ import {
   sessions,
   users,
 } from '#/db/schema.ts'
-import { ALL_PERMISSIONS } from '#/lib/permissions.ts'
+import { ALL_PERMISSIONS, normalizePermissions } from '#/lib/permissions.ts'
 import type { PermissionKey } from '#/lib/permissions.ts'
 import { hashPassword } from '#/server/services/auth.ts'
 import {
@@ -221,7 +221,7 @@ export const saveRoleFn = createServerFn({ method: 'POST' })
   )
   .handler(async ({ data }) => {
     const { id, permissions, ...info } = data
-    const keys = [...new Set(permissions)]
+    const keys = normalizePermissions(permissions)
     try {
       await db.transaction(async (tx) => {
         let roleId = id

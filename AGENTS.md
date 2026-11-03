@@ -2220,7 +2220,45 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
     - In `PERMISSION_GROUPS`, changed `label: 'Danh mục hệ thống'` to `label: 'Dữ liệu chung'` for group `key: 'master-data'`.
     - Modal in `/settings?tab=roles` (`RolesTab.tsx`) now displays "Dữ liệu chung", ensuring 100% nomenclature alignment with the application sidebar menu.
 
-_(Next Agent: Append Lesson 194, 195,... above this line upon completing tasks)_
+### Lesson 194: Bidirectional Permission Coupling (Auto-Grant & Auto-Revoke View Permissions)
+
+- **Context & QA Feedback**:
+  - QA Feedback / Bug ticket (`https://prnt.sc/vs_K8K5S3rPI`): `tick vô "Tạo khế ước.." nhưng truy cập vô quyền đó không có menu tạo khế ước` (Ticked "Tạo khế ước..." but the user had no menu to access the loan creation feature).
+  - Cause: Action permissions (e.g. `loans.manage`, `sales.create`, `master-data.manage`) could be checked in isolation while the underlying module view permission (e.g. `loans.view`, `sales.view`, `master-data.view`) was left unchecked. Since the sidebar and route guards require the view permission, users holding action permissions could not see the menu item or access the page.
+- **Resolution**:
+  - **Shared Permission Rule Maps (`src/lib/permissions.ts`)**:
+    - Created `VIEW_TO_ACTIONS_MAP` and `ACTION_TO_VIEW_MAP` defining the exact parent/child relationship between view and action permissions across all modules (`batches`, `sales`, `loans`, `finance`, `reconcile`, `customers`, `master-data`).
+    - Added `togglePermissionWithRules`:
+      - **Auto-grant view**: Ticking ANY action permission in a module automatically ticks its module view permission.
+      - **Auto-revoke dependents**: Unticking a view permission automatically removes ALL action permissions within that module.
+    - Added `normalizePermissions`: Deduplicates and guarantees that any permission set containing action permissions always contains their corresponding view permissions.
+    - Updated `hasPermission`: If checking for a module's view permission, holding ANY action permission within that module automatically grants view access as well (safeguarding legacy role records).
+  - **UI & Server Enforcement**:
+    - `RolesTab.tsx`: Bound checkbox toggling to `togglePermissionWithRules`, normalized incoming permissions on `openEdit`, and passed normalized permissions on `handleSave`.
+    - `saveRoleFn` (`src/server/fns/system.ts`): Passed received permissions through `normalizePermissions` before persisting into `role_permissions`.
+
+### Lesson 195: Role Description Truncation & Table Header Alignment (`/settings?tab=roles`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/EzxsrqnNJsZa`): `mô tả dài quá thì ...` (If description is too long, truncate with `...` / ellipsis).
+  - Extremely long role descriptions (up to 255 characters) stretched table cells horizontally and pushed subsequent columns (Quyền, Người Dùng, Thao tác) beyond the viewport, causing unnecessary horizontal scrollbars.
+- **Resolution**:
+  - **`src/components/settings/RolesTab.tsx`**:
+    - Constrained `Mô Tả` table cell with `max-w-md` and wrapped text in `<div className="truncate" title={r.description ?? undefined}>`. Long descriptions truncate cleanly with `...` while full text remains viewable on hover.
+    - Constrained `Tên Vai Trò` with `max-w-xs truncate` and tooltip `title={r.name}`.
+    - Added `<TableHead className="w-24 text-right pr-4">Thao tác</TableHead>` aligned with action buttons.
+    - Sized column widths (`w-48` for role name, `w-28` for permission count and user count) ensuring fixed, clean layout.
+
+### Lesson 196: Eliminating Duplicate Password Reveal Eye Icon (`/login`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/oCa1VM-ELqRp`): `bỏ bớt 1 icon con mắt đi` (Remove one of the duplicate eye icons).
+  - In Chromium and Microsoft Edge on Windows, `input[type="password"]` automatically renders a native browser password reveal eye button (`::-ms-reveal`). Because `PasswordInput` already includes a custom Lucide `<Eye />` toggle button, users were presented with two redundant eye icons side-by-side in the password field.
+- **Resolution**:
+  - In `src/styles.css`: Added global rule `input::-ms-reveal, input::-ms-clear { display: none; }` to suppress native browser password reveal and clear controls.
+  - In `src/components/ui/password-input.tsx`: Added `[&::-ms-reveal]:hidden [&::-ms-clear]:hidden` to `Input` className to ensure consistent single-eye behavior across all platforms and browsers.
+
+_(Next Agent: Append Lesson 197, 198,... above this line upon completing tasks)_
 
 
 

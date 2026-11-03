@@ -213,6 +213,12 @@
   scrollbar-color: #ffffff59 transparent;
 }
 
+/* Hide browser native password reveal eye (Edge / Chromium) to avoid duplicate toggle buttons */
+input::-ms-reveal,
+input::-ms-clear {
+  display: none;
+}
+
 @keyframes top-loading-bar {
   0% {
     transform: translateX(-100%);

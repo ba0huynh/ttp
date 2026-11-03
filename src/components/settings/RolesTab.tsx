@@ -33,7 +33,12 @@ import {
   TableHeader,
   TableRow,
 } from '#/components/ui/table.tsx'
-import { ALL_PERMISSIONS, PERMISSION_GROUPS } from '#/lib/permissions.ts'
+import {
+  ALL_PERMISSIONS,
+  PERMISSION_GROUPS,
+  normalizePermissions,
+  togglePermissionWithRules,
+} from '#/lib/permissions.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import { deleteRoleFn, saveRoleFn } from '#/server/fns/system.ts'
 
@@ -82,17 +87,12 @@ export function RolesTab({
     setEditId(r.id)
     setName(r.name)
     setDescription(r.description ?? '')
-    setSelected(new Set(r.permissions))
+    setSelected(new Set(normalizePermissions(r.permissions)))
     setOpen(true)
   }
 
   const toggle = (key: string, on: boolean) =>
-    setSelected((prev) => {
-      const next = new Set(prev)
-      if (on) next.add(key)
-      else next.delete(key)
-      return next
-    })
+    setSelected((prev) => togglePermissionWithRules(prev, key, on))
   const toggleGroup = (keys: readonly string[], on: boolean) =>
     setSelected((prev) => {
       const next = new Set(prev)
@@ -111,7 +111,7 @@ export function RolesTab({
           id: editId,
           name,
           description: description.trim() || null,
-          permissions: ALL_PERMISSIONS.filter((k) => selected.has(k)),
+          permissions: normalizePermissions(selected),
         },
       })
       setOpen(false)
@@ -174,11 +174,11 @@ export function RolesTab({
           <Table>
             <TableHeader>
               <TableRow className="text-xs bg-slate-50">
-                <TableHead>Tên Vai Trò</TableHead>
+                <TableHead className="w-48">Tên Vai Trò</TableHead>
                 <TableHead>Mô Tả</TableHead>
-                <TableHead className="text-center">Quyền</TableHead>
-                <TableHead className="text-center">Người Dùng</TableHead>
-                <TableHead className="w-24"></TableHead>
+                <TableHead className="w-28 text-center">Quyền</TableHead>
+                <TableHead className="w-28 text-center">Người Dùng</TableHead>
+                <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="text-xs">
@@ -194,11 +194,15 @@ export function RolesTab({
               )}
               {roles.map((r) => (
                 <TableRow key={r.id}>
-                  <TableCell className="font-medium text-slate-900">
-                    {r.name}
+                  <TableCell className="font-medium text-slate-900 max-w-xs">
+                    <div className="truncate" title={r.name}>
+                      {r.name}
+                    </div>
                   </TableCell>
-                  <TableCell className="text-slate-500">
-                    {r.description || '—'}
+                  <TableCell className="max-w-md text-slate-500">
+                    <div className="truncate" title={r.description ?? undefined}>
+                      {r.description || '—'}
+                    </div>
                   </TableCell>
                   <TableCell className="text-center">
                     {r.isAdmin ? (
@@ -216,7 +220,7 @@ export function RolesTab({
                     )}
                   </TableCell>
                   <TableCell className="text-center">{r.userCount}</TableCell>
-                  <TableCell>
+                  <TableCell className="pr-4">
                     {!r.isAdmin && (
                       <div className="flex justify-end gap-1">
                         <Button
