@@ -12,6 +12,7 @@ import {
   SlidersHorizontal,
 } from 'lucide-react'
 import * as React from 'react'
+import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { VehicleFormDialog } from '#/components/batches/VehicleFormDialog.tsx'
@@ -39,6 +40,7 @@ import {
 } from '#/components/ui/dialog.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
+import { Textarea } from '#/components/ui/textarea.tsx'
 import { MultiSearchSelect } from '#/components/ui/multi-search-select.tsx'
 import { PriceRangeFilter } from '#/components/ui/price-range-filter.tsx'
 import {
@@ -68,6 +70,7 @@ import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import { useBusyKeys } from '#/lib/use-busy.ts'
 import { useUrlText } from '#/lib/use-url-text.ts'
 import { removeVehicleFn, updateVehicleFn } from '#/server/fns/batches.ts'
+import { updateVehicleNoteFn } from '#/server/fns/inventory.ts'
 
 const WIDGET_TONES = {
   jade: 'bg-emerald-50 text-emerald-700 ring-emerald-200/70',
@@ -125,6 +128,10 @@ function InventoryPage() {
   const [editVehicle, setEditVehicle] = React.useState<
     (typeof vehicles)[number] | null
   >(null)
+  const [noteVehicle, setNoteVehicle] = React.useState<
+    (typeof vehicles)[number] | null
+  >(null)
+  const [noteDraft, setNoteDraft] = React.useState('')
 
   const deleteVehicle = useMutation({
     mutationFn: removeVehicleFn,
@@ -134,6 +141,16 @@ function InventoryPage() {
   const updateVehicle = useMutation({
     mutationFn: updateVehicleFn,
     onSuccess: () => queryClient.invalidateQueries(),
+  })
+
+  const updateNote = useMutation({
+    mutationFn: updateVehicleNoteFn,
+    onSuccess: async () => {
+      await queryClient.invalidateQueries()
+      setNoteVehicle(null)
+      toast.success('Đã cập nhật ghi chú xe')
+    },
+    onError: (err: Error) => toast.error(err.message || 'Không lưu được ghi chú'),
   })
 
   const handleDeleteVehicle = async (v: (typeof vehicles)[number]) => {
@@ -489,7 +506,7 @@ function InventoryPage() {
                       onValuesChange={(vals) =>
                         setDropdownFilter(
                           'delivered',
-                          vals.length ? (vals as ('yes' | 'no')[]) : undefined,
+                          vals.length ? vals : undefined,
                         )
                       }
                     >
@@ -510,7 +527,7 @@ function InventoryPage() {
                       onValuesChange={(vals) =>
                         setDropdownFilter(
                           'invoiced',
-                          vals.length ? (vals as ('yes' | 'no')[]) : undefined,
+                          vals.length ? vals : undefined,
                         )
                       }
                     >
@@ -689,6 +706,7 @@ function InventoryPage() {
                     <TableHead className="w-[180px]">Số Khung</TableHead>
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
+                    <TableHead className="min-w-[180px]">Ghi chú</TableHead>
                     <TableHead>Lô Nhập</TableHead>
                     <TableHead className="text-right">Đơn Giá Nhập</TableHead>
                     <TableHead className="text-right">Giá Vốn Xe</TableHead>
@@ -704,7 +722,7 @@ function InventoryPage() {
                   {filtered.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={canManage ? 11 : 10}
+                        colSpan={canManage ? 12 : 11}
                         className="text-center py-8 text-slate-500"
                       >
                         Không tìm thấy chiếc xe nào phù hợp bộ lọc
@@ -733,6 +751,32 @@ function InventoryPage() {
                           </div>
                           <div className="text-slate-500">
                             {v.colorName}
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-start gap-2">
+                            <span className="min-w-0 max-w-xs whitespace-pre-wrap break-words text-slate-500">
+                              {v.note || '—'}
+                            </span>
+                            {canManage && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="size-7 shrink-0 text-slate-400 hover:text-emerald-700"
+                                onClick={() => {
+                                  setNoteDraft(v.note ?? '')
+                                  setNoteVehicle(v)
+                                }}
+                                disabled={
+                                  updateNote.isPending || updateVehicle.isPending
+                                }
+                                aria-label={`Sửa ghi chú xe ${v.chassisNumber}`}
+                                title="Sửa ghi chú"
+                              >
+                                <Pencil className="size-3.5" />
+                              </Button>
+                            )}
                           </div>
                         </TableCell>
                         <TableCell className="text-slate-900">
@@ -844,6 +888,68 @@ function InventoryPage() {
       </div>
 
       {canManage && (
+        <Dialog
+          open={Boolean(noteVehicle)}
+          onOpenChange={(isOpen) => {
+            if (!isOpen && !updateNote.isPending) setNoteVehicle(null)
+          }}
+        >
+          <DialogContent className="max-w-lg">
+            <DialogHeader>
+              <DialogTitle>Sửa ghi chú xe</DialogTitle>
+              <DialogDescription>
+                {noteVehicle?.chassisNumber} · {noteVehicle?.modelName}
+              </DialogDescription>
+            </DialogHeader>
+            <form
+              className="space-y-4"
+              onSubmit={(e) => {
+                e.preventDefault()
+                if (!noteVehicle || updateNote.isPending) return
+                updateNote.mutate({
+                  data: {
+                    vehicleId: noteVehicle.id,
+                    note: noteDraft.trim() || null,
+                  },
+                })
+              }}
+            >
+              <div className="space-y-1.5">
+                <Label htmlFor="inventory-vehicle-note">Ghi chú</Label>
+                <Textarea
+                  id="inventory-vehicle-note"
+                  value={noteDraft}
+                  onChange={(e) => setNoteDraft(e.target.value)}
+                  placeholder="Ghi chú (tùy chọn)"
+                  disabled={updateNote.isPending}
+                  rows={4}
+                />
+              </div>
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={updateNote.isPending}
+                  onClick={() => setNoteVehicle(null)}
+                >
+                  Hủy
+                </Button>
+                <Button
+                  type="submit"
+                  disabled={
+                    updateNote.isPending ||
+                    noteDraft.trim() === (noteVehicle?.note ?? '')
+                  }
+                >
+                  {updateNote.isPending ? 'Đang lưu...' : 'Lưu ghi chú'}
+                </Button>
+              </DialogFooter>
+            </form>
+          </DialogContent>
+        </Dialog>
+      )}
+
+      {canManage && (
         <VehicleFormDialog
           open={Boolean(editVehicle)}
           onOpenChange={(isOpen) => {
@@ -864,6 +970,7 @@ function InventoryPage() {
                   chassisNumber: editVehicle.chassisNumber,
                   engineNumber: editVehicle.engineNumber,
                   year: editVehicle.year,
+                  note: editVehicle.note,
                   importPrice: editVehicle.importPrice,
                   vatRate: editVehicle.vatRate,
                 }

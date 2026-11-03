@@ -23,6 +23,7 @@ export interface VehicleInput {
   chassisNumber: string
   engineNumber: string
   year?: number | null
+  note?: string | null
   importPrice: number
   vatRate?: number
 }
@@ -142,6 +143,7 @@ const normalizeVehicle = (batchId: number, v: VehicleInput) => {
     chassisNumber: v.chassisNumber.trim().toUpperCase(),
     engineNumber: v.engineNumber.trim().toUpperCase(),
     year: v.year ? Number(v.year) : null,
+    note: v.note?.trim() || null,
     importPrice,
     vatRate,
     importPriceWithVat,
@@ -241,7 +243,10 @@ export async function updateVehicle(vehicleId: number, input: VehicleInput) {
         )
         .limit(1)
       if (dup) throw new BusinessError('Số khung đã tồn tại trong hệ thống')
-      await tx.update(vehicles).set(row).where(eq(vehicles.id, vehicleId))
+      await tx
+        .update(vehicles)
+        .set({ ...row, note: input.note === undefined ? undefined : row.note })
+        .where(eq(vehicles.id, vehicleId))
       await recalculateBatch(tx, v.batchId)
     })
   } catch (e) {
@@ -249,6 +254,20 @@ export async function updateVehicle(vehicleId: number, input: VehicleInput) {
       throw new BusinessError('Số khung hoặc số máy đã tồn tại')
     throw e
   }
+}
+
+/** Notes remain editable after a vehicle is sold, delivered or invoiced. */
+export async function updateVehicleNote(vehicleId: number, note: string | null) {
+  const [vehicle] = await db
+    .select({ id: vehicles.id })
+    .from(vehicles)
+    .where(eq(vehicles.id, vehicleId))
+  if (!vehicle) throw new BusinessError('Không tìm thấy xe')
+
+  await db
+    .update(vehicles)
+    .set({ note: note?.trim() || null })
+    .where(eq(vehicles.id, vehicleId))
 }
 
 export async function removeVehicle(vehicleId: number) {
