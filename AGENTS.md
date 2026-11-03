@@ -2286,7 +2286,26 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   8. **`src/routes/__root.tsx`**:
      - Added router `errorComponent` catching `isAccountLockedError(error)` and redirecting to `/login?locked=1`.
 
-_(Next Agent: Append Lesson 198, 199,... above this line upon completing tasks)_
+### Lesson 198: Password Reset Token Expiry & MySQL Timezone Consistency
+
+- **Context & QA Feedback**:
+  - QA Bug ticket (`https://prnt.sc/fpDjCFsvbaI6`): `nhập email -> qua form đặt lại mật khẩu nhưng khi đặt lại mật khẩu đặt không được` (Enter email -> open reset password form, but cannot reset password with error: "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn").
+- **Root Cause & Smoking Gun**:
+  - In `createPasswordResetToken`, the expiration time was inserted using JavaScript's `new Date(Date.now() + 30 * 60_000)` which serialized to UTC string format `YYYY-MM-DD HH:mm:ss`.
+  - In `resetPasswordWithToken`, the validation condition evaluated `gt(passwordResetTokens.expiresAt, sql`NOW()`)` against MySQL's `NOW()`.
+  - When the MySQL session timezone is `+07:00` (Vietnam, standard on staging/production servers) while Node outputs UTC, MySQL's `NOW()` is 7 hours ahead of the UTC timestamp. Consequently, a token created to expire in 30 minutes was already considered 6.5 hours in the past the instant it was created, immediately causing `resetPasswordWithToken` to fail with "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn".
+- **Resolution**:
+  1. **`src/server/services/auth.ts`**:
+     - Updated `createPasswordResetToken` to use MySQL's clock: `expiresAt: sql`DATE_ADD(NOW(), INTERVAL 30 MINUTE)``. This guarantees the expiration timestamp and subsequent `gt(expiresAt, sql`NOW()`)` evaluations use the exact same MySQL clock, eliminating timezone skew across all server environments.
+     - Normalized email matching: `where(sql`LOWER(${users.email}) = ${normalizedEmail}`)`.
+     - Trimmed token before hash evaluation and set `usedAt: sql`NOW()``.
+     - Updated `createSession` to use `expiresAt: sql`DATE_ADD(NOW(), INTERVAL ${SESSION_TTL_DAYS} DAY)`` and `lastLoginAt: sql`NOW()``.
+  2. **`src/server/fns/auth.ts`**:
+     - Enforced `z.string().trim().email()` for email input in `forgotPasswordFn` and `z.string().trim().min(10)` for `token` in `resetPasswordFn`.
+  3. **`src/routes/reset-password.tsx`**:
+     - Passed `token.trim()` to mutation.
+
+_(Next Agent: Append Lesson 199, 200,... above this line upon completing tasks)_
 
 
 
