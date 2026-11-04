@@ -28,6 +28,10 @@ import { BankLabel } from '#/components/finance/BankLabel.tsx'
 import { Can } from '#/components/auth/Can.tsx'
 import { SupplierLink } from '#/components/suppliers/SupplierDetailDialog.tsx'
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
+import {
+  SalesDeliveryBadge,
+  SalesInvoiceBadge,
+} from '#/components/sales/SalesWarehouseBadges.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
 import {
@@ -142,7 +146,9 @@ function DebtOrdersDialog({
 
   return (
     <Dialog open={Boolean(view)} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+      <DialogContent
+        className={`max-h-[90dvh] overflow-y-auto ${receivable ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}
+      >
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900">
             {receivable ? 'Các Đơn Bán Xe' : 'Các Đơn Nhập Lô'}
@@ -171,12 +177,30 @@ function DebtOrdersDialog({
                 <TableRow className="text-xs bg-slate-50">
                   <TableHead className="w-12 text-center">STT</TableHead>
                   <TableHead>{receivable ? 'Ngày Bán' : 'Ngày Nhập'}</TableHead>
-                  <TableHead className="text-right">Số Xe</TableHead>
-                  <TableHead className="text-right">
-                    {receivable ? 'Tổng Tiền Đã VAT' : 'Tiền Hàng'}
-                  </TableHead>
+                  {receivable && (
+                    <>
+                      <TableHead className="text-right">
+                        Tổng Tiền Chưa VAT
+                      </TableHead>
+                      <TableHead className="text-center">% VAT</TableHead>
+                      <TableHead className="text-right">
+                        Tổng Tiền Đã VAT
+                      </TableHead>
+                    </>
+                  )}
+                  {receivable && (
+                    <>
+                      <TableHead className="text-right">Số Xe</TableHead>
+                      <TableHead className="text-center">Kho Thực Tế</TableHead>
+                      <TableHead className="text-center">Kho Hóa Đơn</TableHead>
+                    </>
+                  )}
                   {payable && (
-                    <TableHead className="text-right">Chi Phí Lô</TableHead>
+                    <>
+                      <TableHead className="text-right">Số Xe</TableHead>
+                      <TableHead className="text-right">Tiền Hàng</TableHead>
+                      <TableHead className="text-right">Chi Phí Lô</TableHead>
+                    </>
                   )}
                 </TableRow>
               </TableHeader>
@@ -197,10 +221,30 @@ function DebtOrdersDialog({
                           </Link>
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
-                          {o.vehicleCount}
+                          {formatVnd(o.totalBeforeVat)}
+                        </TableCell>
+                        <TableCell className="text-center text-slate-500">
+                          {o.minVatRate === o.maxVatRate
+                            ? `${o.minVatRate}%`
+                            : `${o.minVatRate}–${o.maxVatRate}%`}
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(o.totalAmount)}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900">
+                          {o.vehicleCount} xe
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <SalesDeliveryBadge
+                            deliveredCount={o.deliveredCount}
+                            vehicleCount={o.vehicleCount}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <SalesInvoiceBadge
+                            invoicedCount={o.invoicedCount}
+                            vehicleCount={o.vehicleCount}
+                          />
                         </TableCell>
                       </TableRow>
                     ))

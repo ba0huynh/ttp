@@ -275,12 +275,18 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
         orderDate: salesOrders.orderDate,
         totalAmount: salesOrders.totalAmount,
         vehicleCount: sql<number>`count(${salesOrderItems.id})`,
+        totalBeforeVat: sql<string>`coalesce(sum(${salesOrderItems.priceBeforeVat}),0)`,
+        minVatRate: sql<string>`coalesce(min(${salesOrderItems.vatRate}),0)`,
+        maxVatRate: sql<string>`coalesce(max(${salesOrderItems.vatRate}),0)`,
+        deliveredCount: sql<number>`count(distinct case when ${vehicles.isDelivered} = 1 then ${vehicles.id} end)`,
+        invoicedCount: sql<number>`count(distinct case when ${vehicles.isInvoiced} = 1 then ${vehicles.id} end)`,
       })
       .from(salesOrders)
       .leftJoin(
         salesOrderItems,
         eq(salesOrderItems.salesOrderId, salesOrders.id),
       )
+      .leftJoin(vehicles, eq(vehicles.id, salesOrderItems.vehicleId))
       .where(
         and(
           eq(salesOrders.customerId, data.customerId),
@@ -295,7 +301,12 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
     return rows.map((r) => ({
       ...r,
       totalAmount: num(r.totalAmount),
+      totalBeforeVat: num(r.totalBeforeVat),
+      minVatRate: num(r.minVatRate),
+      maxVatRate: num(r.maxVatRate),
       vehicleCount: Number(r.vehicleCount),
+      deliveredCount: Number(r.deliveredCount),
+      invoicedCount: Number(r.invoicedCount),
     }))
   })
 
