@@ -2335,6 +2335,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - **Client rule**: a batch with a loan contract selected is paid by the bank, so it adds nothing to what we owe the supplier. Only batches with **no loan** (`import_batches.loan_contract_id IS NULL`) count toward "Công nợ phải trả" (the "Không vay" option in `LoanSelect`).
 - **Applied in 3 places that must stay equal**: `getPayablesSummary` (`reports.ts`: payables tab, dashboard, reports), `assertPaymentWithinDebt` (`services/finance.ts`: blocks a payment voucher above the remaining debt) and `listSupplierBatchesFn` (`fns/finance.ts`: the eye-button list on the payables tab). Change one and you must change the others. Batch lists, inventory value and "Tiền hàng" are unchanged (the goods are still ours).
+- **Update (client review)**: the eye-button popup on the payables tab now lists **every** batch of the supplier (not only the no-loan ones) and has a "Khế Ước Vay" column: the contract number as a link to `/loans/$loanId`, or "Không vay". Only the debt totals (payables tab, payment limit) still skip loan-financed batches, so the popup's "Tiền Hàng" column can add up to more than the supplier's debt.
 - **Effect on existing data**: changing a batch's loan in the batch editor immediately changes the supplier's debt; payments already recorded stay, so a supplier can show a negative balance (overpaid) if their batches were later linked to a loan.
 
 _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
@@ -2388,3 +2389,8 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 - **Request** (reviewer): on `/reports` the "Giá Vốn" figure must use the import price **before** VAT, because revenue (`price_before_vat`) has no VAT either.
 - **Fix** (`getReports` in `src/server/services/reports.ts`): each sold row's cost is `sales_order_items.cost_price − greatest(vehicles.import_price_with_vat − vehicles.import_price, 0)`, i.e. the cost captured at sale minus that vehicle's import VAT = import price before VAT + allocated batch expense. The cards, both tables (by customer, by model) and the margin all follow, and the card subtitle reads "Giá nhập chưa VAT + chi phí lô phân bổ".
 - **Not changed**: `vehicles.cost_price` and the `cost_price` snapshot still include VAT (Lesson 165); batch pricing, the allocation ratio and the "Trị Giá Tồn Kho Thực Tế" card still use them. Only the report's cost / profit drop the VAT. `greatest(..., 0)` guards rows whose VAT-inclusive price was never filled.
+
+### Lesson 207: `/reconcile` Table Needs a Fixed Width for the Description Column
+
+- **Bug** (review screenshot): after the "Nội Dung Diễn Giải" column was added the header texts overlapped ("NỘI DUNG DIỄN TIỀN RA (GHI NỢ)"). The table is `table-fixed`; the other columns total 1024px, so with `min-w-[1080px]` the description column was left with ~56px.
+- **Fix**: the description header is `w-[300px]` and the table `min-w-[1330px]` (1024 + 300). Rule for a `table-fixed` table: the fixed widths plus the flexible column's minimum must fit inside the table's `min-w`; when adding a column, raise `min-w` by its width.

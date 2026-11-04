@@ -701,13 +701,13 @@ function ReconcilePage() {
           </CardHeader>
           <CardContent className="p-0">
             <div className="overflow-x-auto">
-              <Table className="table-fixed min-w-[1080px]">
+              <Table className="table-fixed min-w-[1330px]">
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
 <TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead className="w-24">Ngày GD</TableHead>
                     <TableHead className="w-44">Tài Khoản</TableHead>
-                    <TableHead>Nội Dung Diễn Giải</TableHead>
+                    <TableHead className="w-[300px]">Nội Dung Diễn Giải</TableHead>
                     <TableHead className="w-36 text-right">
                       Tiền Ra (Ghi Nợ)
                     </TableHead>

@@ -147,7 +147,7 @@ function DebtOrdersDialog({
   return (
     <Dialog open={Boolean(view)} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
-        className={`max-h-[90dvh] overflow-y-auto ${receivable ? 'sm:max-w-5xl' : 'sm:max-w-2xl'}`}
+        className={`max-h-[90dvh] overflow-y-auto ${receivable ? 'sm:max-w-5xl' : 'sm:max-w-3xl'}`}
       >
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900">
@@ -200,6 +200,7 @@ function DebtOrdersDialog({
                       <TableHead className="text-right">Số Xe</TableHead>
                       <TableHead className="text-right">Tiền Hàng</TableHead>
                       <TableHead className="text-right">Chi Phí Lô</TableHead>
+                      <TableHead>Khế Ước Vay</TableHead>
                     </>
                   )}
                 </TableRow>
@@ -270,6 +271,19 @@ function DebtOrdersDialog({
                         </TableCell>
                         <TableCell className="text-right text-slate-500">
                           {formatVnd(b.totalExpense)}
+                        </TableCell>
+                        <TableCell>
+                          {b.loanContractId ? (
+                            <Link
+                              to="/loans/$loanId"
+                              params={{ loanId: String(b.loanContractId) }}
+                              className="font-medium text-emerald-700 hover:underline"
+                            >
+                              {b.loanContractNumber}
+                            </Link>
+                          ) : (
+                            <span className="text-slate-500">Không vay</span>
+                          )}
                         </TableCell>
                       </TableRow>
                     ))}

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -323,20 +323,27 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
       .select({
         id: importBatches.id,
         importDate: importBatches.importDate,
+        loanContractId: importBatches.loanContractId,
+        loanContractNumber: loanContracts.contractNumber,
         vehicleCount: sql<number>`count(${vehicles.id})`,
         totalImport: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
         totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
       })
       .from(importBatches)
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
-      .where(
-        and(
-          eq(importBatches.supplierId, data.supplierId),
-          // Loan-financed batches are owed to the bank, not the supplier
-          isNull(importBatches.loanContractId),
-        ),
+      .leftJoin(
+        loanContracts,
+        eq(loanContracts.id, importBatches.loanContractId),
       )
-      .groupBy(importBatches.id, importBatches.importDate)
+      // Every batch of the supplier; loan-financed ones are shown with their
+      // loan but do not count toward the supplier debt (Lesson 205)
+      .where(eq(importBatches.supplierId, data.supplierId))
+      .groupBy(
+        importBatches.id,
+        importBatches.importDate,
+        importBatches.loanContractId,
+        loanContracts.contractNumber,
+      )
       .orderBy(desc(importBatches.importDate), desc(importBatches.id))
     return rows.map((r) => ({
       ...r,
