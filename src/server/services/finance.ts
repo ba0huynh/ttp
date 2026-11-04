@@ -360,7 +360,13 @@ async function assertPaymentWithinDebt(
       .select({ t: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)` })
       .from(vehicles)
       .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))
-      .where(eq(importBatches.supplierId, supplierId)),
+      .where(
+        and(
+          eq(importBatches.supplierId, supplierId),
+          // Loan-financed batches are not a supplier debt
+          isNull(importBatches.loanContractId),
+        ),
+      ),
     db
       .select({ t: sql<string>`coalesce(sum(${paymentVouchers.amount}),0)` })
       .from(paymentVouchers)
@@ -450,6 +456,7 @@ export async function createReceiptVoucher(
     salesOrderId?: number | null
     amount: number
     companyBankAccountId?: number | null
+    note?: string | null
     /** Also add a bank statement line, already matched to this receipt */
     createStatementLine?: boolean
   },
@@ -476,6 +483,7 @@ export async function createReceiptVoucher(
         branchId: input.branchId ?? null,
         salesOrderId: input.salesOrderId ?? null,
         companyBankAccountId: input.companyBankAccountId ?? null,
+        note: input.note?.trim() || null,
         createdBy: userId ?? null,
       })
       .$returningId()
@@ -766,6 +774,7 @@ export async function updateReceiptVoucher(
     branchId?: number | null
     amount: number
     companyBankAccountId?: number | null
+    note?: string | null
   },
 ) {
   await assertNotMatched('receipt', id)
@@ -792,6 +801,7 @@ export async function updateReceiptVoucher(
       branchId: input.branchId ?? null,
       amount: input.amount,
       companyBankAccountId: input.companyBankAccountId ?? null,
+      note: input.note?.trim() || null,
     })
     .where(eq(receiptVouchers.id, id))
 }

@@ -570,6 +570,7 @@ export interface ReceiptExcelRow {
   amount: number
   bankName: string | null
   accountNumber: string | null
+  note?: string | null
 }
 
 export function downloadReceiptsExcel(
@@ -616,6 +617,7 @@ export function downloadReceiptsExcel(
               : r.accountNumber
             : '—',
       },
+      { header: 'Ghi Chú', width: 36, value: (r) => r.note || '—' },
     ],
   })
 }
@@ -663,7 +665,7 @@ export function downloadPaymentsExcel(
         value: (p) => p.amount,
       },
       {
-        header: 'Nội Dung',
+        header: 'Ghi Chú',
         width: 36,
         value: (p) => p.description || '—',
       },

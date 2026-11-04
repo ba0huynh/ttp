@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
@@ -123,6 +123,8 @@ export async function getPayablesSummary() {
       })
       .from(importBatches)
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
+      // A batch financed by a bank loan is owed to the bank, not to the supplier
+      .where(isNull(importBatches.loanContractId))
       .groupBy(importBatches.supplierId),
     db
       .select({

@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -9,6 +9,11 @@ import {
   bankStatementLines,
   bankStatements,
   banks,
+  batchExpenses,
+  importBatches,
+  salesOrderItems,
+  salesOrders,
+  vehicles,
   companyBankAccounts,
   customers,
   loanContracts,
@@ -212,6 +217,7 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
         customerId: receiptVouchers.customerId,
         customerName: customers.name,
         companyBankAccountId: receiptVouchers.companyBankAccountId,
+        note: receiptVouchers.note,
         branchId: receiptVouchers.branchId,
         branchName: posBranches.name,
         accountNumber: companyBankAccounts.accountNumber,
@@ -244,6 +250,7 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
       salesOrderId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
+      note: z.string().max(255, 'Ghi chú tối đa 255 ký tự').nullable().optional(),
       createStatementLine: z.boolean().optional(),
     }),
   )
@@ -252,9 +259,81 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
     return { id }
   })
 
+/** Confirmed sales orders behind one receivable row (customer + receiving entity) */
+export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
+  .middleware([requirePermission('finance.view')])
+  .validator(
+    z.object({
+      customerId: z.number().int(),
+      branchId: z.number().int().nullable(),
+    }),
+  )
+  .handler(async ({ data }) => {
+    const rows = await db
+      .select({
+        id: salesOrders.id,
+        orderDate: salesOrders.orderDate,
+        totalAmount: salesOrders.totalAmount,
+        vehicleCount: sql<number>`count(${salesOrderItems.id})`,
+      })
+      .from(salesOrders)
+      .leftJoin(
+        salesOrderItems,
+        eq(salesOrderItems.salesOrderId, salesOrders.id),
+      )
+      .where(
+        and(
+          eq(salesOrders.customerId, data.customerId),
+          eq(salesOrders.status, 'confirmed'),
+          data.branchId
+            ? eq(salesOrders.branchId, data.branchId)
+            : sql`${salesOrders.branchId} is null`,
+        ),
+      )
+      .groupBy(salesOrders.id, salesOrders.orderDate, salesOrders.totalAmount)
+      .orderBy(desc(salesOrders.orderDate), desc(salesOrders.id))
+    return rows.map((r) => ({
+      ...r,
+      totalAmount: num(r.totalAmount),
+      vehicleCount: Number(r.vehicleCount),
+    }))
+  })
+
 /* -------------------------------------------------------------------------- */
 /* 09. Accounts Payable (AP) & Payments                                       */
 /* -------------------------------------------------------------------------- */
+
+/** Import batches behind one payable row (one supplier) */
+export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
+  .middleware([requirePermission('finance.view')])
+  .validator(z.object({ supplierId: z.number().int() }))
+  .handler(async ({ data }) => {
+    const rows = await db
+      .select({
+        id: importBatches.id,
+        importDate: importBatches.importDate,
+        vehicleCount: sql<number>`count(${vehicles.id})`,
+        totalImport: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
+        totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
+      })
+      .from(importBatches)
+      .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
+      .where(
+        and(
+          eq(importBatches.supplierId, data.supplierId),
+          // Loan-financed batches are owed to the bank, not the supplier
+          isNull(importBatches.loanContractId),
+        ),
+      )
+      .groupBy(importBatches.id, importBatches.importDate)
+      .orderBy(desc(importBatches.importDate), desc(importBatches.id))
+    return rows.map((r) => ({
+      ...r,
+      vehicleCount: Number(r.vehicleCount),
+      totalImport: num(r.totalImport),
+      totalExpense: num(r.totalExpense),
+    }))
+  })
 
 export const getPayablesFn = createServerFn({ method: 'GET' })
   .middleware([requirePermission('finance.view')])
@@ -909,6 +988,7 @@ export const updateReceiptVoucherFn = createServerFn({ method: 'POST' })
       branchId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
+      note: z.string().max(255, 'Ghi chú tối đa 255 ký tự').nullable().optional(),
     }),
   )
   .handler(async ({ data: { id, ...v } }) => {

@@ -497,6 +497,7 @@ export const receiptVouchers = mysqlTable(
     }),
     amount: money('amount').notNull(),
     companyBankAccountId: int('company_bank_account_id'),
+    note: varchar('note', { length: 255 }),
     createdBy: int('created_by').references(() => users.id),
     ...timestamps,
   },

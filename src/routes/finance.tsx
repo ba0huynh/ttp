@@ -1,10 +1,18 @@
 import {
   useMutation,
+  useQuery,
   useQueryClient,
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Download, Loader2, Pencil, Plus, SlidersHorizontal } from 'lucide-react'
+import {
+  Download,
+  Eye,
+  Loader2,
+  Pencil,
+  Plus,
+  SlidersHorizontal,
+} from 'lucide-react'
 import { toast } from 'sonner'
 import * as React from 'react'
 import { z } from 'zod'
@@ -82,9 +90,159 @@ import {
   createReceiptVoucherFn,
   deletePaymentVoucherFn,
   deleteReceiptVoucherFn,
+  listReceivableOrdersFn,
+  listSupplierBatchesFn,
   updatePaymentVoucherFn,
   updateReceiptVoucherFn,
 } from '#/server/fns/finance.ts'
+
+type DebtView =
+  | {
+      kind: 'receivable'
+      customerId: number
+      branchId: number | null
+      title: string
+    }
+  | { kind: 'payable'; supplierId: number; title: string }
+
+/** Orders behind one debt row: sales orders (receivable) or import batches (payable) */
+function DebtOrdersDialog({
+  view,
+  onClose,
+}: {
+  view: DebtView | null
+  onClose: () => void
+}) {
+  const receivable = view?.kind === 'receivable' ? view : null
+  const payable = view?.kind === 'payable' ? view : null
+  const orders = useQuery({
+    queryKey: [
+      'finance',
+      'receivable-orders',
+      receivable?.customerId,
+      receivable?.branchId,
+    ],
+    queryFn: () =>
+      listReceivableOrdersFn({
+        data: {
+          customerId: receivable!.customerId,
+          branchId: receivable!.branchId,
+        },
+      }),
+    enabled: Boolean(receivable),
+  })
+  const batches = useQuery({
+    queryKey: ['finance', 'supplier-batches', payable?.supplierId],
+    queryFn: () =>
+      listSupplierBatchesFn({ data: { supplierId: payable!.supplierId } }),
+    enabled: Boolean(payable),
+  })
+  const active = receivable ? orders : batches
+  const rowCount = (receivable ? orders.data : batches.data)?.length ?? 0
+
+  return (
+    <Dialog open={Boolean(view)} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-base font-bold text-slate-900">
+            {receivable ? 'Các Đơn Bán Xe' : 'Các Đơn Nhập Lô'}
+          </DialogTitle>
+          <DialogDescription className="text-xs">
+            {view?.title}
+          </DialogDescription>
+        </DialogHeader>
+
+        {active.isLoading ? (
+          <div className="flex items-center justify-center gap-2 py-8 text-sm text-slate-500">
+            <Loader2 className="size-4 animate-spin" /> Đang tải...
+          </div>
+        ) : active.isError ? (
+          <p className="py-6 text-center text-sm text-rose-600">
+            Không tải được danh sách
+          </p>
+        ) : rowCount === 0 ? (
+          <p className="py-6 text-center text-sm text-slate-500">
+            Chưa có đơn nào
+          </p>
+        ) : (
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="text-xs bg-slate-50">
+                  <TableHead className="w-12 text-center">STT</TableHead>
+                  <TableHead>{receivable ? 'Ngày Bán' : 'Ngày Nhập'}</TableHead>
+                  <TableHead className="text-right">Số Xe</TableHead>
+                  <TableHead className="text-right">
+                    {receivable ? 'Tổng Tiền Đã VAT' : 'Tiền Hàng'}
+                  </TableHead>
+                  {payable && (
+                    <TableHead className="text-right">Chi Phí Lô</TableHead>
+                  )}
+                </TableRow>
+              </TableHeader>
+              <TableBody className="text-xs">
+                {receivable
+                  ? (orders.data ?? []).map((o, i) => (
+                      <TableRow key={o.id}>
+                        <TableCell className="text-center text-muted-foreground">
+                          {i + 1}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            to="/sales/$orderId"
+                            params={{ orderId: String(o.id) }}
+                            className="font-medium text-emerald-700 hover:underline"
+                          >
+                            {formatDate(o.orderDate)}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900">
+                          {o.vehicleCount}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-slate-900">
+                          {formatVnd(o.totalAmount)}
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  : (batches.data ?? []).map((b, i) => (
+                      <TableRow key={b.id}>
+                        <TableCell className="text-center text-muted-foreground">
+                          {i + 1}
+                        </TableCell>
+                        <TableCell>
+                          <Link
+                            to="/batches/$batchId"
+                            params={{ batchId: String(b.id) }}
+                            className="font-medium text-emerald-700 hover:underline"
+                          >
+                            Lô {formatDate(b.importDate)}
+                          </Link>
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900">
+                          {b.vehicleCount}
+                        </TableCell>
+                        <TableCell className="text-right font-medium text-slate-900">
+                          {formatVnd(b.totalImport)}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-500">
+                          {formatVnd(b.totalExpense)}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+              </TableBody>
+            </Table>
+          </div>
+        )}
+
+        <DialogFooter>
+          <Button type="button" variant="outline" size="sm" onClick={onClose}>
+            Đóng
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  )
+}
 
 const DIRECT_BRANCH = 'none'
 const NO_ACCOUNT = 'none'
@@ -385,6 +543,8 @@ function FinancePage() {
   )
   const [receiptAmount, setReceiptAmount] = React.useState(50_000_000)
   const [receiptStatement, setReceiptStatement] = React.useState(false)
+  const [receiptNote, setReceiptNote] = React.useState('')
+  const [debtView, setDebtView] = React.useState<DebtView | null>(null)
   const [receiptAccountId, setReceiptAccountId] = React.useState<number | null>(
     master.bankAccounts.find((a) => a.isActive)?.id ?? null,
   )
@@ -438,6 +598,7 @@ function FinancePage() {
     setReceiptBranchId(r.branchId)
     setReceiptAmount(r.amount)
     setReceiptAccountId(r.companyBankAccountId)
+    setReceiptNote(r.note ?? '')
     setReceiptOpen(true)
   }
   const openEditPayment = (p: (typeof payments)[number]) => {
@@ -492,6 +653,7 @@ function FinancePage() {
         branchId: receiptBranchId,
         amount: receiptAmount,
         companyBankAccountId: receiptAccountId,
+        note: receiptNote.trim() || null,
         createStatementLine:
           !editReceiptId && !!receiptAccountId && receiptStatement,
       })
@@ -543,6 +705,7 @@ function FinancePage() {
                 size="sm"
                 onClick={() => {
                   setEditReceiptId(null)
+                  setReceiptNote('')
                   setReceiptOpen(true)
                 }}
                 className="bg-emerald-700 hover:bg-emerald-800 text-white gap-1.5 shadow-xs"
@@ -555,6 +718,7 @@ function FinancePage() {
                 variant="outline"
                 onClick={() => {
                   setEditPaymentId(null)
+                  setPaymentDesc('')
                   setPaymentOpen(true)
                 }}
                 className="border-slate-300 text-slate-800 gap-1.5 shadow-xs"
@@ -652,6 +816,7 @@ function FinancePage() {
                       <TableHead className="text-right">
                         Dư Nợ Còn Lại
                       </TableHead>
+                      <TableHead className="w-20 text-center">Đơn bán</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -679,6 +844,25 @@ function FinancePage() {
                         </TableCell>
                         <TableCell className="text-right text-rose-900">
                           {formatVnd(r.balance)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setDebtView({
+                                kind: 'receivable',
+                                customerId: r.customerId,
+                                branchId: r.branchId,
+                                title: `${r.customerName}${r.branchId ? ` · ${r.entityName}` : ' · Trực tiếp'}`,
+                              })
+                            }
+                            className="size-7 text-slate-400 hover:text-emerald-700"
+                            aria-label="Xem các đơn bán"
+                            title="Xem các đơn bán"
+                          >
+                            <Eye className="size-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -710,6 +894,7 @@ function FinancePage() {
                         Đã Thanh Toán
                       </TableHead>
                       <TableHead className="text-right">Còn Nợ NCC</TableHead>
+                      <TableHead className="w-20 text-center">Đơn nhập</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
@@ -732,6 +917,24 @@ function FinancePage() {
                         </TableCell>
                         <TableCell className="text-right text-rose-900">
                           {formatVnd(p.balance)}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() =>
+                              setDebtView({
+                                kind: 'payable',
+                                supplierId: p.supplierId,
+                                title: p.supplierName,
+                              })
+                            }
+                            className="size-7 text-slate-400 hover:text-emerald-700"
+                            aria-label="Xem các đơn nhập lô"
+                            title="Xem các đơn nhập lô"
+                          >
+                            <Eye className="size-4" />
+                          </Button>
                         </TableCell>
                       </TableRow>
                     ))}
@@ -760,6 +963,7 @@ function FinancePage() {
                       <TableHead>Điểm Bán Thanh Toán</TableHead>
                       <TableHead className="text-right">Số Tiền Thu</TableHead>
                       <TableHead>Tài Khoản Nhận</TableHead>
+                      <TableHead>Ghi Chú</TableHead>
                       <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -796,6 +1000,12 @@ function FinancePage() {
                           ) : (
                             '—'
                           )}
+                        </TableCell>
+                        <TableCell
+                          className="max-w-[200px] truncate text-slate-500"
+                          title={r.note ?? undefined}
+                        >
+                          {r.note || '—'}
                         </TableCell>
                         <TableCell>
                           <Can permission="finance.manage">
@@ -855,7 +1065,7 @@ function FinancePage() {
                       <TableHead>Ngày Chi</TableHead>
                       <TableHead>Đối Tượng Nhận</TableHead>
                       <TableHead className="text-right">Số Tiền Chi</TableHead>
-                      <TableHead>Nội Dung</TableHead>
+                      <TableHead>Ghi Chú</TableHead>
                       <TableHead className="w-24"></TableHead>
                     </TableRow>
                   </TableHeader>
@@ -1290,6 +1500,8 @@ function FinancePage() {
         </Dialog>
 
         {/* Create Receipt Voucher Modal */}
+        <DebtOrdersDialog view={debtView} onClose={() => setDebtView(null)} />
+
         <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader>
@@ -1403,6 +1615,18 @@ function FinancePage() {
                 </div>
               </div>
 
+              <div className="space-y-1">
+                <Label className="text-xs font-semibold">Ghi Chú</Label>
+                <Textarea
+                  value={receiptNote}
+                  onChange={(e) => setReceiptNote(e.target.value)}
+                  placeholder="Không bắt buộc"
+                  maxLength={255}
+                  rows={2}
+                  className="min-h-16 text-sm px-4 rounded-lg"
+                />
+              </div>
+
               <DialogFooter className="pt-2">
                 <Button
                   type="button"
@@ -1509,11 +1733,11 @@ function FinancePage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">Nội Dung Chi</Label>
+                <Label className="text-xs font-semibold">Ghi Chú</Label>
                 <Textarea
                   value={paymentDesc}
                   onChange={(e) => setPaymentDesc(e.target.value)}
-                  placeholder="Thanh toán đợt 1 tiền hàng..."
+                  placeholder="Không bắt buộc"
                   maxLength={255}
                   rows={2}
                   className="h-11 min-h-16 text-sm px-4 rounded-lg"

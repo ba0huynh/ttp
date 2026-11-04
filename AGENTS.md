@@ -2324,6 +2324,19 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - MR !4 conflicted only in `AGENTS.md`: the sales feature branch and `develop` both appended different lessons numbered 176 and 177 after Lesson 175 and updated the same next-lesson marker.
 - Merge the latest `develop` into the feature branch, retain both lesson sets, and renumber the feature lessons after the existing target-branch lessons. Keep a single next-lesson marker. The sales route merges automatically, retaining the invoice filter, Excel export, and accent-insensitive search.
 
+### Lesson 204: Debt Row Eye Button (Orders Behind a Debt) and Voucher Notes on `/finance`
+
+- **Client request**: on the "Công nợ phải thu" and "Công nợ phải trả" tabs, each row gets an eye button at the end that lists the orders behind that debt; receipt and payment vouchers get an optional "Ghi chú" box.
+- **Eye button** (`DebtOrdersDialog` in `src/routes/finance.tsx`): payables list the supplier's import batches (date, vehicle count, VAT-inclusive goods total, batch expenses; each links to `/batches/$batchId`) through `listSupplierBatchesFn`; receivables list the confirmed sales orders of that customer + receiving entity (`branchId` null = "Trực tiếp"; each links to `/sales/$orderId`) through `listReceivableOrdersFn`. Both need only `finance.view`, so a finance user who cannot open `/batches` still sees the list (the links need the target page's own permission). The Excel exports skip the eye column (it is an action column).
+- **Notes**: `receipt_vouchers.note` varchar(255), nullable (migration `0051_receipt_note.sql`; **apply with `npm run migration:run`** or the receipt list fails). Payment vouchers already had `description`; only its label changed ("Nội Dung Chi"/"Nội Dung" -> "Ghi Chú"). Both are optional; the receipt list and the receipts / payments Excel exports gained/renamed the "Ghi Chú" column. This re-adds the note Lesson 32 removed from receipts.
+- Opening "Lập Phiếu Thu" / "Lập Phiếu Chi" now clears the note box so an edited voucher's note never leaks into a new one.
+
+### Lesson 205: Loan-Financed Batches Are Not a Supplier Debt
+
+- **Client rule**: a batch with a loan contract selected is paid by the bank, so it adds nothing to what we owe the supplier. Only batches with **no loan** (`import_batches.loan_contract_id IS NULL`) count toward "Công nợ phải trả" (the "Không vay" option in `LoanSelect`).
+- **Applied in 3 places that must stay equal**: `getPayablesSummary` (`reports.ts`: payables tab, dashboard, reports), `assertPaymentWithinDebt` (`services/finance.ts`: blocks a payment voucher above the remaining debt) and `listSupplierBatchesFn` (`fns/finance.ts`: the eye-button list on the payables tab). Change one and you must change the others. Batch lists, inventory value and "Tiền hàng" are unchanged (the goods are still ours).
+- **Effect on existing data**: changing a batch's loan in the batch editor immediately changes the supplier's debt; payments already recorded stay, so a supplier can show a negative balance (overpaid) if their batches were later linked to a loan.
+
 _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 
