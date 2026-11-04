@@ -686,7 +686,6 @@ function InventoryPage() {
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
 <TableHead className="w-12 text-center">STT</TableHead>
-                    <TableHead className="w-16">ID</TableHead>
                     <TableHead className="w-[180px]">Số Khung</TableHead>
                     <TableHead>Số Máy</TableHead>
                     <TableHead>Dòng xe / Màu</TableHead>
@@ -716,9 +715,6 @@ function InventoryPage() {
                     vehiclesPg.pageItems.map((v, rowIdx) => (
                       <TableRow key={v.id} className="hover:bg-slate-50/80">
 <TableCell className="text-center text-muted-foreground">{vehiclesPg.pageSize * (vehiclesPg.page - 1) + rowIdx + 1}</TableCell>
-                        <TableCell className="text-slate-500">
-                          {v.id}
-                        </TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {v.chassisNumber}
                         </TableCell>
