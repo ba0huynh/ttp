@@ -412,6 +412,7 @@ function LoansPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
+<TableHead className="w-12 text-center">STT</TableHead>
                     {sortHead('contract', 'Số Khế Ước', '')}
                     {sortHead('bank', 'Ngân Hàng', '')}
                     {sortHead('rate', 'Lãi Suất', 'text-center')}
@@ -422,8 +423,9 @@ function LoansPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {loansPg.pageItems.map((l) => (
+                  {loansPg.pageItems.map((l, rowIdx) => (
                     <TableRow key={l.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{loansPg.pageSize * (loansPg.page - 1) + rowIdx + 1}</TableCell>
                       <TableCell className="font-medium text-purple-900">
                         <Link
                           to="/loans/$loanId"

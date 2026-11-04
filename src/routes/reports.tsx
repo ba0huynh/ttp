@@ -206,6 +206,7 @@ function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead>Khách Hàng</TableHead>
                     <TableHead className="text-center">Số Xe</TableHead>
                     <TableHead className="text-right">Doanh Thu</TableHead>
@@ -213,11 +214,12 @@ function ReportsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {customerRevenuePg.pageItems.map((c) => (
+                  {customerRevenuePg.pageItems.map((c, rowIdx) => (
                     <TableRow
                       key={c.customerId}
                       className="hover:bg-slate-50/80"
                     >
+<TableCell className="text-center text-muted-foreground">{customerRevenuePg.pageSize * (customerRevenuePg.page - 1) + rowIdx + 1}</TableCell>
                       <TableCell className="font-medium text-slate-900">
                         <Link
                           to="/customers/$customerId"
@@ -259,6 +261,7 @@ function ReportsPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead>Dòng Xe</TableHead>
                     <TableHead className="text-center">Đã Bán</TableHead>
                     <TableHead className="text-right">Doanh Thu</TableHead>
@@ -268,6 +271,7 @@ function ReportsPage() {
                 <TableBody className="text-xs">
                   {modelRevenuePg.pageItems.map((m, idx) => (
                     <TableRow key={idx} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{modelRevenuePg.pageSize * (modelRevenuePg.page - 1) + idx + 1}</TableCell>
                       <TableCell className="font-medium text-slate-900">
                         {m.modelName}
                       </TableCell>
@@ -304,6 +308,7 @@ function ReportsPage() {
             <Table>
               <TableHeader>
                 <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                   <TableHead>Khoản Mục Chi Phí</TableHead>
                   <TableHead className="text-right">
                     Tổng Số Tiền Đã Chi
@@ -324,6 +329,7 @@ function ReportsPage() {
                         : '0'
                     return (
                       <TableRow key={idx}>
+<TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {e.expenseTypeName}
                         </TableCell>

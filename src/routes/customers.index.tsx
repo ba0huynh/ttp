@@ -342,6 +342,7 @@ function CustomersPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
+<TableHead className="w-12 text-center">STT</TableHead>
                     {sortHead('name', 'Tên Khách Hàng', '')}
                     {sortHead('branches', 'Số Điểm Bán', 'text-center')}
                     {sortHead('balance', 'Còn Nợ', 'text-right')}
@@ -349,8 +350,9 @@ function CustomersPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {customersPg.pageItems.map((c) => (
+                  {customersPg.pageItems.map((c, rowIdx) => (
                     <TableRow key={c.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{customersPg.pageSize * (customersPg.page - 1) + rowIdx + 1}</TableCell>
                       <TableCell>
                         <div className="font-medium text-slate-900">
                           {c.name}

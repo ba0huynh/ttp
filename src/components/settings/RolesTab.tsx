@@ -174,6 +174,7 @@ export function RolesTab({
           <Table>
             <TableHeader>
               <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                 <TableHead className="w-48">Tên Vai Trò</TableHead>
                 <TableHead>Mô Tả</TableHead>
                 <TableHead className="w-28 text-center">Quyền</TableHead>
@@ -185,15 +186,16 @@ export function RolesTab({
               {roles.length === 0 && (
                 <TableRow>
                   <TableCell
-                    colSpan={5}
+                    colSpan={6}
                     className="py-8 text-center text-slate-500"
                   >
                     Không tìm thấy vai trò nào
                   </TableCell>
                 </TableRow>
               )}
-              {roles.map((r) => (
+              {roles.map((r, rowIdx) => (
                 <TableRow key={r.id}>
+<TableCell className="text-center text-muted-foreground">{rowIdx + 1}</TableCell>
                   <TableCell className="font-medium text-slate-900 max-w-xs">
                     <div className="truncate" title={r.name}>
                       {r.name}

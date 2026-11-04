@@ -598,6 +598,7 @@ function FinancePage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Khách Hàng</TableHead>
                       <TableHead>Pháp Nhân Điểm Bán Chịu Nợ</TableHead>
                       <TableHead className="text-right">Tổng Mua Xe</TableHead>
@@ -612,6 +613,7 @@ function FinancePage() {
                   <TableBody className="text-xs">
                     {receivablesPg.pageItems.map((r, idx) => (
                       <TableRow key={idx} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{receivablesPg.pageSize * (receivablesPg.page - 1) + idx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900">
                           <Link
                             to="/customers/$customerId"
@@ -655,6 +657,7 @@ function FinancePage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Nhà Cung Cấp</TableHead>
                       <TableHead className="text-right">
                         Tổng Tiền Hàng
@@ -666,11 +669,12 @@ function FinancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {payablesPg.pageItems.map((p) => (
+                    {payablesPg.pageItems.map((p, rowIdx) => (
                       <TableRow
                         key={p.supplierId}
                         className="hover:bg-slate-50/80"
                       >
+<TableCell className="text-center text-muted-foreground">{payablesPg.pageSize * (payablesPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900">
                           <SupplierLink supplierId={p.supplierId} className="hover:text-emerald-700 hover:underline">
                             {p.supplierName}
@@ -706,6 +710,7 @@ function FinancePage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Ngày Thu</TableHead>
                       <TableHead>Khách Hàng</TableHead>
                       <TableHead>Điểm Bán Thanh Toán</TableHead>
@@ -715,8 +720,9 @@ function FinancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {receiptsPg.pageItems.map((r) => (
+                    {receiptsPg.pageItems.map((r, rowIdx) => (
                       <TableRow key={r.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{receiptsPg.pageSize * (receiptsPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="text-slate-500">
                           {formatDate(r.receiptDate)}
                         </TableCell>
@@ -801,6 +807,7 @@ function FinancePage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Ngày Chi</TableHead>
                       <TableHead>Đối Tượng Nhận</TableHead>
                       <TableHead className="text-right">Số Tiền Chi</TableHead>
@@ -809,8 +816,9 @@ function FinancePage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {paymentsPg.pageItems.map((p) => (
+                    {paymentsPg.pageItems.map((p, rowIdx) => (
                       <TableRow key={p.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{paymentsPg.pageSize * (paymentsPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="text-slate-500">
                           {formatDate(p.paymentDate)}
                         </TableCell>

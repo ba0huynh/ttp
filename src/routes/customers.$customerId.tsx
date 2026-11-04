@@ -226,6 +226,7 @@ function CustomerDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+<TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead>Tên Điểm Bán</TableHead>
                     <TableHead>Địa Chỉ</TableHead>
                     <TableHead className="w-24"></TableHead>
@@ -235,7 +236,7 @@ function CustomerDetailPage() {
                   {branches.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={3}
+                        colSpan={4}
                         className="text-center py-6 text-slate-500"
                       >
                         Chưa có điểm bán. Đơn hàng sẽ ghi trực tiếp cho khách
@@ -243,8 +244,9 @@ function CustomerDetailPage() {
                       </TableCell>
                     </TableRow>
                   ) : (
-                    branchesPg.pageItems.map((b) => (
+                    branchesPg.pageItems.map((b, rowIdx) => (
                       <TableRow key={b.id}>
+<TableCell className="text-center text-muted-foreground">{branchesPg.pageSize * (branchesPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {b.name}
                         </TableCell>
@@ -300,6 +302,7 @@ function CustomerDetailPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+<TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead>Điểm Bán</TableHead>
                     <TableHead className="text-right">Tổng Mua Xe</TableHead>
                     <TableHead className="text-right">Đã Thanh Toán</TableHead>
@@ -310,7 +313,7 @@ function CustomerDetailPage() {
                   {receivables.length === 0 ? (
                     <TableRow>
                       <TableCell
-                        colSpan={4}
+                        colSpan={5}
                         className="text-center py-6 text-slate-500"
                       >
                         Chưa có phát sinh công nợ mua xe.
@@ -319,6 +322,7 @@ function CustomerDetailPage() {
                   ) : (
                     receivablesPg.pageItems.map((r, idx) => (
                       <TableRow key={idx}>
+<TableCell className="text-center text-muted-foreground">{receivablesPg.pageSize * (receivablesPg.page - 1) + idx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {r.entityName}
                         </TableCell>

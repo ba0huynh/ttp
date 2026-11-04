@@ -383,6 +383,7 @@ function SalesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
+<TableHead className="w-12 text-center">STT</TableHead>
                     {sortHead('date', 'Ngày Bán', '')}
                     {sortHead('customer', 'Khách Hàng', '')}
                     {sortHead('branch', 'Điểm Bán Nhận Xe', '')}
@@ -398,8 +399,9 @@ function SalesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {ordersPg.pageItems.map((o) => (
+                  {ordersPg.pageItems.map((o, rowIdx) => (
                     <TableRow key={o.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{ordersPg.pageSize * (ordersPg.page - 1) + rowIdx + 1}</TableCell>
                       <TableCell className="text-slate-500">
                         {formatDate(o.orderDate)}
                       </TableCell>

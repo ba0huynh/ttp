@@ -248,7 +248,7 @@ export function ImportStatementDialog({
               <Table>
                 <TableHeader className="sticky top-0 z-10">
                   <TableRow className="text-xs">
-                    <TableHead className="w-10 text-center">#</TableHead>
+                    <TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead className="w-44">Ngày GD</TableHead>
                     <TableHead>Nội dung</TableHead>
                     <TableHead className="w-44 text-right">

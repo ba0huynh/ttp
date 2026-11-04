@@ -663,6 +663,7 @@ function ReconcilePage() {
               <Table className="table-fixed min-w-[1080px]">
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
+<TableHead className="w-12 text-center">STT</TableHead>
                     <TableHead className="w-24">Ngày GD</TableHead>
                     <TableHead className="w-44">Tài Khoản</TableHead>
                     <TableHead>Nội Dung Diễn Giải</TableHead>
@@ -681,10 +682,11 @@ function ReconcilePage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {linesPg.pageItems.map((l: any) => {
+                  {linesPg.pageItems.map((l: any, rowIdx) => {
                     const isMatched = l.status === 'matched'
                     return (
                       <TableRow key={l.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{linesPg.pageSize * (linesPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="text-slate-500">
                           {formatDate(l.transactionDate)}
                         </TableCell>

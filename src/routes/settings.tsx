@@ -611,6 +611,7 @@ function SettingsPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                         <TableHead>Tên Đăng Nhập</TableHead>
                         <TableHead>Họ Và Tên</TableHead>
                         <TableHead>Email</TableHead>
@@ -625,15 +626,16 @@ function SettingsPage() {
                       {usersPg.total === 0 && (
                         <TableRow>
                           <TableCell
-                            colSpan={6}
+                            colSpan={7}
                             className="py-8 text-center text-slate-500"
                           >
                             Không tìm thấy người dùng nào
                           </TableCell>
                         </TableRow>
                       )}
-                      {usersPg.pageItems.map((u: any) => (
+                      {usersPg.pageItems.map((u: any, rowIdx) => (
                         <TableRow key={u.id}>
+<TableCell className="text-center text-muted-foreground">{usersPg.pageSize * (usersPg.page - 1) + rowIdx + 1}</TableCell>
                           <TableCell className="font-medium text-slate-900">
                             {u.username}
                           </TableCell>

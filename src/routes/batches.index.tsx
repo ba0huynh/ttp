@@ -349,6 +349,7 @@ function BatchesPage() {
               <Table>
                 <TableHeader>
                   <TableRow className="text-xs bg-slate-50/70">
+<TableHead className="w-12 text-center">STT</TableHead>
                     {sortHead('date', 'Ngày Nhập', '')}
                     {sortHead('supplier', 'Nhà Cung Cấp', '')}
                     {sortHead('loan', 'Khế Ước Vay', '')}
@@ -363,8 +364,9 @@ function BatchesPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {batchesPg.pageItems.map((b) => (
+                  {batchesPg.pageItems.map((b, rowIdx) => (
                     <TableRow key={b.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{batchesPg.pageSize * (batchesPg.page - 1) + rowIdx + 1}</TableCell>
                       <TableCell className="text-slate-500">
                         {formatDate(b.importDate)}
                       </TableCell>

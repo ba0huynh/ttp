@@ -2339,3 +2339,10 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 
 
+
+
+### Lesson 202: STT (Row Number) Column on Every Table
+
+- **Rule**: Every list table has a first column headed `STT` (`<TableHead className="w-12 text-center">STT</TableHead>`) with a `text-center text-muted-foreground` cell.
+- **Pagination**: For paginated tables the number continues across pages: `pg.pageSize * (pg.page - 1) + idx + 1`. Non-paginated tables use `idx + 1`.
+- **Gotcha**: When adding a column, also bump `colSpan` on empty-state / inline edit rows (e.g. `renderEditingRow` in `loans.$loanId.tsx`).

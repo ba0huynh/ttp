@@ -952,6 +952,7 @@ function SalesOrderPage() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12 text-center">STT</TableHead>
                     {selectMode && (
                       <TableHead className="w-10 text-center">
                         <Checkbox
@@ -981,7 +982,7 @@ function SalesOrderPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody className="text-xs">
-                  {itemsPg.pageItems.map((i) => {
+                  {itemsPg.pageItems.map((i, rowIdx) => {
                     const isSelected = selectedForDelivery.includes(i.vehicleId)
                     return (
                       <TableRow
@@ -999,6 +1000,9 @@ function SalesOrderPage() {
                           }
                         }}
                       >
+                        <TableCell className="text-center text-muted-foreground">
+                          {itemsPg.pageSize * (itemsPg.page - 1) + rowIdx + 1}
+                        </TableCell>
                         {selectMode && (
                           <TableCell
                             className="text-center"
@@ -1186,7 +1190,7 @@ function SalesOrderPage() {
                   {filteredItems.length === 0 && (
                     <TableRow>
                       <TableCell
-                        colSpan={8}
+                        colSpan={9}
                         className="py-10 text-center text-xs text-slate-400 italic"
                       >
                         {selectMode

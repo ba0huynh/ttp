@@ -379,13 +379,16 @@ function LoanDetailPage() {
     editingRepaymentId !== null &&
     rDraft.principalAmount > maxPrincipalAllowed + 0.5
 
-  const renderEditingRow = (key: string | number) => {
+  const renderEditingRow = (key: string | number, rowNo: number | string) => {
     return (
       <TableRow
         key={key}
         className="bg-purple-50/50 border-y border-purple-300"
         onKeyDown={handleRepaymentKeyDown}
       >
+        <TableCell className="text-center text-muted-foreground">
+          {rowNo}
+        </TableCell>
         <TableCell className="p-2 align-middle">
           <Input
             type="date"
@@ -550,6 +553,7 @@ function LoanDetailPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Ngày</TableHead>
                       <TableHead className="text-right">Gốc Đã Trả</TableHead>
                       <TableHead className="text-right">
@@ -560,8 +564,9 @@ function LoanDetailPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {dailyPg.pageItems.map((d) => (
+                    {dailyPg.pageItems.map((d, rowIdx) => (
                       <TableRow key={d.date}>
+<TableCell className="text-center text-muted-foreground">{dailyPg.pageSize * (dailyPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell>{formatDate(d.date)}</TableCell>
                         <TableCell className="text-right text-emerald-800 font-medium">
                           {formatVnd(loan.principalAmount - d.outstanding)}
@@ -580,7 +585,7 @@ function LoanDetailPage() {
                     {dailyRows.length === 0 && (
                       <TableRow>
                         <TableCell
-                          colSpan={5}
+                          colSpan={6}
                           className="py-6 text-center text-slate-400 italic"
                         >
                           Chưa phát sinh ngày tính lãi nào.
@@ -703,6 +708,7 @@ function LoanDetailPage() {
                   <Table>
                     <TableHeader>
                       <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                         <TableHead className="w-[160px]">Ngày Trả</TableHead>
                         <TableHead className="w-[170px] text-right">
                           Tiền Gốc
@@ -720,11 +726,16 @@ function LoanDetailPage() {
                       </TableRow>
                     </TableHeader>
                     <TableBody className="text-xs">
-                      {editingRepaymentId === 'new' && renderEditingRow('new')}
-                      {repaymentsPg.pageItems.map((r: any) => {
+                      {editingRepaymentId === 'new' && renderEditingRow('new', '+')}
+                      {repaymentsPg.pageItems.map((r: any, rowIdx) => {
                         const isEditing = editingRepaymentId === r.id
                         if (isEditing) {
-                          return renderEditingRow(r.id)
+                          return renderEditingRow(
+                            r.id,
+                            repaymentsPg.pageSize * (repaymentsPg.page - 1) +
+                              rowIdx +
+                              1,
+                          )
                         }
 
                         return (
@@ -744,6 +755,7 @@ function LoanDetailPage() {
                               }
                             }}
                           >
+<TableCell className="text-center text-muted-foreground">{repaymentsPg.pageSize * (repaymentsPg.page - 1) + rowIdx + 1}</TableCell>
                             <TableCell className="font-medium text-slate-900">
                               {formatDate(r.paymentDate)}
                             </TableCell>

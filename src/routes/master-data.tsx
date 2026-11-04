@@ -627,13 +627,15 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Dòng Xe</TableHead>
                       <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {modelsPg.pageItems.map((m) => (
+                    {modelsPg.pageItems.map((m, rowIdx) => (
                       <TableRow key={m.id}>
+<TableCell className="text-center text-muted-foreground">{modelsPg.pageSize * (modelsPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900 max-w-xl">
                           <div className="truncate" title={m.name}>
                             {m.name}
@@ -717,13 +719,15 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Tên Loại Chi Phí</TableHead>
                       <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {expenseTypesPg.pageItems.map((m) => (
+                    {expenseTypesPg.pageItems.map((m, rowIdx) => (
                       <TableRow key={m.id}>
+<TableCell className="text-center text-muted-foreground">{expenseTypesPg.pageSize * (expenseTypesPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900 max-w-xl">
                           <div className="truncate" title={m.name}>
                             {m.name}
@@ -806,13 +810,15 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Tên Công Ty Cung Cấp</TableHead>
                       <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {suppliersPg.pageItems.map((s) => (
+                    {suppliersPg.pageItems.map((s, rowIdx) => (
                       <TableRow key={s.id}>
+<TableCell className="text-center text-muted-foreground">{suppliersPg.pageSize * (suppliersPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900 max-w-xl">
                           <SupplierLink
                             supplierId={s.id}
@@ -900,13 +906,15 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Tên Ngân Hàng</TableHead>
                       <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {banksPg.pageItems.map((b) => (
+                    {banksPg.pageItems.map((b, rowIdx) => (
                       <TableRow key={b.id}>
+<TableCell className="text-center text-muted-foreground">{banksPg.pageSize * (banksPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900 max-w-xl">
                           <div className="max-w-xl truncate" title={b.name}>
                             <BankLabel image={b.image} name={b.name}>
@@ -986,6 +994,7 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead className="w-52">Tên Tài Khoản</TableHead>
                       <TableHead className="w-64">Ngân Hàng</TableHead>
                       <TableHead className="w-36">Số Tài Khoản</TableHead>
@@ -995,8 +1004,9 @@ function MasterDataPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {accountsPg.pageItems.map((a) => (
+                    {accountsPg.pageItems.map((a, rowIdx) => (
                       <TableRow key={a.id}>
+<TableCell className="text-center text-muted-foreground">{accountsPg.pageSize * (accountsPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900 max-w-[210px]">
                           <div className="truncate" title={a.accountName}>
                             {a.accountName}
@@ -1105,13 +1115,15 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Tên Màu Sắc</TableHead>
                       <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {colorsPg.pageItems.map((c) => (
+                    {colorsPg.pageItems.map((c, rowIdx) => (
                       <TableRow key={c.id}>
+<TableCell className="text-center text-muted-foreground">{colorsPg.pageSize * (colorsPg.page - 1) + rowIdx + 1}</TableCell>
                         <TableCell className="max-w-xl">
                           <div className="font-medium text-slate-900 truncate" title={c.name}>
                             {c.name}

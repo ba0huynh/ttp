@@ -491,6 +491,7 @@ function NewSalesOrderPage() {
                     <Table>
                       <TableHeader>
                         <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                           <TableHead>Số Khung</TableHead>
                           <TableHead>Dòng xe / Màu</TableHead>
                           <TableHead className="text-right">Giá Vốn</TableHead>
@@ -509,6 +510,7 @@ function NewSalesOrderPage() {
                       <TableBody className="text-xs">
                         {selectedItems.map((item, idx) => (
                           <TableRow key={item.vehicleId}>
+<TableCell className="text-center text-muted-foreground">{idx + 1}</TableCell>
                             <TableCell className="font-medium text-slate-900">
                               {item.chassisNumber}
                             </TableCell>
@@ -725,6 +727,7 @@ function NewSalesOrderPage() {
                 <Table>
                   <TableHeader className="sticky top-0 bg-slate-50 z-10 shadow-xs">
                     <TableRow className="text-xs bg-slate-50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead className="w-10">
                         <Checkbox
                           checked={
@@ -745,7 +748,7 @@ function NewSalesOrderPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {pickerPg.pageItems.map((v) => {
+                    {pickerPg.pageItems.map((v, rowIdx) => {
                       const checked = tempChecked.has(v.id)
                       return (
                         <TableRow
@@ -753,6 +756,7 @@ function NewSalesOrderPage() {
                           className={`cursor-pointer ${checked ? 'bg-emerald-50/60' : 'hover:bg-slate-50'}`}
                           onClick={() => toggleCheck(v.id)}
                         >
+<TableCell className="text-center text-muted-foreground">{pickerPg.pageSize * (pickerPg.page - 1) + rowIdx + 1}</TableCell>
                           <TableCell onClick={(e) => e.stopPropagation()}>
                             <Checkbox
                               checked={checked}
@@ -782,7 +786,7 @@ function NewSalesOrderPage() {
                     {filteredAvailableVehicles.length === 0 && (
                       <TableRow>
                         <TableCell
-                          colSpan={5}
+                          colSpan={6}
                           className="py-8 text-center text-xs text-slate-400 italic"
                         >
                           {pickerSearch

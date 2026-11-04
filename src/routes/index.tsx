@@ -184,6 +184,7 @@ function DashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50/50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Số Khung</TableHead>
                       <TableHead>Dòng xe / Màu</TableHead>
                       <TableHead className="text-right">Giá Vốn</TableHead>
@@ -192,8 +193,9 @@ function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {recentVehicles.slice(0, 6).map((v) => (
+                    {recentVehicles.slice(0, 6).map((v, rowIdx) => (
                       <TableRow key={v.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{rowIdx + 1}</TableCell>
                         <TableCell className="font-medium text-slate-900">
                           {v.chassisNumber}
                         </TableCell>
@@ -257,6 +259,7 @@ function DashboardPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50/50">
+<TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Ngày Bán</TableHead>
                       <TableHead>Khách Hàng & Điểm Bán</TableHead>
                       <TableHead className="text-right">Tổng Tiền Đã VAT</TableHead>
@@ -265,8 +268,9 @@ function DashboardPage() {
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
-                    {orders.slice(0, 6).map((o) => (
+                    {orders.slice(0, 6).map((o, rowIdx) => (
                       <TableRow key={o.id} className="hover:bg-slate-50/80">
+<TableCell className="text-center text-muted-foreground">{rowIdx + 1}</TableCell>
                         <TableCell>
                           <Link
                             to="/sales/$orderId"

@@ -468,14 +468,14 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
           <Table>
             <TableHeader>
               <TableRow className="text-xs bg-slate-50">
-                <TableHead className="w-[240px]">Loại Chi Phí</TableHead>
+                <TableHead className="w-12 text-center">STT</TableHead><TableHead className="w-[240px]">Loại Chi Phí</TableHead>
                 <TableHead>Diễn Giải</TableHead>
                 <TableHead className="w-[180px] text-right">Số Tiền</TableHead>
                 <TableHead className="w-[90px] text-right" />
               </TableRow>
             </TableHeader>
             <TableBody className="text-xs">
-              {detail.expenses.map((e) => {
+              {detail.expenses.map((e, expIdx) => {
                 const isEditing = editingExpenseId === e.id
                 if (isEditing) {
                   return (
@@ -484,6 +484,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
                       className="bg-emerald-50/40 border-y border-emerald-200"
                       onKeyDown={handleExpenseKeyDown}
                     >
+<TableCell className="text-center text-muted-foreground">{expIdx + 1}</TableCell>
                       <TableCell className="p-2 align-middle">
                         <ExpenseTypeSelect
                           className={cn(
@@ -576,6 +577,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
                       if (editingExpenseId !== e.id) startEditExpense(e)
                     }}
                   >
+<TableCell className="text-center text-muted-foreground">{expIdx + 1}</TableCell>
                     <TableCell className="font-medium text-slate-900">
                       {e.expenseTypeName}
                     </TableCell>
@@ -629,6 +631,7 @@ function ExpensesEditor({ detail }: { detail: BatchDetail }) {
                   className="bg-emerald-50/40 border-y border-emerald-200"
                   onKeyDown={handleExpenseKeyDown}
                 >
+<TableCell className="text-center text-muted-foreground">{detail.expenses.length + 1}</TableCell>
                   <TableCell className="p-2 align-middle">
                     <ExpenseTypeSelect
                       className={cn(
