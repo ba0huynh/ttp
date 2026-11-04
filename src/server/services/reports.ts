@@ -304,7 +304,8 @@ export async function getReports(from: string, to: string) {
       customerName: customers.name,
       month: sql<string>`date_format(${salesOrders.orderDate}, '%Y-%m')`,
       modelName: sql<string>`coalesce(${motorcycleModels.name}, '')`,
-      // VAT-exclusive: VAT is not income, and the cost price has no VAT
+      // Revenue excludes VAT (VAT is not income). Cost is the cost price
+      // captured at sale: import price incl. VAT + allocated batch expenses.
       revenue: salesOrderItems.priceBeforeVat,
       cost: salesOrderItems.costPrice,
     })
