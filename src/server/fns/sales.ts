@@ -46,6 +46,8 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
         branchName: posBranches.name,
         vehicleCount: sql<number>`count(distinct ${salesOrderItems.id})`,
         totalBeforeVat: sql<string>`coalesce(sum(${salesOrderItems.priceBeforeVat}),0)`,
+        // Cost = import price before VAT + allocated batch expense (same basis as /reports)
+        totalCost: sql<string>`coalesce(sum(${salesOrderItems.costPrice} - greatest(${vehicles.importPriceWithVat} - ${vehicles.importPrice}, 0)),0)`,
         minVatRate: sql<string>`coalesce(min(${salesOrderItems.vatRate}),0)`,
         maxVatRate: sql<string>`coalesce(max(${salesOrderItems.vatRate}),0)`,
         deliveredCount: sql<number>`count(distinct case when ${vehicles.isDelivered} = 1 then ${vehicles.id} end)`,
@@ -75,6 +77,7 @@ export const listSalesOrdersFn = createServerFn({ method: 'GET' })
       ...o,
       totalAmount: num(o.totalAmount),
       totalBeforeVat: num(o.totalBeforeVat),
+      totalCost: num(o.totalCost),
       minVatRate: num(o.minVatRate),
       maxVatRate: num(o.maxVatRate),
       vehicleCount: num(o.vehicleCount),

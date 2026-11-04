@@ -306,6 +306,7 @@ export interface SalesOrderListExcelRow {
   customerName: string
   branchName: string | null
   totalBeforeVat: number
+  totalCost?: number
   minVatRate: number
   maxVatRate: number
   totalAmount: number
@@ -362,6 +363,13 @@ export function downloadSalesListExcel(
         format: MONEY_FORMAT,
         sum: true,
         value: (o) => o.totalAmount,
+      },
+      {
+        header: 'Giá Vốn',
+        width: 20,
+        format: MONEY_FORMAT,
+        sum: true,
+        value: (o) => o.totalCost ?? 0,
       },
       {
         header: 'Số Xe',

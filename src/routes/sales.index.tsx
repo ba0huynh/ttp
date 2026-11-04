@@ -96,6 +96,7 @@ const SORT_VALUE: Record<
     branchName: string | null
     totalAmount: number
     totalBeforeVat: number
+    totalCost: number
     minVatRate: number
     maxVatRate: number
     vehicleCount: number
@@ -425,6 +426,7 @@ function SalesPage() {
                     </TableHead>
                     <TableHead className="text-center">% VAT</TableHead>
                     {sortHead('amount', 'Tổng Tiền Đã VAT', 'text-right')}
+                    <TableHead className="text-right">Giá Vốn</TableHead>
                     {sortHead('vehicles', 'Số Xe', 'text-center')}
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
                     <TableHead className="text-center">Kho Hóa Đơn</TableHead>
@@ -463,6 +465,9 @@ function SalesPage() {
                       </TableCell>
                       <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(o.totalAmount)}
+                      </TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatVnd(o.totalCost)}
                       </TableCell>
                       <TableCell className="text-center font-medium text-slate-900">
                         {o.vehicleCount} xe

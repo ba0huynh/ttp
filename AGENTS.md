@@ -2394,3 +2394,8 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 - **Bug** (review screenshot): after the "Nội Dung Diễn Giải" column was added the header texts overlapped ("NỘI DUNG DIỄN TIỀN RA (GHI NỢ)"). The table is `table-fixed`; the other columns total 1024px, so with `min-w-[1080px]` the description column was left with ~56px.
 - **Fix**: the description header is `w-[300px]` and the table `min-w-[1330px]` (1024 + 300). Rule for a `table-fixed` table: the fixed widths plus the flexible column's minimum must fit inside the table's `min-w`; when adding a column, raise `min-w` by its width.
+
+### Lesson 208: "Giá Vốn" Column on the `/sales` List
+
+- **Request**: the `/sales` list gets a "Giá Vốn" column (after "Tổng Tiền Đã VAT"), defined as import price **before VAT** + allocated batch expense, the same basis as the `/reports` cost (Lesson 206).
+- **Server**: `listSalesOrdersFn` returns `totalCost` = `sum(sales_order_items.cost_price - greatest(vehicles.import_price_with_vat - vehicles.import_price, 0))` per order (the sale-time cost snapshot minus that vehicle's import VAT). The dashboard "Đơn Bán Gần Đây" uses the same function but does not show the column. The list's Excel export has the matching "Giá Vốn" column (with a total). The column is not sortable.
