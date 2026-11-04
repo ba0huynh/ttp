@@ -2346,3 +2346,10 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 - **Rule**: Every list table has a first column headed `STT` (`<TableHead className="w-12 text-center">STT</TableHead>`) with a `text-center text-muted-foreground` cell. Raw database `ID` columns must not be displayed alongside `STT`.
 - **Pagination**: For paginated tables the number continues across pages: `pg.pageSize * (pg.page - 1) + idx + 1`. Non-paginated tables use `idx + 1`.
 - **Gotcha**: When adding a column, also bump `colSpan` on empty-state / inline edit rows (e.g. `renderEditingRow` in `loans.$loanId.tsx`).
+
+
+### Lesson 203: List Page Excel Export (`src/lib/list-excel.ts`)
+
+- **Scope**: `/batches`, `/inventory`, `/sales`, `/loans`, `/finance` (all 4 tabs: `receivables`, `payables`, `receipts`, `payments`), `/reconcile`, and `/customers` each provide an `Xuất Excel` button next to `Bộ lọc`.
+- **Column Parity & Filter Fidelity**: Exported spreadsheets strictly mirror the visible table columns in the exact same order (starting with `STT`, omitting the trailing `Thao tác` action column) and export the currently filtered & sorted dataset (`sorted` / `filtered`).
+- **Bundle Hygiene**: `src/lib/list-excel.ts` is dynamically imported on button click (`await import('#/lib/list-excel.ts')`) so `xlsx` stays out of initial page bundles.

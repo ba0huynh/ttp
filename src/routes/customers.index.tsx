@@ -11,11 +11,14 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Download,
   Eye,
+  Loader2,
   Pencil,
   Plus,
   SlidersHorizontal,
 } from 'lucide-react'
+import { toast } from 'sonner'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -159,6 +162,20 @@ function CustomersPage() {
         return b.id - a.id
       })
     : filtered
+  const [exporting, setExporting] = React.useState(false)
+  const handleExportExcel = async () => {
+    if (exporting || sorted.length === 0) return
+    setExporting(true)
+    try {
+      const { downloadCustomersExcel } = await import('#/lib/list-excel.ts')
+      downloadCustomersExcel(sorted, customers.length)
+      toast.success(`Đã xuất ${sorted.length} khách hàng ra file Excel`)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xuất Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
   const customersPg = usePagination(
     sorted,
     `${nameSearch}|${debt?.join()}|${min}|${max}|${sort}|${dir}`,
@@ -312,6 +329,22 @@ function CustomersPage() {
                   {activeFilterCount}
                 </span>
               )}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void handleExportExcel()}
+              disabled={exporting || sorted.length === 0}
+              title={`Xuất ${sorted.length} khách hàng theo bộ lọc hiện tại`}
+              className="gap-1.5"
+            >
+              {exporting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              {exporting ? 'Đang xuất...' : 'Xuất Excel'}
             </Button>
             <Can permission="customers.manage">
               <Button

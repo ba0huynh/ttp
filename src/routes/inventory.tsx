@@ -6,11 +6,15 @@ import {
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
 import {
   CircleCheckBig,
+  Download,
   FileClock,
+  Loader2,
   PackageOpen,
   Pencil,
   SlidersHorizontal,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -238,6 +242,7 @@ function InventoryPage() {
   ].filter(Boolean).length
   const hasDropdownFilter = activeFilterCount > 0
   const [showFilters, setShowFilters] = React.useState(false)
+  const [exporting, setExporting] = React.useState(false)
 
   const filtered = vehicles.filter((v) => {
     if (filterBatch.length && !filterBatch.includes(v.batchId)) return false
@@ -286,6 +291,22 @@ function InventoryPage() {
     }
     return true
   })
+  const handleExportExcel = async () => {
+    if (exporting || filtered.length === 0) return
+    setExporting(true)
+    try {
+      const { downloadInventoryExcel } = await import('#/lib/list-excel.ts')
+      downloadInventoryExcel(
+        filtered.map((v) => ({ ...v, batchLabel: batchLabel(v) })),
+        vehicles.length,
+      )
+      toast.success(`Đã xuất ${filtered.length} xe ra file Excel`)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xuất Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
   // Widgets above the table: totals of the filtered list per delivery / invoice combination
   const stockWidgets = (
     [
@@ -344,21 +365,39 @@ function InventoryPage() {
               xe máy.
             </p>
           </div>
-          <Button
-            size="sm"
-            variant="outline"
-            onClick={() => setShowFilters(true)}
-            aria-haspopup="dialog"
-            className={`h-11 rounded-lg text-sm gap-1.5 self-start sm:self-auto ${hasDropdownFilter ? 'border-emerald-600 text-emerald-800' : ''}`}
-          >
-            <SlidersHorizontal className="size-4" />
-            Bộ lọc
-            {hasDropdownFilter && (
-              <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
-                {activeFilterCount}
-              </span>
-            )}
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => setShowFilters(true)}
+              aria-haspopup="dialog"
+              className={`gap-1.5 ${hasDropdownFilter ? 'border-emerald-600 text-emerald-800' : ''}`}
+            >
+              <SlidersHorizontal className="size-4" />
+              Bộ lọc
+              {hasDropdownFilter && (
+                <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                  {activeFilterCount}
+                </span>
+              )}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void handleExportExcel()}
+              disabled={exporting || filtered.length === 0}
+              title={`Xuất ${filtered.length} xe theo bộ lọc hiện tại`}
+              className="gap-1.5"
+            >
+              {exporting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+            </Button>
+          </div>
         </div>
 
             {/* Advanced filters dialog (opened by "Bộ lọc") */}

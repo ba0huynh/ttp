@@ -9,6 +9,7 @@ import {
   ArrowRightLeft,
   Check,
   CheckCircle2,
+  Download,
   ExternalLink,
   Eye,
   Landmark,
@@ -21,6 +22,7 @@ import {
   Upload,
 } from 'lucide-react'
 import * as React from 'react'
+import { toast } from 'sonner'
 import { z } from 'zod'
 
 import { ImportStatementDialog } from '#/components/finance/ImportStatementDialog.tsx'
@@ -209,6 +211,29 @@ function ReconcilePage() {
     return true
   })
 
+  const [exporting, setExporting] = React.useState(false)
+  const handleExportExcel = async () => {
+    if (exporting || filteredLines.length === 0) return
+    setExporting(true)
+    try {
+      const { downloadReconcileExcel } = await import('#/lib/list-excel.ts')
+      downloadReconcileExcel(
+        filteredLines.map((l: any) => ({
+          ...l,
+          matchedLabel:
+            l.status === 'matched'
+              ? `Đã khớp · ${MATCH_LABELS[l.matchedType as keyof typeof MATCH_LABELS] ?? 'Chứng từ'}`
+              : 'Chưa đối soát',
+        })),
+        allLines.length,
+      )
+      toast.success(`Đã xuất ${filteredLines.length} dòng sao kê ra file Excel`)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xuất Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
   const linesPg = usePagination<any>(
     filteredLines,
     `${selectedAccountIds.join()}|${descSearch}|${from}|${to}|${flow?.join()}|${status?.join()}|${type?.join()}|${min}|${max}`,
@@ -655,6 +680,22 @@ function ReconcilePage() {
                     {activeFilterCount}
                   </span>
                 )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void handleExportExcel()}
+                disabled={exporting || filteredLines.length === 0}
+                title={`Xuất ${filteredLines.length} giao dịch theo bộ lọc hiện tại`}
+                className="gap-1.5"
+              >
+                {exporting ? (
+                  <Loader2 className="size-3.5 animate-spin" />
+                ) : (
+                  <Download className="size-3.5" />
+                )}
+                {exporting ? 'Đang xuất...' : 'Xuất Excel'}
               </Button>
             </div>
           </CardHeader>

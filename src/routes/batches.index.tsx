@@ -8,10 +8,14 @@ import {
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
+  Download,
   Eye,
+  Loader2,
   PackagePlus,
   SlidersHorizontal,
 } from 'lucide-react'
+import { toast } from 'sonner'
+import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -137,6 +141,7 @@ function BatchesPage() {
   const searchParams = Route.useSearch()
   const navigate = Route.useNavigate()
   const [showFilters, setShowFilters] = React.useState(false)
+  const [exporting, setExporting] = React.useState(false)
   const {
     supplier,
     from,
@@ -223,6 +228,19 @@ function BatchesPage() {
         return dir === 'asc' ? cmp : -cmp
       })
     : filtered
+  const handleExportExcel = async () => {
+    if (exporting || sorted.length === 0) return
+    setExporting(true)
+    try {
+      const { downloadBatchesExcel } = await import('#/lib/list-excel.ts')
+      downloadBatchesExcel(sorted, batches.length)
+      toast.success(`Đã xuất ${sorted.length} lô xe ra file Excel`)
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xuất Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
   const batchesPg = usePagination(
     sorted,
     `${supplier}|${from}|${to}|${base}|${minCost}|${maxCost}|${feeTypes?.join()}|${minFee}|${maxFee}|${sort}|${dir}`,
@@ -319,6 +337,22 @@ function BatchesPage() {
                   {activeFilterCount}
                 </span>
               )}
+            </Button>
+            <Button
+              type="button"
+              size="sm"
+              variant="outline"
+              onClick={() => void handleExportExcel()}
+              disabled={exporting || sorted.length === 0}
+              title={`Xuất ${sorted.length} lô theo bộ lọc hiện tại`}
+              className="gap-1.5"
+            >
+              {exporting ? (
+                <Loader2 className="size-4 animate-spin" />
+              ) : (
+                <Download className="size-4" />
+              )}
+              {exporting ? 'Đang xuất...' : 'Xuất Excel'}
             </Button>
             <Can permission="batches.manage">
               <Link to="/batches/new">

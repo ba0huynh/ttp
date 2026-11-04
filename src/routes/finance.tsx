@@ -4,7 +4,8 @@ import {
   useSuspenseQuery,
 } from '@tanstack/react-query'
 import { Link, createFileRoute, redirect } from '@tanstack/react-router'
-import { Pencil, Plus, SlidersHorizontal } from 'lucide-react'
+import { Download, Loader2, Pencil, Plus, SlidersHorizontal } from 'lucide-react'
+import { toast } from 'sonner'
 import * as React from 'react'
 import { z } from 'zod'
 
@@ -324,6 +325,31 @@ function FinancePage() {
     receipts: receiptsFiltered.length,
     payments: paymentsFiltered.length,
   }[tab]
+  const [exporting, setExporting] = React.useState(false)
+  const handleExportExcel = async () => {
+    if (exporting || resultCount === 0) return
+    setExporting(true)
+    try {
+      const mod = await import('#/lib/list-excel.ts')
+      if (tab === 'receivables') {
+        mod.downloadReceivablesExcel(receivablesFiltered, receivables.length)
+        toast.success(`Đã xuất ${receivablesFiltered.length} dòng công nợ phải thu ra file Excel`)
+      } else if (tab === 'payables') {
+        mod.downloadPayablesExcel(payablesFiltered, payables.length)
+        toast.success(`Đã xuất ${payablesFiltered.length} dòng công nợ phải trả ra file Excel`)
+      } else if (tab === 'receipts') {
+        mod.downloadReceiptsExcel(receiptsFiltered, receipts.length)
+        toast.success(`Đã xuất ${receiptsFiltered.length} phiếu thu ra file Excel`)
+      } else {
+        mod.downloadPaymentsExcel(paymentsFiltered, payments.length)
+        toast.success(`Đã xuất ${paymentsFiltered.length} phiếu chi ra file Excel`)
+      }
+    } catch (err: unknown) {
+      await showErrorDialog(err, 'Không thể xuất Excel')
+    } finally {
+      setExporting(false)
+    }
+  }
   const { data: customers } = useSuspenseQuery(customerOptionsQuery())
   const { data: master } = useSuspenseQuery(masterDataQuery())
   const queryClient = useQueryClient()
@@ -566,21 +592,39 @@ function FinancePage() {
               Lịch Sử Phiếu Chi ({payments.length})
             </TabsTrigger>
           </TabsList>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => setShowFilters(true)}
-              aria-haspopup="dialog"
-              className={`gap-1.5 ${activeCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
-            >
-              <SlidersHorizontal className="size-4" />
-              Bộ lọc
-              {activeCount > 0 && (
-                <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
-                  {activeCount}
-                </span>
-              )}
-            </Button>
+            <div className="flex items-center gap-2">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setShowFilters(true)}
+                aria-haspopup="dialog"
+                className={`gap-1.5 ${activeCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
+              >
+                <SlidersHorizontal className="size-4" />
+                Bộ lọc
+                {activeCount > 0 && (
+                  <span className="ml-0.5 rounded-full bg-emerald-700 text-white text-[11px] px-1.5">
+                    {activeCount}
+                  </span>
+                )}
+              </Button>
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                onClick={() => void handleExportExcel()}
+                disabled={exporting || resultCount === 0}
+                title={`Xuất ${resultCount} dòng theo bộ lọc hiện tại`}
+                className="gap-1.5"
+              >
+                {exporting ? (
+                  <Loader2 className="size-4 animate-spin" />
+                ) : (
+                  <Download className="size-4" />
+                )}
+                {exporting ? 'Đang xuất...' : 'Xuất Excel'}
+              </Button>
+            </div>
           </div>
 
           {/* Tab 1: Accounts Receivable */}
