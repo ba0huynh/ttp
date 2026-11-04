@@ -2397,5 +2397,5 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 ### Lesson 208: "Giá Vốn" Column on the `/sales` List
 
-- **Request**: the `/sales` list gets a "Giá Vốn" column (after "Tổng Tiền Đã VAT"), defined as import price **before VAT** + allocated batch expense, the same basis as the `/reports` cost (Lesson 206).
+- **Request**: the `/sales` list gets a "Giá Vốn" column (before "Tổng Tiền Chưa VAT", i.e. right after the receiving branch), defined as import price **before VAT** + allocated batch expense, the same basis as the `/reports` cost (Lesson 206).
 - **Server**: `listSalesOrdersFn` returns `totalCost` = `sum(sales_order_items.cost_price - greatest(vehicles.import_price_with_vat - vehicles.import_price, 0))` per order (the sale-time cost snapshot minus that vehicle's import VAT). The dashboard "Đơn Bán Gần Đây" uses the same function but does not show the column. The list's Excel export has the matching "Giá Vốn" column (with a total). The column is not sortable.

@@ -421,12 +421,12 @@ function SalesPage() {
                     {sortHead('date', 'Ngày Bán', '')}
                     {sortHead('customer', 'Khách Hàng', '')}
                     {sortHead('branch', 'Điểm Bán Nhận Xe', '')}
+                    <TableHead className="text-right">Giá Vốn</TableHead>
                     <TableHead className="text-right">
                       Tổng Tiền Chưa VAT
                     </TableHead>
                     <TableHead className="text-center">% VAT</TableHead>
                     {sortHead('amount', 'Tổng Tiền Đã VAT', 'text-right')}
-                    <TableHead className="text-right">Giá Vốn</TableHead>
                     {sortHead('vehicles', 'Số Xe', 'text-center')}
                     <TableHead className="text-center">Kho Thực Tế</TableHead>
                     <TableHead className="text-center">Kho Hóa Đơn</TableHead>
@@ -455,6 +455,9 @@ function SalesPage() {
                         )}
                       </TableCell>
                       <TableCell className="text-right text-slate-900">
+                        {formatVnd(o.totalCost)}
+                      </TableCell>
+                      <TableCell className="text-right text-slate-900">
                         {formatVnd(o.totalBeforeVat)}
                       </TableCell>
                       <TableCell className="text-center text-slate-500">
@@ -465,9 +468,6 @@ function SalesPage() {
                       </TableCell>
                       <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(o.totalAmount)}
-                      </TableCell>
-                      <TableCell className="text-right text-slate-900">
-                        {formatVnd(o.totalCost)}
                       </TableCell>
                       <TableCell className="text-center font-medium text-slate-900">
                         {o.vehicleCount} xe

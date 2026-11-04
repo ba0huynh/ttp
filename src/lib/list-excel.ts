@@ -343,6 +343,13 @@ export function downloadSalesListExcel(
         value: (o) => o.branchName || 'Trực tiếp',
       },
       {
+        header: 'Giá Vốn',
+        width: 20,
+        format: MONEY_FORMAT,
+        sum: true,
+        value: (o) => o.totalCost ?? 0,
+      },
+      {
         header: 'Tổng Tiền Chưa VAT',
         width: 22,
         format: MONEY_FORMAT,
@@ -363,13 +370,6 @@ export function downloadSalesListExcel(
         format: MONEY_FORMAT,
         sum: true,
         value: (o) => o.totalAmount,
-      },
-      {
-        header: 'Giá Vốn',
-        width: 20,
-        format: MONEY_FORMAT,
-        sum: true,
-        value: (o) => o.totalCost ?? 0,
       },
       {
         header: 'Số Xe',
