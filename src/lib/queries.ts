@@ -83,16 +83,19 @@ export const loanDetailQuery = (id: number) =>
     queryFn: () => getLoanDetailFn({ data: { id } }),
   })
 
-export const receivablesQuery = () =>
+/** Optional period (yyyy-mm-dd, inclusive) that the debt amounts are computed over */
+export type DebtRange = { from?: string; to?: string }
+
+export const receivablesQuery = (range: DebtRange = {}) =>
   queryOptions({
-    queryKey: ['finance', 'receivables'],
-    queryFn: () => getReceivablesFn(),
+    queryKey: ['finance', 'receivables', range.from ?? '', range.to ?? ''],
+    queryFn: () => getReceivablesFn({ data: range }),
   })
 
-export const payablesQuery = () =>
+export const payablesQuery = (range: DebtRange = {}) =>
   queryOptions({
-    queryKey: ['finance', 'payables'],
-    queryFn: () => getPayablesFn(),
+    queryKey: ['finance', 'payables', range.from ?? '', range.to ?? ''],
+    queryFn: () => getPayablesFn({ data: range }),
   })
 
 export const receiptsQuery = () =>

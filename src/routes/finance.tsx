@@ -106,8 +106,16 @@ type DebtView =
       customerId: number
       branchId: number | null
       title: string
+      from?: string
+      to?: string
     }
-  | { kind: 'payable'; supplierId: number; title: string }
+  | {
+      kind: 'payable'
+      supplierId: number
+      title: string
+      from?: string
+      to?: string
+    }
 
 /** Orders behind one debt row: sales orders (receivable) or import batches (payable) */
 function DebtOrdersDialog({
@@ -125,20 +133,36 @@ function DebtOrdersDialog({
       'receivable-orders',
       receivable?.customerId,
       receivable?.branchId,
+      receivable?.from ?? '',
+      receivable?.to ?? '',
     ],
     queryFn: () =>
       listReceivableOrdersFn({
         data: {
           customerId: receivable!.customerId,
           branchId: receivable!.branchId,
+          from: receivable!.from,
+          to: receivable!.to,
         },
       }),
     enabled: Boolean(receivable),
   })
   const batches = useQuery({
-    queryKey: ['finance', 'supplier-batches', payable?.supplierId],
+    queryKey: [
+      'finance',
+      'supplier-batches',
+      payable?.supplierId,
+      payable?.from ?? '',
+      payable?.to ?? '',
+    ],
     queryFn: () =>
-      listSupplierBatchesFn({ data: { supplierId: payable!.supplierId } }),
+      listSupplierBatchesFn({
+        data: {
+          supplierId: payable!.supplierId,
+          from: payable!.from,
+          to: payable!.to,
+        },
+      }),
     enabled: Boolean(payable),
   })
   const active = receivable ? orders : batches
@@ -345,15 +369,21 @@ const moneyRange = {
   min: z.number().optional(),
   max: z.number().optional(),
 }
+// from / to: period of the orders (receivables) or import batches (payables)
+// that the amounts are computed over, also applied to receipts / payments
 const rcvFilter = z.object({
   customer: z.array(z.number()).optional(),
   branch: z.array(z.string()).optional(),
   status: z.array(z.enum(BALANCE)).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
   ...moneyRange,
 })
 const payFilter = z.object({
   supplier: z.array(z.number()).optional(),
   status: z.array(z.enum(BALANCE)).optional(),
+  from: z.string().optional(),
+  to: z.string().optional(),
   ...moneyRange,
 })
 const recFilter = z.object({
@@ -392,10 +422,14 @@ export const Route = createFileRoute('/finance')({
     requirePagePermission(user, 'finance.view')
     return { user }
   },
-  loader: async ({ context: { queryClient } }) => {
+  loaderDeps: ({ search }) => ({
+    rcv: { from: search.rcv?.from, to: search.rcv?.to },
+    pay: { from: search.pay?.from, to: search.pay?.to },
+  }),
+  loader: async ({ context: { queryClient }, deps }) => {
     await Promise.all([
-      queryClient.query(receivablesQuery()),
-      queryClient.query(payablesQuery()),
+      queryClient.query(receivablesQuery(deps.rcv)),
+      queryClient.query(payablesQuery(deps.pay)),
       queryClient.query(receiptsQuery()),
       queryClient.query(paymentsQuery()),
       queryClient.query(customerOptionsQuery()),
@@ -447,8 +481,12 @@ function FinancePage() {
     (r.min !== undefined && v < r.min) || (r.max !== undefined && v > r.max)
   const hasRange = (r: RangeFilter) =>
     r.min !== undefined || r.max !== undefined
-  const { data: receivables } = useSuspenseQuery(receivablesQuery())
-  const { data: payables } = useSuspenseQuery(payablesQuery())
+  const { data: receivables } = useSuspenseQuery(
+    receivablesQuery({ from: rcvF.from, to: rcvF.to }),
+  )
+  const { data: payables } = useSuspenseQuery(
+    payablesQuery({ from: payF.from, to: payF.to }),
+  )
   const { data: receipts } = useSuspenseQuery(receiptsQuery())
   const { data: payments } = useSuspenseQuery(paymentsQuery())
 
@@ -540,11 +578,13 @@ function FinancePage() {
       rcvF.customer?.length,
       rcvF.branch?.length,
       rcvF.status?.length,
+      rcvF.from || rcvF.to,
       hasRange(rcvF),
     ].filter(Boolean).length,
     payables: [
       payF.supplier?.length,
       payF.status?.length,
+      payF.from || payF.to,
       hasRange(payF),
     ].filter(Boolean).length,
     receipts: [
@@ -946,6 +986,8 @@ function FinancePage() {
                                 kind: 'receivable',
                                 customerId: r.customerId,
                                 branchId: r.branchId,
+                                from: rcvF.from,
+                                to: rcvF.to,
                                 title: `${r.customerName}${r.branchId ? ` · ${r.entityName}` : ' · Trực tiếp'}`,
                               })
                             }
@@ -1018,6 +1060,8 @@ function FinancePage() {
                               setDebtView({
                                 kind: 'payable',
                                 supplierId: p.supplierId,
+                                from: payF.from,
+                                to: payF.to,
                                 title: p.supplierName,
                               })
                             }
@@ -1307,6 +1351,36 @@ function FinancePage() {
                       </SearchSelectItem>
                     </MultiSearchSelect>
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Đơn bán từ ngày
+                    </Label>
+                    <Input
+                      type="date"
+                      value={rcvF.from ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('rcv', { from: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Đơn bán đến ngày
+                    </Label>
+                    <Input
+                      type="date"
+                      value={rcvF.to ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('rcv', { to: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <p className="sm:col-span-2 -mt-1 text-[11px] text-slate-500">
+                    Khi chọn ngày, Tổng Mua Xe tính theo các đơn bán trong khoảng
+                    và Đã Thanh Toán theo các phiếu thu trong khoảng.
+                  </p>
                   <div className="sm:col-span-2">
                     <PriceRangeFilter
                       label="Dư nợ còn lại"
@@ -1357,6 +1431,36 @@ function FinancePage() {
                       </SearchSelectItem>
                     </MultiSearchSelect>
                   </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Nhập lô từ ngày
+                    </Label>
+                    <Input
+                      type="date"
+                      value={payF.from ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('pay', { from: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Nhập lô đến ngày
+                    </Label>
+                    <Input
+                      type="date"
+                      value={payF.to ?? ''}
+                      onChange={(e) =>
+                        setTabFilter('pay', { to: e.target.value })
+                      }
+                      className="h-11 text-sm px-4 rounded-lg"
+                    />
+                  </div>
+                  <p className="sm:col-span-2 -mt-1 text-[11px] text-slate-500">
+                    Khi chọn ngày, Tổng Tiền Hàng tính theo các lô nhập trong
+                    khoảng và Đã Thanh Toán theo các phiếu chi trong khoảng.
+                  </p>
                   <div className="sm:col-span-2">
                     <PriceRangeFilter
                       label="Còn nợ NCC"

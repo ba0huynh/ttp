@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, inArray, lte, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -200,10 +200,15 @@ export const deleteLoanContractFn = createServerFn({ method: 'POST' })
 /* 08. Accounts Receivable (AR) & Receipts                                    */
 /* -------------------------------------------------------------------------- */
 
+const dateRangeInput = z
+  .object({ from: z.string().optional(), to: z.string().optional() })
+  .optional()
+
 export const getReceivablesFn = createServerFn({ method: 'GET' })
   .middleware([requirePermission('finance.view')])
-  .handler(async () => {
-    return getReceivablesSummary()
+  .validator(dateRangeInput)
+  .handler(async ({ data }) => {
+    return getReceivablesSummary(data ?? {})
   })
 
 export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
@@ -266,6 +271,8 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
     z.object({
       customerId: z.number().int(),
       branchId: z.number().int().nullable(),
+      from: z.string().optional(),
+      to: z.string().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -293,6 +300,8 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
         and(
           eq(salesOrders.customerId, data.customerId),
           eq(salesOrders.status, 'confirmed'),
+          data.from ? gte(salesOrders.orderDate, data.from) : undefined,
+          data.to ? lte(salesOrders.orderDate, data.to) : undefined,
           data.branchId
             ? eq(salesOrders.branchId, data.branchId)
             : sql`${salesOrders.branchId} is null`,
@@ -320,7 +329,13 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
 /** Import batches behind one payable row (one supplier) */
 export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
   .middleware([requirePermission('finance.view')])
-  .validator(z.object({ supplierId: z.number().int() }))
+  .validator(
+    z.object({
+      supplierId: z.number().int(),
+      from: z.string().optional(),
+      to: z.string().optional(),
+    }),
+  )
   .handler(async ({ data }) => {
     const rows = await db
       .select({
@@ -345,7 +360,13 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
       )
       // Every batch of the supplier; loan-financed ones are shown with their
       // loan but do not count toward the supplier debt (Lesson 205)
-      .where(eq(importBatches.supplierId, data.supplierId))
+      .where(
+        and(
+          eq(importBatches.supplierId, data.supplierId),
+          data.from ? gte(importBatches.importDate, data.from) : undefined,
+          data.to ? lte(importBatches.importDate, data.to) : undefined,
+        ),
+      )
       .groupBy(
         importBatches.id,
         importBatches.importDate,
@@ -370,8 +391,9 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
 
 export const getPayablesFn = createServerFn({ method: 'GET' })
   .middleware([requirePermission('finance.view')])
-  .handler(async () => {
-    return getPayablesSummary()
+  .validator(dateRangeInput)
+  .handler(async ({ data }) => {
+    return getPayablesSummary(data ?? {})
   })
 
 export const listPaymentVouchersFn = createServerFn({ method: 'GET' })

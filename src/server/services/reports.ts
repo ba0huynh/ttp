@@ -25,7 +25,18 @@ import { num } from './common.ts'
 /* 08. Accounts Receivable (AR) — billed to the legal entity of branch        */
 /* -------------------------------------------------------------------------- */
 
-export async function getReceivablesSummary() {
+export type DateRange = { from?: string; to?: string }
+
+export async function getReceivablesSummary(range: DateRange = {}) {
+  // Optional period: orders by order date, receipts by receipt date
+  const orderDates = [
+    range.from ? gte(salesOrders.orderDate, range.from) : undefined,
+    range.to ? lte(salesOrders.orderDate, range.to) : undefined,
+  ]
+  const receiptDates = [
+    range.from ? gte(receiptVouchers.receiptDate, range.from) : undefined,
+    range.to ? lte(receiptVouchers.receiptDate, range.to) : undefined,
+  ]
   // Independent queries run concurrently: each one costs a network round trip
   const [sold, paid, custs, branches] = await Promise.all([
     db
@@ -35,7 +46,7 @@ export async function getReceivablesSummary() {
         total: sql<string>`sum(${salesOrders.totalAmount})`,
       })
       .from(salesOrders)
-      .where(eq(salesOrders.status, 'confirmed'))
+      .where(and(eq(salesOrders.status, 'confirmed'), ...orderDates))
       .groupBy(salesOrders.customerId, salesOrders.branchId),
     db
       .select({
@@ -44,6 +55,7 @@ export async function getReceivablesSummary() {
         total: sql<string>`sum(${receiptVouchers.amount})`,
       })
       .from(receiptVouchers)
+      .where(and(...receiptDates))
       .groupBy(receiptVouchers.customerId, receiptVouchers.branchId),
     db.select().from(customers),
     db.select().from(posBranches),
@@ -114,7 +126,16 @@ export async function getCustomerStatement(customerId: number) {
 /* 09. Accounts Payable (AP)                                                  */
 /* -------------------------------------------------------------------------- */
 
-export async function getPayablesSummary() {
+export async function getPayablesSummary(range: DateRange = {}) {
+  // Optional period: batches by import date, payments by payment date
+  const batchDates = [
+    range.from ? gte(importBatches.importDate, range.from) : undefined,
+    range.to ? lte(importBatches.importDate, range.to) : undefined,
+  ]
+  const paymentDates = [
+    range.from ? gte(paymentVouchers.paymentDate, range.from) : undefined,
+    range.to ? lte(paymentVouchers.paymentDate, range.to) : undefined,
+  ]
   const [purchased, paid, sups] = await Promise.all([
     db
       .select({
@@ -125,6 +146,7 @@ export async function getPayablesSummary() {
       })
       .from(importBatches)
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
+      .where(and(...batchDates))
       .groupBy(importBatches.supplierId),
     db
       .select({
@@ -132,7 +154,7 @@ export async function getPayablesSummary() {
         total: sql<string>`sum(${paymentVouchers.amount})`,
       })
       .from(paymentVouchers)
-      .where(eq(paymentVouchers.payeeType, 'supplier'))
+      .where(and(eq(paymentVouchers.payeeType, 'supplier'), ...paymentDates))
       .groupBy(paymentVouchers.supplierId),
     db.select().from(suppliers).orderBy(asc(suppliers.name)),
   ])
