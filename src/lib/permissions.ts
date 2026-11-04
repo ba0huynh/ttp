@@ -73,7 +73,7 @@ export const PERMISSION_GROUPS = [
   },
   {
     key: 'master-data',
-    label: 'Danh mục hệ thống',
+    label: 'Dữ liệu chung',
     items: [
       { key: 'master-data.view', label: 'Xem danh mục' },
       { key: 'master-data.manage', label: 'Thêm, sửa, xóa danh mục' },
@@ -101,6 +101,79 @@ export const PERMISSION_LABELS: Record<string, string> = Object.fromEntries(
   PERMISSION_GROUPS.flatMap((g) => g.items.map((i) => [i.key, i.label])),
 )
 
+/**
+ * Maps each module's view permission to its dependent action permissions.
+ */
+export const VIEW_TO_ACTIONS_MAP: Record<string, string[]> = {
+  'batches.view': ['batches.manage'],
+  'sales.view': ['sales.create', 'sales.deliver', 'sales.invoice'],
+  'loans.view': ['loans.manage'],
+  'finance.view': ['finance.manage'],
+  'reconcile.view': ['reconcile.manage'],
+  'customers.view': ['customers.manage'],
+  'master-data.view': ['master-data.manage'],
+}
+
+/**
+ * Maps each action permission to its parent view permission.
+ */
+export const ACTION_TO_VIEW_MAP: Record<string, string> = Object.entries(
+  VIEW_TO_ACTIONS_MAP,
+).reduce(
+  (acc, [viewKey, actionKeys]) => {
+    for (const actionKey of actionKeys) {
+      acc[actionKey] = viewKey
+    }
+    return acc
+  },
+  {} as Record<string, string>,
+)
+
+/**
+ * Normalizes permissions so that any action permission automatically guarantees its module view permission.
+ */
+export function normalizePermissions(
+  permissions: Iterable<string>,
+): PermissionKey[] {
+  const set = new Set<string>(permissions)
+  for (const perm of [...set]) {
+    const viewKey = ACTION_TO_VIEW_MAP[perm]
+    if (viewKey) {
+      set.add(viewKey)
+    }
+  }
+  return ALL_PERMISSIONS.filter((k) => set.has(k))
+}
+
+/**
+ * Toggles a permission following the business dependency rules:
+ * - When checking any action permission, auto-checks the module's view permission.
+ * - When unchecking a view permission, auto-unchecks all dependent action permissions in that module.
+ */
+export function togglePermissionWithRules(
+  current: ReadonlySet<string>,
+  key: string,
+  on: boolean,
+): Set<string> {
+  const next = new Set(current)
+  if (on) {
+    next.add(key)
+    const viewKey = ACTION_TO_VIEW_MAP[key]
+    if (viewKey) {
+      next.add(viewKey)
+    }
+  } else {
+    next.delete(key)
+    const actionKeys = VIEW_TO_ACTIONS_MAP[key]
+    if (actionKeys) {
+      for (const actionKey of actionKeys) {
+        next.delete(actionKey)
+      }
+    }
+  }
+  return next
+}
+
 export interface PermissionHolder {
   isAdmin: boolean
   permissions: readonly string[]
@@ -112,7 +185,12 @@ export function hasPermission(
   key: PermissionKey,
 ): boolean {
   if (!user) return false
-  return user.isAdmin || user.permissions.includes(key)
+  if (user.isAdmin || user.permissions.includes(key)) return true
+  const actions = VIEW_TO_ACTIONS_MAP[key]
+  if (actions && actions.some((act) => user.permissions.includes(act))) {
+    return true
+  }
+  return false
 }
 
 /** True when the user holds at least one of the permissions */

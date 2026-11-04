@@ -92,7 +92,7 @@ export function TablePagination<T>({
     <div
       className={`flex flex-wrap items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs text-slate-600 ${className}`}
     >
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2">
         <span>
           Hiển thị{' '}
           <strong className="text-slate-900">
@@ -100,13 +100,16 @@ export function TablePagination<T>({
           </strong>{' '}
           / {p.total}
         </span>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 sm:gap-4">
         <div className="flex items-center gap-1.5">
-          <span>Số dòng:</span>
+          <span className="text-slate-500">Số dòng:</span>
           <Select
             value={String(p.pageSize)}
             onValueChange={(v) => p.setPageSize(Number(v))}
           >
-            <SelectTrigger className="h-9 w-[4.5rem] text-sm rounded-lg">
+            <SelectTrigger className="h-8 w-[4.5rem] text-xs rounded-lg">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -118,51 +121,51 @@ export function TablePagination<T>({
             </SelectContent>
           </Select>
         </div>
-      </div>
 
-      <div className="flex items-center gap-1">
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          disabled={p.page <= 1}
-          onClick={() => p.setPage(p.page - 1)}
-          aria-label="Trang trước"
-        >
-          <ChevronLeft className="size-4" />
-        </Button>
-        {pageNumbers(p.page, p.pageCount).map((n, i) =>
-          n === 'gap' ? (
-            <span key={`gap-${i}`} className="px-1 text-slate-400">
-              …
-            </span>
-          ) : (
-            <Button
-              key={n}
-              type="button"
-              size="sm"
-              variant={n === p.page ? 'default' : 'outline'}
-              onClick={() => p.setPage(n)}
-              aria-current={n === p.page ? 'page' : undefined}
-              className="h-8 min-w-8 px-2 text-xs"
-            >
-              {n}
-            </Button>
-          ),
-        )}
-        <Button
-          type="button"
-          variant="outline"
-          size="icon-sm"
-          disabled={p.page >= p.pageCount}
-          onClick={() => p.setPage(p.page + 1)}
-          aria-label="Trang sau"
-        >
-          <ChevronRight className="size-4" />
-        </Button>
-        <span className="ml-2 hidden sm:inline">
-          Trang {p.page} / {p.pageCount}
-        </span>
+        <div className="flex items-center gap-1">
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            disabled={p.page <= 1}
+            onClick={() => p.setPage(p.page - 1)}
+            aria-label="Trang trước"
+          >
+            <ChevronLeft className="size-4" />
+          </Button>
+          {pageNumbers(p.page, p.pageCount).map((n, i) =>
+            n === 'gap' ? (
+              <span key={`gap-${i}`} className="px-1 text-slate-400">
+                …
+              </span>
+            ) : (
+              <Button
+                key={n}
+                type="button"
+                size="sm"
+                variant={n === p.page ? 'default' : 'outline'}
+                onClick={() => p.setPage(n)}
+                aria-current={n === p.page ? 'page' : undefined}
+                className="h-8 min-w-8 px-2 text-xs"
+              >
+                {n}
+              </Button>
+            ),
+          )}
+          <Button
+            type="button"
+            variant="outline"
+            size="icon-sm"
+            disabled={p.page >= p.pageCount}
+            onClick={() => p.setPage(p.page + 1)}
+            aria-label="Trang sau"
+          >
+            <ChevronRight className="size-4" />
+          </Button>
+          <span className="ml-2 hidden sm:inline text-slate-500">
+            Trang {p.page} / {p.pageCount}
+          </span>
+        </div>
       </div>
     </div>
   )

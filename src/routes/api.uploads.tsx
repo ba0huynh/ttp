@@ -28,7 +28,13 @@ export const Route = createFileRoute('/api/uploads')({
     handlers: {
       POST: async ({ request }) => {
         const token = cookieValue(request.headers.get('cookie'), SESSION_COOKIE)
-        const user = token ? await getUserBySessionToken(token) : null
+        let user = null
+        try {
+          user = token ? await getUserBySessionToken(token) : null
+        } catch (e) {
+          const msg = e instanceof Error ? e.message : 'Phiên đăng nhập đã hết hạn'
+          return json({ error: msg }, 401)
+        }
         if (!user) return json({ error: 'Phiên đăng nhập đã hết hạn' }, 401)
         if (!hasPermission(user, 'master-data.manage'))
           return json(

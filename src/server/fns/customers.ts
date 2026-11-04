@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { asc, eq, sql } from 'drizzle-orm'
+import { asc, desc, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -28,7 +28,7 @@ export const listCustomersFn = createServerFn({ method: 'GET' })
           branchCount: sql<number>`(select count(*) from ${posBranches} b where b.customer_id = customers.id)`,
         })
         .from(customers)
-        .orderBy(asc(customers.name)),
+        .orderBy(desc(customers.id)),
       getReceivablesSummary(),
     ])
     // Still owed per PARENT customer = sum over all its branch entities
@@ -76,7 +76,7 @@ export const getCustomerDetailFn = createServerFn({ method: 'GET' })
         .select()
         .from(posBranches)
         .where(eq(posBranches.customerId, data.id))
-        .orderBy(asc(posBranches.name)),
+        .orderBy(desc(posBranches.id)),
       getCustomerStatement(data.id),
       getReceivablesSummary(),
     ])

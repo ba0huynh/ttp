@@ -3,6 +3,7 @@ import * as React from 'react'
 
 import { useCan } from '#/components/auth/Can.tsx'
 import { Button } from '#/components/ui/button.tsx'
+import { confirmDialog } from '#/components/ui/confirm-dialog.tsx'
 import {
   Dialog,
   DialogContent,
@@ -39,10 +40,28 @@ export function SupplierSelect({
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault()
     e.stopPropagation()
-    if (!name.trim()) return setError('Vui lòng nhập tên nhà cung cấp')
+    const cleanName = name.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!cleanName)
+      return setError(
+        'Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+    const isDup = master?.suppliers.some(
+      (s) =>
+        s.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+        cleanName.toLowerCase(),
+    )
+    if (isDup) {
+      const ok = await confirmDialog({
+        title: 'Cảnh Báo Trùng Tên Nhà Cung Cấp',
+        description: `Nhà cung cấp "${cleanName}" đã tồn tại trong hệ thống. Các nhà cung cấp khác nhau có thể có cùng tên. Bạn có chắc chắn muốn tiếp tục lưu không?`,
+        confirmLabel: 'Tiếp tục lưu',
+        cancelLabel: 'Kiểm tra lại',
+      })
+      if (!ok) return
+    }
     setPending(true)
     try {
-      const res = await saveSupplierFn({ data: { name: name.trim() } })
+      const res = await saveSupplierFn({ data: { name: cleanName } })
       await queryClient.invalidateQueries({ queryKey: ['master-data'] })
       onChange(res.id)
       setOpen(false)

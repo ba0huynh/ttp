@@ -13,7 +13,11 @@ import * as React from 'react'
 
 import { AppLayout } from '#/components/layout/AppLayout.tsx'
 import { PageHeader } from '#/components/layout/StatCard.tsx'
-import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
+import {
+  alertDialog,
+  confirmDialog,
+  showErrorDialog,
+} from '#/components/ui/confirm-dialog.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   Card,
@@ -151,12 +155,34 @@ function CustomerDetailPage() {
 
   const handleCreateBranch = async (e: React.FormEvent) => {
     e.preventDefault()
+    const cleanName = branchName.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!cleanName) {
+      await alertDialog(
+        'Tên điểm bán không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = branches.some(
+      (b) =>
+        b.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          cleanName.toLowerCase() &&
+        b.id !== (branchId ?? undefined),
+    )
+    if (isDup) {
+      const ok = await confirmDialog({
+        title: 'Cảnh Báo Trùng Tên Điểm Bán',
+        description: `Điểm bán "${cleanName}" đã tồn tại cho khách hàng này. Bạn có chắc chắn muốn tiếp tục lưu không?`,
+        confirmLabel: 'Tiếp tục lưu',
+        cancelLabel: 'Kiểm tra lại',
+      })
+      if (!ok) return
+    }
     try {
       await saveBranch.mutateAsync({
         data: {
           id: branchId ?? undefined,
           customerId: customer.id,
-          name: branchName,
+          name: cleanName,
           address: branchAddress.trim() || null,
           isActive: true,
         },

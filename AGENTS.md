@@ -1971,12 +1971,346 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - In `/inventory`, both the note header and every vehicle's note cell appear immediately after `Sales Order` and before the optional `Actions` column. Notes remain plain text and are edited through the vehicle form described in Lesson 174.
 
-### Lesson 176: Invoice Status Filter in Sales Order Details
+### Lesson 176: Company Tax Code Validation & QA Bug Tracker Skill
+
+- **QA Bug Log & Feedback Interpretation**:
+  - Created skill `qa-bug-log-tracker` in `.agents/skills/qa-bug-log-tracker/SKILL.md` and `.claude/skills/qa-bug-log-tracker/SKILL.md` to instruct agents how to read client QA spreadsheets:
+    - **Left column/square**: Bug report / reproduction link (e.g. `prnt.sc/...` Lightshot screenshot) with status pill `[Bug]`.
+    - **Right column/square**: Desired fix / outcome (e.g. `trường mã số thuế chỉ cho nhập số thôi chặn kí tự và chữ cái`).
+- **Company Tax Code Bug Resolution (`/settings?tab=company`)**:
+  - **Issue**: In `Pháp Nhân Doanh Nghiệp`, "Mã Số Thuế" accepted letters and special characters (e.g., `4566455553ggg@@`).
+  - **Client-Side Enforcement (`src/routes/settings.tsx`)**:
+    - Input sanitization on `onChange`: `e.target.value.replace(/\D/g, '')` strips all non-numeric characters immediately.
+    - Added `inputMode="numeric"`, `pattern="[0-9]*"`, and `placeholder="Chỉ nhập số..."`.
+    - Real-time inline field validation error and visual red border if blank or invalid.
+    - Also enforced email formatting validation and inline error display for "Email Liên Hệ".
+  - **Server-Side Enforcement (`src/server/fns/system.ts`)**:
+    - `taxCode`: Validated with `.regex(/^\d+$/, 'Mã số thuế chỉ được chứa các chữ số')`.
+    - `email`: Validated with `.refine(...)` ensuring valid format when provided.
+
+### Lesson 177: Company Phone & Email Validation, and Duplicate Motorcycle Model Prevention
+
+- **Context & QA Bug Log Reports**:
+  - Bug 1: `nhập email sai định dạng không hiển thị lỗi` (https://prnt.sc/wJkVla98GuoJ) -> Company settings email input accepted invalid format (e.g. `ac`) and displayed success banner without error.
+  - Bug 2: `số điện thoại nhập sai định dạng không hiển thị lỗi` -> Desired fix: `chỉ cho nhập số` (https://prnt.sc/cUv7_DLRf_6T) -> Phone input accepted non-digits (e.g. `0nfj@`).
+  - Bug 3: Duplicate motorcycle model bug -> Desired fix: `không cho tạo/sửa trùng dòng xe` (https://prnt.sc/mc8r8PhxXcq9).
+- **Company Settings Resolution (`src/routes/settings.tsx` & `src/server/fns/system.ts`)**:
+  - `phone` ("Số Điện Thoại"):
+    - Real-time digit stripping: `e.target.value.replace(/\D/g, '')`.
+    - Added `inputMode="numeric"`, `pattern="[0-9]*"`, and `placeholder="Chỉ nhập số..."`.
+    - Server Zod schema validation: `.regex(/^\d+$/, 'Số điện thoại chỉ được chứa các chữ số')`.
+    - Inline error `<p className="text-[11px] font-medium text-rose-600">` and red border highlight.
+  - `email` ("Email Liên Hệ"):
+    - Inline regex validation checking valid email format prior to submission.
+    - Server Zod schema validation: rejects malformed emails.
+    - Inline error text rendered under the input when invalid.
+- **Motorcycle Model Duplicate Prevention (`src/routes/master-data.tsx` & `src/server/fns/master-data.ts`)**:
+  - Server-side check in `saveModelFn`:
+    - Queries `motorcycle_models` case-insensitively with `sql`lower(${motorcycleModels.name}) = ${trimmedName.toLowerCase()}`` (excluding current model `id` if editing).
+    - Throws user-friendly error `Dòng xe "${trimmedName}" đã tồn tại trong hệ thống`.
+  - Client-side pre-validation in `handleSaveModel`:
+    - Checks `master.models.some(...)` against trimmed name (case-insensitive) excluding the current editing model.
+    - Sets `mError` to display inline error under the model name input and halts form submission.
+
+### Lesson 178: Zod v4 Error Message Translation & Master Data Empty Input Prevention
+
+- **Context & QA Bug Log Report**:
+  - Screenshot `https://prnt.sc/4JWleo4_p3Jn` showed `/master-data?tab=models` popping up an error dialog with raw English Zod text:
+    `Thông Báo Lỗi` -> `Tên: Too small: expected string to have >=1 characters`.
+- **Root Cause Analysis**:
+  - In Zod v4 (`zod` ^4.3.6), string validation issue objects provide `origin: 'string'` rather than Zod v3's `type: 'string'`.
+  - In `src/components/ui/confirm-dialog.tsx`, `formatErrorMessage` checked `item.code === 'too_small' && item.type === 'string'`. Because `item.type` was `undefined`, it skipped the Vietnamese formatting logic and fell back to `item.message`, which was Zod's default raw English string (`"Too small: expected string to have >=1 characters"`).
+  - Additionally, several master-data modal handlers submitted without trimming or validating client-side input.
+- **Resolution**:
+  - **`src/components/ui/confirm-dialog.tsx` (`formatErrorMessage`)**:
+    - Updated `isString` check to `item.origin === 'string' || item.type === 'string'`.
+    - Added comprehensive default message detection (`isDefaultZodMessage`: starts with `Too small`, `Too big`, `Expected `, `Invalid `).
+    - If empty string (`item.minimum === 1`), formats to `"Không được để trống"`.
+    - If `item.minimum > 1`, formats to `"Tối thiểu N ký tự"`.
+    - Automatically strips any remaining raw English Zod fragments.
+  - **`src/server/fns/master-data.ts`**:
+    - Added user-friendly Vietnamese messages to all Zod `.min(1, '...')` schemas (`saveBankFn`, `saveBankAccountFn`, `saveSupplierFn`, `saveModelFn`, `saveColorFn`, `saveExpenseTypeFn`).
+  - **`src/routes/master-data.tsx`**:
+    - Added client-side trimmed validation across all modal forms (`handleSaveExpenseType`, `handleSaveSupplier`, `handleSaveBank`, `handleSaveAccount`, `handleSaveColor`) before initiating network mutations.
+
+### Lesson 179: Latest Created Vehicle Models Displayed First in List
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/QziXEt82HkZR`): `hiển thị dòng xe vừa tạo lên đầu danh sách` (Display the newly created motorcycle model at the top of the list).
+  - Previously, `getMasterDataFn` ordered `motorcycleModels` by `asc(motorcycleModels.name)`. When users added a new model, it was sorted alphabetically and often placed at the bottom or on later pagination pages, requiring manual search to confirm creation.
+- **Resolution**:
+  - `src/server/fns/master-data.ts`: Updated `getMasterDataFn` to query `motorcycleModels` with `.orderBy(desc(motorcycleModels.id))`.
+  - The latest created vehicle model now automatically appears as the very first item on page 1 of the Dòng Xe catalogue (`/master-data?tab=models`) and at the top of vehicle selection lists.
+
+### Lesson 180: Whitespace Validation Message Localization & Latest Created Suppliers Ordering
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/eQD-UeDakgJ3`): `việt hóa message lỗi khi nhập khoảng trắng` (Vietnamese localization for error message when entering whitespace).
+    - When entering whitespace/blank into required text inputs like "Tên Doanh Nghiệp Cung Cấp *", the system displayed raw Zod error text.
+  - QA Feedback ticket 2 (`https://prnt.sc/uESx1QE5pZfo`): `hiển thị NCC vừa tạo lên đầu danh sách` (Display newly created supplier at the top of the list).
+- **Resolution**:
+  - **Validation Message Localization**:
+    - Updated `src/components/ui/confirm-dialog.tsx` (`formatErrorMessage`): When string input fails minimum length / empty check, outputs `"Không được để trống hoặc chỉ chứa khoảng trắng"`.
+    - Updated `src/server/fns/master-data.ts`: Applied explicit Vietnamese messages to all master data entity schemas (`saveSupplierFn`, `saveModelFn`, `saveBankFn`, `saveBankAccountFn`, `saveColorFn`, `saveExpenseTypeFn`).
+    - Updated `src/routes/master-data.tsx`, `SupplierDetailDialog.tsx`, and `SupplierSelect.tsx`: Added trimmed whitespace checks preventing blank submissions with consistent Vietnamese dialog/inline errors.
+  - **Supplier Ordering (`src/server/fns/master-data.ts`)**:
+    - Updated `getMasterDataFn` to query `suppliers` with `.orderBy(desc(suppliers.id))` so newly created suppliers automatically appear as the first item on page 1 of the Nhà Cung Cấp catalogue (`/master-data?tab=suppliers`) and at the top of supplier dropdowns.
+
+### Lesson 181: Master Data Global Newest-First Ordering (Banks, Accounts, Colors, Expense Types)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/YGi0NgUeANj5`): `hiển thị ngân hàng vừa tạo lên đầu danh sách` (Display newly created bank at the top of the list).
+- **Resolution**:
+  - `src/server/fns/master-data.ts`: Extended the `.orderBy(desc(id))` strategy to all remaining master data catalogs in `getMasterDataFn`:
+    - `banks`: `.orderBy(desc(banks.id))`
+    - `companyBankAccounts`: `.orderBy(desc(companyBankAccounts.id))`
+    - `colors`: `.orderBy(desc(colors.id))`
+    - `expenseTypes`: `.orderBy(desc(expenseTypes.id))`
+  - Any new bank, account, color, or expense type added by users will automatically appear as the first row on page 1 of its respective catalogue table.
+
+### Lesson 182: Bank Whitespace Localization & Comprehensive Duplicate Prevention across Master Data
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/x4cXxIADw2li`): `việt hóa message lỗi khi nhập khoảng trắng` (Localized error message when entering whitespace in bank name).
+  - QA Feedback ticket 2 (`https://prnt.sc/z1bLMJX3yOcx, https://prnt.sc/s4bkMLY7x9sp`): `không cho tạo/sửa trùng ngân hàng` (Do not allow creating/editing duplicate banks).
+- **Resolution**:
+  - **Duplicate Prevention across Master Data**:
+    - **Server-Side (`src/server/fns/master-data.ts`)**:
+      - `saveBankFn`: Checks existing banks by case-insensitive name (`sql`lower(${banks.name}) = ${trimmedName.toLowerCase()}``) excluding current editing ID, throwing `Ngân hàng "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveSupplierFn`: Checks existing suppliers, throwing `Nhà cung cấp "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveColorFn`: Checks existing colors, throwing `Màu sắc "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveExpenseTypeFn`: Checks existing expense types, throwing `Loại chi phí "${trimmedName}" đã tồn tại trong hệ thống`.
+      - `saveBankAccountFn`: Checks duplicate account numbers per bank, throwing `Số tài khoản "${cleanNumber}" đã tồn tại cho ngân hàng này`.
+    - **Client-Side Pre-Validation (`src/routes/master-data.tsx`)**:
+      - Added instant case-insensitive duplicate checks in modal save handlers (`handleSaveBank`, `handleSaveSupplier`, `handleSaveColor`, `handleSaveExpenseType`, `handleSaveAccount`) alerting users prior to sending network requests.
+
+### Lesson 183: Bank Tab Search Box Placeholder Updated to "Tìm tên ngân hàng"
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/-wak8m1K3G5P`): `đổi placeholder thành "Tìm tên ngân hàng"`.
+  - The previous placeholder (`"Tìm tên, mã hoặc tên viết tắt ngân hàng..."`) was excessively long and was visually truncated (`"Tìm tên, mã hoặc tên viết tắt ngân h"`) inside the `SearchBox` on `/master-data?tab=banks`.
+- **Resolution**:
+  - `src/routes/master-data.tsx`: Updated `SearchBox` placeholder for the `banks` tab to `"Tìm tên ngân hàng..."`, providing a clean, concise input label consistent with other master data tabs without truncation.
+
+### Lesson 184: Bank Account Number Restricted to Digits Only
+
+- **Context & QA Bug Log Report**:
+  - QA Bug ticket (`https://prnt.sc/aeN-bSb9HlAi`): `số tài khoản chỉ nhập số thôi chặn kí tự và chữ cái` (Bank account number must only accept digits, blocking letters and special characters).
+  - The previous form accepted arbitrary characters (such as `HHH@@`).
+- **Resolution**:
+  - **Client-Side Sanitization & Validation (`src/routes/master-data.tsx`, `BankAccountSelect.tsx`, `loans.index.tsx`)**:
+    - `onChange`: Automatically strips non-digits with `replace(/\D/g, '')`.
+    - Added `inputMode="numeric"`, `pattern="[0-9]*"`, and `maxLength={50}`.
+    - Verified `!/^\d+$/.test(cleanNumber)` before submitting, alerting `"Số tài khoản chỉ được chứa các chữ số"`.
+  - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
+    - Added `.regex(/^\d+$/, 'Số tài khoản chỉ được chứa các chữ số')` to `saveBankAccountFn` Zod validator.
+
+### Lesson 185: Color Ordering and Duplicate Color Prevention (`/master-data?tab=colors`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/7kWP1_XMkwDv`): `hiển thị màu sắc vừa tạo lên đầu danh sách` (Display newly created color at the top of the list).
+  - QA Feedback ticket 2 (`https://prnt.sc/NM8phj3dVNlu`): `không cho tạo/sửa trùng màu sắc` (Do not allow creating/editing duplicate colors).
+- **Resolution**:
+  - **Ordering (`src/server/fns/master-data.ts`)**:
+    - `getMasterDataFn` orders `colors` by `desc(colors.id)` so any newly created color automatically appears as the very first row on page 1 of the Màu Sắc table (`/master-data?tab=colors`) and at the top of color pickers across batches and sales dispatches.
+  - **Duplicate Color Prevention**:
+    - **Client-Side Pre-Validation (`src/routes/master-data.tsx`)**:
+      - In `handleSaveColor`, trimmed color name is checked against `master.colors.some(...)` (case-insensitive) excluding the current editing ID. If found, displays `alertDialog(`Màu sắc "${trimmed}" đã tồn tại trong hệ thống`)` before making the network request.
+    - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
+      - In `saveColorFn`, queries `colors` for `lower(${colors.name}) = ${trimmedName.toLowerCase()}` excluding `id`. If found, throws `new Error(`Màu sắc "${trimmedName}" đã tồn tại trong hệ thống`)`.
+
+### Lesson 186: Expense Type Ordering and Duplicate Prevention (`/master-data?tab=expenseTypes`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket 1 (`https://prnt.sc/bO_xEaKCmPXQ`): `hiển thị chi phí vừa tạo lên đầu danh sách` (Display newly created expense type at the top of the list).
+  - QA Feedback ticket 2 (`https://prnt.sc/EGhoRcHQzTkq`): `không cho tạo/sửa trùng loại chi phí` (Do not allow creating/editing duplicate expense types).
+- **Resolution**:
+  - **Ordering (`src/server/fns/master-data.ts`)**:
+    - `getMasterDataFn` orders `expenseTypes` with `.orderBy(desc(expenseTypes.id))` so any newly created expense type automatically appears as the very first row on page 1 of the Loại Chi Phí table (`/master-data?tab=expenseTypes`).
+  - **Duplicate Expense Type Prevention**:
+    - **Client-Side Pre-Validation (`src/routes/master-data.tsx`)**:
+      - In `handleSaveExpenseType`, trimmed and normalized name (`replace(/\s+/g, ' ').normalize('NFC')`) is verified against `master.expenseTypes.some(...)` (case-insensitive) excluding the current editing ID. If found, displays `alertDialog(`Loại chi phí "${trimmed}" đã tồn tại trong hệ thống`)` before sending requests.
+    - **Server-Side Enforcement (`src/server/fns/master-data.ts`)**:
+      - In `saveExpenseTypeFn`, queries `expenseTypes` for `lower(trim(${expenseTypes.name})) = ${trimmedName.toLowerCase()}` excluding `id`. If duplicate exists, throws `new Error(`Loại chi phí "${trimmedName}" đã tồn tại trong hệ thống`)`.
+
+### Lesson 187: Non-Blocking Duplicate Name Warning for Suppliers & Customers/Branches
+
+- **Context & Client Business Rule**:
+  - QA Feedback: "Khi nhập tên trùng với khách hàng/NCC đã tồn tại, nên hiển thị cảnh báo để người dùng kiểm tra, nhưng vẫn cho phép tiếp tục lưu vì các khách hàng/NCC khác nhau có thể trùng tên" (When entering a name that duplicates an already existing customer / supplier, display a warning so the user can verify, but still allow saving because different customers/suppliers can have the same name).
+- **Architecture & Implementation**:
+  - **Suppliers (`src/routes/master-data.tsx`, `SupplierDetailDialog.tsx`, `SupplierSelect.tsx`, `src/server/fns/master-data.ts`)**:
+    - Replaced hard-blocking errors with an interactive warning confirmation dialog (`confirmDialog`):
+      `Cảnh Báo Trùng Tên Nhà Cung Cấp`: `Nhà cung cấp "${trimmed}" đã tồn tại trong hệ thống. Các nhà cung cấp khác nhau có thể có cùng tên. Bạn có chắc chắn muốn tiếp tục lưu không?`.
+    - If user clicks "Tiếp tục lưu" (confirm), the form proceeds with saving. If user cancels ("Kiểm tra lại"), stays in the editor.
+    - Server `saveSupplierFn`: Removed duplicate error throwing to permit saving confirmed duplicate trade names.
+  - **Customers (`src/routes/customers.index.tsx`)**:
+    - When saving or updating a customer (`handleCreateCustomer`), checks `data?.some(...)` for matching name.
+    - Prompts with `confirmDialog` ("Cảnh Báo Trùng Tên Khách Hàng") allowing users to proceed or revise.
+  - **POS Branches (`src/routes/customers.$customerId.tsx`)**:
+    - When saving a branch (`handleCreateBranch`), checks `customer.branches.some(...)` and prompts with `confirmDialog` ("Cảnh Báo Trùng Tên Điểm Bán") allowing users to proceed or revise.
+
+### Lesson 188: Actions Column Header ("Thao tác") in Master Data (`/master-data`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/jWWh7ir5ujEM`): `thêm text Thao tác trên icon sửa xóa` (Add header text "Thao tác" above edit/delete icons).
+  - Previously, all tables in `/master-data` had an empty `<TableHead className="w-10"></TableHead>` or `<TableHead className="w-20"></TableHead>` column header above the action buttons.
+- **Resolution**:
+  - Updated all 6 master data tab tables in `src/routes/master-data.tsx` (`models`, `expenseTypes`, `suppliers`, `banks`, `accounts`, `colors`):
+    - Replaced empty `<TableHead>` with `<TableHead className="w-24 text-right pr-4">Thao tác</TableHead>`.
+    - Aligns header text right with the `size-7` edit/delete action button groups.
+
+### Lesson 189: Ellipsis Truncation for Long Names in Master Data Tables (`/master-data`)
+
+- **Context & QA Feedback**:
+  - QA Feedback tickets (`https://prnt.sc/V6alvEZ-btPn`, `https://prnt.sc/vkf1kLSIL-Ru`, `https://prnt.sc/nVZ5gXEZM9K7`): `tên dài quá thì ... để UI gọn hơn` (If the name is too long, truncate with ellipsis `...` to keep UI neat and compact).
+  - Extremely long supplier names, bank names, and company bank account names stretched table cells horizontally and pushed subsequent columns off-screen.
+- **Resolution**:
+  - Updated `src/routes/master-data.tsx`:
+    - **Suppliers**: Constrained cell with `max-w-xl` and truncated text `truncate` with `title={s.name}`.
+    - **Banks**: Wrapped `BankLabel` in `<div className="max-w-xl truncate" title={b.name}>`.
+    - **Company Bank Accounts**: Fixed column widths (`w-52` for account name, `w-64` for bank, `w-36` for account number, `w-36` for branch, `w-28` for status) and wrapped text in `max-w-[...] truncate` with `title={...}`.
+    - **Models, Expense Types, Colors**: Applied `max-w-xl truncate` with `title={...}`.
+  - Long entity names now cleanly truncate with ellipsis (`...`), keeping all columns visible while allowing full text inspection on hover.
+
+### Lesson 190: Relocating Rows-Per-Page Selector ("Số dòng") to Right Side in TablePagination Across All Tables
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/UOzZMNyxGq4p`): `đưa số dòng qua bên phải, dev sửa các trang UI còn lại luôn` (Move the "Số dòng" rows-per-page dropdown to the right side; dev must update across all remaining UI pages as well).
+  - In the table footer, the "Số dòng" dropdown was previously on the left alongside the range counter ("Hiển thị X–Y / Z"), separating it from the pagination page navigation controls.
+- **Resolution**:
+  - The application uses the unified `TablePagination` component (`src/components/ui/table-pagination.tsx`) across all 14+ paginated tables and picker modals (`/batches`, `/customers`, `/finance`, `/inventory`, `/loans`, `/master-data`, `/reconcile`, `/reports`, `/sales`, `/settings`).
+  - Updated `TablePagination` in `src/components/ui/table-pagination.tsx`:
+    - **Left Container**: Strictly renders range info (`Hiển thị from–to / total`).
+    - **Right Container**: Groups the rows-per-page selector (`Số dòng: [10 v]`) side-by-side with the page buttons (`< [1] [2] >` and `Trang X / Y`).
+    - Standardized `SelectTrigger` dimensions (`h-8 w-[4.5rem] text-xs rounded-lg`) to cleanly align with page navigation buttons (`h-8`).
+  - Because `TablePagination` is the single source of truth for list pagination across the entire codebase, this updates every single table view uniformly across the system.
+
+### Lesson 191: Latest Created Customer & POS Branches Ordering (`/customers` & `/customers/$customerId`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/4O6yiUcOiHVJ`): `hiển thị khách hàng vừa tạo lên đầu danh sách` (Display newly created customer at the top of the list).
+  - Previously, `listCustomersFn` queried `customers` with `.orderBy(asc(customers.name))`. When users created a new customer, it sorted alphabetically, often landing near the bottom of the list or on subsequent pages.
+- **Resolution**:
+  - **Server-Side Ordering (`src/server/fns/customers.ts`)**:
+    - Updated `listCustomersFn` to query `customers` with `.orderBy(desc(customers.id))` so newly created customer records appear at the top by default.
+    - Updated `getCustomerDetailFn` to query `posBranches` with `.orderBy(desc(posBranches.id))` so newly created POS branches appear at the top of the branch list.
+  - **Client-Side Tie-Breaking & Auto-Reset (`src/routes/customers.index.tsx`)**:
+    - In custom table sorting (`sorted = sort ? [...filtered].sort(...) : filtered`), added `b.id - a.id` as a tie-breaker when sorted values are identical (e.g., customers with equal branch counts or balance), keeping newer customers higher up.
+    - In `handleCreateCustomer`, when saving a newly created customer (non-edit), automatically resets active search text (`q`) and sort parameters, ensuring users immediately see their new customer at the very top of page 1.
+
+### Lesson 192: Accent-Insensitive / Unaccented Customer Search (`/customers`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/KrtcfMxzIeQQ`): `cho phép tìm tên khách hàng không dấu` (Allow searching customer name without diacritics / unaccented search).
+  - In `/customers`, the customer filter previously used raw substring matching `c.name.toLowerCase().includes(q)`. Typing unaccented text like "khuong" resulted in 0 matches for "Khương".
+- **Resolution**:
+  - **Client-Side Filtering (`src/routes/customers.index.tsx`)**:
+    - Replaced `c.name.toLowerCase().includes(q)` with `matchesSearch(nameSearch, c.name)` from `#/lib/text.ts`.
+    - `matchesSearch` normalizes and folds Unicode diacritics via `foldText` (`normalize('NFD')`, stripping combining marks `[\u0300-\u036f]`, converting `đ`/`Đ` to `d`, and lower-casing).
+    - Unaccented queries like "khuong", "thanh thuy", or "mai" match accented customer names ("Khương", "Thanh Thùy", "Mai") immediately.
+  - Also extended `matchesSearch` to vehicle and transaction searches in `sales.$orderId.tsx` and `reconcile.tsx` for consistent system-wide search experience.
+
+### Lesson 193: Permission Group Renamed to Match Sidebar Navigation ("Dữ liệu chung")
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/vjBkCTzW3v9e`): `Đổi tên nhóm "Danh mục hệ thống" thành "Dữ liệu chung" để giống thanh menu` (Rename permission group "Danh mục hệ thống" to "Dữ liệu chung" to match the sidebar menu).
+  - While the sidebar menu item was previously renamed to "Dữ liệu chung" (covering Dòng xe, Nhà cung cấp, Ngân hàng, Tài khoản ngân hàng, Màu sắc, Loại chi phí), the role permission checklist in `PERMISSION_GROUPS` (`RolesTab.tsx`) was still displaying the legacy group header "Danh mục hệ thống".
+- **Resolution**:
+  - Updated `src/lib/permissions.ts`:
+    - In `PERMISSION_GROUPS`, changed `label: 'Danh mục hệ thống'` to `label: 'Dữ liệu chung'` for group `key: 'master-data'`.
+    - Modal in `/settings?tab=roles` (`RolesTab.tsx`) now displays "Dữ liệu chung", ensuring 100% nomenclature alignment with the application sidebar menu.
+
+### Lesson 194: Bidirectional Permission Coupling (Auto-Grant & Auto-Revoke View Permissions)
+
+- **Context & QA Feedback**:
+  - QA Feedback / Bug ticket (`https://prnt.sc/vs_K8K5S3rPI`): `tick vô "Tạo khế ước.." nhưng truy cập vô quyền đó không có menu tạo khế ước` (Ticked "Tạo khế ước..." but the user had no menu to access the loan creation feature).
+  - Cause: Action permissions (e.g. `loans.manage`, `sales.create`, `master-data.manage`) could be checked in isolation while the underlying module view permission (e.g. `loans.view`, `sales.view`, `master-data.view`) was left unchecked. Since the sidebar and route guards require the view permission, users holding action permissions could not see the menu item or access the page.
+- **Resolution**:
+  - **Shared Permission Rule Maps (`src/lib/permissions.ts`)**:
+    - Created `VIEW_TO_ACTIONS_MAP` and `ACTION_TO_VIEW_MAP` defining the exact parent/child relationship between view and action permissions across all modules (`batches`, `sales`, `loans`, `finance`, `reconcile`, `customers`, `master-data`).
+    - Added `togglePermissionWithRules`:
+      - **Auto-grant view**: Ticking ANY action permission in a module automatically ticks its module view permission.
+      - **Auto-revoke dependents**: Unticking a view permission automatically removes ALL action permissions within that module.
+    - Added `normalizePermissions`: Deduplicates and guarantees that any permission set containing action permissions always contains their corresponding view permissions.
+    - Updated `hasPermission`: If checking for a module's view permission, holding ANY action permission within that module automatically grants view access as well (safeguarding legacy role records).
+  - **UI & Server Enforcement**:
+    - `RolesTab.tsx`: Bound checkbox toggling to `togglePermissionWithRules`, normalized incoming permissions on `openEdit`, and passed normalized permissions on `handleSave`.
+    - `saveRoleFn` (`src/server/fns/system.ts`): Passed received permissions through `normalizePermissions` before persisting into `role_permissions`.
+
+### Lesson 195: Role Description Truncation & Table Header Alignment (`/settings?tab=roles`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/EzxsrqnNJsZa`): `mô tả dài quá thì ...` (If description is too long, truncate with `...` / ellipsis).
+  - Extremely long role descriptions (up to 255 characters) stretched table cells horizontally and pushed subsequent columns (Quyền, Người Dùng, Thao tác) beyond the viewport, causing unnecessary horizontal scrollbars.
+- **Resolution**:
+  - **`src/components/settings/RolesTab.tsx`**:
+    - Constrained `Mô Tả` table cell with `max-w-md` and wrapped text in `<div className="truncate" title={r.description ?? undefined}>`. Long descriptions truncate cleanly with `...` while full text remains viewable on hover.
+    - Constrained `Tên Vai Trò` with `max-w-xs truncate` and tooltip `title={r.name}`.
+    - Added `<TableHead className="w-24 text-right pr-4">Thao tác</TableHead>` aligned with action buttons.
+    - Sized column widths (`w-48` for role name, `w-28` for permission count and user count) ensuring fixed, clean layout.
+
+### Lesson 196: Eliminating Duplicate Password Reveal Eye Icon (`/login`)
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (`https://prnt.sc/oCa1VM-ELqRp`): `bỏ bớt 1 icon con mắt đi` (Remove one of the duplicate eye icons).
+  - In Chromium and Microsoft Edge on Windows, `input[type="password"]` automatically renders a native browser password reveal eye button (`::-ms-reveal`). Because `PasswordInput` already includes a custom Lucide `<Eye />` toggle button, users were presented with two redundant eye icons side-by-side in the password field.
+- **Resolution**:
+  - In `src/styles.css`: Added global rule `input::-ms-reveal, input::-ms-clear { display: none; }` to suppress native browser password reveal and clear controls.
+  - In `src/components/ui/password-input.tsx`: Added `[&::-ms-reveal]:hidden [&::-ms-clear]:hidden` to `Input` className to ensure consistent single-eye behavior across all platforms and browsers.
+
+### Lesson 197: Immediate Account Lockout Notification & Seamless Session Revocation
+
+- **Context & QA Feedback**:
+  - QA Feedback ticket (Module: `Quản lý người dùng` / CMS):
+    - Requirement: `người dùng đang log in mà admin khóa thì hiển thị thông báo "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ"` (When an active user is logged in and an admin locks/deactivates their account, show notice: "Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ").
+- **Root Cause & Technical Gap**:
+  - Previously, `saveUserFn` immediately deleted sessions from `sessions` table upon deactivation. When the user's browser sent subsequent requests, `getUserBySessionToken` found no session record and returned generic 401 unauthenticated, losing the context that the account was explicitly deactivated by an admin.
+  - Furthermore, `currentUserQuery` had a 5-minute cache time without periodic polling, causing idle users to remain uninformed for minutes.
+- **Architectural Resolution**:
+  1. **`src/lib/auth-errors.ts`**:
+     - Defined `ACCOUNT_LOCKED_CODE = 'ACCOUNT_LOCKED'` and exact message `ACCOUNT_LOCKED_MESSAGE = 'Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ'`.
+     - Added type-safe detector `isAccountLockedError(error: unknown): boolean`.
+  2. **`src/server/services/auth.ts`**:
+     - In `getUserBySessionToken`: When session matches but `!row.isActive`, automatically purge the user's sessions from `sessions` and throw `ACCOUNT_LOCKED_CODE: ACCOUNT_LOCKED_MESSAGE`.
+     - In `authenticate`: If user exists but `!user.isActive`, return `{ user: null, reason: 'locked' }`.
+  3. **`src/server/fns/auth.ts`**:
+     - In `loginFn`: When `reason === 'locked'`, throw `ACCOUNT_LOCKED_MESSAGE` so locked users attempting to log in receive this exact message.
+  4. **`src/server/fns/system.ts`**:
+     - In `saveUserFn`: Deactivated accounts retain their sessions in DB until the next request so `getUserBySessionToken` detects the deactivation and delivers the exact locked message before cleaning up.
+  5. **`src/lib/queries.ts`**:
+     - Configured `currentUserQuery` with `staleTime: 10_000`, `refetchInterval: 10_000`, and `refetchOnWindowFocus: true` for near real-time detection of account lockouts.
+  6. **`src/integrations/tanstack-query/root-provider.tsx`**:
+     - In `handleAuthError(error)`: When `isAccountLockedError(error)` triggers, displays an immediate modal dialog (`alertDialog`) with the message `"Tài khoản của bạn đã bị khóa. Vui lòng liên hệ quản trị viên để được hỗ trợ"`. Clicking "Về trang đăng nhập" redirects to `/login?locked=1`.
+  7. **`src/routes/login.tsx`**:
+     - Accepts `locked` search param (`/login?locked=1`) and initializes `error` state to `ACCOUNT_LOCKED_MESSAGE`, presenting a prominent red error banner upon arrival.
+  8. **`src/routes/__root.tsx`**:
+     - Added router `errorComponent` catching `isAccountLockedError(error)` and redirecting to `/login?locked=1`.
+
+### Lesson 198: Password Reset Token Expiry & MySQL Timezone Consistency
+
+- **Context & QA Feedback**:
+  - QA Bug ticket (`https://prnt.sc/fpDjCFsvbaI6`): `nhập email -> qua form đặt lại mật khẩu nhưng khi đặt lại mật khẩu đặt không được` (Enter email -> open reset password form, but cannot reset password with error: "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn").
+- **Root Cause & Smoking Gun**:
+  - In `createPasswordResetToken`, the expiration time was inserted using JavaScript's `new Date(Date.now() + 30 * 60_000)` which serialized to UTC string format `YYYY-MM-DD HH:mm:ss`.
+  - In `resetPasswordWithToken`, the validation condition evaluated `gt(passwordResetTokens.expiresAt, sql`NOW()`)` against MySQL's `NOW()`.
+  - When the MySQL session timezone is `+07:00` (Vietnam, standard on staging/production servers) while Node outputs UTC, MySQL's `NOW()` is 7 hours ahead of the UTC timestamp. Consequently, a token created to expire in 30 minutes was already considered 6.5 hours in the past the instant it was created, immediately causing `resetPasswordWithToken` to fail with "Liên kết đặt lại mật khẩu không hợp lệ hoặc đã hết hạn".
+- **Resolution**:
+  1. **`src/server/services/auth.ts`**:
+     - Updated `createPasswordResetToken` to use MySQL's clock: `expiresAt: sql`DATE_ADD(NOW(), INTERVAL 30 MINUTE)``. This guarantees the expiration timestamp and subsequent `gt(expiresAt, sql`NOW()`)` evaluations use the exact same MySQL clock, eliminating timezone skew across all server environments.
+     - Normalized email matching: `where(sql`LOWER(${users.email}) = ${normalizedEmail}`)`.
+     - Trimmed token before hash evaluation and set `usedAt: sql`NOW()``.
+     - Updated `createSession` to use `expiresAt: sql`DATE_ADD(NOW(), INTERVAL ${SESSION_TTL_DAYS} DAY)`` and `lastLoginAt: sql`NOW()``.
+  2. **`src/server/fns/auth.ts`**:
+     - Enforced `z.string().trim().email()` for email input in `forgotPasswordFn` and `z.string().trim().min(10)` for `token` in `resetPasswordFn`.
+  3. **`src/routes/reset-password.tsx`**:
+     - Passed `token.trim()` to mutation.
+
+### Lesson 199: Invoice Status Filter in Sales Order Details
 
 - `/sales/$orderId` has an invoice-status dropdown in the vehicle filter dialog with all statuses, invoiced, and uninvoiced options. It filters by `isInvoiced` independently of physical delivery and combines with the existing search, delivery, model, color, and selection-mode filters.
 - Invoice status participates in the active-filter count, reset action, and pagination reset key, so changing it returns the vehicle list to page 1. No database or server changes are required.
 
-### Lesson 177: Excel Export from Sales Order Details
+### Lesson 200: Excel Export from Sales Order Details
 
 - `/sales/$orderId` has an Excel export button beside the vehicle filters. It exports the entire current filtered vehicle list across all pages, including selection-mode visibility, rather than only the current page or checked rows.
 - The workbook is built in `src/lib/sales-order-excel.ts` (`downloadSalesOrderExcel`). The page loads that module with `await import(...)` on click, so `xlsx` stays out of the page bundle. Export runs in the browser, shows a success toast, and is disabled for an empty result or while exporting.
@@ -1985,7 +2319,12 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - Money cells are numbers with `#,##0`. Dates are real Excel date serials with `dd/mm/yyyy` (built from the `yyyy-mm-dd` strings, timezone-free), so they sort and filter as dates. The totals row uses `SUBTOTAL(109/103, ...)` with cached values, so totals follow the Excel autofilter. The autofilter covers only the header and data rows.
 - SheetJS Community 0.18.5 cannot write cell styles (bold, fills) or frozen panes; merges, number formats, formulas, column widths and autofilter work. The file name uses the local date: `phieu-ban-<id>-xe-<yyyy-mm-dd>.xlsx`. No server or schema changes are needed.
 
-_(Next Agent: Append Lesson 178, 179,... above this line upon completing tasks)_
+### Lesson 201: Concurrent Knowledge Log Updates Can Block Merge Requests
+
+- MR !4 conflicted only in `AGENTS.md`: the sales feature branch and `develop` both appended different lessons numbered 176 and 177 after Lesson 175 and updated the same next-lesson marker.
+- Merge the latest `develop` into the feature branch, retain both lesson sets, and renumber the feature lessons after the existing target-branch lessons. Keep a single next-lesson marker. The sales route merges automatically, retaining the invoice filter, Excel export, and accent-insensitive search.
+
+_(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 
 

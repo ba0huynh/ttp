@@ -16,6 +16,7 @@ import {
   getUserBySessionToken,
   resetPasswordWithToken,
 } from '#/server/services/auth.ts'
+import { ACCOUNT_LOCKED_MESSAGE } from '#/lib/auth-errors.ts'
 import {
   isMailConfigured,
   sendPasswordResetMail,
@@ -48,7 +49,10 @@ export const loginFn = createServerFn({ method: 'POST' })
     }),
   )
   .handler(async ({ data }) => {
-    const user = await authenticate(data.login, data.password)
+    const { user, reason } = await authenticate(data.login, data.password)
+    if (reason === 'locked') {
+      throw new Error(ACCOUNT_LOCKED_MESSAGE)
+    }
     if (!user)
       throw new Error(
         'Sai thông tin đăng nhập hoặc tài khoản chưa được kích hoạt',
@@ -75,7 +79,7 @@ export const logoutFn = createServerFn({ method: 'POST' })
  */
 export const forgotPasswordFn = createServerFn({ method: 'POST' })
   .middleware([loggingMiddleware])
-  .validator(z.object({ email: z.email('Email không hợp lệ') }))
+  .validator(z.object({ email: z.string().trim().email('Email không hợp lệ') }))
   .handler(async ({ data }) => {
     const token = await createPasswordResetToken(data.email)
     if (!token) throw new Error('Email này chưa được đăng ký trong hệ thống')
@@ -105,7 +109,7 @@ export const resetPasswordFn = createServerFn({ method: 'POST' })
   .middleware([loggingMiddleware])
   .validator(
     z.object({
-      token: z.string().min(10),
+      token: z.string().trim().min(10),
       password: z.string().min(8, 'Mật khẩu tối thiểu 8 ký tự'),
     }),
   )

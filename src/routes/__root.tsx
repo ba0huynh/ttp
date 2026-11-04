@@ -20,11 +20,42 @@ import { Toaster } from '#/components/ui/sonner.tsx'
 import { ConfirmDialogHost } from '#/components/ui/confirm-dialog.tsx'
 import { FieldValidationHost } from '#/components/ui/field-validation.tsx'
 
+import {
+  isAccountLockedError,
+  isUnauthenticatedError,
+} from '#/lib/auth-errors.ts'
+
 interface MyRouterContext {
   queryClient: QueryClient
 }
 
 export const Route = createRootRouteWithContext<MyRouterContext>()({
+  errorComponent: ({ error }) => {
+    if (typeof window !== 'undefined') {
+      if (isAccountLockedError(error)) {
+        window.location.href = '/login?locked=1'
+        return null
+      }
+      if (isUnauthenticatedError(error)) {
+        window.location.href = '/login'
+        return null
+      }
+    }
+    return (
+      <div className="p-8 text-center text-sm text-slate-700">
+        <p className="font-semibold text-rose-600 mb-2">Đã xảy ra lỗi</p>
+        <p className="text-slate-500 mb-4">
+          {error instanceof Error ? error.message : String(error)}
+        </p>
+        <a
+          href="/"
+          className="inline-flex items-center px-3 py-1.5 rounded-md bg-slate-900 text-white text-xs font-medium hover:bg-slate-800"
+        >
+          Quay lại trang chủ
+        </a>
+      </div>
+    )
+  },
   beforeLoad: async () => {
     // Other redirect strategies are possible; see
     // https://github.com/TanStack/router/tree/main/examples/react/i18n-paraglide#offline-redirect

@@ -18,6 +18,7 @@ import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import {
   alertDialog,
+  confirmDialog,
   showErrorDialog,
 } from '#/components/ui/confirm-dialog.tsx'
 import {
@@ -48,6 +49,7 @@ import {
   SearchSelectItem,
 } from '#/components/ui/search-select.tsx'
 import { Switch } from '#/components/ui/switch.tsx'
+import { cn } from '#/lib/utils.ts'
 import {
   Table,
   TableBody,
@@ -216,6 +218,7 @@ function MasterDataPage() {
   const [cId, setCId] = React.useState<number | null>(null)
   const [modelOpen, setModelOpen] = React.useState(false)
   const [mName, setMName] = React.useState('')
+  const [mError, setMError] = React.useState<string | null>(null)
 
   // Modal Supplier
   const [supplierOpen, setSupplierOpen] = React.useState(false)
@@ -302,25 +305,66 @@ function MasterDataPage() {
 
   const handleSaveModel = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = mName.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!trimmed) {
+      setMError('Tên dòng xe không được để trống hoặc chỉ chứa khoảng trắng')
+      return
+    }
+    const isDup = master.models.some(
+      (m: (typeof master.models)[number]) =>
+        m.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
+        m.id !== (mId ?? undefined),
+    )
+    if (isDup) {
+      const msg = `Dòng xe "${trimmed}" đã tồn tại trong hệ thống`
+      setMError(msg)
+      await alertDialog(msg)
+      return
+    }
+    setMError(null)
     try {
       await saveModel.mutateAsync({
         data: {
           id: mId ?? undefined,
           brand: mBrand || null,
-          name: mName,
+          name: trimmed,
         },
       })
       setModelOpen(false)
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi lưu loại xe')
+      const msg = err instanceof Error ? err.message : String(err)
+      if (msg.includes('đã tồn tại')) {
+        setMError(msg)
+        await alertDialog(msg)
+      } else {
+        await showErrorDialog(err, 'Lỗi khi lưu dòng xe')
+      }
     }
   }
 
   const handleSaveExpenseType = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = xName.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!trimmed) {
+      await alertDialog(
+        'Tên loại chi phí không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.expenseTypes.some(
+      (x: (typeof master.expenseTypes)[number]) =>
+        x.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
+        x.id !== (xId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(`Loại chi phí "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
     try {
       await saveExpenseType.mutateAsync({
-        data: { id: xId ?? undefined, name: xName },
+        data: { id: xId ?? undefined, name: trimmed },
       })
       setExpenseTypeOpen(false)
     } catch (err: unknown) {
@@ -330,6 +374,28 @@ function MasterDataPage() {
 
   const handleSaveSupplier = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = sName.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!trimmed) {
+      await alertDialog(
+        'Tên nhà cung cấp không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.suppliers.some(
+      (s: (typeof master.suppliers)[number]) =>
+        s.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
+        s.id !== (sId ?? undefined),
+    )
+    if (isDup) {
+      const ok = await confirmDialog({
+        title: 'Cảnh Báo Trùng Tên Nhà Cung Cấp',
+        description: `Nhà cung cấp "${trimmed}" đã tồn tại trong hệ thống. Các nhà cung cấp khác nhau có thể có cùng tên. Bạn có chắc chắn muốn tiếp tục lưu không?`,
+        confirmLabel: 'Tiếp tục lưu',
+        cancelLabel: 'Kiểm tra lại',
+      })
+      if (!ok) return
+    }
     setSupplierSaving(true)
     try {
       // The file only reaches the server now, when the supplier is saved
@@ -339,7 +405,7 @@ function MasterDataPage() {
       await saveSupplier.mutateAsync({
         data: {
           id: sId ?? undefined,
-          name: sName,
+          name: trimmed,
           image,
         },
       })
@@ -353,12 +419,29 @@ function MasterDataPage() {
 
   const handleSaveBank = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = bName.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!trimmed) {
+      await alertDialog(
+        'Tên ngân hàng không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.banks.some(
+      (b: (typeof master.banks)[number]) =>
+        b.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
+        b.id !== (bId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(`Ngân hàng "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
     setBankSaving(true)
     try {
       // The file only reaches the server now, when the bank is saved
       const image = bFile ? await uploadLogo(bFile) : bImage || null
       await saveBank.mutateAsync({
-        data: { id: bId ?? undefined, name: bName, image },
+        data: { id: bId ?? undefined, name: trimmed, image },
       })
       clearLogoFile()
       setBankOpen(false)
@@ -375,13 +458,43 @@ function MasterDataPage() {
       await alertDialog('Chưa chọn ngân hàng cho tài khoản')
       return
     }
+    const cleanNumber = accNumber.trim()
+    if (!cleanNumber) {
+      await alertDialog(
+        'Số tài khoản không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    if (!/^\d+$/.test(cleanNumber)) {
+      await alertDialog('Số tài khoản chỉ được chứa các chữ số')
+      return
+    }
+    const cleanName = accName.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!cleanName) {
+      await alertDialog(
+        'Tên tài khoản không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.bankAccounts.some(
+      (a: (typeof master.bankAccounts)[number]) =>
+        a.accountNumber.trim() === cleanNumber &&
+        a.bankId === accBankId &&
+        a.id !== (accId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(
+        `Số tài khoản "${cleanNumber}" đã tồn tại cho ngân hàng này`,
+      )
+      return
+    }
     try {
       await saveAccount.mutateAsync({
         data: {
           id: accId ?? undefined,
           bankId: accBankId,
-          accountName: accName,
-          accountNumber: accNumber,
+          accountName: cleanName,
+          accountNumber: cleanNumber,
           branch: accBranch.trim() || null,
           isActive: accActive,
         },
@@ -394,9 +507,26 @@ function MasterDataPage() {
 
   const handleSaveColor = async (e: React.FormEvent) => {
     e.preventDefault()
+    const trimmed = cName.trim().replace(/\s+/g, ' ').normalize('NFC')
+    if (!trimmed) {
+      await alertDialog(
+        'Tên màu sắc không được để trống hoặc chỉ chứa khoảng trắng',
+      )
+      return
+    }
+    const isDup = master.colors.some(
+      (c: (typeof master.colors)[number]) =>
+        c.name.trim().replace(/\s+/g, ' ').normalize('NFC').toLowerCase() ===
+          trimmed.toLowerCase() &&
+        c.id !== (cId ?? undefined),
+    )
+    if (isDup) {
+      await alertDialog(`Màu sắc "${trimmed}" đã tồn tại trong hệ thống`)
+      return
+    }
     try {
       await saveColor.mutateAsync({
-        data: { id: cId ?? undefined, name: cName.trim() },
+        data: { id: cId ?? undefined, name: trimmed },
       })
       setColorOpen(false)
     } catch (err: unknown) {
@@ -483,6 +613,7 @@ function MasterDataPage() {
                       setMId(null)
                       setMName('')
                       setMBrand('')
+                      setMError(null)
                       setModelOpen(true)
                     }}
                     className="h-9 text-xs bg-emerald-700 hover:bg-emerald-800 text-white gap-1"
@@ -497,14 +628,16 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Dòng Xe</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {modelsPg.pageItems.map((m) => (
                       <TableRow key={m.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          {m.name}
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <div className="truncate" title={m.name}>
+                            {m.name}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -516,6 +649,7 @@ function MasterDataPage() {
                                   setMId(m.id)
                                   setMName(m.name)
                                   setMBrand(m.brand ?? '')
+                                  setMError(null)
                                   setModelOpen(true)
                                 }}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
@@ -584,14 +718,16 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Loại Chi Phí</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {expenseTypesPg.pageItems.map((m) => (
                       <TableRow key={m.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          {m.name}
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <div className="truncate" title={m.name}>
+                            {m.name}
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -671,14 +807,18 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Công Ty Cung Cấp</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {suppliersPg.pageItems.map((s) => (
                       <TableRow key={s.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          <SupplierLink supplierId={s.id} className="inline-flex max-w-full min-w-0 items-center gap-2 hover:text-emerald-700 hover:underline">
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <SupplierLink
+                            supplierId={s.id}
+                            title={s.name}
+                            className="inline-flex max-w-full min-w-0 items-center gap-2 hover:text-emerald-700 hover:underline"
+                          >
                             <SupplierLogo src={s.image} name={s.name} />
                             <span className="truncate">{s.name}</span>
                           </SupplierLink>
@@ -736,7 +876,7 @@ function MasterDataPage() {
                 <SearchBox
                   value={search}
                   onChange={setSearch}
-                  placeholder="Tìm tên, mã hoặc tên viết tắt ngân hàng..."
+                  placeholder="Tìm tên ngân hàng..."
                   className="ml-auto mr-3 w-72"
                 />
                 <Can permission="master-data.manage">
@@ -761,16 +901,18 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Ngân Hàng</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {banksPg.pageItems.map((b) => (
                       <TableRow key={b.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          <BankLabel image={b.image} name={b.name}>
-                            {b.name}
-                          </BankLabel>
+                        <TableCell className="font-medium text-slate-900 max-w-xl">
+                          <div className="max-w-xl truncate" title={b.name}>
+                            <BankLabel image={b.image} name={b.name}>
+                              {b.name}
+                            </BankLabel>
+                          </div>
                         </TableCell>
                         <TableCell>
                           <div className="flex justify-end gap-1">
@@ -844,30 +986,36 @@ function MasterDataPage() {
                 <Table>
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
-                      <TableHead>Tên Tài Khoản</TableHead>
-                      <TableHead>Ngân Hàng</TableHead>
-                      <TableHead>Số Tài Khoản</TableHead>
-                      <TableHead>Chi Nhánh</TableHead>
-                      <TableHead className="text-center">Trạng Thái</TableHead>
-                      <TableHead className="w-20"></TableHead>
+                      <TableHead className="w-52">Tên Tài Khoản</TableHead>
+                      <TableHead className="w-64">Ngân Hàng</TableHead>
+                      <TableHead className="w-36">Số Tài Khoản</TableHead>
+                      <TableHead className="w-36">Chi Nhánh</TableHead>
+                      <TableHead className="w-28 text-center">Trạng Thái</TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {accountsPg.pageItems.map((a) => (
                       <TableRow key={a.id}>
-                        <TableCell className="font-medium text-slate-900">
-                          {a.accountName}
+                        <TableCell className="font-medium text-slate-900 max-w-[210px]">
+                          <div className="truncate" title={a.accountName}>
+                            {a.accountName}
+                          </div>
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">
-                          <BankLabel image={a.bankImage} name={a.bankName}>
-                            {a.bankName}
-                          </BankLabel>
+                        <TableCell className="font-medium text-slate-900 max-w-[260px]">
+                          <div className="truncate" title={a.bankName}>
+                            <BankLabel image={a.bankImage} name={a.bankName}>
+                              {a.bankName}
+                            </BankLabel>
+                          </div>
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">
+                        <TableCell className="font-medium text-slate-900 whitespace-nowrap">
                           {a.accountNumber}
                         </TableCell>
-                        <TableCell className="font-medium text-slate-900">
-                          {a.branch || '—'}
+                        <TableCell className="font-medium text-slate-900 max-w-[150px]">
+                          <div className="truncate" title={a.branch || '—'}>
+                            {a.branch || '—'}
+                          </div>
                         </TableCell>
                         <TableCell className="text-center">
                           <Badge
@@ -958,14 +1106,14 @@ function MasterDataPage() {
                   <TableHeader>
                     <TableRow className="text-xs bg-slate-50">
                       <TableHead>Tên Màu Sắc</TableHead>
-                      <TableHead className="w-10"></TableHead>
+                      <TableHead className="w-24 text-right pr-4">Thao tác</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody className="text-xs">
                     {colorsPg.pageItems.map((c) => (
                       <TableRow key={c.id}>
-                        <TableCell>
-                          <div className="font-medium text-slate-900">
+                        <TableCell className="max-w-xl">
+                          <div className="font-medium text-slate-900 truncate" title={c.name}>
                             {c.name}
                           </div>
                         </TableCell>
@@ -1013,7 +1161,13 @@ function MasterDataPage() {
         </Tabs>
 
         {/* Add Motorcycle Model Modal */}
-        <Dialog open={modelOpen} onOpenChange={setModelOpen}>
+        <Dialog
+          open={modelOpen}
+          onOpenChange={(open) => {
+            setModelOpen(open)
+            if (!open) setMError(null)
+          }}
+        >
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
@@ -1026,10 +1180,20 @@ function MasterDataPage() {
                 <Input
                   required
                   value={mName}
-                  onChange={(e) => setMName(e.target.value)}
-                  className="h-11 text-sm px-4 rounded-lg"
+                  onChange={(e) => {
+                    setMName(e.target.value)
+                    if (mError) setMError(null)
+                  }}
+                  className={cn(
+                    'h-11 text-sm px-4 rounded-lg',
+                    mError &&
+                      'border-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                  )}
                   placeholder="SH 150i ABS"
                 />
+                {mError && (
+                  <p className="text-[11px] font-medium text-rose-600">{mError}</p>
+                )}
               </div>
               <DialogFooter className="pt-2">
                 <Button
@@ -1289,7 +1453,11 @@ function MasterDataPage() {
                 <Input
                   required
                   value={accNumber}
-                  onChange={(e) => setAccNumber(e.target.value)}
+                  onChange={(e) =>
+                    setAccNumber(e.target.value.replace(/\D/g, ''))
+                  }
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   maxLength={50}
                   className="h-11 text-sm px-4 rounded-lg"
                   placeholder="0071001234567"

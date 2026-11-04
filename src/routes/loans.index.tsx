@@ -687,7 +687,11 @@ function LoansPage() {
                 <Label className="text-xs font-semibold">Số Tài Khoản</Label>
                 <Input
                   value={accountNumber}
-                  onChange={(e) => setAccountNumber(e.target.value)}
+                  onChange={(e) =>
+                    setAccountNumber(e.target.value.replace(/\D/g, ''))
+                  }
+                  inputMode="numeric"
+                  pattern="[0-9]*"
                   placeholder="Nhập số tài khoản"
                   className="h-11 text-sm px-4 rounded-lg"
                 />

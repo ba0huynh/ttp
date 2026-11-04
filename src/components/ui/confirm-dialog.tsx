@@ -134,11 +134,50 @@ export function formatErrorMessage(
           .map((item: any) => {
             const field = describePath(item.path)
 
+            const isString =
+              item.origin === 'string' || item.type === 'string'
             let msg = item.message || 'Dữ liệu không hợp lệ'
-            if (item.code === 'too_small' && item.type === 'string') {
-              msg = `Tối thiểu ${item.minimum} ký tự`
-            } else if (item.code === 'too_big' && item.type === 'string') {
-              msg = `Tối đa ${item.maximum} ký tự`
+            const isDefaultZodMessage =
+              !item.message ||
+              item.message.startsWith('Too small') ||
+              item.message.startsWith('Too big') ||
+              item.message.startsWith('Expected ') ||
+              item.message.startsWith('Invalid ')
+
+            if (isDefaultZodMessage) {
+              if (item.code === 'too_small') {
+                if (isString) {
+                  msg =
+                    item.minimum === 1
+                      ? 'Không được để trống hoặc chỉ chứa khoảng trắng'
+                      : `Tối thiểu ${item.minimum} ký tự`
+                } else {
+                  msg = `Giá trị tối thiểu là ${item.minimum}`
+                }
+              } else if (item.code === 'too_big') {
+                if (isString) {
+                  msg = `Tối đa ${item.maximum} ký tự`
+                } else {
+                  msg = `Giá trị tối đa là ${item.maximum}`
+                }
+              } else if (item.code === 'invalid_type') {
+                msg = 'Vui lòng nhập giá trị hợp lệ'
+              } else if (item.code === 'invalid_format') {
+                msg =
+                  item.format === 'email'
+                    ? 'Email không hợp lệ'
+                    : 'Định dạng không hợp lệ'
+              } else {
+                msg = 'Không được để trống hoặc chỉ chứa khoảng trắng'
+              }
+            } else if (typeof msg === 'string') {
+              if (msg.includes('Too small: expected string to have >=')) {
+                msg = 'Không được để trống hoặc chỉ chứa khoảng trắng'
+              } else if (msg.includes('Too small')) {
+                msg = 'Giá trị quá nhỏ hoặc chưa được nhập'
+              } else if (msg.includes('Too big')) {
+                msg = 'Giá trị vượt quá giới hạn'
+              }
             }
 
             return field ? `${field}: ${msg}` : msg

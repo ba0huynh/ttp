@@ -64,6 +64,7 @@ import { hasPermission } from '#/lib/permissions.ts'
 import { matchesSearch } from '#/lib/text.ts'
 import { confirmDelete, reportDeleteFailure } from '#/lib/usage.ts'
 import { useUrlText } from '#/lib/use-url-text.ts'
+import { cn } from '#/lib/utils.ts'
 import {
   companyProfileQuery,
   currentUserQuery,
@@ -186,6 +187,7 @@ function SettingsPage() {
     company?.representative ?? 'Huỳnh Văn Thịnh',
   )
   const [companySuccess, setCompanySuccess] = React.useState(false)
+  const [cErrors, setCErrors] = React.useState<FieldErrors>({})
 
   // Create/Edit User modal
   const [userModalOpen, setUserModalOpen] = React.useState(false)
@@ -225,21 +227,50 @@ function SettingsPage() {
   const handleUpdateCompany = async (e: React.FormEvent) => {
     e.preventDefault()
     setCompanySuccess(false)
+    const errs: FieldErrors = {}
+    const cleanTax = cTax.trim()
+    if (!cleanTax) {
+      errs.taxCode = 'Vui lòng nhập mã số thuế'
+    } else if (!/^\d+$/.test(cleanTax)) {
+      errs.taxCode = 'Mã số thuế chỉ được chứa các chữ số'
+    }
+
+    const cleanPhone = cPhone?.trim() || null
+    if (cleanPhone && !/^\d+$/.test(cleanPhone)) {
+      errs.phone = 'Số điện thoại chỉ được chứa các chữ số'
+    }
+
+    const cleanEmail = cEmail?.trim() || null
+    if (cleanEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(cleanEmail)) {
+      errs.email = 'Email không đúng định dạng'
+    }
+
+    if (Object.keys(errs).length > 0) {
+      setCErrors(errs)
+      return
+    }
+    setCErrors({})
+
     try {
       await updateCompany.mutateAsync({
         data: {
           name: cName,
-          taxCode: cTax,
+          taxCode: cleanTax,
           address: cAddress,
-          phone: cPhone,
-          email: cEmail,
-          representative: cRep,
+          phone: cleanPhone,
+          email: cleanEmail,
+          representative: cRep || null,
           website: null,
         },
       })
       setCompanySuccess(true)
     } catch (err: unknown) {
-      await showErrorDialog(err, 'Lỗi khi cập nhật công ty')
+      const fieldErrors = parseFieldErrors(err)
+      if (Object.keys(fieldErrors).length > 0) {
+        setCErrors(fieldErrors)
+      } else {
+        await showErrorDialog(err, 'Lỗi khi cập nhật công ty')
+      }
     }
   }
 
@@ -405,10 +436,32 @@ function SettingsPage() {
                       </Label>
                       <Input
                         disabled={!canCompany}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="Chỉ nhập số..."
                         value={cTax}
-                        onChange={(e) => setCTax(e.target.value)}
-                        className="h-11 rounded-lg px-4 text-sm"
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          setCTax(digits)
+                          if (cErrors.taxCode) {
+                            setCErrors((prev) => {
+                              const next = { ...prev }
+                              delete next.taxCode
+                              return next
+                            })
+                          }
+                        }}
+                        className={cn(
+                          'h-11 rounded-lg px-4 text-sm',
+                          cErrors.taxCode &&
+                            'border-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                        )}
                       />
+                      {cErrors.taxCode && (
+                        <p className="text-[11px] font-medium text-rose-600">
+                          {cErrors.taxCode}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold">
@@ -443,10 +496,32 @@ function SettingsPage() {
                       </Label>
                       <Input
                         disabled={!canCompany}
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        placeholder="Chỉ nhập số..."
                         value={cPhone}
-                        onChange={(e) => setCPhone(e.target.value)}
-                        className="h-11 rounded-lg px-4 text-sm"
+                        onChange={(e) => {
+                          const digits = e.target.value.replace(/\D/g, '')
+                          setCPhone(digits)
+                          if (cErrors.phone) {
+                            setCErrors((prev) => {
+                              const next = { ...prev }
+                              delete next.phone
+                              return next
+                            })
+                          }
+                        }}
+                        className={cn(
+                          'h-11 rounded-lg px-4 text-sm',
+                          cErrors.phone &&
+                            'border-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                        )}
                       />
+                      {cErrors.phone && (
+                        <p className="text-[11px] font-medium text-rose-600">
+                          {cErrors.phone}
+                        </p>
+                      )}
                     </div>
                     <div className="space-y-1">
                       <Label className="text-xs font-semibold">
@@ -454,10 +529,30 @@ function SettingsPage() {
                       </Label>
                       <Input
                         disabled={!canCompany}
+                        type="email"
+                        placeholder="example@truongthinhphat-motor.vn"
                         value={cEmail}
-                        onChange={(e) => setCEmail(e.target.value)}
-                        className="h-11 rounded-lg px-4 text-sm"
+                        onChange={(e) => {
+                          setCEmail(e.target.value)
+                          if (cErrors.email) {
+                            setCErrors((prev) => {
+                              const next = { ...prev }
+                              delete next.email
+                              return next
+                            })
+                          }
+                        }}
+                        className={cn(
+                          'h-11 rounded-lg px-4 text-sm',
+                          cErrors.email &&
+                            'border-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
+                        )}
                       />
+                      {cErrors.email && (
+                        <p className="text-[11px] font-medium text-rose-600">
+                          {cErrors.email}
+                        </p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
