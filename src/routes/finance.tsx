@@ -445,6 +445,11 @@ function FinancePage() {
   const { tab } = search
   const navigate = Route.useNavigate()
   const [showFilters, setShowFilters] = React.useState(false)
+  // Dates of the debt tabs are edited here and only sent (URL + API) on "Xong"
+  const [dateDraft, setDateDraft] = React.useState<{
+    from: string
+    to: string
+  }>({ from: '', to: '' })
 
   // Merge a change into one tab's filters; empty values are dropped from the URL
   const setTabFilter = (key: FilterKey, patch: Record<string, unknown>) =>
@@ -892,7 +897,19 @@ function FinancePage() {
               <Button
                 size="sm"
                 variant="outline"
-                onClick={() => setShowFilters(true)}
+                onClick={() => {
+                  const cur =
+                    tab === 'receivables'
+                      ? rcvF
+                      : tab === 'payables'
+                        ? payF
+                        : {}
+                  setDateDraft({
+                    from: (cur as { from?: string }).from ?? '',
+                    to: (cur as { to?: string }).to ?? '',
+                  })
+                  setShowFilters(true)
+                }}
                 aria-haspopup="dialog"
                 className={`gap-1.5 ${activeCount > 0 ? 'border-emerald-600 text-emerald-800' : ''}`}
               >
@@ -1357,9 +1374,9 @@ function FinancePage() {
                     </Label>
                     <Input
                       type="date"
-                      value={rcvF.from ?? ''}
+                      value={dateDraft.from}
                       onChange={(e) =>
-                        setTabFilter('rcv', { from: e.target.value })
+                        setDateDraft((d) => ({ ...d, from: e.target.value }))
                       }
                       className="h-11 text-sm px-4 rounded-lg"
                     />
@@ -1370,9 +1387,9 @@ function FinancePage() {
                     </Label>
                     <Input
                       type="date"
-                      value={rcvF.to ?? ''}
+                      value={dateDraft.to}
                       onChange={(e) =>
-                        setTabFilter('rcv', { to: e.target.value })
+                        setDateDraft((d) => ({ ...d, to: e.target.value }))
                       }
                       className="h-11 text-sm px-4 rounded-lg"
                     />
@@ -1437,9 +1454,9 @@ function FinancePage() {
                     </Label>
                     <Input
                       type="date"
-                      value={payF.from ?? ''}
+                      value={dateDraft.from}
                       onChange={(e) =>
-                        setTabFilter('pay', { from: e.target.value })
+                        setDateDraft((d) => ({ ...d, from: e.target.value }))
                       }
                       className="h-11 text-sm px-4 rounded-lg"
                     />
@@ -1450,9 +1467,9 @@ function FinancePage() {
                     </Label>
                     <Input
                       type="date"
-                      value={payF.to ?? ''}
+                      value={dateDraft.to}
                       onChange={(e) =>
-                        setTabFilter('pay', { to: e.target.value })
+                        setDateDraft((d) => ({ ...d, to: e.target.value }))
                       }
                       className="h-11 text-sm px-4 rounded-lg"
                     />
@@ -1677,6 +1694,7 @@ function FinancePage() {
                 disabled={activeCount === 0}
                 onClick={() => {
                   if (tab === 'payments') setPmtText('')
+                  setDateDraft({ from: '', to: '' })
                   clearTabFilter(tabKey[tab])
                 }}
                 className="h-8 text-xs text-slate-500"
@@ -1686,7 +1704,17 @@ function FinancePage() {
               <Button
                 type="button"
                 size="sm"
-                onClick={() => setShowFilters(false)}
+                onClick={() => {
+                  // The debt tabs apply their date range now: URL + API call
+                  if (tab === 'receivables' || tab === 'payables') {
+                    const from = dateDraft.from || undefined
+                    const to = dateDraft.to || undefined
+                    const cur = tab === 'receivables' ? rcvF : payF
+                    if (from !== cur.from || to !== cur.to)
+                      setTabFilter(tabKey[tab], { from, to })
+                  }
+                  setShowFilters(false)
+                }}
                 className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
               >
                 Xong
