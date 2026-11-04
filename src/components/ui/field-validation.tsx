@@ -16,7 +16,9 @@ function messageFor(el: Control): string {
       type === 'radio'
     )
       return 'Vui lòng chọn một giá trị'
-    if (type === 'date') return 'Vui lòng chọn ngày'
+    // DateInput's visible box is a text box marked data-slot="date-input"
+    if (type === 'date' || el.dataset.slot === 'date-input')
+      return 'Vui lòng chọn ngày'
     return 'Vui lòng nhập thông tin này'
   }
   if (v.typeMismatch)
