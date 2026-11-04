@@ -122,9 +122,9 @@ function ReportsPage() {
           </form>
         </div>
 
-        {/* 4 Summary Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <Card className="border-slate-200">
+        {/* Summary cards: revenue − cost = gross profit on one desktop row */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-6 gap-4">
+          <Card className="border-slate-200 lg:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-slate-500 uppercase">
                 Tổng Doanh Thu
@@ -135,12 +135,29 @@ function ReportsPage() {
                 {formatVnd(totalRevenue)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Đã chốt xác nhận bán hàng
+                Giá bán chưa VAT, phiếu bán đã xác nhận
               </p>
             </CardContent>
           </Card>
 
-          <Card className="border-emerald-200 bg-emerald-50/40">
+          <Card className="border-slate-200 lg:col-span-2">
+            <CardHeader className="pb-2">
+              <CardTitle className="text-xs font-semibold text-slate-500 uppercase">
+                Giá Vốn
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="text-2xl font-black text-slate-900">
+                {formatVnd(totalCost)}
+              </div>
+              <p className="text-xs text-slate-500 mt-1">
+                Giá nhập đã VAT + chi phí lô phân bổ
+              </p>
+            </CardContent>
+          </Card>
+
+          {/* Full width under revenue and cost on tablets, 2 of 6 on desktop */}
+          <Card className="border-emerald-200 bg-emerald-50/40 sm:col-span-2">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-emerald-900 uppercase">
                 Lợi Nhuận Gộp
@@ -156,7 +173,7 @@ function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-purple-200 bg-purple-50/40">
+          <Card className="border-purple-200 bg-purple-50/40 lg:col-span-3">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-purple-900 uppercase">
                 Lãi Vay Đã Chi Trả
@@ -172,7 +189,7 @@ function ReportsPage() {
             </CardContent>
           </Card>
 
-          <Card className="border-blue-200 bg-blue-50/40">
+          <Card className="border-blue-200 bg-blue-50/40 lg:col-span-3">
             <CardHeader className="pb-2">
               <CardTitle className="text-xs font-semibold text-blue-900 uppercase">
                 Trị Giá Tồn Kho Thực Tế
@@ -210,6 +227,7 @@ function ReportsPage() {
                     <TableHead>Khách Hàng</TableHead>
                     <TableHead className="text-center">Số Xe</TableHead>
                     <TableHead className="text-right">Doanh Thu</TableHead>
+                    <TableHead className="text-right">Giá Vốn</TableHead>
                     <TableHead className="text-right">Lợi Nhuận</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -235,6 +253,9 @@ function ReportsPage() {
                       </TableCell>
                       <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(c.revenue)}
+                      </TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatVnd(c.cost)}
                       </TableCell>
                       <TableCell className="text-right text-emerald-800">
                         {formatVnd(c.profit)}
@@ -265,6 +286,7 @@ function ReportsPage() {
                     <TableHead>Dòng Xe</TableHead>
                     <TableHead className="text-center">Đã Bán</TableHead>
                     <TableHead className="text-right">Doanh Thu</TableHead>
+                    <TableHead className="text-right">Giá Vốn</TableHead>
                     <TableHead className="text-right">Lợi Nhuận Gộp</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -280,6 +302,9 @@ function ReportsPage() {
                       </TableCell>
                       <TableCell className="text-right font-medium text-slate-900">
                         {formatVnd(m.revenue)}
+                      </TableCell>
+                      <TableCell className="text-right text-slate-900">
+                        {formatVnd(m.cost)}
                       </TableCell>
                       <TableCell className="text-right text-emerald-800">
                         {formatVnd(m.profit)}
