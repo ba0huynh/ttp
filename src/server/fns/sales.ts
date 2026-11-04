@@ -217,16 +217,25 @@ export const createSalesOrderFn = createServerFn({ method: 'POST' })
   .middleware([requirePermission('sales.create')])
   .validator(
     z.object({
-      orderDate: z.string().min(10),
-      customerId: z.number().int(),
+      orderDate: z.string().min(10, 'Vui lòng chọn ngày lập phiếu'),
+      customerId: z.number().int({ message: 'Vui lòng chọn khách hàng' }),
       branchId: z.number().int().nullable().optional(),
-      items: z.array(
-        z.object({
-          vehicleId: z.number().int(),
-          priceBeforeVat: z.number().positive().optional(),
-          vatRate: z.number().min(0).max(100).optional(),
-        }),
-      ),
+      items: z
+        .array(
+          z.object({
+            vehicleId: z.number().int(),
+            priceBeforeVat: z
+              .number({ message: 'Vui lòng nhập đơn giá chưa VAT' })
+              .positive('Phải lớn hơn 0')
+              .optional(),
+            vatRate: z
+              .number({ message: 'Vui lòng nhập thuế VAT' })
+              .min(0, 'Thuế VAT không được âm')
+              .max(100, 'Thuế VAT tối đa 100%')
+              .optional(),
+          }),
+        )
+        .min(1, 'Vui lòng chọn ít nhất một chiếc xe từ kho để bán'),
     }),
   )
   .handler(async ({ data, context }) => {

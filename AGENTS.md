@@ -2415,3 +2415,121 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 - **Popups**: `listReceivableOrdersFn` / `listSupplierBatchesFn` take the same `from` / `to` (the eye button passes the tab's current range), so the list matches the row's amounts.
 - Payment vouchers are still limited per supplier by the all-time debt (`assertPaymentWithinDebt`, Lesson 205), not by the filtered period.
 - **Apply on confirm (client)**: the two date boxes edit a local draft (`dateDraft`, re-read from the URL each time the dialog opens); the URL and the API call change only when "Xong" is pressed (and only if the dates changed). Closing the dialog another way discards the draft; "Xóa lọc" clears the draft and the filter at once. The other filters of the dialog still apply live.
+
+### Lesson 211: Clearing the Disbursement Date Crashed `/loans` ("Invalid time value")
+
+- **Bug** (QA, `khế ước vay ngân hàng`): in the "Tạo Khế Ước Vay Ngân Hàng Mới" dialog, clearing "Ngày Giải Ngân" showed the full-page error "Đã xảy ra lỗi - Invalid time value". The dialog calculates the expected maturity date live; with an empty date `addMonthsIso('')` built a `Date(NaN)` and `toISOString()` threw a RangeError while rendering.
+- **Fix** (`src/lib/business.ts`): `addMonthsIso` returns `''` unless the input is a full `yyyy-mm-dd` date, `formatDate('')` already shows "—", and `projectLoanTermInterest` returns 0 when there is no maturity date. Rule: a helper that renders from a user-editable date must tolerate `''`.
+
+
+### Lesson 212: Vietnamese Localization of Form Error Messages & Loan Validation (`/loans`)
+
+- **Bug** (QA, `https://prnt.sc/cGvLTpxQqGNV`): When submitting an invalid loan amount (<= 0), the error dialog displayed raw English field names: `[principalAmount] Số tiền vay phải > 0`.
+- **Cause**: `principalAmount` and several other finance/batch fields were missing from `FIELD_TRANSLATIONS` in `src/components/ui/confirm-dialog.tsx`. In addition, when field translations matched the beginning of the message, duplicate prefix concatenation could occur.
+- **Fix**:
+  - Expanded `FIELD_TRANSLATIONS` in `src/components/ui/confirm-dialog.tsx` to include `principalAmount: 'Số tiền vay'`, `contractNumber: 'Số khế ước'`, `interestRate: 'Lãi suất'`, `disbursementDate: 'Ngày giải ngân'`, `termMonths: 'Kỳ hạn'`, `interestAmount: 'Số tiền lãi'`, `paymentDate: 'Ngày trả nợ'`, and other domain fields.
+  - Enhanced `formatErrorMessage` to avoid redundant prefixing when the error message already starts with the localized field name (case-insensitive).
+  - Added explicit client-side form validation in `handleCreateLoan` (`src/routes/loans.index.tsx`) for `contractNumber`, `bankId`, `principalAmount`, `interestRate`, and `termMonths`.
+  - Refined server-side Zod validators in `src/server/fns/finance.ts` (`saveLoanContractFn`, `recordLoanPaymentFn`, `updateLoanPaymentFn`) with clear Vietnamese messages and regex digit enforcement on `accountNumber`.
+
+### Lesson 213: Bank Account Number Strict Numeric-Only Restriction in Loan Contracts (`/loans`)
+
+- **Bug** (QA, `https://prnt.sc/GarGvdXVgWQa`): In the "Sửa Khế Ước Vay" (Edit Loan Contract) dialog, the "Số Tài Khoản" field allowed letters and characters to be displayed or entered (e.g. `5811623238sssssss`).
+- **Fix**:
+  - `src/routes/loans.index.tsx`:
+    - Sanitized `openEditLoan` with `.replace(/\D/g, '')` so existing non-digits in older database rows are stripped immediately upon opening the modal.
+    - Added `onKeyDown` blocker preventing any non-digit keypress (allowing only digits and navigation/editing keys).
+    - Added `onPaste` handler sanitizing clipboard input with `.replace(/\D/g, '')`.
+    - Added pre-mutation validation in `handleCreateLoan` rejecting non-numeric values with `"Số tài khoản chỉ được chứa chữ số"`.
+  - `src/server/fns/finance.ts`:
+    - In `saveLoanContractFn`, added Zod regex `^\d*$` and sanitized `accountNumber.replace(/\D/g, '')` before executing DB update or insert.
+  - Sanitized existing dirty database rows in `loan_contracts` table.
+
+### Lesson 214: Loan Principal Amount Cap (Max 12 Digits: 999.999.999.999) & Overflow Prevention (`/loans`)
+
+- **Bug** (QA, `https://prnt.sc/v8cEEphwz-c-`): Users could input excessively large loan numbers (e.g. `00.000.000.000.000.000.000`), which caused calculated interest estimates to overflow and break the dialog UI.
+- **Requirement**: Limit loan amount to a maximum of 12 digits (up to `999.999.999.999` VND) with live input clamping, inline validation, and robust estimate card layout.
+- **Fix**:
+  - `src/components/ui/money-input.tsx`:
+    - Added `maxDigits` and `max` props to `MoneyInput`.
+    - Integrated `onKeyDown` blocker to prevent typing beyond `maxDigits` characters.
+    - Integrated `onPaste` handler to sanitize and truncate pasted amounts to `maxDigits`.
+    - Clamped `onChange` digit extraction to `maxDigits` and value to `max`.
+  - `src/routes/loans.index.tsx`:
+    - Configured `MoneyInput` with `maxDigits={12}` and `max={999_999_999_999}`.
+    - Added real-time inline warning when approaching/exceeding limit, plus client-side check in `handleCreateLoan`.
+    - Strengthened the estimated interest box with `overflow-hidden`, `gap-3`, and `truncate` with `title={...}` on value elements to guarantee the layout never overflows.
+  - `src/lib/business.ts`:
+    - Guarded `estimateLoanTermInterest` against `NaN`, `Infinity`, and invalid inputs.
+  - `src/server/fns/finance.ts`:
+    - Added `.max(999_999_999_999, 'Số tiền vay tối đa là 999.999.999.999 đ (12 chữ số)')` in `saveLoanContractFn`.
+
+### Lesson 215: Unselected Customer Default on Sales Order Creation (`/sales/new`)
+
+- **Bug / Feedback** (QA, `https://prnt.sc/au0gWeBBEErH`): Creating a new sales order automatically defaulted to the first customer (`customers[0]?.id`, e.g. "KHÁCH HÀNG A"). This risk could lead staff to accidentally dispatch bikes and assign receivables to the wrong customer.
+- **Requirement**: Display placeholder "Chọn khách hàng", initialize `customerId` as `null`, and require users to consciously choose a customer before creating the order.
+- **Fix**:
+  - `src/routes/sales.new.tsx`:
+    - Changed `customerId` initial state to `null`.
+    - Disabled the dependent POS showroom/branch select when `customerId === null` and set its placeholder to `"Vui lòng chọn khách hàng trước"`.
+    - Maintained existing client-side check `if (customerId === null) { setError('Vui lòng chọn khách hàng'); return }`.
+  - `src/server/fns/sales.ts`:
+    - Added `{ message: 'Vui lòng chọn khách hàng' }` to `customerId` validator in `createSalesOrderFn`.
+
+### Lesson 216: Reactive Dismissal of Validation Errors Upon Action (`/sales/new`)
+
+- **Bug / Feedback** (QA, `https://prnt.sc/Z_IkMqXsFtCd`): Clicking "Xác nhận lập phiếu" before adding vehicles triggers the error banner `"Vui lòng chọn ít nhất một chiếc xe từ kho để bán"`. However, after the user opens the picker and adds vehicle(s), the red error banner remained stuck on screen instead of disappearing.
+- **Fix**:
+  - `src/routes/sales.new.tsx`:
+    - Added reactive `useEffect` hooks to automatically clear the validation error when `selectedItems.length > 0` or when `customerId !== null`.
+    - Added immediate clearing in `confirmPicker` upon adding vehicles and in customer `onValueChange`.
+    - Added a manual dismiss close button (`X`) to the error `Alert` banner.
+
+### Lesson 217: Sales Order Date Filter Range Validation (`/sales`)
+
+- **Bug** (QA, `https://prnt.sc/7jwuFmrn0xKJ`): In the "Bộ Lọc Phiếu Bán" dialog, selecting a "Ngày bán từ" later than "Ngày bán đến" (e.g. `from=2026-11-04&to=2026-11-03`) had no validation or warning message.
+- **Requirement**: Display the validation notice `"Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ"` whenever `from > to`.
+- **Fix**:
+  - `src/routes/sales.index.tsx`:
+    - Defined `isDateRangeInvalid = Boolean(from && to && from > to)`.
+    - Added red input ring and background highlighting when the range is invalid.
+    - Added inline warning under the date inputs: `"Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ"`.
+    - Added `toast.error('Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ')` on change and when attempting to confirm ("Xong") or export to Excel with an invalid range.
+    - Added an alert banner on the main page table with a "Đặt lại ngày" button if an invalid range is present in URL parameters.
+
+### Lesson 218: Vietnamese Localization for Sales Order Vehicle Pricing Validation (`/sales/new`)
+
+- **Bug / Feedback** (QA, `https://prnt.sc/nr-oXV8kAJEi`): On the "Lập Phiếu Bán Xe Mới" page (`/sales/new`), entering `0` into "ĐƠN GIÁ CHƯA VAT (VNĐ) *" displayed a raw English field name with default Zod error message in the red alert banner: `items — priceBeforeVat: Giá trị tối thiểu là 0`.
+- **Requirement**: Localize into user-friendly Vietnamese (`việt hóa`), displaying `Xe <STT> — Đơn giá chưa VAT: Phải lớn hơn 0` and preventing form submission client-side when price before VAT is not greater than 0.
+- **Root Cause**:
+  1. `ROW_LABELS` in `src/components/ui/confirm-dialog.tsx` only had `vehicles` and `expenses`, missing `items`. Thus `items` was not translated to `Xe <index + 1>`.
+  2. `FIELD_TRANSLATIONS` was missing `priceBeforeVat` and `priceWithVat`.
+  3. Zod default message for `.positive()` has `code: 'too_small'` with `inclusive: false` and `minimum: 0`, which was previously formatted by `formatErrorMessage` as `Giá trị tối thiểu là 0` instead of `Phải lớn hơn 0`.
+  4. Server-side validator `createSalesOrderFn` in `src/server/fns/sales.ts` did not supply custom Vietnamese messages for `priceBeforeVat` and `vatRate`.
+  5. `src/routes/sales.new.tsx` lacked a pre-submit client check for vehicle item prices before calling the mutation.
+- **Fix**:
+  - `src/components/ui/confirm-dialog.tsx`:
+    - Added `items: 'Xe'` and `lines: 'Dòng'` to `ROW_LABELS`.
+    - Added `priceBeforeVat: 'Đơn giá chưa VAT'` and `priceWithVat: 'Đơn giá đã VAT'` to `FIELD_TRANSLATIONS`.
+    - Updated `formatErrorMessage` for numeric `too_small` errors when `inclusive === false` or `minimum === 0` to format as `'Phải lớn hơn 0'`.
+  - `src/server/fns/sales.ts`:
+    - Added `{ message: 'Vui lòng nhập đơn giá chưa VAT' }` and `.positive('Phải lớn hơn 0')` to `priceBeforeVat`.
+    - Added `{ message: 'Vui lòng nhập thuế VAT' }`, `.min(0, 'Thuế VAT không được âm')`, and `.max(100, 'Thuế VAT tối đa 100%')` to `vatRate`.
+  - `src/routes/sales.new.tsx`:
+    - Added client-side validation in `handleSubmit`: blocks submit if any vehicle has `!priceBeforeVat || priceBeforeVat <= 0` and displays `Xe ${invalidPriceIndex + 1} — Đơn giá chưa VAT: Phải lớn hơn 0`.
+    - Added reactive error clearing when user edits `priceBeforeVat > 0` and in `useEffect` when all items have valid prices.
+
+### Lesson 219: Dual Inventory 4th Status Card: "Đã giao · Chưa hóa đơn" (`/inventory`)
+
+- **Bug / Feedback** (QA, `https://prnt.sc/iL1e9y548dKB`): In the Dual Independent Inventory overview (`/inventory`), there were only 3 summary status cards:
+  1. "Đã giao · Đã hóa đơn"
+  2. "Chưa giao · Chưa hóa đơn"
+  3. "Chưa giao · Đã hóa đơn"
+- **Requirement**: Add the missing 4th dual inventory permutation card: "Đã giao · Chưa hóa đơn" (Physically delivered to customer, but not yet invoiced financially) so all 4 independent inventory states are represented equally.
+- **Fix**:
+  - `src/routes/inventory.tsx`:
+    - Added `Truck` icon from `lucide-react` to represent physical vehicle delivery.
+    - Added `sky` theme (`bg-sky-50 text-sky-700 ring-sky-200/70`) to `WIDGET_TONES`, aligning with the existing `DualInventoryBadge` case for delivered-without-invoice.
+    - Added the 4th item to `stockWidgets`: `{ label: 'Đã giao · Chưa hóa đơn', delivered: 'yes', invoiced: 'no', icon: Truck, tone: 'sky' }`.
+    - Updated container grid layout from `xl:grid-cols-3` to `xl:grid-cols-4` to display all 4 status cards across desktop screens in a single row.
+    - Verified click-through link opens `/inventory?delivered=yes&invoiced=no` in a new tab with matching filters.

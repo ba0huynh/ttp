@@ -12,6 +12,7 @@ import {
   PackageOpen,
   Pencil,
   SlidersHorizontal,
+  Truck,
 } from 'lucide-react'
 import { toast } from 'sonner'
 import { showErrorDialog } from '#/components/ui/confirm-dialog.tsx'
@@ -77,6 +78,7 @@ const WIDGET_TONES = {
   jade: 'bg-emerald-50 text-emerald-700 ring-emerald-200/70',
   slate: 'bg-slate-100 text-slate-600 ring-slate-200/70',
   amber: 'bg-amber-50 text-amber-700 ring-amber-200/70',
+  sky: 'bg-sky-50 text-sky-700 ring-sky-200/70',
 } as const
 
 const STOCK_FILTERS = [
@@ -330,6 +332,13 @@ function InventoryPage() {
         invoiced: 'yes',
         icon: FileClock,
         tone: 'amber',
+      },
+      {
+        label: 'Đã giao · Chưa hóa đơn',
+        delivered: 'yes',
+        invoiced: 'no',
+        icon: Truck,
+        tone: 'sky',
       },
     ] as const
   ).map((w) => {
@@ -663,7 +672,7 @@ function InventoryPage() {
             </Dialog>
 
         {/* Stock widgets: follow the current filters; a click opens the matching list in a new tab */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
           {stockWidgets.map((w) => (
             <Link
               key={w.label}

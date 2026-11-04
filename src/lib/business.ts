@@ -286,8 +286,22 @@ export function estimateLoanTermInterest(
   annualRatePercent: number,
   termMonths: number,
 ) {
+  if (
+    !Number.isFinite(principal) ||
+    !Number.isFinite(annualRatePercent) ||
+    !Number.isFinite(termMonths) ||
+    principal <= 0 ||
+    annualRatePercent <= 0 ||
+    termMonths <= 0
+  ) {
+    return { monthly: 0, total: 0 }
+  }
   const monthly = (principal * annualRatePercent) / 100 / 12
-  return { monthly, total: monthly * termMonths }
+  const total = monthly * termMonths
+  return {
+    monthly: Number.isFinite(monthly) ? Math.round(monthly) : 0,
+    total: Number.isFinite(total) ? Math.round(total) : 0,
+  }
 }
 
 /**
@@ -304,6 +318,7 @@ export function projectLoanTermInterest(params: {
   principalRepayments: { date: string; amount: number }[]
 }) {
   const maturity = addMonthsIso(params.disbursementDate, params.termMonths)
+  if (!maturity) return { total: 0, monthly: 0 }
   const { totalInterest } = calculateLoanInterest({
     principal: params.principal,
     annualRatePercent: params.annualRatePercent,
@@ -319,6 +334,8 @@ export function projectLoanTermInterest(params: {
 
 /** yyyy-mm-dd + N months, clamped to the end of a shorter month (31 Jan + 1 = 28/29 Feb) */
 export function addMonthsIso(date: string, months: number): string {
+  // An empty or half-typed date (e.g. the box was cleared) has no maturity date
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return ''
   const [y, m, d] = date.split('-').map(Number)
   const target = new Date(Date.UTC(y, m - 1 + months, 1))
   const lastDay = new Date(

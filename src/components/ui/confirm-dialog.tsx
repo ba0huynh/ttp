@@ -67,24 +67,77 @@ const FIELD_TRANSLATIONS: Record<string, string> = {
   accountNumber: 'Số tài khoản',
   branch: 'Chi nhánh',
   bankId: 'Ngân hàng',
+  bankAccountId: 'Tài khoản ngân hàng',
+  companyBankAccountId: 'Tài khoản công ty',
   address: 'Địa chỉ',
   representative: 'Người đại diện',
   chassisNumber: 'Số khung',
   engineNumber: 'Số máy',
   importPrice: 'Đơn giá nhập',
   sellingPrice: 'Đơn giá bán',
+  priceBeforeVat: 'Đơn giá chưa VAT',
+  priceWithVat: 'Đơn giá đã VAT',
   amount: 'Số tiền',
   modelId: 'Dòng xe',
   colorId: 'Màu xe',
+  colorName: 'Màu xe',
+  colorCode: 'Mã màu',
   supplierId: 'Nhà cung cấp',
   expenseTypeId: 'Loại chi phí',
   pricingValue: 'Giá trị định giá',
+  pricingFormula: 'Công thức định giá',
+  pricingBase: 'Căn cứ định giá',
+  markupAmount: 'Mức chênh lệch',
+  marginPercent: 'Tỷ lệ lợi nhuận',
+  contractNumber: 'Số khế ước',
+  principalAmount: 'Số tiền vay',
+  interestRate: 'Lãi suất',
+  disbursementDate: 'Ngày giải ngân',
+  termMonths: 'Kỳ hạn',
+  paymentDate: 'Ngày trả nợ',
+  interestAmount: 'Số tiền lãi',
+  principalPaid: 'Tiền gốc trả',
+  interestPaid: 'Tiền lãi trả',
+  loanContractId: 'Khế ước vay',
+  orderNumber: 'Số phiếu bán',
+  orderDate: 'Ngày bán',
+  deliveryDate: 'Ngày giao xe',
+  invoiceDate: 'Ngày xuất hóa đơn',
+  invoiceNumber: 'Số hóa đơn',
+  recipientName: 'Người nhận',
+  recipientPhone: 'SĐT người nhận',
+  recipientAddress: 'Địa chỉ người nhận',
+  transporter: 'Đơn vị vận chuyển',
+  deliveryAddress: 'Địa chỉ giao hàng',
+  vatRate: 'Thuế VAT',
+  discountAmount: 'Chiết khấu',
+  batchCode: 'Mã lô xe',
+  importDate: 'Ngày nhập lô',
+  batchId: 'Lô xe',
+  customerId: 'Khách hàng',
+  customerBranchId: 'Điểm bán',
+  posBranchId: 'Điểm bán',
+  voucherNumber: 'Số chứng từ',
+  voucherDate: 'Ngày lập chứng từ',
+  paymentMethod: 'Phương thức thanh toán',
+  referenceCode: 'Mã tham chiếu',
+  transactionDate: 'Ngày giao dịch',
+  note: 'Ghi chú',
+  notes: 'Ghi chú',
+  description: 'Mô tả',
+  code: 'Mã',
+  shortName: 'Tên viết tắt',
+  swiftCode: 'Mã SWIFT',
+  status: 'Trạng thái',
+  permissionIds: 'Danh sách quyền',
 }
 
 /** Names of list fields, used to say which row an error belongs to */
 const ROW_LABELS: Record<string, string> = {
   vehicles: 'Xe',
+  items: 'Xe',
   expenses: 'Chi phí',
+  lines: 'Dòng',
 }
 
 /** `['vehicles', 0, 'importPrice']` -> `Xe 1 — Đơn giá nhập` */
@@ -142,7 +195,8 @@ export function formatErrorMessage(
               item.message.startsWith('Too small') ||
               item.message.startsWith('Too big') ||
               item.message.startsWith('Expected ') ||
-              item.message.startsWith('Invalid ')
+              item.message.startsWith('Invalid ') ||
+              item.message.startsWith('Number must be ')
 
             if (isDefaultZodMessage) {
               if (item.code === 'too_small') {
@@ -152,7 +206,11 @@ export function formatErrorMessage(
                       ? 'Không được để trống hoặc chỉ chứa khoảng trắng'
                       : `Tối thiểu ${item.minimum} ký tự`
                 } else {
-                  msg = `Giá trị tối thiểu là ${item.minimum}`
+                  if (item.inclusive === false || item.minimum === 0) {
+                    msg = 'Phải lớn hơn 0'
+                  } else {
+                    msg = `Giá trị tối thiểu là ${item.minimum}`
+                  }
                 }
               } else if (item.code === 'too_big') {
                 if (isString) {
@@ -180,7 +238,15 @@ export function formatErrorMessage(
               }
             }
 
-            return field ? `${field}: ${msg}` : msg
+            if (field) {
+              const fieldLower = field.toLowerCase()
+              const msgLower = msg.toLowerCase()
+              if (msgLower.startsWith(fieldLower)) {
+                return msg
+              }
+              return `${field}: ${msg}`
+            }
+            return msg
           })
           .join('\n')
       }

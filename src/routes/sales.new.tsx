@@ -20,6 +20,7 @@ import {
   Search,
   SlidersHorizontal,
   Trash2,
+  X,
 } from 'lucide-react'
 import * as React from 'react'
 
@@ -109,10 +110,8 @@ function NewSalesOrderPage() {
   const navigate = useNavigate()
 
   const [orderDate, setOrderDate] = React.useState(todayIso())
-  // null = not chosen yet (never fall back to a made-up id: the customer may not exist)
-  const [customerId, setCustomerId] = React.useState<number | null>(
-    customers[0]?.id ?? null,
-  )
+  // null = not chosen yet (require explicit user selection to avoid assigning to wrong customer)
+  const [customerId, setCustomerId] = React.useState<number | null>(null)
   const [branchId, setBranchId] = React.useState<number | null>(null)
 
   // Selected vehicles to sell: price before VAT + VAT % (the VAT-inclusive
@@ -334,12 +333,41 @@ function NewSalesOrderPage() {
         }
       })
     setSelectedItems(chosen)
+    if (chosen.length > 0 && error?.includes('ít nhất một chiếc xe')) {
+      setError(null)
+    }
     setPickerOpen(false)
   }
 
   const removeItem = (vId: number) => {
     setSelectedItems(selectedItems.filter((i) => i.vehicleId !== vId))
   }
+
+  // Clear validation error as soon as user adds vehicles or selects a customer
+  React.useEffect(() => {
+    if (
+      selectedItems.length > 0 &&
+      error === 'Vui lòng chọn ít nhất một chiếc xe từ kho để bán'
+    ) {
+      setError(null)
+    }
+  }, [selectedItems.length, error])
+
+  React.useEffect(() => {
+    if (customerId !== null && error === 'Vui lòng chọn khách hàng') {
+      setError(null)
+    }
+  }, [customerId, error])
+
+  React.useEffect(() => {
+    if (
+      selectedItems.length > 0 &&
+      selectedItems.every((i) => i.priceBeforeVat > 0) &&
+      error?.includes('Đơn giá chưa VAT')
+    ) {
+      setError(null)
+    }
+  }, [selectedItems, error])
 
   const totalAmount = selectedItems.reduce(
     (s, i) => s + priceWithVat(i.priceBeforeVat, i.vatRate),
@@ -359,6 +387,13 @@ function NewSalesOrderPage() {
     }
     if (customerId === null) {
       setError('Vui lòng chọn khách hàng')
+      return
+    }
+    const invalidPriceIndex = selectedItems.findIndex(
+      (i) => typeof i.priceBeforeVat !== 'number' || i.priceBeforeVat <= 0,
+    )
+    if (invalidPriceIndex !== -1) {
+      setError(`Xe ${invalidPriceIndex + 1} — Đơn giá chưa VAT: Phải lớn hơn 0`)
       return
     }
     setError(null)
@@ -426,10 +461,20 @@ function NewSalesOrderPage() {
         {error && (
           <Alert
             variant="destructive"
-            className="bg-rose-50 text-rose-900 border-rose-200 text-xs"
+            className="bg-rose-50 text-rose-900 border-rose-200 text-xs flex items-center justify-between"
           >
-            <AlertCircle className="size-4 text-rose-600" />
-            <AlertDescription>{error}</AlertDescription>
+            <div className="flex items-center gap-2">
+              <AlertCircle className="size-4 text-rose-600 shrink-0" />
+              <AlertDescription>{error}</AlertDescription>
+            </div>
+            <button
+              type="button"
+              onClick={() => setError(null)}
+              className="text-rose-500 hover:text-rose-700 p-0.5 rounded transition-colors"
+              aria-label="Đóng thông báo"
+            >
+              <X className="size-4" />
+            </button>
           </Alert>
         )}
 
@@ -532,6 +577,9 @@ function NewSalesOrderPage() {
                                   const updated = [...selectedItems]
                                   updated[idx].priceBeforeVat = n
                                   setSelectedItems(updated)
+                                  if (n > 0 && error?.includes('Đơn giá chưa VAT')) {
+                                    setError(null)
+                                  }
                                 }}
                                 className="h-9 text-sm text-right px-4 rounded-lg"
                               />
@@ -611,6 +659,7 @@ function NewSalesOrderPage() {
                     onValueChange={(val) => {
                       setCustomerId(Number(val))
                       setBranchId(null) // Reset branch
+                      if (error === 'Vui lòng chọn khách hàng') setError(null)
                     }}
                   >
                     {customers.map((c) => (
@@ -627,7 +676,12 @@ function NewSalesOrderPage() {
                   </Label>
                   <SearchSelect
                     className="h-11 w-full text-sm rounded-lg"
-                    placeholder="Chọn showroom/chi nhánh"
+                    placeholder={
+                      customerId === null
+                        ? 'Vui lòng chọn khách hàng trước'
+                        : 'Chọn showroom/chi nhánh'
+                    }
+                    disabled={customerId === null}
                     value={branchId ? String(branchId) : 'none'}
                     onValueChange={(val) =>
                       setBranchId(val === 'none' ? null : Number(val))

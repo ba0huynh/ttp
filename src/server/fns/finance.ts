@@ -106,13 +106,16 @@ export const saveLoanContractFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().int().optional(),
-      contractNumber: z.string().trim().min(1, 'Nhập số khế ước'),
-      principalAmount: z.number().positive('Số tiền vay phải > 0'),
-      interestRate: z.number().min(0, 'Lãi suất %/năm'),
-      disbursementDate: z.string().min(10),
-      termMonths: z.number().int().min(1).max(200),
-      bankId: z.number().int({ message: 'Chọn ngân hàng' }),
-      accountNumber: z.string().trim().nullable().optional(),
+      contractNumber: z.string().trim().min(1, 'Số khế ước không được để trống'),
+      principalAmount: z
+        .number()
+        .positive('Số tiền vay phải lớn hơn 0')
+        .max(999_999_999_999, 'Số tiền vay tối đa là 999.999.999.999 đ (12 chữ số)'),
+      interestRate: z.number().min(0, 'Lãi suất không được âm'),
+      disbursementDate: z.string().min(10, 'Vui lòng chọn ngày giải ngân'),
+      termMonths: z.number().int().min(1, 'Kỳ hạn vay tối thiểu 1 tháng').max(200, 'Kỳ hạn vay tối đa 200 tháng'),
+      bankId: z.number().int({ message: 'Vui lòng chọn ngân hàng' }),
+      accountNumber: z.string().trim().regex(/^\d*$/, 'Số tài khoản chỉ được chứa chữ số').nullable().optional(),
     }),
   )
   .handler(async ({ data }) => {
@@ -120,7 +123,9 @@ export const saveLoanContractFn = createServerFn({ method: 'POST' })
       const { id, accountNumber, ...v } = data
       const values = {
         ...v,
-        accountNumber: accountNumber?.trim() ? accountNumber.trim() : null,
+        accountNumber: accountNumber?.trim()
+          ? accountNumber.trim().replace(/\D/g, '') || null
+          : null,
       }
       if (id) {
         await db.update(loanContracts).set(values).where(eq(loanContracts.id, id))
@@ -138,8 +143,8 @@ export const recordLoanPaymentFn = createServerFn({ method: 'POST' })
   .middleware([requirePermission('loans.manage')])
   .validator(
     z.object({
-      loanContractId: z.number().int(),
-      paymentDate: z.string().min(10),
+      loanContractId: z.number().int({ message: 'Vui lòng chọn khế ước vay' }),
+      paymentDate: z.string().min(10, 'Vui lòng chọn ngày trả nợ'),
       principalAmount: z.number().min(0),
       interestAmount: z.number().min(0),
       companyBankAccountId: z.number().int().nullable().optional(),
@@ -156,7 +161,7 @@ export const updateLoanPaymentFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().int(),
-      paymentDate: z.string().min(10),
+      paymentDate: z.string().min(10, 'Vui lòng chọn ngày trả nợ'),
       principalAmount: z.number().min(0),
       interestAmount: z.number().min(0),
       companyBankAccountId: z.number().int().nullable().optional(),
@@ -433,7 +438,7 @@ export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
   .middleware([requirePermission('finance.manage')])
   .validator(
     z.object({
-      paymentDate: z.string().min(10),
+      paymentDate: z.string().min(10, 'Vui lòng chọn ngày chi'),
       payeeType: z.enum(PAYEE_TYPES),
       supplierId: z.number().int().nullable().optional(),
       payeeName: z.string().trim().nullable().optional(),
@@ -1064,7 +1069,7 @@ export const updatePaymentVoucherFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       id: z.number().int(),
-      paymentDate: z.string().min(10),
+      paymentDate: z.string().min(10, 'Vui lòng chọn ngày chi'),
       supplierId: z.number().int(),
       amount: z.number().positive('Số tiền chi phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),

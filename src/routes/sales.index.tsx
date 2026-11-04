@@ -5,6 +5,7 @@ import {
 } from '@tanstack/react-query'
 import { createFileRoute, Link, redirect } from '@tanstack/react-router'
 import {
+  AlertCircle,
   ArrowDown,
   ArrowUp,
   ArrowUpDown,
@@ -74,6 +75,7 @@ import {
   SearchSelectItem,
 } from '#/components/ui/search-select.tsx'
 import { requirePagePermission } from '#/lib/route-guard.ts'
+import { cn } from '#/lib/utils.ts'
 
 const PROGRESS = ['none', 'partial', 'full'] as const
 type Progress = (typeof PROGRESS)[number]
@@ -191,6 +193,8 @@ function SalesPage() {
     full: ['Đã giao đủ', 'Đã lập HĐ đủ'],
   }
 
+  const isDateRangeInvalid = Boolean(from && to && from > to)
+
   const activeFilterCount = [
     Boolean(customer?.length),
     Boolean(branch?.length),
@@ -238,6 +242,10 @@ function SalesPage() {
     : filtered
   const [exporting, setExporting] = React.useState(false)
   const handleExportExcel = async () => {
+    if (isDateRangeInvalid) {
+      toast.error('Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ')
+      return
+    }
     if (exporting || sorted.length === 0) return
     setExporting(true)
     try {
@@ -401,6 +409,39 @@ function SalesPage() {
             </Can>
           </div>
         </div>
+
+        {isDateRangeInvalid && (
+          <div className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-xs text-rose-800 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <AlertCircle className="size-4 text-rose-600 shrink-0" />
+              <span>
+                Khoảng ngày không hợp lệ:{' '}
+                <strong>
+                  Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ
+                </strong>
+                .
+              </span>
+            </div>
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                navigate({
+                  search: (prev) => ({
+                    ...prev,
+                    from: undefined,
+                    to: undefined,
+                  }),
+                  replace: true,
+                })
+              }}
+              className="h-7 text-xs border-rose-300 text-rose-800 hover:bg-rose-100"
+            >
+              Đặt lại ngày
+            </Button>
+          </div>
+        )}
 
         {/* Orders Table */}
         <Card className="border-slate-200 shadow-xs">
@@ -647,8 +688,18 @@ function SalesPage() {
               <Input
                 type="date"
                 value={from ?? ''}
-                onChange={(e) => setFilter('from', e.target.value || undefined)}
-                className="h-11 text-sm px-4 rounded-lg"
+                onChange={(e) => {
+                  const val = e.target.value || undefined
+                  if (val && to && val > to) {
+                    toast.error('Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ')
+                  }
+                  setFilter('from', val)
+                }}
+                className={cn(
+                  'h-11 text-sm px-4 rounded-lg',
+                  isDateRangeInvalid &&
+                    'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20 text-rose-900',
+                )}
               />
             </div>
             <div className="space-y-1">
@@ -656,10 +707,28 @@ function SalesPage() {
               <Input
                 type="date"
                 value={to ?? ''}
-                onChange={(e) => setFilter('to', e.target.value || undefined)}
-                className="h-11 text-sm px-4 rounded-lg"
+                onChange={(e) => {
+                  const val = e.target.value || undefined
+                  if (val && from && val < from) {
+                    toast.error('Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ')
+                  }
+                  setFilter('to', val)
+                }}
+                className={cn(
+                  'h-11 text-sm px-4 rounded-lg',
+                  isDateRangeInvalid &&
+                    'border-rose-500 ring-1 ring-rose-500 bg-rose-50/20 text-rose-900',
+                )}
               />
             </div>
+            {isDateRangeInvalid && (
+              <div className="sm:col-span-2 -mt-1">
+                <p className="text-xs text-rose-600 font-medium flex items-center gap-1.5">
+                  <AlertCircle className="size-3.5 shrink-0" />
+                  Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ
+                </p>
+              </div>
+            )}
             <div className="space-y-1">
               <Label className="text-xs font-semibold">Kho thực tế (giao xe)</Label>
               <MultiSearchSelect
@@ -727,7 +796,13 @@ function SalesPage() {
             <Button
               type="button"
               size="sm"
-              onClick={() => setShowFilters(false)}
+              onClick={() => {
+                if (isDateRangeInvalid) {
+                  toast.error('Ngày bán đến phải lớn hơn hoặc bằng Ngày bán từ')
+                  return
+                }
+                setShowFilters(false)
+              }}
               className="h-8 text-xs bg-emerald-700 hover:bg-emerald-800 text-white font-semibold"
             >
               Xong
