@@ -151,7 +151,7 @@ function ReportsPage() {
                 {formatVnd(totalCost)}
               </div>
               <p className="text-xs text-slate-500 mt-1">
-                Giá nhập đã VAT + chi phí lô phân bổ
+                Giá nhập chưa VAT + chi phí lô phân bổ
               </p>
             </CardContent>
           </Card>
