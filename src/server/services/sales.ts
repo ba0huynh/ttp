@@ -454,10 +454,6 @@ export async function recordInvoice(
   const priceMap = new Map(items.map((i) => [i.vehicleId, num(i.unitPrice)]))
   if (input.vehicleIds.length === 0)
     throw new BusinessError('Chưa chọn xe để xuất hóa đơn')
-  if (input.invoiceNumber?.trim() && input.vehicleIds.length > 1)
-    throw new BusinessError(
-      'Mỗi xe một hóa đơn riêng: chỉ nhập số hóa đơn khi xuất cho 1 xe',
-    )
   for (const id of input.vehicleIds)
     if (!priceMap.has(id))
       throw new BusinessError('Có xe không thuộc phiếu bán')
@@ -478,36 +474,36 @@ export async function recordInvoice(
           `Xe đã xuất hóa đơn: ${already.map((a) => a.c).join(', ')}`,
         )
 
-      const createdIds: number[] = []
-      for (const vehicleId of input.vehicleIds) {
-        // Inserted one by one so each generated number sees the previous one
-        const invoiceNumber =
-          input.invoiceNumber?.trim() ||
-          (await nextDocNumber(
-            tx,
-            invoices,
-            invoices.invoiceNumber,
-            'HD',
-            input.invoiceDate,
-          ))
-        const amount = priceMap.get(vehicleId) ?? 0
-        const [created] = await tx
-          .insert(invoices)
-          .values({
-            invoiceNumber,
-            salesOrderId: order.id,
-            invoiceDate: input.invoiceDate,
-            branchId: order.branchId,
-            totalAmount: amount,
-            note: input.note ?? null,
-            createdBy: userId ?? null,
-          })
-          .$returningId()
-        await tx
-          .insert(invoiceItems)
-          .values({ invoiceId: created.id, vehicleId, amount })
-        createdIds.push(created.id)
-      }
+      // ONE invoice for every selected vehicle (one line per vehicle)
+      const invoiceNumber =
+        input.invoiceNumber?.trim() ||
+        (await nextDocNumber(
+          tx,
+          invoices,
+          invoices.invoiceNumber,
+          'HD',
+          input.invoiceDate,
+        ))
+      const lines = input.vehicleIds.map((vehicleId) => ({
+        vehicleId,
+        amount: priceMap.get(vehicleId) ?? 0,
+      }))
+      const [created] = await tx
+        .insert(invoices)
+        .values({
+          invoiceNumber,
+          salesOrderId: order.id,
+          invoiceDate: input.invoiceDate,
+          branchId: order.branchId,
+          totalAmount: lines.reduce((sum, l) => sum + l.amount, 0),
+          note: input.note ?? null,
+          createdBy: userId ?? null,
+        })
+        .$returningId()
+      await tx
+        .insert(invoiceItems)
+        .values(lines.map((l) => ({ invoiceId: created.id, ...l })))
+      const createdIds = [created.id]
       await tx
         .update(vehicles)
         .set({ isInvoiced: true, invoicedAt: input.invoiceDate })

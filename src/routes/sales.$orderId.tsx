@@ -508,9 +508,8 @@ function SalesOrderPage() {
           salesOrderId: order.id,
           vehicleIds: selectedVehicles,
           invoiceDate,
-          // A custom number only applies when a single vehicle is invoiced
-          invoiceNumber:
-            selectedVehicles.length === 1 ? invoiceNumber || undefined : undefined,
+          // One invoice for all selected vehicles; blank = auto-generated number
+          invoiceNumber: invoiceNumber.trim() || undefined,
         },
       })
       setInvoiceDialogOpen(false)
@@ -1599,12 +1598,7 @@ function SalesOrderPage() {
                   Số Hóa Đơn (Tự sinh nếu để trống)
                 </Label>
                 <Input
-                  placeholder={
-                    selectedVehicles.length > 1
-                      ? 'Mỗi xe một hóa đơn: số hóa đơn tự sinh'
-                      : 'Ví dụ: HD-260120-001'
-                  }
-                  disabled={selectedVehicles.length > 1}
+                  placeholder="Ví dụ: HD-260120-001"
                   value={invoiceNumber}
                   onChange={(e) => setInvoiceNumber(e.target.value)}
                   className="h-11 text-sm px-4 rounded-lg"
@@ -1616,7 +1610,7 @@ function SalesOrderPage() {
                 <strong>{selectedVehicles.length} chiếc</strong>
                 {selectedVehicles.length > 1 && (
                   <span className="block font-normal text-slate-500 mt-0.5">
-                    Mỗi xe được xuất thành một hóa đơn riêng.
+                    Tất cả các xe được xuất chung trên 1 hóa đơn.
                   </span>
                 )}
               </div>
