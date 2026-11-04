@@ -146,9 +146,7 @@ function DebtOrdersDialog({
 
   return (
     <Dialog open={Boolean(view)} onOpenChange={(o) => !o && onClose()}>
-      <DialogContent
-        className={`max-h-[90dvh] overflow-y-auto ${receivable ? 'sm:max-w-5xl' : 'sm:max-w-3xl'}`}
-      >
+      <DialogContent className="max-h-[90dvh] overflow-y-auto sm:max-w-6xl">
         <DialogHeader>
           <DialogTitle className="text-base font-bold text-slate-900">
             {receivable ? 'Các Đơn Bán Xe' : 'Các Đơn Nhập Lô'}
@@ -179,6 +177,7 @@ function DebtOrdersDialog({
                   <TableHead>{receivable ? 'Ngày Bán' : 'Ngày Nhập'}</TableHead>
                   {receivable && (
                     <>
+                      <TableHead className="text-right">Giá Vốn</TableHead>
                       <TableHead className="text-right">
                         Tổng Tiền Chưa VAT
                       </TableHead>
@@ -197,8 +196,17 @@ function DebtOrdersDialog({
                   )}
                   {payable && (
                     <>
+                      <TableHead className="text-right">Giá Vốn</TableHead>
+                      <TableHead className="text-right">
+                        Tiền Hàng Chưa VAT
+                      </TableHead>
+                      <TableHead className="text-center">% VAT</TableHead>
+                      <TableHead className="text-right">
+                        Tiền Hàng Đã VAT
+                      </TableHead>
                       <TableHead className="text-right">Số Xe</TableHead>
-                      <TableHead className="text-right">Tiền Hàng</TableHead>
+                      <TableHead className="text-center">Kho Thực Tế</TableHead>
+                      <TableHead className="text-center">Kho Hóa Đơn</TableHead>
                       <TableHead className="text-right">Chi Phí Lô</TableHead>
                       <TableHead>Khế Ước Vay</TableHead>
                     </>
@@ -220,6 +228,9 @@ function DebtOrdersDialog({
                           >
                             {formatDate(o.orderDate)}
                           </Link>
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900">
+                          {formatVnd(o.totalCost)}
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
                           {formatVnd(o.totalBeforeVat)}
@@ -264,10 +275,33 @@ function DebtOrdersDialog({
                           </Link>
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
-                          {b.vehicleCount}
+                          {formatVnd(b.totalCost)}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900">
+                          {formatVnd(b.totalBeforeVat)}
+                        </TableCell>
+                        <TableCell className="text-center text-slate-500">
+                          {b.minVatRate === b.maxVatRate
+                            ? `${b.minVatRate}%`
+                            : `${b.minVatRate}–${b.maxVatRate}%`}
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(b.totalImport)}
+                        </TableCell>
+                        <TableCell className="text-right text-slate-900">
+                          {b.vehicleCount} xe
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <SalesDeliveryBadge
+                            deliveredCount={b.deliveredCount}
+                            vehicleCount={b.vehicleCount}
+                          />
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <SalesInvoiceBadge
+                            invoicedCount={b.invoicedCount}
+                            vehicleCount={b.vehicleCount}
+                          />
                         </TableCell>
                         <TableCell className="text-right text-slate-500">
                           {formatVnd(b.totalExpense)}

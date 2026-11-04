@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, isNull, lte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
@@ -119,12 +119,12 @@ export async function getPayablesSummary() {
     db
       .select({
         supplierId: importBatches.supplierId,
-        total: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
+        // A batch financed by a bank loan is owed to the bank, not to the supplier
+        total: sql<string>`coalesce(sum(case when ${importBatches.loanContractId} is null then ${vehicles.importPriceWithVat} else 0 end),0)`,
+        batchCount: sql<number>`count(distinct ${importBatches.id})`,
       })
       .from(importBatches)
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
-      // A batch financed by a bank loan is owed to the bank, not to the supplier
-      .where(isNull(importBatches.loanContractId))
       .groupBy(importBatches.supplierId),
     db
       .select({
@@ -145,12 +145,14 @@ export async function getPayablesSummary() {
       return {
         supplierId: s.id,
         supplierName: s.name,
+        hasBatches: num(pMap.get(s.id)?.batchCount) > 0,
         purchased: purchasedTotal,
         paid: paidTotal,
         balance: purchasedTotal - paidTotal,
       }
     })
-    .filter((r) => r.purchased > 0 || r.paid > 0)
+    // Keep every supplier that has a batch (even a fully loan-financed one, shown with debt 0)
+    .filter((r) => r.hasBatches || r.purchased > 0 || r.paid > 0)
 }
 
 /* -------------------------------------------------------------------------- */

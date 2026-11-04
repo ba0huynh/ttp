@@ -276,6 +276,8 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
         totalAmount: salesOrders.totalAmount,
         vehicleCount: sql<number>`count(${salesOrderItems.id})`,
         totalBeforeVat: sql<string>`coalesce(sum(${salesOrderItems.priceBeforeVat}),0)`,
+        // Same cost basis as the /sales list and /reports (import price before VAT + allocated expense)
+        totalCost: sql<string>`coalesce(sum(${salesOrderItems.costPrice} - greatest(${vehicles.importPriceWithVat} - ${vehicles.importPrice}, 0)),0)`,
         minVatRate: sql<string>`coalesce(min(${salesOrderItems.vatRate}),0)`,
         maxVatRate: sql<string>`coalesce(max(${salesOrderItems.vatRate}),0)`,
         deliveredCount: sql<number>`count(distinct case when ${vehicles.isDelivered} = 1 then ${vehicles.id} end)`,
@@ -302,6 +304,7 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
       ...r,
       totalAmount: num(r.totalAmount),
       totalBeforeVat: num(r.totalBeforeVat),
+      totalCost: num(r.totalCost),
       minVatRate: num(r.minVatRate),
       maxVatRate: num(r.maxVatRate),
       vehicleCount: Number(r.vehicleCount),
@@ -326,6 +329,11 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
         loanContractId: importBatches.loanContractId,
         loanContractNumber: loanContracts.contractNumber,
         vehicleCount: sql<number>`count(${vehicles.id})`,
+        totalBeforeVat: sql<string>`coalesce(sum(${vehicles.importPrice}),0)`,
+        minVatRate: sql<string>`coalesce(min(${vehicles.vatRate}),0)`,
+        maxVatRate: sql<string>`coalesce(max(${vehicles.vatRate}),0)`,
+        deliveredCount: sql<number>`coalesce(sum(case when ${vehicles.isDelivered} = 1 then 1 else 0 end),0)`,
+        invoicedCount: sql<number>`coalesce(sum(case when ${vehicles.isInvoiced} = 1 then 1 else 0 end),0)`,
         totalImport: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
         totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
       })
@@ -348,8 +356,15 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
     return rows.map((r) => ({
       ...r,
       vehicleCount: Number(r.vehicleCount),
+      totalBeforeVat: num(r.totalBeforeVat),
+      minVatRate: num(r.minVatRate),
+      maxVatRate: num(r.maxVatRate),
+      deliveredCount: Number(r.deliveredCount),
+      invoicedCount: Number(r.invoicedCount),
       totalImport: num(r.totalImport),
       totalExpense: num(r.totalExpense),
+      // Cost = import price before VAT + batch expenses (same basis as /sales and /reports)
+      totalCost: num(r.totalBeforeVat) + num(r.totalExpense),
     }))
   })
 
