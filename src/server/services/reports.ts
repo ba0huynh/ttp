@@ -302,10 +302,11 @@ export async function getReports(from: string, to: string) {
       customerName: customers.name,
       month: sql<string>`date_format(${salesOrders.orderDate}, '%Y-%m')`,
       modelName: sql<string>`coalesce(${motorcycleModels.name}, '')`,
-      // Revenue excludes VAT (VAT is not income). Cost is the cost price
-      // captured at sale: import price incl. VAT + allocated batch expenses.
+      // Both sides exclude VAT (VAT is not income or cost). Cost = the cost
+      // price captured at sale minus the vehicle's import VAT, i.e. import
+      // price before VAT + allocated batch expenses.
       revenue: salesOrderItems.priceBeforeVat,
-      cost: salesOrderItems.costPrice,
+      cost: sql<string>`${salesOrderItems.costPrice} - greatest(${vehicles.importPriceWithVat} - ${vehicles.importPrice}, 0)`,
     })
     .from(salesOrderItems)
     .innerJoin(salesOrders, eq(salesOrders.id, salesOrderItems.salesOrderId))
