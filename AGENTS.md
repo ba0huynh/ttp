@@ -2305,7 +2305,26 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
   3. **`src/routes/reset-password.tsx`**:
      - Passed `token.trim()` to mutation.
 
-_(Next Agent: Append Lesson 199, 200,... above this line upon completing tasks)_
+### Lesson 199: Invoice Status Filter in Sales Order Details
+
+- `/sales/$orderId` has an invoice-status dropdown in the vehicle filter dialog with all statuses, invoiced, and uninvoiced options. It filters by `isInvoiced` independently of physical delivery and combines with the existing search, delivery, model, color, and selection-mode filters.
+- Invoice status participates in the active-filter count, reset action, and pagination reset key, so changing it returns the vehicle list to page 1. No database or server changes are required.
+
+### Lesson 200: Excel Export from Sales Order Details
+
+- `/sales/$orderId` has an Excel export button beside the vehicle filters. It exports the entire current filtered vehicle list across all pages, including selection-mode visibility, rather than only the current page or checked rows.
+- The workbook is built in `src/lib/sales-order-excel.ts` (`downloadSalesOrderExcel`). The page loads that module with `await import(...)` on click, so `xlsx` stays out of the page bundle. Export runs in the browser, shows a success toast, and is disabled for an empty result or while exporting.
+- Sheet layout: an order block on top (order number, customer, branch or "Trực tiếp", order date, exported count with the active filters in words, export time), one empty row, the table, one empty row, then a totals row. Keep that empty row before the totals: Excel extends the autofilter over any row touching the data, so sorting would move the totals into the list.
+- Columns mirror the list on screen, then add detail: row number, chassis/engine numbers, model/color, price before VAT, VAT %, VAT amount (`unitPrice - priceBeforeVat`), price with VAT, `Kho thực tế` (`Đã giao` / `Còn trong kho thực tế`), delivery date, delivery note number, receiver/driver, truck/plate, `Kho hóa đơn` (`Đã xuất HĐ` / `Chưa xuất HĐ`), invoice number/date. The two warehouse columns use the same names and wording as the list's `Kho Thực Tế` / `Kho Hóa Đơn` badges (without the date, which has its own column). Delivery fields are filled only when `isDelivered`, invoice fields only when `isInvoiced` (independent flags). Cost price is never exported.
+- Money cells are numbers with `#,##0`. Dates are real Excel date serials with `dd/mm/yyyy` (built from the `yyyy-mm-dd` strings, timezone-free), so they sort and filter as dates. The totals row uses `SUBTOTAL(109/103, ...)` with cached values, so totals follow the Excel autofilter. The autofilter covers only the header and data rows.
+- SheetJS Community 0.18.5 cannot write cell styles (bold, fills) or frozen panes; merges, number formats, formulas, column widths and autofilter work. The file name uses the local date: `phieu-ban-<id>-xe-<yyyy-mm-dd>.xlsx`. No server or schema changes are needed.
+
+### Lesson 201: Concurrent Knowledge Log Updates Can Block Merge Requests
+
+- MR !4 conflicted only in `AGENTS.md`: the sales feature branch and `develop` both appended different lessons numbered 176 and 177 after Lesson 175 and updated the same next-lesson marker.
+- Merge the latest `develop` into the feature branch, retain both lesson sets, and renumber the feature lessons after the existing target-branch lessons. Keep a single next-lesson marker. The sales route merges automatically, retaining the invoice filter, Excel export, and accent-insensitive search.
+
+_(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 
 
