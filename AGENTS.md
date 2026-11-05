@@ -2533,3 +2533,8 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
     - Added the 4th item to `stockWidgets`: `{ label: 'Đã giao · Chưa hóa đơn', delivered: 'yes', invoiced: 'no', icon: Truck, tone: 'sky' }`.
     - Updated container grid layout from `xl:grid-cols-3` to `xl:grid-cols-4` to display all 4 status cards across desktop screens in a single row.
     - Verified click-through link opens `/inventory?delivered=yes&invoiced=no` in a new tab with matching filters.
+
+### Lesson 220: Dev-Only SMTP Test Route (`POST /api/test-mail`)
+
+- `src/routes/api.test-mail.tsx` sends one test email through `sendMail` (`services/mail.ts`) using the `.env` SMTP settings. Body: `{ "to": "a@b.com", "subject"?, "message"? }`; replies `{ ok: true }` or `{ ok: false, error }` (500 when SMTP is not configured, 502 when the SMTP server refuses).
+- It has **no authentication**, so it answers 404 when `NODE_ENV === 'production'`. Delete the file once delivery is confirmed. Restart the dev server after editing `.env`; with Gmail the password must be an app password.

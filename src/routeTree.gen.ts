@@ -23,6 +23,7 @@ import { Route as ReportsRouteImport } from './routes/reports'
 import { Route as ResetPasswordRouteImport } from './routes/reset-password'
 import { Route as SalesRouteImport } from './routes/sales'
 import { Route as SettingsRouteImport } from './routes/settings'
+import { Route as ApiTestMailRouteImport } from './routes/api.test-mail'
 import { Route as ApiUploadsRouteImport } from './routes/api.uploads'
 import { Route as BatchesIndexRouteImport } from './routes/batches.index'
 import { Route as BatchesBatchIdRouteImport } from './routes/batches.$batchId'
@@ -106,6 +107,11 @@ const SettingsRoute = SettingsRouteImport.update({
   path: '/settings',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ApiTestMailRoute = ApiTestMailRouteImport.update({
+  id: '/api/test-mail',
+  path: '/api/test-mail',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ApiUploadsRoute = ApiUploadsRouteImport.update({
   id: '/api/uploads',
   path: '/api/uploads',
@@ -182,6 +188,7 @@ export interface FileRoutesByFullPath {
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/api/test-mail': typeof ApiTestMailRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
@@ -206,6 +213,7 @@ export interface FileRoutesByTo {
   '/reports': typeof ReportsRoute
   '/reset-password': typeof ResetPasswordRoute
   '/settings': typeof SettingsRoute
+  '/api/test-mail': typeof ApiTestMailRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
@@ -235,6 +243,7 @@ export interface FileRoutesById {
   '/reset-password': typeof ResetPasswordRoute
   '/sales': typeof SalesRouteWithChildren
   '/settings': typeof SettingsRoute
+  '/api/test-mail': typeof ApiTestMailRoute
   '/api/uploads': typeof ApiUploadsRoute
   '/batches/$batchId': typeof BatchesBatchIdRoute
   '/batches/new': typeof BatchesNewRoute
@@ -265,6 +274,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sales'
     | '/settings'
+    | '/api/test-mail'
     | '/api/uploads'
     | '/batches/$batchId'
     | '/batches/new'
@@ -289,6 +299,7 @@ export interface FileRouteTypes {
     | '/reports'
     | '/reset-password'
     | '/settings'
+    | '/api/test-mail'
     | '/api/uploads'
     | '/batches/$batchId'
     | '/batches/new'
@@ -317,6 +328,7 @@ export interface FileRouteTypes {
     | '/reset-password'
     | '/sales'
     | '/settings'
+    | '/api/test-mail'
     | '/api/uploads'
     | '/batches/$batchId'
     | '/batches/new'
@@ -346,6 +358,7 @@ export interface RootRouteChildren {
   ResetPasswordRoute: typeof ResetPasswordRoute
   SalesRoute: typeof SalesRouteWithChildren
   SettingsRoute: typeof SettingsRoute
+  ApiTestMailRoute: typeof ApiTestMailRoute
   ApiUploadsRoute: typeof ApiUploadsRoute
   UploadsSplatRoute: typeof UploadsSplatRoute
 }
@@ -448,6 +461,13 @@ declare module '@tanstack/react-router' {
       path: '/settings'
       fullPath: '/settings'
       preLoaderRoute: typeof SettingsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/api/test-mail': {
+      id: '/api/test-mail'
+      path: '/api/test-mail'
+      fullPath: '/api/test-mail'
+      preLoaderRoute: typeof ApiTestMailRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/api/uploads': {
@@ -607,6 +627,7 @@ const rootRouteChildren: RootRouteChildren = {
   ResetPasswordRoute: ResetPasswordRoute,
   SalesRoute: SalesRouteWithChildren,
   SettingsRoute: SettingsRoute,
+  ApiTestMailRoute: ApiTestMailRoute,
   ApiUploadsRoute: ApiUploadsRoute,
   UploadsSplatRoute: UploadsSplatRoute,
 }
