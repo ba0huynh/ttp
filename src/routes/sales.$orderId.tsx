@@ -1073,7 +1073,7 @@ function SalesOrderPage() {
                               : undefined
                           }
                         >
-                          {i.vatRate}%
+                          {String(i.vatRate).replace('.', ',')}%
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
                           {formatVnd(i.unitPrice)}

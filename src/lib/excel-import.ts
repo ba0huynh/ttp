@@ -10,6 +10,18 @@ export interface ImportedVehicle {
   vatRate: number
   modelName: string
   colorName: string
+  excelRow?: number
+}
+
+export interface VehicleImportError {
+  row: number
+  reason: string
+}
+
+export interface ParseVehicleExcelResult {
+  success: ImportedVehicle[]
+  errors: VehicleImportError[]
+  totalDataRows: number
 }
 
 export interface MasterModelRef {
@@ -217,7 +229,7 @@ export async function parseVehicleExcel(
     onAutoCreateModel: (name: string) => Promise<number>
     onAutoCreateColor: (name: string) => Promise<number>
   },
-): Promise<ImportedVehicle[]> {
+): Promise<ParseVehicleExcelResult> {
   const buffer = await file.arrayBuffer()
   const wb = XLSX.read(buffer, { type: 'array' })
 
@@ -268,24 +280,55 @@ export async function parseVehicleExcel(
   }
 
   const result: ImportedVehicle[] = []
+  const errors: VehicleImportError[] = []
   const dataRows = rows.slice(headerIndex + 1)
+  const seenC = new Set<string>()
+  const seenE = new Set<string>()
+  let totalDataRows = 0
 
   for (let r = 0; r < dataRows.length; r++) {
     const row = dataRows[r]
     if (!row || row.length === 0) continue
 
-    const chassisRaw = colMap.chassis >= 0 ? String(row[colMap.chassis] ?? '').trim().toUpperCase() : ''
-    const engineRaw = colMap.engine >= 0 ? String(row[colMap.engine] ?? '').trim().toUpperCase() : ''
+    const isRowEmpty = row.every((c) => String(c ?? '').trim() === '')
+    if (isRowEmpty) continue
 
-    // Skip empty lines
-    if (!chassisRaw && !engineRaw) continue
+    totalDataRows++
+    const rowNum = r + headerIndex + 2
 
+    const chassisRaw =
+      colMap.chassis >= 0 ? String(row[colMap.chassis] ?? '').trim().toUpperCase() : ''
+    const engineRaw =
+      colMap.engine >= 0 ? String(row[colMap.engine] ?? '').trim().toUpperCase() : ''
+
+    if (!chassisRaw && !engineRaw) {
+      errors.push({ row: rowNum, reason: 'Thiếu số khung (SK) và số máy (SM)' })
+      continue
+    }
     if (!chassisRaw) {
-      throw new Error(`Dòng ${r + headerIndex + 2}: Thiếu số khung (SK)`)
+      errors.push({ row: rowNum, reason: 'Thiếu số khung (SK)' })
+      continue
     }
     if (!engineRaw) {
-      throw new Error(`Dòng ${r + headerIndex + 2}: Thiếu số máy (SM)`)
+      errors.push({ row: rowNum, reason: 'Thiếu số máy (SM)' })
+      continue
     }
+    if (seenC.has(chassisRaw)) {
+      errors.push({
+        row: rowNum,
+        reason: `Trùng số khung "${chassisRaw}" trong file Excel`,
+      })
+      continue
+    }
+    if (seenE.has(engineRaw)) {
+      errors.push({
+        row: rowNum,
+        reason: `Trùng số máy "${engineRaw}" trong file Excel`,
+      })
+      continue
+    }
+    seenC.add(chassisRaw)
+    seenE.add(engineRaw)
 
     const modelRaw = colMap.model >= 0 ? String(row[colMap.model] ?? '').trim() : ''
     const colorRaw = colMap.color >= 0 ? String(row[colMap.color] ?? '').trim() : ''
@@ -300,10 +343,12 @@ export async function parseVehicleExcel(
       if (modelLookup.has(normModel)) {
         modelId = modelLookup.get(normModel)!
       } else {
-        // Auto-create model
         modelId = await options.onAutoCreateModel(modelRaw)
         modelLookup.set(normModel, modelId)
       }
+    } else if (options.models.length > 0) {
+      modelId = options.models[0].id
+      finalModelName = options.models[0].name
     }
 
     // 2. Resolve or auto-create Color
@@ -314,16 +359,12 @@ export async function parseVehicleExcel(
       if (colorLookup.has(normColor)) {
         colorId = colorLookup.get(normColor)!
       } else {
-        // Auto-create color
         colorId = await options.onAutoCreateColor(colorRaw)
         colorLookup.set(normColor, colorId)
       }
-    } else {
-      // Default to first color if available, or a fallback
-      if (options.colors.length > 0) {
-        colorId = options.colors[0].id
-        finalColorName = options.colors[0].name
-      }
+    } else if (options.colors.length > 0) {
+      colorId = options.colors[0].id
+      finalColorName = options.colors[0].name
     }
 
     const year = parseYear(yearRaw)
@@ -341,12 +382,13 @@ export async function parseVehicleExcel(
       vatRate,
       modelName: finalModelName,
       colorName: finalColorName,
+      excelRow: rowNum,
     })
   }
 
-  if (result.length === 0) {
-    throw new Error('Không tìm thấy dòng xe hợp lệ nào trong file Excel')
+  if (totalDataRows === 0) {
+    throw new Error('Không tìm thấy dòng dữ liệu nào trong file Excel')
   }
 
-  return result
+  return { success: result, errors, totalDataRows }
 }

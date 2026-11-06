@@ -7,7 +7,7 @@ import { ColorSelect } from '#/components/batches/ColorSelect.tsx'
 import { ExpenseTypeSelect } from '#/components/batches/ExpenseTypeSelect.tsx'
 import { toast } from 'sonner'
 import { cn, handleRowArrowNavigation } from '#/lib/utils.ts'
-import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
+import { alertDialog, formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
 import {
   useMutation,
   useQueryClient,
@@ -65,7 +65,11 @@ import {
   priceWithVat,
   todayIso,
 } from '#/lib/business.ts'
-import { downloadVehicleTemplate, parseVehicleExcel } from '#/lib/excel-import.ts'
+import {
+  downloadVehicleTemplate,
+  parseVehicleExcel,
+  type ImportedVehicle,
+} from '#/lib/excel-import.ts'
 import { currentUserQuery, masterDataQuery } from '#/lib/queries.ts'
 import { requirePagePermission } from '#/lib/route-guard.ts'
 import { createBatchFn } from '#/server/fns/batches.ts'
@@ -276,6 +280,25 @@ function NewBatchPage() {
     vatRate: DEFAULT_VAT_RATE,
   })
 
+  const isChassisDup = Boolean(
+    vDraft.chassisNumber.trim() &&
+      vehicles.some(
+        (x) =>
+          x.id !== editingVehicleId &&
+          x.chassisNumber.trim().toLowerCase() ===
+            vDraft.chassisNumber.trim().toLowerCase(),
+      ),
+  )
+  const isEngineDup = Boolean(
+    vDraft.engineNumber.trim() &&
+      vehicles.some(
+        (x) =>
+          x.id !== editingVehicleId &&
+          x.engineNumber.trim().toLowerCase() ===
+            vDraft.engineNumber.trim().toLowerCase(),
+      ),
+  )
+
   // Excel file upload
   const fileInputRef = React.useRef<HTMLInputElement | null>(null)
   const [isImporting, setIsImporting] = React.useState(false)
@@ -285,7 +308,7 @@ function NewBatchPage() {
     if (!file) return
     setIsImporting(true)
     try {
-      const imported = await parseVehicleExcel(file, {
+      const { success, errors, totalDataRows } = await parseVehicleExcel(file, {
         models: master.models,
         colors: master.colors,
         onAutoCreateModel: async (rawName: string) => {
@@ -300,8 +323,43 @@ function NewBatchPage() {
         },
       })
 
+      const existingChassis = new Set(
+        vehicles.map((v) => v.chassisNumber.trim().toUpperCase()),
+      )
+      const existingEngines = new Set(
+        vehicles.map((v) => v.engineNumber.trim().toUpperCase()),
+      )
+
+      const validItems: ImportedVehicle[] = []
+      const allErrors = [...errors]
+
+      for (const item of success) {
+        const cUpper = item.chassisNumber.trim().toUpperCase()
+        const eUpper = item.engineNumber.trim().toUpperCase()
+        const rowNum = item.excelRow ?? 0
+        if (existingChassis.has(cUpper)) {
+          allErrors.push({
+            row: rowNum,
+            reason: `Số khung "${item.chassisNumber}" đã có trong danh sách xe của lô`,
+          })
+          continue
+        }
+        if (existingEngines.has(eUpper)) {
+          allErrors.push({
+            row: rowNum,
+            reason: `Số máy "${item.engineNumber}" đã có trong danh sách xe của lô`,
+          })
+          continue
+        }
+        existingChassis.add(cUpper)
+        existingEngines.add(eUpper)
+        validItems.push(item)
+      }
+
+      allErrors.sort((a, b) => a.row - b.row)
+
       const baseId = Math.max(0, ...vehicles.map((x) => x.id)) + 1
-      const newRows: VehicleRow[] = imported.map((item, idx) => ({
+      const newRows: VehicleRow[] = validItems.map((item, idx) => ({
         id: baseId + idx,
         modelId: item.modelId,
         colorId: item.colorId,
@@ -312,8 +370,30 @@ function NewBatchPage() {
         vatRate: item.vatRate ?? DEFAULT_VAT_RATE,
       }))
 
-      setVehicles((prev) => [...prev, ...newRows])
-      toast.success(`Đã import thành công ${newRows.length} xe từ file Excel`)
+      if (newRows.length > 0) {
+        setVehicles((prev) => [...prev, ...newRows])
+      }
+
+      if (allErrors.length === 0) {
+        toast.success(`Đã import thành công ${newRows.length} xe từ file Excel`)
+      } else {
+        const errorDetails = allErrors
+          .map((err) => `- Dòng ${err.row}: ${err.reason}`)
+          .join('\n')
+        const summaryMsg = `• Thành công: ${newRows.length}/${totalDataRows} dòng\n• Thất bại: ${allErrors.length}/${totalDataRows} dòng\n\nChi tiết lỗi:\n${errorDetails}`
+        if (newRows.length > 0) {
+          toast.warning(
+            `Import hoàn tất: ${newRows.length} dòng thành công, ${allErrors.length} dòng lỗi`,
+          )
+        } else {
+          toast.error(`Import thất bại cả ${allErrors.length} dòng dữ liệu`)
+        }
+        void alertDialog({
+          title: 'Kết Quả Import File Excel',
+          description: summaryMsg,
+          destructive: true,
+        })
+      }
     } catch (err: unknown) {
       toast.error(err instanceof Error ? err.message : 'Có lỗi khi import Excel')
     } finally {
@@ -394,6 +474,15 @@ function NewBatchPage() {
     )
     if (dup) {
       toast.error('Số khung này đã có trong lô')
+      return
+    }
+    const dupEngine = vehicles.some(
+      (x) =>
+        x.id !== editingVehicleId &&
+        x.engineNumber.trim().toLowerCase() === engine.toLowerCase(),
+    )
+    if (dupEngine) {
+      toast.error('Số máy này đã có trong lô')
       return
     }
 
@@ -539,6 +628,23 @@ function NewBatchPage() {
     if (vehicles.length === 0) {
       setError('Vui lòng thêm ít nhất 1 xe vào lô')
       return
+    }
+
+    const seenC = new Set<string>()
+    const seenE = new Set<string>()
+    for (const v of vehicles) {
+      const c = v.chassisNumber.trim().toUpperCase()
+      const e = v.engineNumber.trim().toUpperCase()
+      if (seenC.has(c)) {
+        setError(`Số khung bị trùng trong lô: ${c}`)
+        return
+      }
+      if (seenE.has(e)) {
+        setError(`Số máy bị trùng trong lô: ${e}`)
+        return
+      }
+      seenC.add(c)
+      seenE.add(e)
     }
 
     try {
@@ -1143,10 +1249,10 @@ function NewBatchPage() {
                                 })
                               }
                               placeholder="Số khung *"
+                              title={isChassisDup ? 'Số khung này đã có trong lô' : undefined}
                               className={cn(
                                 'h-7.5 text-xs uppercase bg-white px-2 rounded',
-                                vSubmitted &&
-                                  !vDraft.chassisNumber.trim() &&
+                                ((vSubmitted && !vDraft.chassisNumber.trim()) || isChassisDup) &&
                                   'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
                               )}
                             />
@@ -1161,10 +1267,10 @@ function NewBatchPage() {
                                 })
                               }
                               placeholder="Số máy *"
+                              title={isEngineDup ? 'Số máy này đã có trong lô' : undefined}
                               className={cn(
                                 'h-7.5 text-xs uppercase bg-white px-2 rounded',
-                                vSubmitted &&
-                                  !vDraft.engineNumber.trim() &&
+                                ((vSubmitted && !vDraft.engineNumber.trim()) || isEngineDup) &&
                                   'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
                               )}
                             />
@@ -1248,18 +1354,16 @@ function NewBatchPage() {
                             />
                           </TableCell>
                           <TableCell className="px-1.5 py-1 align-middle text-center">
-                            <Input
-                              type="text"
-                              inputMode="numeric"
+                            <DecimalInput
+                              maxDecimals={2}
                               placeholder="%"
                               value={vDraft.vatRate}
-                              onChange={(e) => {
-                                const val = e.target.value.replace(/[^\d.]/g, '')
+                              onValueChange={(val) =>
                                 setVDraft({
                                   ...vDraft,
-                                  vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                                  vatRate: Math.min(100, val),
                                 })
-                              }}
+                              }
                               className="h-7.5 text-xs w-14 text-center bg-white mx-auto px-1 rounded"
                             />
                           </TableCell>
@@ -1348,7 +1452,7 @@ function NewBatchPage() {
                         </TableCell>
                         <TableCell className="text-center">
                           <span className="text-[11px] font-medium text-slate-600 bg-slate-100 px-1.5 py-0.5 rounded">
-                            {v.vatRate}%
+                            {String(v.vatRate).replace('.', ',')}%
                           </span>
                         </TableCell>
                         <TableCell className="text-right font-medium text-slate-900">
@@ -1427,10 +1531,10 @@ function NewBatchPage() {
                             })
                           }
                           placeholder="Số khung *"
+                          title={isChassisDup ? 'Số khung này đã có trong lô' : undefined}
                           className={cn(
                             'h-7.5 text-xs uppercase bg-white px-2 rounded',
-                            vSubmitted &&
-                              !vDraft.chassisNumber.trim() &&
+                            ((vSubmitted && !vDraft.chassisNumber.trim()) || isChassisDup) &&
                               'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
                           )}
                         />
@@ -1445,10 +1549,10 @@ function NewBatchPage() {
                             })
                           }
                           placeholder="Số máy *"
+                          title={isEngineDup ? 'Số máy này đã có trong lô' : undefined}
                           className={cn(
                             'h-7.5 text-xs uppercase bg-white px-2 rounded',
-                            vSubmitted &&
-                              !vDraft.engineNumber.trim() &&
+                            ((vSubmitted && !vDraft.engineNumber.trim()) || isEngineDup) &&
                               'border-rose-500 ring-1 ring-rose-500 focus-visible:ring-rose-500 bg-rose-50/20',
                           )}
                         />
@@ -1526,18 +1630,16 @@ function NewBatchPage() {
                         />
                       </TableCell>
                       <TableCell className="px-1.5 py-1 align-middle text-center">
-                        <Input
-                          type="text"
-                          inputMode="numeric"
+                        <DecimalInput
+                          maxDecimals={2}
                           placeholder="%"
                           value={vDraft.vatRate}
-                          onChange={(e) => {
-                            const val = e.target.value.replace(/[^\d.]/g, '')
+                          onValueChange={(val) =>
                             setVDraft({
                               ...vDraft,
-                              vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                              vatRate: Math.min(100, val),
                             })
-                          }}
+                          }
                           className="h-7.5 text-xs w-14 text-center bg-white mx-auto px-1 rounded"
                         />
                       </TableCell>

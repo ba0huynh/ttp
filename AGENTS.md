@@ -2560,3 +2560,69 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
     - Updated `DialogContent` for the Payment Voucher modal (`paymentOpen`) from `className="max-w-md"` to `className="max-h-[90dvh] overflow-y-auto max-w-md"`.
     - Updated `DialogContent` for the Receipt Voucher modal (`receiptOpen`) from `className="max-w-md"` to `className="max-h-[90dvh] overflow-y-auto max-w-md"`.
     - Verified consistent alignment with other modals across the application.
+
+### Lesson 222: Loan Repayment Inline Save Blocked After Validation Failure (`/loans/$loanId`)
+
+- **Bug** (QA, `https://prnt.sc/rHJY81cSpzYU`, `https://prnt.sc/6yTRkefvk55e`): On the loan contract detail page (`/loans/$loanId`), when attempting to save an inline repayment row with 0/empty amount, validation correctly failed with toast: *"Vui lòng nhập số tiền gốc hoặc lãi cần trả (viền đỏ)"*. However, after re-entering a valid amount, clicking the save checkmark button did nothing and failed to save.
+- **Root Cause**:
+  - In `src/routes/loans.$loanId.tsx`, `saveRepaymentInline` set `savingRef.current = true` before executing inline validations.
+  - The 5 validation checks executed early `return` statements *outside* the `try...finally` block.
+  - As a result, `savingRef.current` was never reset back to `false` on validation failure.
+  - Subsequent clicks on the save button immediately hit `if (isSaving || savingRef.current) return` and were permanently blocked until page reload.
+- **Fix**:
+  - In `src/routes/loans.$loanId.tsx`:
+    - Moved the `try` block to wrap all validation checks and mutation operations.
+    - Guaranteed that `finally { savingRef.current = false }` runs on every return path (validation failures, success, or errors), completely eliminating the frozen save state.
+
+### Lesson 223: Decimal Support for % VAT in Vehicle Batch Pricing (`/batches/new`, `/batches/$batchId`)
+
+- **Bug / Feedback** (QA, `https://prnt.sc/dn80zKb1-YJ0`): On the batch creation and batch detail pages (`/batches/new` and `/batches/$batchId`), entering decimal VAT rates such as `8,5%` stripped the comma, turning `8,5` into `85` and incorrectly calculating vehicle import price with 85% VAT (e.g. 100M became 185M instead of 108.5M).
+- **Root Cause**:
+  - In `BatchEditor.tsx`, `batches.new.tsx`, and `VehicleFormDialog.tsx`, the `% VAT` field was rendered using a plain `<Input type="text" inputMode="numeric">`.
+  - The `onChange` handler used `val.replace(/[^\d.]/g, '')`, which stripped commas (`,`) entirely.
+  - Furthermore, binding to raw numeric state caused typed decimal dots or commas to fail to persist while typing.
+- **Fix**:
+  - `src/components/ui/decimal-input.tsx`:
+    - Updated `parseTyped` to automatically normalize keyboard/numpad dots (`.`) into decimal commas (`,`) when no comma is present, supporting both comma and dot decimal inputs.
+  - `src/components/batches/BatchEditor.tsx`:
+    - Replaced raw inputs for `% VAT` (both inline editing row and inline new row) with `<DecimalInput maxDecimals={2} ... />`.
+    - Formatted display of `v.vatRate` with Vietnamese comma separator: `{String(v.vatRate ?? 10).replace('.', ',')}%`.
+  - `src/routes/batches.new.tsx`:
+    - Replaced raw inputs for `% VAT` (both table edit and new rows) with `<DecimalInput maxDecimals={2} ... />`.
+    - Formatted display of `v.vatRate` with Vietnamese comma: `{String(v.vatRate).replace('.', ',')}%`.
+  - `src/components/batches/VehicleFormDialog.tsx`:
+    - Replaced raw `% VAT` input with `<DecimalInput maxDecimals={2} ... />`.
+  - `src/routes/sales.$orderId.tsx`:
+    - Formatted display of sales order item `vatRate` with comma separator.
+
+### Lesson 224: Duplicate Engine Number (Số Máy) Validation & Warnings (`/batches/new`, `/batches/$batchId`)
+
+- **Bug / Feedback** (QA, `https://prnt.sc/aKKLfryprP6L`): On the batch creation page (`/batches/new`), users could enter duplicate engine numbers for different vehicles (e.g. Row 1: Chassis `444`, Engine `333`; Row 2: Chassis `4441`, Engine `333`) without any validation error or warning, despite the database requiring unique engine numbers (`engine_number UNIQUE`).
+- **Root Cause**:
+  - `saveVehicleInline` in both `batches.new.tsx` and `BatchEditor.tsx` only checked for duplicate `chassisNumber` and completely omitted duplicate checks for `engineNumber`.
+  - `assertNotInDb` in `src/server/services/batches.ts` only queried for existing chassis numbers in the database.
+  - `updateVehicle` only checked for unique chassis number excluding current id, failing to check unique engine numbers.
+  - Excel batch import (`excel-import.ts`) did not detect duplicate engine numbers within the uploaded spreadsheet.
+- **Fix**:
+  - `src/routes/batches.new.tsx`:
+    - Added `dupEngine` check in `saveVehicleInline`: triggers `toast.error('Số máy này đã có trong lô')` if another vehicle in the batch has the same engine number.
+    - Added live duplicate detection indicators (`isChassisDup` and `isEngineDup`) that immediately display red highlight borders and tooltip warnings as the user types a duplicate engine number.
+    - Added comprehensive pre-submit validation in `handleSubmit` ensuring no duplicate chassis or engine numbers exist before creating the batch.
+  - `src/components/batches/BatchEditor.tsx`:
+    - Added `dupEngine` validation in `saveVehicleInline`.
+    - Added real-time `isChassisDup` and `isEngineDup` visual alerts and tooltips for inline editing and adding rows.
+  - `src/server/services/batches.ts`:
+    - Updated `assertNotInDb` to query both chassis numbers and engine numbers against the database, throwing `Số máy đã tồn tại trong hệ thống: ...` if found.
+    - Updated `updateVehicle` to ensure the updated engine number is not used by any other vehicle in the system.
+  - `src/lib/excel-import.ts`:
+    - Added duplicate engine number detection within the Excel spreadsheet, throwing a descriptive row error if duplicate engine numbers are present.
+
+
+### Lesson 225: Detailed Partial-Success & Row-Level Error Reporting in Batch Vehicle Excel Import (`src/lib/excel-import.ts`, `src/routes/batches.new.tsx`, `src/components/batches/BatchEditor.tsx`)
+
+- **Bug Report (`https://prnt.sc/HiGKD28j7UIA`)**: When importing an Excel file with 2 rows where 1 row was missing both `SK` (Số khung) and `SM` (Số máy) (while having `TÊN HÀNG` and `MÀU SƠN`), the system silently skipped the incomplete row (`if (!chassisRaw && !engineRaw) continue`) and only showed a success toast for 1 row without reporting the failed row.
+- **Desired Outcome**: Clearly report the number of successfully imported rows, the number of failed rows, and specific row-by-row error reasons so the user can supplement missing data.
+- **Fix**:
+  - Updated `parseVehicleExcel` in `src/lib/excel-import.ts` to only skip rows where **all** cells in the row are empty (`row.every((c) => String(c ?? '').trim() === '')`), and return `{ success, errors, totalDataRows }`.
+  - Any non-empty row missing `SK` and/or `SM` or containing duplicate `SK`/`SM` within the spreadsheet is recorded in `errors` with its exact 1-based Excel row number and Vietnamese reason (`Thiếu số khung (SK) và số máy (SM)`, `Thiếu số khung (SK)`, `Thiếu số máy (SM)`, etc.), while valid rows continue to be imported.
+  - Updated `handleExcelImport` in both `src/routes/batches.new.tsx` and `src/components/batches/BatchEditor.tsx` to also check imported rows against existing vehicles in the batch for duplicate `SK`/`SM`, import all valid rows, and display a structured `alertDialog` (`Kết Quả Import File Excel`) detailing `• Thành công: X/N dòng`, `• Thất bại: Y/N dòng`, and the line-by-line error breakdown alongside an appropriate warning/error toast.
