@@ -298,6 +298,8 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
       .select({
         id: salesOrders.id,
         orderDate: salesOrders.orderDate,
+        customerName: customers.name,
+        branchName: posBranches.name,
         totalAmount: salesOrders.totalAmount,
         vehicleCount: sql<number>`count(${salesOrderItems.id})`,
         totalBeforeVat: sql<string>`coalesce(sum(${salesOrderItems.priceBeforeVat}),0)`,
@@ -309,6 +311,8 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
         invoicedCount: sql<number>`count(distinct case when ${vehicles.isInvoiced} = 1 then ${vehicles.id} end)`,
       })
       .from(salesOrders)
+      .innerJoin(customers, eq(customers.id, salesOrders.customerId))
+      .leftJoin(posBranches, eq(posBranches.id, salesOrders.branchId))
       .leftJoin(
         salesOrderItems,
         eq(salesOrderItems.salesOrderId, salesOrders.id),
@@ -325,7 +329,13 @@ export const listReceivableOrdersFn = createServerFn({ method: 'GET' })
             : sql`${salesOrders.branchId} is null`,
         ),
       )
-      .groupBy(salesOrders.id, salesOrders.orderDate, salesOrders.totalAmount)
+      .groupBy(
+        salesOrders.id,
+        salesOrders.orderDate,
+        salesOrders.totalAmount,
+        customers.name,
+        posBranches.name,
+      )
       .orderBy(desc(salesOrders.orderDate), desc(salesOrders.id))
     return rows.map((r) => ({
       ...r,
@@ -359,6 +369,10 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
       .select({
         id: importBatches.id,
         importDate: importBatches.importDate,
+        supplierName: suppliers.name,
+        pricingBase: importBatches.pricingBase,
+        pricingMethod: importBatches.pricingMethod,
+        pricingValue: importBatches.pricingValue,
         loanContractId: importBatches.loanContractId,
         loanContractNumber: loanContracts.contractNumber,
         vehicleCount: sql<number>`count(${vehicles.id})`,
@@ -371,6 +385,7 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
         totalExpense: sql<string>`coalesce((select sum(e.amount) from ${batchExpenses} e where e.batch_id = ${importBatches.id}),0)`,
       })
       .from(importBatches)
+      .leftJoin(suppliers, eq(suppliers.id, importBatches.supplierId))
       .leftJoin(vehicles, eq(vehicles.batchId, importBatches.id))
       .leftJoin(
         loanContracts,
@@ -388,6 +403,10 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
       .groupBy(
         importBatches.id,
         importBatches.importDate,
+        suppliers.name,
+        importBatches.pricingBase,
+        importBatches.pricingMethod,
+        importBatches.pricingValue,
         importBatches.loanContractId,
         loanContracts.contractNumber,
       )
@@ -402,6 +421,9 @@ export const listSupplierBatchesFn = createServerFn({ method: 'GET' })
       invoicedCount: Number(r.invoicedCount),
       totalImport: num(r.totalImport),
       totalExpense: num(r.totalExpense),
+      pricingValue: num(r.pricingValue),
+      /** "Tổng giá vốn lô" of the /batches list: VAT-inclusive goods + batch expenses */
+      totalBatchCost: num(r.totalImport) + num(r.totalExpense),
       // Cost = import price before VAT + batch expenses (same basis as /sales and /reports)
       totalCost: num(r.totalBeforeVat) + num(r.totalExpense),
     }))

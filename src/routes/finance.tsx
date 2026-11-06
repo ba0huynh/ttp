@@ -32,6 +32,7 @@ import {
   SalesDeliveryBadge,
   SalesInvoiceBadge,
 } from '#/components/sales/SalesWarehouseBadges.tsx'
+import { Badge } from '#/components/ui/badge.tsx'
 import { Button } from '#/components/ui/button.tsx'
 import { Checkbox } from '#/components/ui/checkbox.tsx'
 import {
@@ -202,6 +203,8 @@ function DebtOrdersDialog({
                   <TableHead>{receivable ? 'Ngày Bán' : 'Ngày Nhập'}</TableHead>
                   {receivable && (
                     <>
+                      <TableHead>Khách Hàng</TableHead>
+                      <TableHead>Điểm Bán Nhận Xe</TableHead>
                       <TableHead className="text-right">Giá Vốn</TableHead>
                       <TableHead className="text-right">
                         Tổng Tiền Chưa VAT
@@ -221,6 +224,7 @@ function DebtOrdersDialog({
                   )}
                   {payable && (
                     <>
+                      <TableHead>Nhà Cung Cấp</TableHead>
                       <TableHead className="text-right">Giá Vốn</TableHead>
                       <TableHead className="text-right">
                         Tiền Hàng Chưa VAT
@@ -233,7 +237,13 @@ function DebtOrdersDialog({
                       <TableHead className="text-center">Kho Thực Tế</TableHead>
                       <TableHead className="text-center">Kho Hóa Đơn</TableHead>
                       <TableHead className="text-right">Chi Phí Lô</TableHead>
+                      <TableHead className="text-right">
+                        Tổng Giá Vốn Lô
+                      </TableHead>
                       <TableHead>Khế Ước Vay</TableHead>
+                      <TableHead className="text-center">
+                        Cách Định Giá Bán
+                      </TableHead>
                     </>
                   )}
                 </TableRow>
@@ -253,6 +263,12 @@ function DebtOrdersDialog({
                           >
                             {formatDate(o.orderDate)}
                           </Link>
+                        </TableCell>
+                        <TableCell className="font-medium text-slate-900">
+                          {o.customerName}
+                        </TableCell>
+                        <TableCell className="text-slate-500">
+                          {o.branchName ?? 'Trực tiếp'}
                         </TableCell>
                         <TableCell className="text-right text-slate-900">
                           {formatVnd(o.totalCost)}
@@ -299,6 +315,9 @@ function DebtOrdersDialog({
                             Lô {formatDate(b.importDate)}
                           </Link>
                         </TableCell>
+                        <TableCell className="font-medium text-slate-900">
+                          {b.supplierName ?? '—'}
+                        </TableCell>
                         <TableCell className="text-right text-slate-900">
                           {formatVnd(b.totalCost)}
                         </TableCell>
@@ -331,6 +350,9 @@ function DebtOrdersDialog({
                         <TableCell className="text-right text-slate-500">
                           {formatVnd(b.totalExpense)}
                         </TableCell>
+                        <TableCell className="text-right font-medium text-slate-900">
+                          {formatVnd(b.totalBatchCost)}
+                        </TableCell>
                         <TableCell>
                           {b.loanContractId ? (
                             <Link
@@ -343,6 +365,19 @@ function DebtOrdersDialog({
                           ) : (
                             <span className="text-slate-500">Không vay</span>
                           )}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge
+                            variant="secondary"
+                            className="text-[11px] font-medium"
+                          >
+                            {b.pricingBase === 'cost_price'
+                              ? 'Trên Giá Vốn'
+                              : 'Trên Giá Nhập Đã VAT'}{' '}
+                            {b.pricingMethod === 'percent'
+                              ? `+${b.pricingValue}%`
+                              : `+${formatVnd(b.pricingValue)}`}
+                          </Badge>
                         </TableCell>
                       </TableRow>
                     ))}
