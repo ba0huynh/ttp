@@ -79,6 +79,7 @@ import {
   TabsTrigger,
 } from '#/components/ui/tabs.tsx'
 import { formatDate, formatVnd, todayIso } from '#/lib/business.ts'
+import { cn } from '#/lib/utils.ts'
 import {
   customerOptionsQuery,
   masterDataQuery,
@@ -386,8 +387,11 @@ const payFilter = z.object({
   to: z.string().optional(),
   ...moneyRange,
 })
+const partyFilter = z.array(z.enum(['customer', 'supplier'])).optional()
 const recFilter = z.object({
+  party: partyFilter,
   customer: z.array(z.number()).optional(),
+  supplier: z.array(z.number()).optional(),
   branch: z.array(z.string()).optional(),
   account: z.array(z.string()).optional(),
   from: z.string().optional(),
@@ -395,6 +399,8 @@ const recFilter = z.object({
   ...moneyRange,
 })
 const pmtFilter = z.object({
+  party: partyFilter,
+  customer: z.array(z.number()).optional(),
   supplier: z.array(z.number()).optional(),
   account: z.array(z.string()).optional(),
   from: z.string().optional(),
@@ -438,6 +444,37 @@ export const Route = createFileRoute('/finance')({
   },
   component: FinancePage,
 })
+
+/** Two-way switch for the counterparty of a receipt / payment voucher */
+function PartyToggle<T extends string>({
+  value,
+  onChange,
+  options,
+}: {
+  value: T
+  onChange: (v: T) => void
+  options: readonly (readonly [T, string])[]
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-1 rounded-lg bg-slate-100 p-1">
+      {options.map(([key, label]) => (
+        <button
+          key={key}
+          type="button"
+          onClick={() => onChange(key)}
+          className={cn(
+            'h-9 rounded-md text-xs font-semibold transition-colors',
+            value === key
+              ? 'bg-white text-slate-900 shadow-xs'
+              : 'text-slate-500 hover:text-slate-700',
+          )}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  )
+}
 
 function FinancePage() {
   const { user } = Route.useRouteContext()
@@ -520,12 +557,27 @@ function FinancePage() {
       return false
     return !outOfRange(p.balance, payF)
   })
+  // Customer and supplier pickers are alternatives (a row matches either one)
+  const matchesParties = (
+    row: { customerId: number | null; supplierId: number | null },
+    f: { customer?: number[]; supplier?: number[] },
+  ) => {
+    const byCustomer = f.customer?.length
+      ? row.customerId !== null && f.customer.includes(row.customerId)
+      : null
+    const bySupplier = f.supplier?.length
+      ? row.supplierId !== null && f.supplier.includes(row.supplierId)
+      : null
+    if (byCustomer === null && bySupplier === null) return true
+    return Boolean(byCustomer || bySupplier)
+  }
   const receiptsFiltered = receipts.filter((r) => {
-    if (recF.customer?.length && !recF.customer.includes(r.customerId))
-      return false
+    if (recF.party?.length && !recF.party.includes(r.partyType)) return false
+    if (!matchesParties(r, recF)) return false
     if (
       recF.branch?.length &&
-      !recF.branch.includes(r.branchId ? String(r.branchId) : DIRECT_BRANCH)
+      (r.partyType === 'supplier' ||
+        !recF.branch.includes(r.branchId ? String(r.branchId) : DIRECT_BRANCH))
     )
       return false
     if (
@@ -542,10 +594,11 @@ function FinancePage() {
   })
   const paymentsFiltered = payments.filter((p) => {
     if (
-      pmtF.supplier?.length &&
-      !(p.supplierId !== null && pmtF.supplier.includes(p.supplierId))
+      pmtF.party?.length &&
+      !(p.partyType !== 'other' && pmtF.party.includes(p.partyType))
     )
       return false
+    if (!matchesParties(p, pmtF)) return false
     if (
       pmtF.account?.length &&
       !pmtF.account.includes(
@@ -559,7 +612,7 @@ function FinancePage() {
     const q = pmtText.trim().toLowerCase()
     if (
       q &&
-      !`${p.description ?? ''} ${p.supplierName ?? p.payeeName ?? ''}`
+      !`${p.description ?? ''} ${p.partyName}`
         .toLowerCase()
         .includes(q)
     )
@@ -593,13 +646,17 @@ function FinancePage() {
       hasRange(payF),
     ].filter(Boolean).length,
     receipts: [
+      recF.party?.length,
       recF.customer?.length,
+      recF.supplier?.length,
       recF.branch?.length,
       recF.account?.length,
       recF.from || recF.to,
       hasRange(recF),
     ].filter(Boolean).length,
     payments: [
+      pmtF.party?.length,
+      pmtF.customer?.length,
       pmtF.supplier?.length,
       pmtF.account?.length,
       pmtF.from || pmtF.to,
@@ -672,6 +729,13 @@ function FinancePage() {
   // Receipt Voucher modal
   const [receiptOpen, setReceiptOpen] = React.useState(false)
   const [receiptDate, setReceiptDate] = React.useState(todayIso())
+  // Who pays: a customer (default) or a supplier refunding a returned vehicle
+  const [receiptParty, setReceiptParty] = React.useState<
+    'customer' | 'supplier'
+  >('customer')
+  const [receiptSupplierId, setReceiptSupplierId] = React.useState<number>(
+    master.suppliers[0]?.id ?? 0,
+  )
   const [receiptCustomerId, setReceiptCustomerId] = React.useState<number>(
     customers[0]?.id ?? 1,
   )
@@ -689,6 +753,16 @@ function FinancePage() {
   // Payment Voucher modal
   const [paymentOpen, setPaymentOpen] = React.useState(false)
   const [paymentDate, setPaymentDate] = React.useState(todayIso())
+  // Who is paid: a supplier (default) or a customer refunded for a returned vehicle
+  const [paymentParty, setPaymentParty] = React.useState<
+    'supplier' | 'customer'
+  >('supplier')
+  const [paymentCustomerId, setPaymentCustomerId] = React.useState<number>(
+    customers[0]?.id ?? 1,
+  )
+  const [paymentBranchId, setPaymentBranchId] = React.useState<number | null>(
+    null,
+  )
   const [paymentSupplierId, setPaymentSupplierId] = React.useState<number>(
     master.suppliers[0]?.id ?? 1,
   )
@@ -727,11 +801,15 @@ function FinancePage() {
 
   const selectedCustomer = customers.find((c) => c.id === receiptCustomerId)
   const branchOptions = selectedCustomer?.branches ?? []
+  const paymentBranchOptions =
+    customers.find((c) => c.id === paymentCustomerId)?.branches ?? []
 
   const openEditReceipt = (r: (typeof receipts)[number]) => {
     setEditReceiptId(r.id)
     setReceiptDate(r.receiptDate)
-    setReceiptCustomerId(r.customerId)
+    setReceiptParty(r.partyType === 'supplier' ? 'supplier' : 'customer')
+    setReceiptCustomerId(r.customerId ?? customers[0]?.id ?? 1)
+    setReceiptSupplierId(r.supplierId ?? master.suppliers[0]?.id ?? 0)
     setReceiptBranchId(r.branchId)
     setReceiptAmount(r.amount)
     setReceiptAccountId(r.companyBankAccountId)
@@ -741,7 +819,10 @@ function FinancePage() {
   const openEditPayment = (p: (typeof payments)[number]) => {
     setEditPaymentId(p.id)
     setPaymentDate(p.paymentDate)
-    setPaymentSupplierId(p.supplierId ?? 0)
+    setPaymentParty(p.payeeType === 'customer' ? 'customer' : 'supplier')
+    setPaymentSupplierId(p.supplierId ?? master.suppliers[0]?.id ?? 0)
+    setPaymentCustomerId(p.customerId ?? customers[0]?.id ?? 1)
+    setPaymentBranchId(p.branchId)
     setPaymentAmount(p.amount)
     setPaymentAccountId(p.companyBankAccountId)
     setPaymentDesc(p.description ?? '')
@@ -786,8 +867,10 @@ function FinancePage() {
       await createReceipt.mutateAsync({
         id: editReceiptId ?? undefined,
         receiptDate,
-        customerId: receiptCustomerId,
-        branchId: receiptBranchId,
+        partyType: receiptParty,
+        customerId: receiptParty === 'customer' ? receiptCustomerId : null,
+        supplierId: receiptParty === 'supplier' ? receiptSupplierId : null,
+        branchId: receiptParty === 'customer' ? receiptBranchId : null,
         amount: receiptAmount,
         companyBankAccountId: receiptAccountId,
         note: receiptNote.trim() || null,
@@ -806,8 +889,10 @@ function FinancePage() {
       await createPayment.mutateAsync({
         id: editPaymentId ?? undefined,
         paymentDate,
-        payeeType: 'supplier',
-        supplierId: paymentSupplierId,
+        payeeType: paymentParty,
+        supplierId: paymentParty === 'supplier' ? paymentSupplierId : null,
+        customerId: paymentParty === 'customer' ? paymentCustomerId : null,
+        branchId: paymentParty === 'customer' ? paymentBranchId : null,
         amount: paymentAmount,
         companyBankAccountId: paymentAccountId,
         description: paymentDesc,
@@ -842,6 +927,7 @@ function FinancePage() {
                 size="sm"
                 onClick={() => {
                   setEditReceiptId(null)
+                  setReceiptParty('customer')
                   setReceiptNote('')
                   setReceiptOpen(true)
                 }}
@@ -855,6 +941,8 @@ function FinancePage() {
                 variant="outline"
                 onClick={() => {
                   setEditPaymentId(null)
+                  setPaymentParty('supplier')
+                  setPaymentBranchId(null)
                   setPaymentDesc('')
                   setPaymentOpen(true)
                 }}
@@ -1103,7 +1191,7 @@ function FinancePage() {
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100">
                 <CardTitle className="text-sm font-bold text-slate-800">
-                  Lịch Sử Phiếu Thu Tiền Bán Xe ({receiptsFiltered.length})
+                  Lịch Sử Phiếu Thu ({receiptsFiltered.length})
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0">
@@ -1112,8 +1200,8 @@ function FinancePage() {
                     <TableRow className="text-xs bg-slate-50">
 <TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Ngày Thu</TableHead>
-                      <TableHead>Khách Hàng</TableHead>
-                      <TableHead>Điểm Bán Thanh Toán</TableHead>
+                      <TableHead>Đối Tượng</TableHead>
+                      <TableHead>Đối Tượng Phụ</TableHead>
                       <TableHead className="text-right">Số Tiền Thu</TableHead>
                       <TableHead>Tài Khoản Nhận</TableHead>
                       <TableHead>Ghi Chú</TableHead>
@@ -1128,17 +1216,36 @@ function FinancePage() {
                           {formatDate(r.receiptDate)}
                         </TableCell>
                         <TableCell className="font-medium text-slate-900">
-                          <Link
-                            to="/customers/$customerId"
-                            params={{ customerId: String(r.customerId) }}
-                            preload="intent"
-                            className="hover:text-emerald-700 hover:underline"
-                          >
-                            {r.customerName}
-                          </Link>
+                          {r.partyType === 'supplier' && r.supplierId ? (
+                            <>
+                              <SupplierLink
+                                supplierId={r.supplierId}
+                                className="hover:text-emerald-700 hover:underline"
+                              >
+                                {r.partyName}
+                              </SupplierLink>
+                              <span className="ml-1 font-normal text-slate-500">
+                                (NCC)
+                              </span>
+                            </>
+                          ) : (
+                            <>
+                              <Link
+                                to="/customers/$customerId"
+                                params={{ customerId: String(r.customerId) }}
+                                preload="intent"
+                                className="hover:text-emerald-700 hover:underline"
+                              >
+                                {r.partyName}
+                              </Link>
+                              <span className="ml-1 font-normal text-slate-500">
+                                (KH)
+                              </span>
+                            </>
+                          )}
                         </TableCell>
                         <TableCell className="text-slate-900">
-                          {r.branchName ?? 'Trực tiếp'}
+                          {r.subName ?? '—'}
                         </TableCell>
                         <TableCell className="text-right text-emerald-900">
                           {formatVnd(r.amount)}
@@ -1181,7 +1288,7 @@ function FinancePage() {
                                   handleDeleteVoucher(
                                     'receipt',
                                     r.id,
-                                    `${r.customerName} — ${formatVnd(r.amount)}`,
+                                    `${r.partyName} — ${formatVnd(r.amount)}`,
                                   )
                                 }
                                 className="size-7 text-slate-400 hover:text-rose-600"
@@ -1216,7 +1323,8 @@ function FinancePage() {
                     <TableRow className="text-xs bg-slate-50">
 <TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Ngày Chi</TableHead>
-                      <TableHead>Đối Tượng Nhận</TableHead>
+                      <TableHead>Đối Tượng</TableHead>
+                      <TableHead>Đối Tượng Phụ</TableHead>
                       <TableHead className="text-right">Số Tiền Chi</TableHead>
                       <TableHead>Ghi Chú</TableHead>
                       <TableHead className="w-24"></TableHead>
@@ -1230,13 +1338,38 @@ function FinancePage() {
                           {formatDate(p.paymentDate)}
                         </TableCell>
                         <TableCell className="font-medium text-slate-900">
-                          {p.supplierId && p.supplierName ? (
-                            <SupplierLink supplierId={p.supplierId} className="hover:text-emerald-700 hover:underline">
-                              {p.supplierName}
-                            </SupplierLink>
+                          {p.partyType === 'customer' && p.customerId ? (
+                            <>
+                              <Link
+                                to="/customers/$customerId"
+                                params={{ customerId: String(p.customerId) }}
+                                preload="intent"
+                                className="hover:text-emerald-700 hover:underline"
+                              >
+                                {p.partyName}
+                              </Link>
+                              <span className="ml-1 font-normal text-slate-500">
+                                (KH)
+                              </span>
+                            </>
+                          ) : p.supplierId && p.supplierName ? (
+                            <>
+                              <SupplierLink
+                                supplierId={p.supplierId}
+                                className="hover:text-emerald-700 hover:underline"
+                              >
+                                {p.supplierName}
+                              </SupplierLink>
+                              <span className="ml-1 font-normal text-slate-500">
+                                (NCC)
+                              </span>
+                            </>
                           ) : (
-                            (p.supplierName ?? p.payeeName)
+                            p.partyName
                           )}
+                        </TableCell>
+                        <TableCell className="text-slate-900">
+                          {p.subName ?? '—'}
                         </TableCell>
                         <TableCell className="text-right text-rose-900">
                           {formatVnd(p.amount)}
@@ -1250,7 +1383,7 @@ function FinancePage() {
                               <Button
                                 variant="ghost"
                                 size="icon"
-                                disabled={p.payeeType !== 'supplier'}
+                                disabled={p.payeeType === 'other'}
                                 onClick={() => openEditPayment(p)}
                                 className="size-7 text-slate-400 hover:text-emerald-700"
                                 aria-label="Sửa"
@@ -1266,7 +1399,7 @@ function FinancePage() {
                                   handleDeleteVoucher(
                                     'payment',
                                     p.id,
-                                    `${p.supplierName ?? p.payeeName} — ${formatVnd(p.amount)}`,
+                                    `${p.partyName} — ${formatVnd(p.amount)}`,
                                   )
                                 }
                                 className="size-7 text-slate-400 hover:text-rose-600"
@@ -1492,6 +1625,24 @@ function FinancePage() {
               {tab === 'receipts' && (
                 <>
                   <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Loại đối tượng</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Khách hàng & nhà cung cấp"
+                      values={recF.party ?? []}
+                      onValuesChange={(v) =>
+                        setTabFilter('rec', { party: v })
+                      }
+                    >
+                      <SearchSelectItem value="customer">
+                        Khách hàng (KH)
+                      </SearchSelectItem>
+                      <SearchSelectItem value="supplier">
+                        Nhà cung cấp (NCC)
+                      </SearchSelectItem>
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs font-semibold">Khách hàng</Label>
                     <MultiSearchSelect
                       className="h-11 w-full text-sm rounded-lg"
@@ -1513,8 +1664,25 @@ function FinancePage() {
                     </MultiSearchSelect>
                   </div>
                   <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Nhà cung cấp</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả nhà cung cấp"
+                      values={(recF.supplier ?? []).map(String)}
+                      onValuesChange={(v) =>
+                        setTabFilter('rec', { supplier: v.map(Number) })
+                      }
+                    >
+                      {supplierOptions.map(([id, name]) => (
+                        <SearchSelectItem key={id} value={String(id)}>
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs font-semibold">
-                      Điểm bán thanh toán
+                      Đối tượng phụ (điểm bán)
                     </Label>
                     <MultiSearchSelect
                       className="h-11 w-full text-sm rounded-lg"
@@ -1606,6 +1774,24 @@ function FinancePage() {
                     />
                   </div>
                   <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Loại đối tượng</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Nhà cung cấp & khách hàng"
+                      values={pmtF.party ?? []}
+                      onValuesChange={(v) =>
+                        setTabFilter('pmt', { party: v })
+                      }
+                    >
+                      <SearchSelectItem value="supplier">
+                        Nhà cung cấp (NCC)
+                      </SearchSelectItem>
+                      <SearchSelectItem value="customer">
+                        Khách hàng (KH)
+                      </SearchSelectItem>
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
                     <Label className="text-xs font-semibold">Nhà cung cấp</Label>
                     <MultiSearchSelect
                       className="h-11 w-full text-sm rounded-lg"
@@ -1621,6 +1807,23 @@ function FinancePage() {
                           value={String(id)}
                          
                         >
+                          {name}
+                        </SearchSelectItem>
+                      ))}
+                    </MultiSearchSelect>
+                  </div>
+                  <div className="space-y-1 sm:col-span-2">
+                    <Label className="text-xs font-semibold">Khách hàng</Label>
+                    <MultiSearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      placeholder="Tất cả khách hàng"
+                      values={(pmtF.customer ?? []).map(String)}
+                      onValuesChange={(v) =>
+                        setTabFilter('pmt', { customer: v.map(Number) })
+                      }
+                    >
+                      {customerOptions.map(([id, name]) => (
+                        <SearchSelectItem key={id} value={String(id)}>
                           {name}
                         </SearchSelectItem>
                       ))}
@@ -1730,10 +1933,12 @@ function FinancePage() {
           <DialogContent className="max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
-                {editReceiptId ? 'Sửa Phiếu Thu' : 'Lập Phiếu Thu Tiền Bán Xe'}
+                {editReceiptId ? 'Sửa Phiếu Thu' : 'Lập Phiếu Thu Tiền'}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Ghi nhận khách hàng hoặc điểm bán thanh toán công nợ
+                {receiptParty === 'customer'
+                  ? 'Ghi nhận khách hàng hoặc điểm bán thanh toán công nợ'
+                  : 'Nhà cung cấp hoàn tiền (ví dụ trả xe lại cho nhà cung cấp)'}
               </DialogDescription>
             </DialogHeader>
 
@@ -1750,6 +1955,36 @@ function FinancePage() {
               </div>
 
               <div className="space-y-1">
+                <Label className="text-xs font-semibold">Thu Từ *</Label>
+                <PartyToggle
+                  value={receiptParty}
+                  onChange={setReceiptParty}
+                  options={[
+                    ['customer', 'Khách hàng'],
+                    ['supplier', 'Nhà cung cấp'],
+                  ]}
+                />
+              </div>
+
+              {receiptParty === 'supplier' && (
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Nhà Cung Cấp *</Label>
+                  <SearchSelect
+                    className="h-11 w-full text-sm rounded-lg"
+                    value={String(receiptSupplierId)}
+                    onValueChange={(val) => setReceiptSupplierId(Number(val))}
+                  >
+                    {master.suppliers.map((s) => (
+                      <SearchSelectItem key={s.id} value={String(s.id)}>
+                        {s.name}
+                      </SearchSelectItem>
+                    ))}
+                  </SearchSelect>
+                </div>
+              )}
+
+              {receiptParty === 'customer' && (
+              <div className="space-y-1">
                 <Label className="text-xs font-semibold">Khách Hàng *</Label>
                 <SearchSelect
                   className="h-11 w-full text-sm rounded-lg"
@@ -1763,14 +1998,16 @@ function FinancePage() {
                     <SearchSelectItem
                       key={c.id}
                       value={String(c.id)}
-                     
+
                     >
                       {c.name}
                     </SearchSelectItem>
                   ))}
                 </SearchSelect>
               </div>
+              )}
 
+              {receiptParty === 'customer' && (
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
                   Điểm Bán Thanh Toán (Công nợ trừ theo pháp nhân này)
@@ -1790,13 +2027,14 @@ function FinancePage() {
                     <SearchSelectItem
                       key={b.id}
                       value={String(b.id)}
-                     
+
                     >
                       {b.name}
                     </SearchSelectItem>
                   ))}
                 </SearchSelect>
               </div>
+              )}
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
@@ -1808,6 +2046,12 @@ function FinancePage() {
                   onValueChange={setReceiptAmount}
                   className="h-11 text-sm px-4 rounded-lg"
                 />
+                {receiptParty === 'supplier' && (
+                  <p className="text-[11px] text-slate-500">
+                    Tiền hoàn từ nhà cung cấp: không giới hạn theo công nợ, làm
+                    giảm số tiền đã thanh toán cho nhà cung cấp này.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-3">
@@ -1882,7 +2126,9 @@ function FinancePage() {
                 {editPaymentId ? 'Sửa Phiếu Chi' : 'Lập Phiếu Chi Tiền'}
               </DialogTitle>
               <DialogDescription className="text-xs">
-                Chi trả tiền hàng cho nhà cung cấp
+                {paymentParty === 'supplier'
+                  ? 'Chi trả tiền hàng cho nhà cung cấp'
+                  : 'Hoàn tiền cho khách hàng (ví dụ khách trả xe lại)'}
               </DialogDescription>
             </DialogHeader>
 
@@ -1899,25 +2145,80 @@ function FinancePage() {
               </div>
 
               <div className="space-y-1">
-                <Label className="text-xs font-semibold">
-                  Nhà Cung Cấp Thụ Hưởng *
-                </Label>
-                <SearchSelect
-                  className="h-11 w-full text-sm rounded-lg"
-                  value={String(paymentSupplierId)}
-                  onValueChange={(val) => setPaymentSupplierId(Number(val))}
-                >
-                  {master.suppliers.map((s) => (
-                    <SearchSelectItem
-                      key={s.id}
-                      value={String(s.id)}
-                     
-                    >
-                      {s.name}
-                    </SearchSelectItem>
-                  ))}
-                </SearchSelect>
+                <Label className="text-xs font-semibold">Chi Cho *</Label>
+                <PartyToggle
+                  value={paymentParty}
+                  onChange={setPaymentParty}
+                  options={[
+                    ['supplier', 'Nhà cung cấp'],
+                    ['customer', 'Khách hàng'],
+                  ]}
+                />
               </div>
+
+              {paymentParty === 'supplier' ? (
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">
+                    Nhà Cung Cấp Thụ Hưởng *
+                  </Label>
+                  <SearchSelect
+                    className="h-11 w-full text-sm rounded-lg"
+                    value={String(paymentSupplierId)}
+                    onValueChange={(val) => setPaymentSupplierId(Number(val))}
+                  >
+                    {master.suppliers.map((s) => (
+                      <SearchSelectItem
+                        key={s.id}
+                        value={String(s.id)}
+
+                      >
+                        {s.name}
+                      </SearchSelectItem>
+                    ))}
+                  </SearchSelect>
+                </div>
+              ) : (
+                <>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Khách Hàng Nhận Tiền *
+                    </Label>
+                    <SearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      value={String(paymentCustomerId)}
+                      onValueChange={(val) => {
+                        setPaymentCustomerId(Number(val))
+                        setPaymentBranchId(null)
+                      }}
+                    >
+                      {customers.map((c) => (
+                        <SearchSelectItem key={c.id} value={String(c.id)}>
+                          {c.name}
+                        </SearchSelectItem>
+                      ))}
+                    </SearchSelect>
+                  </div>
+                  <div className="space-y-1">
+                    <Label className="text-xs font-semibold">
+                      Điểm Bán (Công nợ cộng lại theo pháp nhân này)
+                    </Label>
+                    <SearchSelect
+                      className="h-11 w-full text-sm rounded-lg"
+                      value={paymentBranchId ? String(paymentBranchId) : 'none'}
+                      onValueChange={(val) =>
+                        setPaymentBranchId(val === 'none' ? null : Number(val))
+                      }
+                    >
+                      <SearchSelectItem value="none">Trực tiếp</SearchSelectItem>
+                      {paymentBranchOptions.map((b) => (
+                        <SearchSelectItem key={b.id} value={String(b.id)}>
+                          {b.name}
+                        </SearchSelectItem>
+                      ))}
+                    </SearchSelect>
+                  </div>
+                </>
+              )}
 
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
@@ -1929,6 +2230,12 @@ function FinancePage() {
                   onValueChange={setPaymentAmount}
                   className="h-11 text-sm px-4 rounded-lg"
                 />
+                {paymentParty === 'customer' && (
+                  <p className="text-[11px] text-slate-500">
+                    Tiền hoàn cho khách hàng: không giới hạn theo công nợ, làm
+                    giảm số tiền khách đã thanh toán.
+                  </p>
+                )}
               </div>
 
               <div className="space-y-1">

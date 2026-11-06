@@ -487,9 +487,10 @@ export const receiptVouchers = mysqlTable(
   {
     id: int('id').primaryKey().autoincrement(),
     receiptDate: date('receipt_date', { mode: 'string' }).notNull(),
-    customerId: int('customer_id')
-      .notNull()
-      .references(() => customers.id),
+    /** Payer: a customer (normal sale payment) ... */
+    customerId: int('customer_id').references(() => customers.id),
+    /** ... or a supplier (refund of a returned vehicle). Exactly one is set. */
+    supplierId: int('supplier_id').references(() => suppliers.id),
     /** Paying entity (debt tracked per branch) */
     branchId: int('branch_id').references(() => posBranches.id),
     salesOrderId: int('sales_order_id').references(() => salesOrders.id, {
@@ -503,6 +504,7 @@ export const receiptVouchers = mysqlTable(
   },
   (t) => [
     index('receipt_vouchers_customer_idx').on(t.customerId),
+    index('receipt_vouchers_supplier_idx').on(t.supplierId),
     index('receipt_vouchers_branch_idx').on(t.branchId),
     foreignKey({
       name: 'receipt_vouchers_bank_account_fk',
@@ -512,7 +514,8 @@ export const receiptVouchers = mysqlTable(
   ],
 )
 
-export const PAYEE_TYPES = ['supplier', 'other'] as const
+/** 'customer' = refund paid to a customer who returned a vehicle */
+export const PAYEE_TYPES = ['supplier', 'other', 'customer'] as const
 
 export const paymentVouchers = mysqlTable(
   'payment_vouchers',
@@ -523,6 +526,9 @@ export const paymentVouchers = mysqlTable(
       .default('supplier')
       .notNull(),
     supplierId: int('supplier_id').references(() => suppliers.id),
+    /** Set when payeeType = 'customer' (refund); branch = receiving entity */
+    customerId: int('customer_id').references(() => customers.id),
+    branchId: int('branch_id').references(() => posBranches.id),
     payeeName: varchar('payee_name', { length: 255 }),
     amount: money('amount').notNull(),
     companyBankAccountId: int('company_bank_account_id'),
@@ -532,6 +538,8 @@ export const paymentVouchers = mysqlTable(
   },
   (t) => [
     index('payment_vouchers_supplier_idx').on(t.supplierId),
+    index('payment_vouchers_customer_idx').on(t.customerId),
+    index('payment_vouchers_branch_idx').on(t.branchId),
     foreignKey({
       name: 'payment_vouchers_bank_account_fk',
       columns: [t.companyBankAccountId],
@@ -789,6 +797,10 @@ export const receiptVouchersRelations = relations(
       fields: [receiptVouchers.customerId],
       references: [customers.id],
     }),
+    supplier: one(suppliers, {
+      fields: [receiptVouchers.supplierId],
+      references: [suppliers.id],
+    }),
     branch: one(posBranches, {
       fields: [receiptVouchers.branchId],
       references: [posBranches.id],
@@ -802,6 +814,10 @@ export const paymentVouchersRelations = relations(
     supplier: one(suppliers, {
       fields: [paymentVouchers.supplierId],
       references: [suppliers.id],
+    }),
+    customer: one(customers, {
+      fields: [paymentVouchers.customerId],
+      references: [customers.id],
     }),
   }),
 )

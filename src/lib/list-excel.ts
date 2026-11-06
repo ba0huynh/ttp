@@ -7,7 +7,7 @@
 import { utils, writeFile } from 'xlsx'
 import type { CellObject } from 'xlsx'
 
-import { formatVnd } from '#/lib/business.ts'
+import { formatVnd, partyLabel } from '#/lib/business.ts'
 
 type CellValue = string | number | null
 
@@ -573,8 +573,10 @@ export function downloadPayablesExcel(
 // 5c. Finance - Tab 3: Receipt Vouchers (`/finance?tab=receipts`)
 export interface ReceiptExcelRow {
   receiptDate: string
-  customerName: string
-  branchName: string | null
+  partyType: 'customer' | 'supplier' | 'other'
+  partyName: string
+  /** Receiving branch of a customer; null for a supplier */
+  subName: string | null
   amount: number
   bankName: string | null
   accountNumber: string | null
@@ -602,11 +604,15 @@ export function downloadReceiptsExcel(
         format: DATE_FORMAT,
         value: (r) => excelDate(r.receiptDate),
       },
-      { header: 'Khách Hàng', width: 28, value: (r) => r.customerName },
       {
-        header: 'Điểm Bán Thanh Toán',
+        header: 'Đối Tượng',
+        width: 32,
+        value: (r) => partyLabel(r.partyName, r.partyType),
+      },
+      {
+        header: 'Đối Tượng Phụ',
         width: 24,
-        value: (r) => r.branchName ?? 'Trực tiếp',
+        value: (r) => r.subName ?? '—',
       },
       {
         header: 'Số Tiền Thu',
@@ -633,8 +639,10 @@ export function downloadReceiptsExcel(
 // 5d. Finance - Tab 4: Payment Vouchers (`/finance?tab=payments`)
 export interface PaymentExcelRow {
   paymentDate: string
-  supplierName: string | null
-  payeeName: string | null
+  partyType: 'customer' | 'supplier' | 'other'
+  partyName: string
+  /** Receiving branch of a customer; null for a supplier */
+  subName: string | null
   amount: number
   description: string | null
 }
@@ -661,9 +669,14 @@ export function downloadPaymentsExcel(
         value: (p) => excelDate(p.paymentDate),
       },
       {
-        header: 'Đối Tượng Nhận',
-        width: 30,
-        value: (p) => (p.supplierName ?? p.payeeName) || '—',
+        header: 'Đối Tượng',
+        width: 32,
+        value: (p) => partyLabel(p.partyName, p.partyType) || '—',
+      },
+      {
+        header: 'Đối Tượng Phụ',
+        width: 24,
+        value: (p) => p.subName ?? '—',
       },
       {
         header: 'Số Tiền Chi',

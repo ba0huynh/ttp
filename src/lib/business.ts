@@ -344,3 +344,14 @@ export function addMonthsIso(date: string, months: number): string {
   target.setUTCDate(Math.min(d, lastDay))
   return target.toISOString().slice(0, 10)
 }
+
+/** Counterparty of a voucher with its type tag: "Name (KH)" customer, "Name (NCC)" supplier */
+export const partyLabel = (
+  name: string,
+  type: 'customer' | 'supplier' | 'other',
+): string =>
+  type === 'customer'
+    ? `${name} (KH)`
+    : type === 'supplier'
+      ? `${name} (NCC)`
+      : name

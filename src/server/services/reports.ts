@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, gte, lte, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, gte, isNotNull, lte, sql } from 'drizzle-orm'
 
 import { db } from '../../db/index.ts'
 import {
@@ -37,8 +37,12 @@ export async function getReceivablesSummary(range: DateRange = {}) {
     range.from ? gte(receiptVouchers.receiptDate, range.from) : undefined,
     range.to ? lte(receiptVouchers.receiptDate, range.to) : undefined,
   ]
+  const refundDates = [
+    range.from ? gte(paymentVouchers.paymentDate, range.from) : undefined,
+    range.to ? lte(paymentVouchers.paymentDate, range.to) : undefined,
+  ]
   // Independent queries run concurrently: each one costs a network round trip
-  const [sold, paid, custs, branches] = await Promise.all([
+  const [sold, paid, refunded, custs, branches] = await Promise.all([
     db
       .select({
         customerId: salesOrders.customerId,
@@ -55,8 +59,24 @@ export async function getReceivablesSummary(range: DateRange = {}) {
         total: sql<string>`sum(${receiptVouchers.amount})`,
       })
       .from(receiptVouchers)
-      .where(and(...receiptDates))
+      .where(and(isNotNull(receiptVouchers.customerId), ...receiptDates))
       .groupBy(receiptVouchers.customerId, receiptVouchers.branchId),
+    // Refunds paid back to customers (returned vehicles) count as negative payments
+    db
+      .select({
+        customerId: paymentVouchers.customerId,
+        branchId: paymentVouchers.branchId,
+        total: sql<string>`sum(${paymentVouchers.amount})`,
+      })
+      .from(paymentVouchers)
+      .where(
+        and(
+          eq(paymentVouchers.payeeType, 'customer'),
+          isNotNull(paymentVouchers.customerId),
+          ...refundDates,
+        ),
+      )
+      .groupBy(paymentVouchers.customerId, paymentVouchers.branchId),
     db.select().from(customers),
     db.select().from(posBranches),
   ])
@@ -93,7 +113,10 @@ export async function getReceivablesSummary(range: DateRange = {}) {
     return r
   }
   for (const s of sold) touch(s.customerId, s.branchId).sold += num(s.total)
-  for (const p of paid) touch(p.customerId, p.branchId).paid += num(p.total)
+  for (const p of paid)
+    if (p.customerId) touch(p.customerId, p.branchId).paid += num(p.total)
+  for (const p of refunded)
+    if (p.customerId) touch(p.customerId, p.branchId).paid -= num(p.total)
 
   return [...rows.values()]
     .map((r) => ({ ...r, balance: r.sold - r.paid }))
@@ -136,7 +159,11 @@ export async function getPayablesSummary(range: DateRange = {}) {
     range.from ? gte(paymentVouchers.paymentDate, range.from) : undefined,
     range.to ? lte(paymentVouchers.paymentDate, range.to) : undefined,
   ]
-  const [purchased, paid, sups] = await Promise.all([
+  const refundReceiptDates = [
+    range.from ? gte(receiptVouchers.receiptDate, range.from) : undefined,
+    range.to ? lte(receiptVouchers.receiptDate, range.to) : undefined,
+  ]
+  const [purchased, paid, refunded, sups] = await Promise.all([
     db
       .select({
         supplierId: importBatches.supplierId,
@@ -156,14 +183,24 @@ export async function getPayablesSummary(range: DateRange = {}) {
       .from(paymentVouchers)
       .where(and(eq(paymentVouchers.payeeType, 'supplier'), ...paymentDates))
       .groupBy(paymentVouchers.supplierId),
+    // Money suppliers sent back (returned vehicles) reduces what we have paid
+    db
+      .select({
+        supplierId: receiptVouchers.supplierId,
+        total: sql<string>`sum(${receiptVouchers.amount})`,
+      })
+      .from(receiptVouchers)
+      .where(and(isNotNull(receiptVouchers.supplierId), ...refundReceiptDates))
+      .groupBy(receiptVouchers.supplierId),
     db.select().from(suppliers).orderBy(asc(suppliers.name)),
   ])
   const pMap = new Map(purchased.map((p) => [p.supplierId, p]))
+  const refundMap = new Map(refunded.map((p) => [p.supplierId, num(p.total)]))
   const paidMap = new Map(paid.map((p) => [p.supplierId, num(p.total)]))
   return sups
     .map((s) => {
       const purchasedTotal = num(pMap.get(s.id)?.total)
-      const paidTotal = paidMap.get(s.id) ?? 0
+      const paidTotal = (paidMap.get(s.id) ?? 0) - (refundMap.get(s.id) ?? 0)
       return {
         supplierId: s.id,
         supplierName: s.name,

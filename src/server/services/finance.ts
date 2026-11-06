@@ -305,7 +305,10 @@ async function assertReceiptWithinDebt(
   const branchPaid = branchId
     ? eq(receiptVouchers.branchId, branchId)
     : isNull(receiptVouchers.branchId)
-  const [[sold], [paid], [customer], branch] = await Promise.all([
+  const branchRefunded = branchId
+    ? eq(paymentVouchers.branchId, branchId)
+    : isNull(paymentVouchers.branchId)
+  const [[sold], [paid], [refunded], [customer], branch] = await Promise.all([
     db
       .select({ t: sql<string>`coalesce(sum(${salesOrders.totalAmount}),0)` })
       .from(salesOrders)
@@ -326,6 +329,17 @@ async function assertReceiptWithinDebt(
           excludeId ? ne(receiptVouchers.id, excludeId) : undefined,
         ),
       ),
+    // Refunds paid back to this customer (returned vehicles) give the debt back
+    db
+      .select({ t: sql<string>`coalesce(sum(${paymentVouchers.amount}),0)` })
+      .from(paymentVouchers)
+      .where(
+        and(
+          eq(paymentVouchers.payeeType, 'customer'),
+          eq(paymentVouchers.customerId, customerId),
+          branchRefunded,
+        ),
+      ),
     db
       .select({ name: customers.name })
       .from(customers)
@@ -337,7 +351,7 @@ async function assertReceiptWithinDebt(
           .where(eq(posBranches.id, branchId))
       : Promise.resolve([]),
   ])
-  const owed = Math.max(0, num(sold?.t) - num(paid?.t))
+  const owed = Math.max(0, num(sold?.t) - (num(paid?.t) - num(refunded?.t)))
   if (amount > owed + 0.5) {
     const who =
       branch[0]?.name ?? `${customer?.name ?? 'khách hàng'} (pháp nhân chính)`
@@ -355,7 +369,7 @@ async function assertPaymentWithinDebt(
   amount: number,
   excludeId?: number,
 ) {
-  const [[bought], [paid], [supplier]] = await Promise.all([
+  const [[bought], [paid], [refunded], [supplier]] = await Promise.all([
     db
       .select({ t: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)` })
       .from(vehicles)
@@ -377,12 +391,17 @@ async function assertPaymentWithinDebt(
           excludeId ? ne(paymentVouchers.id, excludeId) : undefined,
         ),
       ),
+    // Money the supplier sent back (returned vehicles) un-pays the debt
+    db
+      .select({ t: sql<string>`coalesce(sum(${receiptVouchers.amount}),0)` })
+      .from(receiptVouchers)
+      .where(eq(receiptVouchers.supplierId, supplierId)),
     db
       .select({ name: suppliers.name })
       .from(suppliers)
       .where(eq(suppliers.id, supplierId)),
   ])
-  const owed = Math.max(0, num(bought?.t) - num(paid?.t))
+  const owed = Math.max(0, num(bought?.t) - (num(paid?.t) - num(refunded?.t)))
   if (amount > owed + 0.5) {
     const who = supplier?.name ?? 'nhà cung cấp'
     throw new BusinessError(
@@ -448,10 +467,77 @@ async function addMatchedStatementLine(
 /* 08. Receipt Vouchers                                                       */
 /* -------------------------------------------------------------------------- */
 
+/**
+ * A receipt comes from a customer (normal sale payment, limited by the debt)
+ * or from a supplier (refund of a returned vehicle: no debt limit, the money
+ * comes back so the supplier's "paid" amount goes down).
+ */
+async function resolveReceiptParty(input: {
+  partyType?: 'customer' | 'supplier'
+  customerId?: number | null
+  supplierId?: number | null
+  branchId?: number | null
+}) {
+  if (input.partyType === 'supplier') {
+    if (!input.supplierId) throw new BusinessError('Chưa chọn nhà cung cấp')
+    return {
+      customerId: null,
+      supplierId: input.supplierId,
+      branchId: null as number | null,
+    }
+  }
+  if (!input.customerId) throw new BusinessError('Chưa chọn khách hàng')
+  if (input.branchId) {
+    const [b] = await db
+      .select({ customerId: posBranches.customerId })
+      .from(posBranches)
+      .where(eq(posBranches.id, input.branchId))
+    if (!b || b.customerId !== input.customerId)
+      throw new BusinessError('Điểm bán không thuộc khách hàng')
+  }
+  return {
+    customerId: input.customerId,
+    supplierId: null,
+    branchId: input.branchId ?? null,
+  }
+}
+
+/** Payment twin: a supplier (debt payment) or a customer (refund) */
+async function resolvePaymentParty(input: {
+  payeeType: 'supplier' | 'customer' | 'other'
+  supplierId?: number | null
+  customerId?: number | null
+  branchId?: number | null
+}) {
+  if (input.payeeType === 'supplier') {
+    if (!input.supplierId) throw new BusinessError('Chưa chọn nhà cung cấp')
+    return { supplierId: input.supplierId, customerId: null, branchId: null }
+  }
+  if (input.payeeType === 'customer') {
+    if (!input.customerId) throw new BusinessError('Chưa chọn khách hàng')
+    if (input.branchId) {
+      const [b] = await db
+        .select({ customerId: posBranches.customerId })
+        .from(posBranches)
+        .where(eq(posBranches.id, input.branchId))
+      if (!b || b.customerId !== input.customerId)
+        throw new BusinessError('Điểm bán không thuộc khách hàng')
+    }
+    return {
+      supplierId: null,
+      customerId: input.customerId,
+      branchId: input.branchId ?? null,
+    }
+  }
+  return { supplierId: null, customerId: null, branchId: null }
+}
+
 export async function createReceiptVoucher(
   input: {
     receiptDate: string
-    customerId: number
+    partyType?: 'customer' | 'supplier'
+    customerId?: number | null
+    supplierId?: number | null
     branchId?: number | null
     salesOrderId?: number | null
     amount: number
@@ -462,25 +548,19 @@ export async function createReceiptVoucher(
   },
   userId?: number,
 ) {
-  const { createStatementLine, ...fields } = input
+  const { createStatementLine, partyType: _partyType, ...fields } = input
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
   if (createStatementLine && !input.companyBankAccountId)
     throw new BusinessError('Chọn tài khoản ngân hàng để tạo dòng sao kê')
-  if (input.branchId) {
-    const [b] = await db
-      .select({ customerId: posBranches.customerId })
-      .from(posBranches)
-      .where(eq(posBranches.id, input.branchId))
-    if (!b || b.customerId !== input.customerId)
-      throw new BusinessError('Điểm bán không thuộc khách hàng')
-  }
-  await assertReceiptWithinDebt(input.customerId, input.branchId, input.amount)
+  const party = await resolveReceiptParty(input)
+  if (party.customerId)
+    await assertReceiptWithinDebt(party.customerId, party.branchId, input.amount)
   return db.transaction(async (tx) => {
     const [r] = await tx
       .insert(receiptVouchers)
       .values({
         ...fields,
-        branchId: input.branchId ?? null,
+        ...party,
         salesOrderId: input.salesOrderId ?? null,
         companyBankAccountId: input.companyBankAccountId ?? null,
         note: input.note?.trim() || null,
@@ -488,10 +568,15 @@ export async function createReceiptVoucher(
       })
       .$returningId()
     if (createStatementLine && input.companyBankAccountId) {
-      const [c] = await tx
-        .select({ name: customers.name })
-        .from(customers)
-        .where(eq(customers.id, input.customerId))
+      const [c] = party.customerId
+        ? await tx
+            .select({ name: customers.name })
+            .from(customers)
+            .where(eq(customers.id, party.customerId))
+        : await tx
+            .select({ name: suppliers.name })
+            .from(suppliers)
+            .where(eq(suppliers.id, party.supplierId as number))
       await addMatchedStatementLine(tx, {
         accountId: input.companyBankAccountId,
         date: input.receiptDate,
@@ -514,8 +599,10 @@ export async function createReceiptVoucher(
 export async function createPaymentVoucher(
   input: {
     paymentDate: string
-    payeeType: 'supplier' | 'other'
+    payeeType: 'supplier' | 'customer' | 'other'
     supplierId?: number | null
+    customerId?: number | null
+    branchId?: number | null
     payeeName?: string | null
     amount: number
     companyBankAccountId?: number | null
@@ -529,17 +616,16 @@ export async function createPaymentVoucher(
   if (createStatementLine && !input.companyBankAccountId)
     throw new BusinessError('Chọn tài khoản ngân hàng để tạo dòng sao kê')
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
-  if (input.payeeType === 'supplier' && !input.supplierId)
-    throw new BusinessError('Chưa chọn nhà cung cấp')
-  if (input.payeeType === 'supplier' && input.supplierId)
-    await assertPaymentWithinDebt(input.supplierId, input.amount)
+  const party = await resolvePaymentParty(input)
+  // Only a debt payment to a supplier is capped; a refund to a customer is not
+  if (party.supplierId)
+    await assertPaymentWithinDebt(party.supplierId, input.amount)
   return db.transaction(async (tx) => {
     const [r] = await tx
       .insert(paymentVouchers)
       .values({
         ...fields,
-        supplierId:
-          input.payeeType === 'supplier' ? (input.supplierId ?? null) : null,
+        ...party,
         payeeName: input.payeeName ?? null,
         companyBankAccountId: input.companyBankAccountId ?? null,
         description: input.description ?? null,
@@ -548,12 +634,18 @@ export async function createPaymentVoucher(
       .$returningId()
     if (createStatementLine && input.companyBankAccountId) {
       let who = input.payeeName ?? ''
-      if (input.payeeType === 'supplier' && input.supplierId) {
+      if (party.supplierId) {
         const [s] = await tx
           .select({ name: suppliers.name })
           .from(suppliers)
-          .where(eq(suppliers.id, input.supplierId))
+          .where(eq(suppliers.id, party.supplierId))
         who = s?.name ?? who
+      } else if (party.customerId) {
+        const [c] = await tx
+          .select({ name: customers.name })
+          .from(customers)
+          .where(eq(customers.id, party.customerId))
+        who = c?.name ?? who
       }
       await addMatchedStatementLine(tx, {
         accountId: input.companyBankAccountId,
@@ -633,13 +725,14 @@ export async function suggestMatches(lineId: number) {
     const rows = await db
       .select({
         id: receiptVouchers.id,
-        number: customers.name,
+        number: sql<string>`coalesce(${customers.name}, ${suppliers.name}, '')`,
         date: receiptVouchers.receiptDate,
         amount: receiptVouchers.amount,
         description: sql<string | null>`NULL`,
       })
       .from(receiptVouchers)
-      .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+      .leftJoin(customers, eq(customers.id, receiptVouchers.customerId))
+      .leftJoin(suppliers, eq(suppliers.id, receiptVouchers.supplierId))
       .where(
         and(
           eq(receiptVouchers.amount, num(line.credit)),
@@ -658,13 +751,14 @@ export async function suggestMatches(lineId: number) {
   const payments = await db
     .select({
       id: paymentVouchers.id,
-      number: sql<string>`coalesce(${suppliers.name}, ${paymentVouchers.payeeName}, '')`,
+      number: sql<string>`coalesce(${suppliers.name}, ${customers.name}, ${paymentVouchers.payeeName}, '')`,
       date: paymentVouchers.paymentDate,
       amount: paymentVouchers.amount,
       description: paymentVouchers.description,
     })
     .from(paymentVouchers)
     .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
+    .leftJoin(customers, eq(customers.id, paymentVouchers.customerId))
     .where(
       and(
         eq(paymentVouchers.amount, num(line.debit)),
@@ -770,7 +864,9 @@ export async function updateReceiptVoucher(
   id: number,
   input: {
     receiptDate: string
-    customerId: number
+    partyType?: 'customer' | 'supplier'
+    customerId?: number | null
+    supplierId?: number | null
     branchId?: number | null
     amount: number
     companyBankAccountId?: number | null
@@ -779,26 +875,19 @@ export async function updateReceiptVoucher(
 ) {
   await assertNotMatched('receipt', id)
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
-  if (input.branchId) {
-    const [b] = await db
-      .select({ customerId: posBranches.customerId })
-      .from(posBranches)
-      .where(eq(posBranches.id, input.branchId))
-    if (!b || b.customerId !== input.customerId)
-      throw new BusinessError('Điểm bán không thuộc khách hàng')
-  }
-  await assertReceiptWithinDebt(
-    input.customerId,
-    input.branchId,
-    input.amount,
-    id,
-  )
+  const party = await resolveReceiptParty(input)
+  if (party.customerId)
+    await assertReceiptWithinDebt(
+      party.customerId,
+      party.branchId,
+      input.amount,
+      id,
+    )
   await db
     .update(receiptVouchers)
     .set({
       receiptDate: input.receiptDate,
-      customerId: input.customerId,
-      branchId: input.branchId ?? null,
+      ...party,
       amount: input.amount,
       companyBankAccountId: input.companyBankAccountId ?? null,
       note: input.note?.trim() || null,
@@ -815,7 +904,10 @@ export async function updatePaymentVoucher(
   id: number,
   input: {
     paymentDate: string
-    supplierId: number
+    payeeType: 'supplier' | 'customer'
+    supplierId?: number | null
+    customerId?: number | null
+    branchId?: number | null
     amount: number
     companyBankAccountId?: number | null
     description?: string | null
@@ -823,12 +915,15 @@ export async function updatePaymentVoucher(
 ) {
   await assertNotMatched('payment', id)
   if (input.amount <= 0) throw new BusinessError('Số tiền phải lớn hơn 0')
-  await assertPaymentWithinDebt(input.supplierId, input.amount, id)
+  const party = await resolvePaymentParty(input)
+  if (party.supplierId)
+    await assertPaymentWithinDebt(party.supplierId, input.amount, id)
   await db
     .update(paymentVouchers)
     .set({
       paymentDate: input.paymentDate,
-      supplierId: input.supplierId,
+      payeeType: input.payeeType,
+      ...party,
       amount: input.amount,
       companyBankAccountId: input.companyBankAccountId ?? null,
       description: input.description ?? null,

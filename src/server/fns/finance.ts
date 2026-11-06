@@ -226,6 +226,8 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
         amount: receiptVouchers.amount,
         customerId: receiptVouchers.customerId,
         customerName: customers.name,
+        supplierId: receiptVouchers.supplierId,
+        supplierName: suppliers.name,
         companyBankAccountId: receiptVouchers.companyBankAccountId,
         note: receiptVouchers.note,
         branchId: receiptVouchers.branchId,
@@ -235,7 +237,8 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
         bankImage: banks.image,
       })
       .from(receiptVouchers)
-      .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+      .leftJoin(customers, eq(customers.id, receiptVouchers.customerId))
+      .leftJoin(suppliers, eq(suppliers.id, receiptVouchers.supplierId))
       .leftJoin(posBranches, eq(posBranches.id, receiptVouchers.branchId))
       .leftJoin(
         companyBankAccounts,
@@ -244,10 +247,18 @@ export const listReceiptVouchersFn = createServerFn({ method: 'GET' })
       .leftJoin(banks, eq(banks.id, companyBankAccounts.bankId))
       .orderBy(desc(receiptVouchers.receiptDate), desc(receiptVouchers.id))
 
-    return list.map((r) => ({
-      ...r,
-      amount: num(r.amount),
-    }))
+    return list.map((r) => {
+      const partyType = r.supplierId ? ('supplier' as const) : ('customer' as const)
+      return {
+        ...r,
+        amount: num(r.amount),
+        /** Counterparty shown in the "Đối Tượng" column */
+        partyType,
+        partyName: (partyType === 'supplier' ? r.supplierName : r.customerName) ?? '',
+        /** Customer only: receiving branch / "Trực tiếp" */
+        subName: partyType === 'supplier' ? null : (r.branchName ?? 'Trực tiếp'),
+      }
+    })
   })
 
 export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
@@ -255,7 +266,9 @@ export const createReceiptVoucherFn = createServerFn({ method: 'POST' })
   .validator(
     z.object({
       receiptDate: z.string().min(10),
-      customerId: z.number().int(),
+      partyType: z.enum(['customer', 'supplier']).optional(),
+      customerId: z.number().int().nullable().optional(),
+      supplierId: z.number().int().nullable().optional(),
       branchId: z.number().int().nullable().optional(),
       salesOrderId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền phải > 0'),
@@ -414,6 +427,10 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
         description: paymentVouchers.description,
         supplierId: paymentVouchers.supplierId,
         supplierName: suppliers.name,
+        customerId: paymentVouchers.customerId,
+        customerName: customers.name,
+        branchId: paymentVouchers.branchId,
+        branchName: posBranches.name,
         companyBankAccountId: paymentVouchers.companyBankAccountId,
         accountNumber: companyBankAccounts.accountNumber,
         bankName: banks.name,
@@ -421,6 +438,8 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
       })
       .from(paymentVouchers)
       .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
+      .leftJoin(customers, eq(customers.id, paymentVouchers.customerId))
+      .leftJoin(posBranches, eq(posBranches.id, paymentVouchers.branchId))
       .leftJoin(
         companyBankAccounts,
         eq(companyBankAccounts.id, paymentVouchers.companyBankAccountId),
@@ -428,10 +447,26 @@ export const listPaymentVouchersFn = createServerFn({ method: 'GET' })
       .leftJoin(banks, eq(banks.id, companyBankAccounts.bankId))
       .orderBy(desc(paymentVouchers.paymentDate), desc(paymentVouchers.id))
 
-    return list.map((p) => ({
-      ...p,
-      amount: num(p.amount),
-    }))
+    return list.map((p) => {
+      const partyType =
+        p.payeeType === 'customer'
+          ? ('customer' as const)
+          : p.payeeType === 'supplier'
+            ? ('supplier' as const)
+            : ('other' as const)
+      return {
+        ...p,
+        amount: num(p.amount),
+        /** Counterparty shown in the "Đối Tượng" column */
+        partyType,
+        partyName:
+          (partyType === 'customer'
+            ? p.customerName
+            : (p.supplierName ?? p.payeeName)) ?? '',
+        /** Customer only: receiving branch / "Trực tiếp" */
+        subName: partyType === 'customer' ? (p.branchName ?? 'Trực tiếp') : null,
+      }
+    })
   })
 
 export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
@@ -441,6 +476,8 @@ export const createPaymentVoucherFn = createServerFn({ method: 'POST' })
       paymentDate: z.string().min(10, 'Vui lòng chọn ngày chi'),
       payeeType: z.enum(PAYEE_TYPES),
       supplierId: z.number().int().nullable().optional(),
+      customerId: z.number().int().nullable().optional(),
+      branchId: z.number().int().nullable().optional(),
       payeeName: z.string().trim().nullable().optional(),
       amount: z.number().positive('Số tiền chi phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
@@ -577,12 +614,13 @@ export const listReconciliationLinesFn = createServerFn({ method: 'GET' })
               id: receiptVouchers.id,
               date: receiptVouchers.receiptDate,
               amount: receiptVouchers.amount,
-              customerName: customers.name,
+              customerName: sql<string>`coalesce(${customers.name}, ${suppliers.name}, '')`,
               branchName: posBranches.name,
               salesOrderId: receiptVouchers.salesOrderId,
             })
             .from(receiptVouchers)
-            .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+            .leftJoin(customers, eq(customers.id, receiptVouchers.customerId))
+            .leftJoin(suppliers, eq(suppliers.id, receiptVouchers.supplierId))
             .leftJoin(posBranches, eq(posBranches.id, receiptVouchers.branchId))
             .where(inArray(receiptVouchers.id, receiptIds))
         : [],
@@ -594,11 +632,13 @@ export const listReconciliationLinesFn = createServerFn({ method: 'GET' })
               amount: paymentVouchers.amount,
               payeeType: paymentVouchers.payeeType,
               supplierName: suppliers.name,
+              customerName: customers.name,
               payeeName: paymentVouchers.payeeName,
               description: paymentVouchers.description,
             })
             .from(paymentVouchers)
             .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
+            .leftJoin(customers, eq(customers.id, paymentVouchers.customerId))
             .where(inArray(paymentVouchers.id, paymentIds))
         : [],
       loanIds.length > 0
@@ -668,7 +708,7 @@ export const listReconciliationLinesFn = createServerFn({ method: 'GET' })
               typeLabel: 'Phiếu chi',
               id: p.id,
               date: p.date,
-              party: p.supplierName || p.payeeName || 'Khác',
+              party: p.supplierName || p.customerName || p.payeeName || 'Khác',
               amount: num(p.amount),
               details: p.description || 'Chi thanh toán',
               targetUrl: '/finance?tab=payments',
@@ -825,12 +865,13 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
               id: receiptVouchers.id,
               date: receiptVouchers.receiptDate,
               amount: receiptVouchers.amount,
-              customerName: customers.name,
+              customerName: sql<string>`coalesce(${customers.name}, ${suppliers.name}, '')`,
               branchName: posBranches.name,
               salesOrderId: receiptVouchers.salesOrderId,
             })
             .from(receiptVouchers)
-            .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+            .leftJoin(customers, eq(customers.id, receiptVouchers.customerId))
+            .leftJoin(suppliers, eq(suppliers.id, receiptVouchers.supplierId))
             .leftJoin(posBranches, eq(posBranches.id, receiptVouchers.branchId))
             .where(inArray(receiptVouchers.id, receiptIds))
         : [],
@@ -842,11 +883,13 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
               amount: paymentVouchers.amount,
               payeeType: paymentVouchers.payeeType,
               supplierName: suppliers.name,
+              customerName: customers.name,
               payeeName: paymentVouchers.payeeName,
               description: paymentVouchers.description,
             })
             .from(paymentVouchers)
             .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
+            .leftJoin(customers, eq(customers.id, paymentVouchers.customerId))
             .where(inArray(paymentVouchers.id, paymentIds))
         : [],
       loanIds.length > 0
@@ -918,7 +961,7 @@ export const getBankStatementDetailFn = createServerFn({ method: 'GET' })
                 typeLabel: 'Phiếu chi',
                 id: p.id,
                 date: p.date,
-                party: p.supplierName || p.payeeName || 'Khác',
+                party: p.supplierName || p.customerName || p.payeeName || 'Khác',
                 amount: num(p.amount),
                 details: p.description || 'Chi thanh toán',
                 targetUrl: '/finance?tab=payments',
@@ -1044,7 +1087,9 @@ export const updateReceiptVoucherFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().int(),
       receiptDate: z.string().min(10),
-      customerId: z.number().int(),
+      partyType: z.enum(['customer', 'supplier']).optional(),
+      customerId: z.number().int().nullable().optional(),
+      supplierId: z.number().int().nullable().optional(),
       branchId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
@@ -1070,7 +1115,10 @@ export const updatePaymentVoucherFn = createServerFn({ method: 'POST' })
     z.object({
       id: z.number().int(),
       paymentDate: z.string().min(10, 'Vui lòng chọn ngày chi'),
-      supplierId: z.number().int(),
+      payeeType: z.enum(['supplier', 'customer']),
+      supplierId: z.number().int().nullable().optional(),
+      customerId: z.number().int().nullable().optional(),
+      branchId: z.number().int().nullable().optional(),
       amount: z.number().positive('Số tiền chi phải > 0'),
       companyBankAccountId: z.number().int().nullable().optional(),
       description: z.string().trim().nullable().optional(),

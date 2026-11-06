@@ -1,5 +1,5 @@
 import { createServerFn } from '@tanstack/react-start'
-import { count, eq } from 'drizzle-orm'
+import { count, eq, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { db } from '#/db/index.ts'
@@ -110,20 +110,22 @@ async function usageOf(
           .select({
             date: receiptVouchers.receiptDate,
             amount: receiptVouchers.amount,
-            customer: customers.name,
+            customer: sql<string>`coalesce(${customers.name}, ${suppliers.name}, '')`,
           })
           .from(receiptVouchers)
-          .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+          .leftJoin(customers, eq(customers.id, receiptVouchers.customerId))
+          .leftJoin(suppliers, eq(suppliers.id, receiptVouchers.supplierId))
           .where(eq(receiptVouchers.companyBankAccountId, id)),
         db
           .select({
             date: paymentVouchers.paymentDate,
             amount: paymentVouchers.amount,
-            supplier: suppliers.name,
+            supplier: sql<string | null>`coalesce(${suppliers.name}, ${customers.name})`,
             payee: paymentVouchers.payeeName,
           })
           .from(paymentVouchers)
           .leftJoin(suppliers, eq(suppliers.id, paymentVouchers.supplierId))
+          .leftJoin(customers, eq(customers.id, paymentVouchers.customerId))
           .where(eq(paymentVouchers.companyBankAccountId, id)),
         db
           .select({
@@ -175,7 +177,7 @@ async function usageOf(
     }
 
     case 'suppliers': {
-      const [batches, payments] = await Promise.all([
+      const [batches, payments, refunds] = await Promise.all([
         db
           .select({
             id: importBatches.id,
@@ -190,6 +192,13 @@ async function usageOf(
           })
           .from(paymentVouchers)
           .where(eq(paymentVouchers.supplierId, id)),
+        db
+          .select({
+            date: receiptVouchers.receiptDate,
+            amount: receiptVouchers.amount,
+          })
+          .from(receiptVouchers)
+          .where(eq(receiptVouchers.supplierId, id)),
       ])
       return [
         group(
@@ -204,6 +213,13 @@ async function usageOf(
           payments.map((p) => ({
             label: `${formatDate(p.date)} — ${formatVnd(num(p.amount))}`,
             href: '/finance?tab=payments',
+          })),
+        ),
+        group(
+          'Phiếu thu (hoàn tiền từ NCC)',
+          refunds.map((r) => ({
+            label: `${formatDate(r.date)} — ${formatVnd(num(r.amount))}`,
+            href: '/finance?tab=receipts',
           })),
         ),
       ]
@@ -321,10 +337,11 @@ async function usageOf(
           .select({
             date: receiptVouchers.receiptDate,
             amount: receiptVouchers.amount,
-            customer: customers.name,
+            customer: sql<string>`coalesce(${customers.name}, ${suppliers.name}, '')`,
           })
           .from(receiptVouchers)
-          .innerJoin(customers, eq(customers.id, receiptVouchers.customerId))
+          .leftJoin(customers, eq(customers.id, receiptVouchers.customerId))
+          .leftJoin(suppliers, eq(suppliers.id, receiptVouchers.supplierId))
           .where(eq(receiptVouchers.createdBy, id)),
         db
           .select({
@@ -427,7 +444,11 @@ async function usageOf(
         entity === 'customers'
           ? receiptVouchers.customerId
           : receiptVouchers.branchId
-      const [orders, receipts] = await Promise.all([
+      const refundCol =
+        entity === 'customers'
+          ? paymentVouchers.customerId
+          : paymentVouchers.branchId
+      const [orders, receipts, refunds] = await Promise.all([
         db
           .select({ id: salesOrders.id, date: salesOrders.orderDate })
           .from(salesOrders)
@@ -439,6 +460,13 @@ async function usageOf(
           })
           .from(receiptVouchers)
           .where(eq(receiptCol, id)),
+        db
+          .select({
+            date: paymentVouchers.paymentDate,
+            amount: paymentVouchers.amount,
+          })
+          .from(paymentVouchers)
+          .where(eq(refundCol, id)),
       ])
       return [
         group(
@@ -453,6 +481,13 @@ async function usageOf(
           receipts.map((r) => ({
             label: `${formatDate(r.date)} — ${formatVnd(num(r.amount))}`,
             href: '/finance?tab=receipts',
+          })),
+        ),
+        group(
+          'Phiếu chi (hoàn tiền)',
+          refunds.map((r) => ({
+            label: `${formatDate(r.date)} — ${formatVnd(num(r.amount))}`,
+            href: '/finance?tab=payments',
           })),
         ),
       ]

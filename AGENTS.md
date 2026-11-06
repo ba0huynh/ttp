@@ -2344,6 +2344,13 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - The "Xe Chọn Bán" card has `Xuất file mẫu` (downloads `mau-ban-xe.xlsx`, columns `SỐ KHUNG | ĐƠN GIÁ CHƯA VAT (VNĐ) | % VAT`, pre-filled with up to 3 available chassis numbers) and `Nhập file Excel`. Logic is in `src/lib/sales-excel-import.ts` (dynamically imported, so `xlsx` stays out of the page bundle).
 - Import is all-or-nothing: if any `SỐ KHUNG` is not among the vehicles available for sale, an alert dialog "Số khung không tồn tại" lists them and nothing is added; bad price (<= 0), VAT outside 0-100 or duplicate chassis also block the import with a list. Valid files add vehicles to the order (or overwrite price / VAT of ones already chosen). Chassis matching is case-insensitive and trimmed.
 
+### Lesson 222: Receipts From Suppliers and Payments To Customers (Returned Vehicles)
+
+- **Why**: when the shop returns a vehicle to a supplier the supplier sends money back, and when a customer returns one the shop refunds them. Both directions now have a voucher, so a balance may legitimately go negative. Phiếu Thu has a `Khách hàng | Nhà cung cấp` switch (default customer), Phiếu Chi has `Nhà cung cấp | Khách hàng` (default supplier) (`PartyToggle` in `finance.tsx`).
+- **Data** (migration `0052_voucher_counterparty.sql`, **apply with `npm run migration:run`**, the finance pages fail until then): `receipt_vouchers.customer_id` is nullable and `supplier_id` is new (supplier set = refund from a supplier); `payment_vouchers.payee_type` gained `'customer'` and the table gained `customer_id` / `branch_id`.
+- **Debt rules**: AR paid = receipts from customers − refunds paid to them; AP paid = payments to suppliers − receipts from them (`getReceivablesSummary` / `getPayablesSummary`, and the guards `assertReceiptWithinDebt` / `assertPaymentWithinDebt` use the same net figure). The "never exceed the remaining debt" guard only applies to the normal direction (receipt from a customer, payment to a supplier); a refund voucher is not capped, so the balance can go negative.
+- **History tables** (`/finance` receipts + payments, Excel exports, `list-excel.ts`): columns `Đối Tượng` (name + `(KH)` / `(NCC)`, `partyLabel` in `business.ts`) and `Đối Tượng Phụ` (customer's receiving branch or "Trực tiếp", "—" for suppliers). The list functions return `partyType`, `partyName`, `subName` for this. The filter dialogs have `Loại đối tượng` (KH / NCC) plus both a customer and a supplier picker (a row matches either picker). Bank-statement matching and usage lists (`usage.ts`) also read the new columns.
+
 _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 
