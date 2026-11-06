@@ -210,8 +210,15 @@ export async function getPayablesSummary(range: DateRange = {}) {
         balance: purchasedTotal - paidTotal,
       }
     })
-    // Keep every supplier that has a batch (even a fully loan-financed one, shown with debt 0)
-    .filter((r) => r.hasBatches || r.purchased > 0 || r.paid > 0)
+    // Keep every supplier that has a batch (even a fully loan-financed one, shown with debt 0).
+    // With a date range only suppliers that have a batch imported in it are
+    // listed: a supplier with payments but no batch in the period would only
+    // show a confusing negative balance and an empty batch list.
+    .filter((r) =>
+      range.from || range.to
+        ? r.hasBatches
+        : r.hasBatches || r.purchased > 0 || r.paid > 0,
+    )
 }
 
 /* -------------------------------------------------------------------------- */
