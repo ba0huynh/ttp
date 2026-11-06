@@ -11,6 +11,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from '#/components/ui/dialog.tsx'
+import { DecimalInput } from '#/components/ui/decimal-input.tsx'
 import { Input } from '#/components/ui/input.tsx'
 import { Label } from '#/components/ui/label.tsx'
 import { MoneyInput } from '#/components/ui/money-input.tsx'
@@ -288,17 +289,15 @@ export function VehicleFormDialog({
           <div className="grid grid-cols-2 gap-3">
             <div className="space-y-1">
               <Label className="text-xs font-semibold">% VAT *</Label>
-              <Input
-                type="text"
-                inputMode="numeric"
+              <DecimalInput
+                maxDecimals={2}
                 value={v.vatRate ?? DEFAULT_VAT_RATE}
-                onChange={(e) => {
-                  const val = e.target.value.replace(/[^\d.]/g, '')
+                onValueChange={(val) =>
                   setV({
                     ...v,
-                    vatRate: val === '' ? 0 : Math.min(100, Number(val)),
+                    vatRate: Math.min(100, val),
                   })
-                }}
+                }
               />
             </div>
             <div className="space-y-1">

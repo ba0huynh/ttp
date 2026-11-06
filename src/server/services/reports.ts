@@ -118,8 +118,16 @@ export async function getReceivablesSummary(range: DateRange = {}) {
   for (const p of refunded)
     if (p.customerId) touch(p.customerId, p.branchId).paid -= num(p.total)
 
-  return [...rows.values()]
-    .map((r) => ({ ...r, balance: r.sold - r.paid }))
+  // With a date range only customers / branches that have an order in it are
+  // listed (otherwise a receipt without an order in the period would show a
+  // confusing negative balance and an empty order list)
+  const hasRange = Boolean(range.from || range.to)
+  const soldKeys = new Set(
+    sold.map((s) => `${s.customerId}:${s.branchId ?? 0}`),
+  )
+  return [...rows.entries()]
+    .filter(([key]) => !hasRange || soldKeys.has(key))
+    .map(([, r]) => ({ ...r, balance: r.sold - r.paid }))
     .sort((a, b) => b.balance - a.balance)
 }
 
@@ -210,8 +218,15 @@ export async function getPayablesSummary(range: DateRange = {}) {
         balance: purchasedTotal - paidTotal,
       }
     })
-    // Keep every supplier that has a batch (even a fully loan-financed one, shown with debt 0)
-    .filter((r) => r.hasBatches || r.purchased > 0 || r.paid > 0)
+    // Keep every supplier that has a batch (even a fully loan-financed one, shown with debt 0).
+    // With a date range only suppliers that have a batch imported in it are
+    // listed: a supplier with payments but no batch in the period would only
+    // show a confusing negative balance and an empty batch list.
+    .filter((r) =>
+      range.from || range.to
+        ? r.hasBatches
+        : r.hasBatches || r.purchased > 0 || r.paid > 0,
+    )
 }
 
 /* -------------------------------------------------------------------------- */

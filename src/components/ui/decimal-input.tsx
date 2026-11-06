@@ -19,7 +19,9 @@ type DecimalInputProps = Omit<
  * ("1.234,5"). Returns the text to show and the numeric value.
  */
 function parseTyped(raw: string, maxDecimals: number) {
-  const cleaned = raw.replace(/[^\d,]/g, '')
+  const normalized =
+    !raw.includes(',') && raw.includes('.') ? raw.replace(/\./g, ',') : raw
+  const cleaned = normalized.replace(/[^\d,]/g, '')
   const comma = cleaned.indexOf(',')
   const intDigits = (comma < 0 ? cleaned : cleaned.slice(0, comma)).replace(
     /^0+(?=\d)/,

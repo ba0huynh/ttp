@@ -242,34 +242,34 @@ function LoanDetailPage() {
     if (isSaving || savingRef.current) return
     savingRef.current = true
     setRSubmitted(true)
-    if (!rDraft.paymentDate) {
-      toast.error('Vui lòng chọn ngày thanh toán (viền đỏ)')
-      return
-    }
-    if (rDraft.paymentDate < loan.disbursementDate) {
-      toast.error(
-        `Ngày thanh toán (${formatDate(rDraft.paymentDate)}) không thể trước ngày giải ngân (${formatDate(loan.disbursementDate)})`,
-      )
-      return
-    }
-    if (rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0) {
-      toast.error('Vui lòng nhập số tiền gốc hoặc lãi cần trả (viền đỏ)')
-      return
-    }
-    if (rDraft.principalAmount > maxPrincipalAllowed + 0.5) {
-      toast.error(
-        `Số tiền trả gốc (${formatVnd(rDraft.principalAmount)}) vượt quá dư nợ gốc còn lại (tối đa ${formatVnd(maxPrincipalAllowed)})`,
-      )
-      return
-    }
-    if (rDraft.interestAmount > maxInterestAllowed + 1.0) {
-      toast.error(
-        `Số tiền trả lãi (${formatVnd(rDraft.interestAmount)}) vượt quá số lãi phát sinh đến ngày ${formatDate(rDraft.paymentDate)} (tối đa ${formatVnd(maxInterestAllowed)})`,
-      )
-      return
-    }
-
     try {
+      if (!rDraft.paymentDate) {
+        toast.error('Vui lòng chọn ngày thanh toán (viền đỏ)')
+        return
+      }
+      if (rDraft.paymentDate < loan.disbursementDate) {
+        toast.error(
+          `Ngày thanh toán (${formatDate(rDraft.paymentDate)}) không thể trước ngày giải ngân (${formatDate(loan.disbursementDate)})`,
+        )
+        return
+      }
+      if (rDraft.principalAmount <= 0 && rDraft.interestAmount <= 0) {
+        toast.error('Vui lòng nhập số tiền gốc hoặc lãi cần trả (viền đỏ)')
+        return
+      }
+      if (rDraft.principalAmount > maxPrincipalAllowed + 0.5) {
+        toast.error(
+          `Số tiền trả gốc (${formatVnd(rDraft.principalAmount)}) vượt quá dư nợ gốc còn lại (tối đa ${formatVnd(maxPrincipalAllowed)})`,
+        )
+        return
+      }
+      if (rDraft.interestAmount > maxInterestAllowed + 1.0) {
+        toast.error(
+          `Số tiền trả lãi (${formatVnd(rDraft.interestAmount)}) vượt quá số lãi phát sinh đến ngày ${formatDate(rDraft.paymentDate)} (tối đa ${formatVnd(maxInterestAllowed)})`,
+        )
+        return
+      }
+
       if (editingRepaymentId === 'new') {
         await repayLoan.mutateAsync({
           data: {

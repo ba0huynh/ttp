@@ -120,13 +120,25 @@ function assertNoDuplicateInput(list: VehicleInput[]) {
 async function assertNotInDb(exec: Exec, list: VehicleInput[]) {
   if (list.length === 0) return
   const chassis = list.map((v) => v.chassisNumber.trim().toUpperCase())
-  const existing = await exec
+  const engines = list.map((v) => v.engineNumber.trim().toUpperCase())
+
+  const existingChassis = await exec
     .select({ c: vehicles.chassisNumber })
     .from(vehicles)
     .where(inArray(vehicles.chassisNumber, chassis))
-  if (existing.length > 0) {
+  if (existingChassis.length > 0) {
     throw new BusinessError(
-      `Số khung đã tồn tại trong hệ thống: ${existing.map((x) => x.c).join(', ')}`,
+      `Số khung đã tồn tại trong hệ thống: ${existingChassis.map((x) => x.c).join(', ')}`,
+    )
+  }
+
+  const existingEngines = await exec
+    .select({ e: vehicles.engineNumber })
+    .from(vehicles)
+    .where(inArray(vehicles.engineNumber, engines))
+  if (existingEngines.length > 0) {
+    throw new BusinessError(
+      `Số máy đã tồn tại trong hệ thống: ${existingEngines.map((x) => x.e).join(', ')}`,
     )
   }
 }
@@ -243,6 +255,18 @@ export async function updateVehicle(vehicleId: number, input: VehicleInput) {
         )
         .limit(1)
       if (dup) throw new BusinessError('Số khung đã tồn tại trong hệ thống')
+
+      const [dupEngine] = await tx
+        .select({ id: vehicles.id })
+        .from(vehicles)
+        .where(
+          and(
+            eq(vehicles.engineNumber, row.engineNumber),
+            ne(vehicles.id, vehicleId),
+          ),
+        )
+        .limit(1)
+      if (dupEngine) throw new BusinessError('Số máy đã tồn tại trong hệ thống')
       await tx
         .update(vehicles)
         .set({ ...row, note: input.note === undefined ? undefined : row.note })
