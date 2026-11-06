@@ -118,8 +118,16 @@ export async function getReceivablesSummary(range: DateRange = {}) {
   for (const p of refunded)
     if (p.customerId) touch(p.customerId, p.branchId).paid -= num(p.total)
 
-  return [...rows.values()]
-    .map((r) => ({ ...r, balance: r.sold - r.paid }))
+  // With a date range only customers / branches that have an order in it are
+  // listed (otherwise a receipt without an order in the period would show a
+  // confusing negative balance and an empty order list)
+  const hasRange = Boolean(range.from || range.to)
+  const soldKeys = new Set(
+    sold.map((s) => `${s.customerId}:${s.branchId ?? 0}`),
+  )
+  return [...rows.entries()]
+    .filter(([key]) => !hasRange || soldKeys.has(key))
+    .map(([, r]) => ({ ...r, balance: r.sold - r.paid }))
     .sort((a, b) => b.balance - a.balance)
 }
 
