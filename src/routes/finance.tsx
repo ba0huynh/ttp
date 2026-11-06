@@ -1045,7 +1045,7 @@ function FinancePage() {
                     <TableRow className="text-xs bg-slate-50">
 <TableHead className="w-12 text-center">STT</TableHead>
                       <TableHead>Khách Hàng</TableHead>
-                      <TableHead>Pháp Nhân Điểm Bán Chịu Nợ</TableHead>
+                      <TableHead>Điểm Bán</TableHead>
                       <TableHead className="text-right">Tổng Mua Xe</TableHead>
                       <TableHead className="text-right">
                         Đã Thanh Toán
@@ -1930,7 +1930,7 @@ function FinancePage() {
         <DebtOrdersDialog view={debtView} onClose={() => setDebtView(null)} />
 
         <Dialog open={receiptOpen} onOpenChange={setReceiptOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
                 {editReceiptId ? 'Sửa Phiếu Thu' : 'Lập Phiếu Thu Tiền'}
@@ -1961,12 +1961,12 @@ function FinancePage() {
                   onChange={setReceiptParty}
                   options={[
                     ['customer', 'Khách hàng'],
-                    ['supplier', 'Nhà cung cấp'],
+                    ['supplier', 'NCC'],
                   ]}
                 />
               </div>
 
-              {receiptParty === 'supplier' && (
+              {receiptParty === 'supplier' ? (
                 <div className="space-y-1">
                   <Label className="text-xs font-semibold">Nhà Cung Cấp *</Label>
                   <SearchSelect
@@ -1974,40 +1974,34 @@ function FinancePage() {
                     value={String(receiptSupplierId)}
                     onValueChange={(val) => setReceiptSupplierId(Number(val))}
                   >
-                    {master.suppliers.map((s) => (
-                      <SearchSelectItem key={s.id} value={String(s.id)}>
-                        {s.name}
+                    {master.suppliers.map((sp) => (
+                      <SearchSelectItem key={sp.id} value={String(sp.id)}>
+                        {sp.name}
+                      </SearchSelectItem>
+                    ))}
+                  </SearchSelect>
+                </div>
+              ) : (
+                <div className="space-y-1">
+                  <Label className="text-xs font-semibold">Khách Hàng *</Label>
+                  <SearchSelect
+                    className="h-11 w-full text-sm rounded-lg"
+                    value={String(receiptCustomerId)}
+                    onValueChange={(val) => {
+                      setReceiptCustomerId(Number(val))
+                      setReceiptBranchId(null)
+                    }}
+                  >
+                    {customers.map((c) => (
+                      <SearchSelectItem key={c.id} value={String(c.id)}>
+                        {c.name}
                       </SearchSelectItem>
                     ))}
                   </SearchSelect>
                 </div>
               )}
 
-              {receiptParty === 'customer' && (
-              <div className="space-y-1">
-                <Label className="text-xs font-semibold">Khách Hàng *</Label>
-                <SearchSelect
-                  className="h-11 w-full text-sm rounded-lg"
-                  value={String(receiptCustomerId)}
-                  onValueChange={(val) => {
-                    setReceiptCustomerId(Number(val))
-                    setReceiptBranchId(null)
-                  }}
-                >
-                  {customers.map((c) => (
-                    <SearchSelectItem
-                      key={c.id}
-                      value={String(c.id)}
-
-                    >
-                      {c.name}
-                    </SearchSelectItem>
-                  ))}
-                </SearchSelect>
-              </div>
-              )}
-
-              {receiptParty === 'customer' && (
+                                          {receiptParty === 'customer' && (
               <div className="space-y-1">
                 <Label className="text-xs font-semibold">
                   Điểm Bán Thanh Toán (Công nợ trừ theo pháp nhân này)
@@ -2048,8 +2042,8 @@ function FinancePage() {
                 />
                 {receiptParty === 'supplier' && (
                   <p className="text-[11px] text-slate-500">
-                    Tiền hoàn từ nhà cung cấp: không giới hạn theo công nợ, làm
-                    giảm số tiền đã thanh toán cho nhà cung cấp này.
+                    Tiền hoàn từ nhà cung cấp: chỉ thu được khi công nợ nhà
+                    cung cấp đang âm (đã thanh toán dư), tối đa bằng số dư âm.
                   </p>
                 )}
               </div>
@@ -2120,7 +2114,7 @@ function FinancePage() {
 
         {/* Create Payment Voucher Modal */}
         <Dialog open={paymentOpen} onOpenChange={setPaymentOpen}>
-          <DialogContent className="max-w-md">
+          <DialogContent className="max-h-[90dvh] overflow-y-auto max-w-md">
             <DialogHeader>
               <DialogTitle className="text-base font-bold text-slate-900">
                 {editPaymentId ? 'Sửa Phiếu Chi' : 'Lập Phiếu Chi Tiền'}
@@ -2150,8 +2144,8 @@ function FinancePage() {
                   value={paymentParty}
                   onChange={setPaymentParty}
                   options={[
-                    ['supplier', 'Nhà cung cấp'],
                     ['customer', 'Khách hàng'],
+                    ['supplier', 'NCC'],
                   ]}
                 />
               </div>
@@ -2166,13 +2160,9 @@ function FinancePage() {
                     value={String(paymentSupplierId)}
                     onValueChange={(val) => setPaymentSupplierId(Number(val))}
                   >
-                    {master.suppliers.map((s) => (
-                      <SearchSelectItem
-                        key={s.id}
-                        value={String(s.id)}
-
-                      >
-                        {s.name}
+                    {master.suppliers.map((sp) => (
+                      <SearchSelectItem key={sp.id} value={String(sp.id)}>
+                        {sp.name}
                       </SearchSelectItem>
                     ))}
                   </SearchSelect>
@@ -2220,7 +2210,7 @@ function FinancePage() {
                 </>
               )}
 
-              <div className="space-y-1">
+                                          <div className="space-y-1">
                 <Label className="text-xs font-semibold">
                   Số Tiền Chi (VNĐ) *
                 </Label>
@@ -2232,8 +2222,8 @@ function FinancePage() {
                 />
                 {paymentParty === 'customer' && (
                   <p className="text-[11px] text-slate-500">
-                    Tiền hoàn cho khách hàng: không giới hạn theo công nợ, làm
-                    giảm số tiền khách đã thanh toán.
+                    Tiền hoàn cho khách hàng: chỉ chi được khi công nợ của
+                    khách đang âm (đã thanh toán dư), tối đa bằng số dư âm.
                   </p>
                 )}
               </div>

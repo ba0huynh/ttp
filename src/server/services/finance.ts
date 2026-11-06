@@ -413,6 +413,132 @@ async function assertPaymentWithinDebt(
 }
 
 /**
+ * A receipt FROM a supplier is a refund: it is only possible while the
+ * supplier's balance is negative (we paid more than we owe) and at most up to
+ * that negative amount. `excludeId` is the receipt being edited.
+ */
+async function assertSupplierRefundWithinCredit(
+  supplierId: number,
+  amount: number,
+  excludeId?: number,
+) {
+  const [[bought], [paid], [refunded], [supplier]] = await Promise.all([
+    db
+      .select({ t: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)` })
+      .from(vehicles)
+      .innerJoin(importBatches, eq(importBatches.id, vehicles.batchId))
+      .where(
+        and(
+          eq(importBatches.supplierId, supplierId),
+          isNull(importBatches.loanContractId),
+        ),
+      ),
+    db
+      .select({ t: sql<string>`coalesce(sum(${paymentVouchers.amount}),0)` })
+      .from(paymentVouchers)
+      .where(
+        and(
+          eq(paymentVouchers.payeeType, 'supplier'),
+          eq(paymentVouchers.supplierId, supplierId),
+        ),
+      ),
+    db
+      .select({ t: sql<string>`coalesce(sum(${receiptVouchers.amount}),0)` })
+      .from(receiptVouchers)
+      .where(
+        and(
+          eq(receiptVouchers.supplierId, supplierId),
+          excludeId ? ne(receiptVouchers.id, excludeId) : undefined,
+        ),
+      ),
+    db
+      .select({ name: suppliers.name })
+      .from(suppliers)
+      .where(eq(suppliers.id, supplierId)),
+  ])
+  const credit = Math.max(
+    0,
+    num(paid?.t) - num(refunded?.t) - num(bought?.t),
+  )
+  if (amount > credit + 0.5) {
+    const who = supplier?.name ?? 'nhà cung cấp'
+    throw new BusinessError(
+      credit <= 0.5
+        ? `Công nợ của ${who} không âm (chưa thanh toán dư), không thể lập phiếu thu hoàn tiền ${formatVnd(amount)}.`
+        : `Số tiền thu ${formatVnd(amount)} vượt quá số dư âm của ${who}: ${formatVnd(credit)} (vượt ${formatVnd(amount - credit)}). Chỉ có thể thu tối đa ${formatVnd(credit)}.`,
+    )
+  }
+}
+
+/**
+ * A payment TO a customer is a refund: only possible while that customer /
+ * point of sale has paid more than it owes, up to the overpaid amount.
+ */
+async function assertCustomerRefundWithinCredit(
+  customerId: number,
+  branchId: number | null | undefined,
+  amount: number,
+  excludeId?: number,
+) {
+  const branchSold = branchId
+    ? eq(salesOrders.branchId, branchId)
+    : isNull(salesOrders.branchId)
+  const branchPaid = branchId
+    ? eq(receiptVouchers.branchId, branchId)
+    : isNull(receiptVouchers.branchId)
+  const branchRefunded = branchId
+    ? eq(paymentVouchers.branchId, branchId)
+    : isNull(paymentVouchers.branchId)
+  const [[sold], [paid], [refunded], [customer], branch] = await Promise.all([
+    db
+      .select({ t: sql<string>`coalesce(sum(${salesOrders.totalAmount}),0)` })
+      .from(salesOrders)
+      .where(
+        and(
+          eq(salesOrders.status, 'confirmed'),
+          eq(salesOrders.customerId, customerId),
+          branchSold,
+        ),
+      ),
+    db
+      .select({ t: sql<string>`coalesce(sum(${receiptVouchers.amount}),0)` })
+      .from(receiptVouchers)
+      .where(and(eq(receiptVouchers.customerId, customerId), branchPaid)),
+    db
+      .select({ t: sql<string>`coalesce(sum(${paymentVouchers.amount}),0)` })
+      .from(paymentVouchers)
+      .where(
+        and(
+          eq(paymentVouchers.payeeType, 'customer'),
+          eq(paymentVouchers.customerId, customerId),
+          branchRefunded,
+          excludeId ? ne(paymentVouchers.id, excludeId) : undefined,
+        ),
+      ),
+    db
+      .select({ name: customers.name })
+      .from(customers)
+      .where(eq(customers.id, customerId)),
+    branchId
+      ? db
+          .select({ name: posBranches.name })
+          .from(posBranches)
+          .where(eq(posBranches.id, branchId))
+      : Promise.resolve([]),
+  ])
+  const credit = Math.max(0, num(paid?.t) - num(refunded?.t) - num(sold?.t))
+  if (amount > credit + 0.5) {
+    const who =
+      branch[0]?.name ?? `${customer?.name ?? 'khách hàng'} (pháp nhân chính)`
+    throw new BusinessError(
+      credit <= 0.5
+        ? `Công nợ của ${who} không âm (chưa thanh toán dư), không thể lập phiếu chi hoàn tiền ${formatVnd(amount)}.`
+        : `Số tiền chi ${formatVnd(amount)} vượt quá số dư âm của ${who}: ${formatVnd(credit)} (vượt ${formatVnd(amount - credit)}). Chỉ có thể chi tối đa ${formatVnd(credit)}.`,
+    )
+  }
+}
+
+/**
  * Records the bank movement of a voucher as a statement line that is already
  * matched to it. All such lines of an account go into one "manual" statement.
  */
@@ -555,6 +681,8 @@ export async function createReceiptVoucher(
   const party = await resolveReceiptParty(input)
   if (party.customerId)
     await assertReceiptWithinDebt(party.customerId, party.branchId, input.amount)
+  if (party.supplierId)
+    await assertSupplierRefundWithinCredit(party.supplierId, input.amount)
   return db.transaction(async (tx) => {
     const [r] = await tx
       .insert(receiptVouchers)
@@ -620,6 +748,12 @@ export async function createPaymentVoucher(
   // Only a debt payment to a supplier is capped; a refund to a customer is not
   if (party.supplierId)
     await assertPaymentWithinDebt(party.supplierId, input.amount)
+  if (party.customerId)
+    await assertCustomerRefundWithinCredit(
+      party.customerId,
+      party.branchId,
+      input.amount,
+    )
   return db.transaction(async (tx) => {
     const [r] = await tx
       .insert(paymentVouchers)
@@ -883,6 +1017,8 @@ export async function updateReceiptVoucher(
       input.amount,
       id,
     )
+  if (party.supplierId)
+    await assertSupplierRefundWithinCredit(party.supplierId, input.amount, id)
   await db
     .update(receiptVouchers)
     .set({
@@ -918,6 +1054,13 @@ export async function updatePaymentVoucher(
   const party = await resolvePaymentParty(input)
   if (party.supplierId)
     await assertPaymentWithinDebt(party.supplierId, input.amount, id)
+  if (party.customerId)
+    await assertCustomerRefundWithinCredit(
+      party.customerId,
+      party.branchId,
+      input.amount,
+      id,
+    )
   await db
     .update(paymentVouchers)
     .set({

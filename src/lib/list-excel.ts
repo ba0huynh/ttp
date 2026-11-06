@@ -492,7 +492,7 @@ export function downloadReceivablesExcel(
       { header: 'STT', width: 6, value: (_, i) => i + 1 },
       { header: 'Khách Hàng', width: 28, value: (r) => r.customerName },
       {
-        header: 'Pháp Nhân Điểm Bán Chịu Nợ',
+        header: 'Điểm Bán',
         width: 28,
         value: (r) => (r.branchId ? r.entityName : 'Pháp nhân chính KH mẹ'),
       },

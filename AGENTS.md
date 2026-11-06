@@ -2348,7 +2348,7 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 
 - **Why**: when the shop returns a vehicle to a supplier the supplier sends money back, and when a customer returns one the shop refunds them. Both directions now have a voucher, so a balance may legitimately go negative. Phiếu Thu has a `Khách hàng | Nhà cung cấp` switch (default customer), Phiếu Chi has `Nhà cung cấp | Khách hàng` (default supplier) (`PartyToggle` in `finance.tsx`).
 - **Data** (migration `0052_voucher_counterparty.sql`, **apply with `npm run migration:run`**, the finance pages fail until then): `receipt_vouchers.customer_id` is nullable and `supplier_id` is new (supplier set = refund from a supplier); `payment_vouchers.payee_type` gained `'customer'` and the table gained `customer_id` / `branch_id`.
-- **Debt rules**: AR paid = receipts from customers − refunds paid to them; AP paid = payments to suppliers − receipts from them (`getReceivablesSummary` / `getPayablesSummary`, and the guards `assertReceiptWithinDebt` / `assertPaymentWithinDebt` use the same net figure). The "never exceed the remaining debt" guard only applies to the normal direction (receipt from a customer, payment to a supplier); a refund voucher is not capped, so the balance can go negative.
+- **Debt rules**: AR paid = receipts from customers − refunds paid to them; AP paid = payments to suppliers − receipts from them (`getReceivablesSummary` / `getPayablesSummary`, and the guards `assertReceiptWithinDebt` / `assertPaymentWithinDebt` use the same net figure). The "never exceed the remaining debt" guard applies to the normal direction (receipt from a customer, payment to a supplier). A refund voucher (receipt from a supplier, payment to a customer) is allowed only while that party's balance is negative (they were overpaid) and at most up to the negative amount (`assertSupplierRefundWithinCredit` / `assertCustomerRefundWithinCredit`); otherwise the form shows an error like the normal guard.
 - **History tables** (`/finance` receipts + payments, Excel exports, `list-excel.ts`): columns `Đối Tượng` (name + `(KH)` / `(NCC)`, `partyLabel` in `business.ts`) and `Đối Tượng Phụ` (customer's receiving branch or "Trực tiếp", "—" for suppliers). The list functions return `partyType`, `partyName`, `subName` for this. The filter dialogs have `Loại đối tượng` (KH / NCC) plus both a customer and a supplier picker (a row matches either picker). Bank-statement matching and usage lists (`usage.ts`) also read the new columns.
 
 _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
@@ -2550,3 +2550,13 @@ _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 - `src/routes/api.test-mail.tsx` sends one test email through `sendMail` (`services/mail.ts`) using the `.env` SMTP settings. Body: `{ "to": "a@b.com", "subject"?, "message"? }`; replies `{ ok: true }` or `{ ok: false, error }` (500 when SMTP is not configured, 502 when the SMTP server refuses).
 - It has **no authentication**, so it answers 404 when `NODE_ENV === 'production'`. Delete the file once delivery is confirmed. Restart the dev server after editing `.env`; with Gmail the password must be an app password.
+
+### Lesson 221: Bounded Max Height & Scroll for Finance Voucher Modals (`/finance`)
+
+- **Bug / Feedback** (User Request / QA): On `/finance?tab=receipts` (and `tab=payments`), opening the "Lập Phiếu Chi Tiền" (or "Lập Phiếu Thu Tiền") modal on laptops or smaller display heights caused the dialog to stretch from top to bottom edge, overflowing the screen height because it lacked a max height constraint and vertical scrolling.
+- **Requirement**: Set max height and enable vertical scrolling (`max-h-[90dvh] overflow-y-auto`) so the modal remains cleanly bounded within the viewport with accessible scrollable content and visible header/footer.
+- **Fix**:
+  - `src/routes/finance.tsx`:
+    - Updated `DialogContent` for the Payment Voucher modal (`paymentOpen`) from `className="max-w-md"` to `className="max-h-[90dvh] overflow-y-auto max-w-md"`.
+    - Updated `DialogContent` for the Receipt Voucher modal (`receiptOpen`) from `className="max-w-md"` to `className="max-h-[90dvh] overflow-y-auto max-w-md"`.
+    - Verified consistent alignment with other modals across the application.
