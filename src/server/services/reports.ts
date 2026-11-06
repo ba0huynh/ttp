@@ -230,7 +230,8 @@ function getInventoryTotals() {
   return db
     .select({
       total: sql<number>`count(*)`,
-      importValue: sql<string>`coalesce(sum(${vehicles.importPriceWithVat}),0)`,
+      // Goods (VAT-inclusive) plus the batch fees allocated to each vehicle = cost price
+      importValue: sql<string>`coalesce(sum(${vehicles.costPrice}),0)`,
       physical: sql<number>`sum(case when ${vehicles.isDelivered} = 0 then 1 else 0 end)`,
       invoiced: sql<number>`sum(case when ${vehicles.isInvoiced} = 0 then 1 else 0 end)`,
       physicalValue: sql<string>`coalesce(sum(case when ${vehicles.isDelivered} = 0 then ${vehicles.costPrice} else 0 end),0)`,

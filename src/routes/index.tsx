@@ -92,7 +92,7 @@ function DashboardPage() {
             value={formatVnd(inv.importValue)}
             hint={
               <>
-                Tổng giá nhập của{' '}
+                Gồm tiền hàng và chi phí lô của{' '}
                 <strong className="text-slate-700">{inv.total}</strong> xe đã
                 nhập
               </>
