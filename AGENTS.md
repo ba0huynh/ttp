@@ -2339,6 +2339,11 @@ _This section documents architectural decisions, gotchas, and solutions. Every a
 - **Update 2 (client)**: a supplier whose batches are all loan-financed must still appear on the payables tab, with a debt of 0 (previously it vanished because the filter required `purchased > 0`). `getPayablesSummary` now counts only the no-loan goods in `purchased` but keeps every supplier that has at least one batch (`hasBatches`) or a payment.
 - **Effect on existing data**: changing a batch's loan in the batch editor immediately changes the supplier's debt; payments already recorded stay, so a supplier can show a negative balance (overpaid) if their batches were later linked to a loan.
 
+### Lesson 221: Excel Template Export / Import on `/sales/new`
+
+- The "Xe Chọn Bán" card has `Xuất file mẫu` (downloads `mau-ban-xe.xlsx`, columns `SỐ KHUNG | ĐƠN GIÁ CHƯA VAT (VNĐ) | % VAT`, pre-filled with up to 3 available chassis numbers) and `Nhập file Excel`. Logic is in `src/lib/sales-excel-import.ts` (dynamically imported, so `xlsx` stays out of the page bundle).
+- Import is all-or-nothing: if any `SỐ KHUNG` is not among the vehicles available for sale, an alert dialog "Số khung không tồn tại" lists them and nothing is added; bad price (<= 0), VAT outside 0-100 or duplicate chassis also block the import with a list. Valid files add vehicles to the order (or overwrite price / VAT of ones already chosen). Chassis matching is case-insensitive and trimmed.
+
 _(Next Agent: Append Lesson 202, 203,... above this line upon completing tasks)_
 
 

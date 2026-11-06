@@ -1,4 +1,8 @@
-import { formatErrorMessage } from '#/components/ui/confirm-dialog.tsx'
+import {
+  alertDialog,
+  formatErrorMessage,
+} from '#/components/ui/confirm-dialog.tsx'
+import { toast } from 'sonner'
 import {
   useMutation,
   useQueryClient,
@@ -14,7 +18,9 @@ import {
   AlertCircle,
   ArrowLeft,
   Check,
+  Download,
   Loader2,
+  Upload,
   Plus,
   RotateCcw,
   Search,
@@ -343,6 +349,87 @@ function NewSalesOrderPage() {
     setSelectedItems(selectedItems.filter((i) => i.vehicleId !== vId))
   }
 
+  const fileInputRef = React.useRef<HTMLInputElement>(null)
+  const [importing, setImporting] = React.useState(false)
+
+  const handleDownloadTemplate = async () => {
+    const { downloadSalesTemplate } = await import(
+      '#/lib/sales-excel-import.ts'
+    )
+    downloadSalesTemplate(availableVehicles.map((v) => v.chassisNumber))
+  }
+
+  const handleImportFile = async (
+    e: React.ChangeEvent<HTMLInputElement>,
+  ) => {
+    const file = e.target.files?.[0]
+    e.target.value = ''
+    if (!file) return
+    setImporting(true)
+    try {
+      const { parseSalesWorkbook } = await import('#/lib/sales-excel-import.ts')
+      const result = await parseSalesWorkbook(
+        file,
+        availableVehicles.map((v) => v.chassisNumber),
+      )
+      if (result.missingChassis.length > 0) {
+        const shown = result.missingChassis.slice(0, 20)
+        const more = result.missingChassis.length - shown.length
+        await alertDialog({
+          title: 'Số khung không tồn tại',
+          description:
+            `${result.missingChassis.length} SỐ KHUNG trong file không tồn tại trong kho (hoặc không còn sẵn sàng để bán):\n` +
+            shown.map((c) => `• ${c}`).join('\n') +
+            (more > 0 ? `\n… và ${more} số khung khác` : '') +
+            '\n\nKhông có xe nào được thêm. Vui lòng sửa file và nhập lại.',
+          destructive: true,
+        })
+        return
+      }
+      if (result.invalidRows.length > 0) {
+        await alertDialog({
+          title: 'File Excel có dữ liệu không hợp lệ',
+          description:
+            result.invalidRows.slice(0, 20).join('\n') +
+            '\n\nKhông có xe nào được thêm.',
+          destructive: true,
+        })
+        return
+      }
+      if (result.rows.length === 0) {
+        await alertDialog('File không có dòng dữ liệu nào để nhập.')
+        return
+      }
+      const byChassis = new Map(
+        availableVehicles.map((v) => [v.chassisNumber.trim().toLowerCase(), v]),
+      )
+      const next = new Map(selectedItems.map((i) => [i.vehicleId, i]))
+      for (const r of result.rows) {
+        const v = byChassis.get(r.chassisNumber.toLowerCase())
+        if (!v) continue
+        next.set(v.id, {
+          vehicleId: v.id,
+          priceBeforeVat: r.priceBeforeVat,
+          vatRate: r.vatRate,
+          chassisNumber: v.chassisNumber,
+          modelName: v.modelName,
+          colorName: v.colorName,
+          costPrice: v.costPrice,
+        })
+      }
+      setSelectedItems([...next.values()])
+      toast.success(`Đã nhập ${result.rows.length} xe từ file Excel`)
+    } catch (err) {
+      await alertDialog({
+        title: 'Không đọc được file Excel',
+        description: formatErrorMessage(err, 'File không hợp lệ'),
+        destructive: true,
+      })
+    } finally {
+      setImporting(false)
+    }
+  }
+
   // Clear validation error as soon as user adds vehicles or selects a customer
   React.useEffect(() => {
     if (
@@ -483,7 +570,7 @@ function NewSalesOrderPage() {
           <div className="lg:col-span-2 space-y-4">
             <Card className="border-slate-200 shadow-xs">
               <CardHeader className="py-3 px-4 border-b border-slate-100 flex flex-row items-center justify-between">
-                <div>
+                <div className="min-w-0">
                   <CardTitle className="text-sm font-bold text-slate-800">
                     Xe Chọn Bán ({selectedItems.length} xe &bull; Tổng tiền đã VAT:{' '}
                     <span className="text-emerald-800">
@@ -495,16 +582,50 @@ function NewSalesOrderPage() {
                     Mỗi xe (theo số khung) chỉ được phép bán đúng một lần
                   </CardDescription>
                 </div>
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="sm"
-                  onClick={openPicker}
-                  className="h-8 text-xs gap-1.5 bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold hover:bg-emerald-100"
-                >
-                  <Plus className="size-3.5" />
-                  Chọn xe từ kho ({availableVehicles.length} xe sẵn sàng)
-                </Button>
+                <div className="flex shrink-0 flex-nowrap items-center justify-end gap-2 whitespace-nowrap">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept=".xlsx,.xls"
+                    className="hidden"
+                    onChange={handleImportFile}
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadTemplate}
+                    className="h-8 text-xs gap-1.5"
+                  >
+                    <Download className="size-3.5" />
+                    Xuất file mẫu
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    disabled={importing}
+                    onClick={() => fileInputRef.current?.click()}
+                    className="h-8 text-xs gap-1.5"
+                  >
+                    {importing ? (
+                      <Loader2 className="size-3.5 animate-spin" />
+                    ) : (
+                      <Upload className="size-3.5" />
+                    )}
+                    Nhập Excel
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={openPicker}
+                    className="h-8 text-xs gap-1.5 bg-emerald-50 text-emerald-800 border-emerald-300 font-semibold hover:bg-emerald-100"
+                  >
+                    <Plus className="size-3.5" />
+                    Chọn xe từ kho ({availableVehicles.length} xe)
+                  </Button>
+                </div>
               </CardHeader>
               <CardContent className="p-0">
                 {lossItems.length > 0 && (
